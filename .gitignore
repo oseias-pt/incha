@@ -1,0 +1,10 @@
+# VSCode local settings
+.vscode/settings.json
+.vscode/*.log
+
+# Lua local interpreter artifacts (used for local testing outside the game)
+*.luac
+
+# OS noise
+Thumbs.db
+.DS_Store

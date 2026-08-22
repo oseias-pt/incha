@@ -1,0 +1,182 @@
+local AlertSink = require("core.AlertSink")
+local BossRegistry = require("core.BossRegistry")
+local Difficulty = require("core.Difficulty")
+local EventPipeline = require("core.EventPipeline")
+local HealthRules = require("core.HealthRules")
+local Throttle = require("core.Throttle")
+local TrialContext = require("core.TrialContext")
+
+local Trial = {}
+Trial.__index = Trial
+
+local function getPlayerZoneId()
+    return GetZoneId(GetUnitZoneIndex("player"))
+end
+
+function Trial.create(options)
+    local self = setmetatable({
+        id = options.id,
+        zoneId = options.zoneId,
+        name = options.name or options.id,
+        eventPrefix = options.eventPrefix or ("Incha_" .. options.id),
+        bridge = options.bridge,
+        registry = BossRegistry.new(options.bosses),
+        context = TrialContext.new(options.id),
+        alerts = AlertSink.new(options.alerts),
+        enabled = false,
+        -- Only gates the cosmetic health-rule text (and the AlertSink calls
+        -- it triggers), not boss:onPowerUpdate itself, so mechanic timing
+        -- logic still sees every real tick. 1% granularity is safe since
+        -- healthRules windows are several points wide.
+        healthThrottle = Throttle.new(1),
+    }, Trial)
+
+    self.pipeline = EventPipeline.new(self.eventPrefix, {
+        onBossesChanged = function(eventCode, forceReset)
+            self:onBossesChanged(forceReset)
+        end,
+        onPowerUpdate = function(eventCode, unitTag, powerIndex, powerType, powerValue, powerMax, powerEffectiveMax)
+            self:onPowerUpdate(powerValue, powerMax)
+        end,
+        onCombatState = options.onCombatState and function(eventCode, inCombat)
+            self:onCombatState(inCombat)
+        end or nil,
+        onCombatEvent = options.onCombatEvent and function(...)
+            options.onCombatEvent(self, ...)
+        end or nil,
+        onEffectChanged = options.onEffectChanged and function(...)
+            options.onEffectChanged(self, ...)
+        end or nil,
+    })
+
+    return self
+end
+
+function Trial:isActiveZone()
+    return getPlayerZoneId() == self.zoneId
+end
+
+function Trial:getActiveBoss()
+    if not self.context.bossId then
+        return nil
+    end
+
+    return self.registry:getById(self.context.bossId)
+end
+
+function Trial:onBossesChanged(forceReset)
+    if not self:isActiveZone() then
+        return
+    end
+
+    self.registry:resetAll(forceReset)
+    self.healthThrottle:reset()
+
+    local _, x, y, z = GetUnitWorldPosition("player")
+    local boss = self.registry:findAtPosition(x, y, z)
+
+    if boss then
+        self.context:setBoss(boss)
+
+        local _, _, effectiveMax = GetUnitPower("boss1", POWERTYPE_HEALTH)
+        self.context:setDifficulty(self.registry:detectDifficulty(boss, effectiveMax))
+
+        if boss.onEnter then
+            boss:onEnter(self.context, self.alerts)
+        end
+
+        if self.bridge and self.bridge.onBossEnter then
+            self.bridge.onBossEnter(boss, self.context)
+        end
+    else
+        self.context:setBoss(nil)
+        self.context:setDifficulty(Difficulty.NONE)
+        self.alerts:clear()
+
+        if self.bridge and self.bridge.onBossExit then
+            self.bridge.onBossExit()
+        end
+    end
+end
+
+function Trial:onPowerUpdate(powerValue, powerMax)
+    if not self:isActiveZone() then
+        return
+    end
+
+    local boss = self:getActiveBoss()
+    if not boss then
+        return
+    end
+
+    local healthPercent = powerValue / powerMax * 100
+    self.context.extras.healthPercent = healthPercent
+
+    -- Boss mechanic callbacks run on every real tick regardless of
+    -- throttling below - mechanic timing shouldn't depend on UI granularity.
+    if boss.onPowerUpdate then
+        boss:onPowerUpdate(self.context, healthPercent, self.alerts)
+    end
+
+    -- The health-rule text/alert display only needs to react when the
+    -- rounded percent actually changes, not on every raw power-update tick
+    -- (which can fire many times per second). This avoids re-running
+    -- rule evaluation and re-touching the UI when nothing visible changed.
+    if self.healthThrottle:shouldUpdate(healthPercent) then
+        local id, text = HealthRules.evaluate(boss.healthRules, healthPercent, self.context)
+        if id then
+            self.alerts:showAction(text)
+        elseif boss.hideActionWhenNoRule then
+            self.alerts:emit("hideAction")
+        end
+    end
+
+    if not IsUnitInCombat("player") and self.bridge and self.bridge.checkHardmode then
+        self.bridge.checkHardmode(self.context)
+    end
+end
+
+function Trial:onCombatState(inCombat)
+    self.context.inCombat = inCombat
+
+    local boss = self:getActiveBoss()
+    if boss and boss.onCombatState then
+        boss:onCombatState(self.context, inCombat, self.alerts)
+    end
+end
+
+function Trial:enable()
+    if self.enabled then
+        return
+    end
+
+    self.enabled = true
+
+    if self.bridge and self.bridge.onEnable then
+        self.bridge.onEnable()
+    end
+
+    self.pipeline:enable()
+    self:onBossesChanged(true)
+end
+
+function Trial:disable()
+    if not self.enabled then
+        return
+    end
+
+    self.pipeline:disable()
+    self.registry:resetAll(true)
+    self.context:setBoss(nil)
+    self.context:setDifficulty(Difficulty.NONE)
+    self.healthThrottle:reset()
+    self.alerts:clear()
+
+    if self.bridge and self.bridge.onDisable then
+        self.bridge.onDisable()
+    end
+
+    self.enabled = false
+end
+
+return Trial
