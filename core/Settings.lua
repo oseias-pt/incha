@@ -21,8 +21,11 @@ local DEFAULTS = {
     overlay = {
         locked   = false,
         scale    = 1.0,
-        offsetX  = 0,
-        offsetY  = 0,
+        -- -1 = "not yet positioned by user"; Panel uses a default center-top
+        -- anchor on first show and saves real pixel coords here after the
+        -- first OnMoveStop, at which point both values will be >= 0.
+        offsetX  = -1,
+        offsetY  = -1,
     },
 
     trials = {
