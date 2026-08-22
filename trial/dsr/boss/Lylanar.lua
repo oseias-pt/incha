@@ -324,7 +324,7 @@ end
 
 -- ── Effect changes ────────────────────────────────────────────────────────
 function Lylanar:onEffectChanged(context, alerts, changeType, abilityId,
-                                  unitTag, unitId, unitName)
+                                  unitTag, unitId, unitName, stackCount)
     if DreadsailCommon.handleEffect(alerts, changeType, abilityId, unitTag) then
         return
     end
@@ -367,8 +367,8 @@ function Lylanar:onEffectChanged(context, alerts, changeType, abilityId,
 
     -- ── Fire: ImminentBlister (tank/heal warning) ─────────────────────────
     if abilityId == IMMINENT_BLISTER then
-        if changeType == EFFECT_RESULT_GAINED_DURATION then
-            local _, _, isTank, isHeal = GetPlayerRoles()
+        if changeType == EFFECT_RESULT_GAINED then
+            local _, isHeal, isTank = GetPlayerRoles()
             if isTank or isHeal then
                 self.lastFireImminentTime   = GetGameTimeMilliseconds() / 1000
                 self.lastFireImminentPlayer = GetUnitDisplayName(unitTag) or unitName
@@ -381,8 +381,8 @@ function Lylanar:onEffectChanged(context, alerts, changeType, abilityId,
 
     -- ── Ice: ImminentChill (tank/heal warning) ────────────────────────────
     if abilityId == IMMINENT_CHILL then
-        if changeType == EFFECT_RESULT_GAINED_DURATION then
-            local _, _, isTank, isHeal = GetPlayerRoles()
+        if changeType == EFFECT_RESULT_GAINED then
+            local _, isHeal, isTank = GetPlayerRoles()
             if isTank or isHeal then
                 self.lastIceImminentTime   = GetGameTimeMilliseconds() / 1000
                 self.lastIceImminentPlayer = GetUnitDisplayName(unitTag) or unitName
@@ -395,7 +395,7 @@ function Lylanar:onEffectChanged(context, alerts, changeType, abilityId,
 
     -- ── Fire: BlisteringFragility ─────────────────────────────────────────
     if abilityId == BLISTERING_FRAGILITY then
-        if changeType == EFFECT_RESULT_GAINED_DURATION then
+        if changeType == EFFECT_RESULT_GAINED then
             if AreUnitsEqual("player", unitTag) then
                 self.lastFireFragilityTime = GetGameTimeMilliseconds() / 1000
                 self.lastFireFragilityPlyr = GetUnitDisplayName(unitTag) or unitName
@@ -410,7 +410,7 @@ function Lylanar:onEffectChanged(context, alerts, changeType, abilityId,
 
     -- ── Ice: ChillingFragility ────────────────────────────────────────────
     if abilityId == CHILLING_FRAGILITY then
-        if changeType == EFFECT_RESULT_GAINED_DURATION then
+        if changeType == EFFECT_RESULT_GAINED then
             if AreUnitsEqual("player", unitTag) then
                 self.lastIceFragilityTime = GetGameTimeMilliseconds() / 1000
                 self.lastIceFragilityPlyr = GetUnitDisplayName(unitTag) or unitName
@@ -427,7 +427,7 @@ function Lylanar:onEffectChanged(context, alerts, changeType, abilityId,
     if abilityId == DESTRUCTIVE_EMBER then
         if changeType == EFFECT_RESULT_GAINED or changeType == EFFECT_RESULT_UPDATED then
             if AreUnitsEqual("player", unitTag) then
-                self.destructiveEmberStacks = GetUnitBuffStacks(unitTag, abilityId) or 1
+                self.destructiveEmberStacks = stackCount or 1
                 self.destructiveEmberName   = GetUnitDisplayName(unitTag) or unitName
                 self.lastDestructiveEmber   = GetGameTimeMilliseconds() / 1000
             end
@@ -445,7 +445,7 @@ function Lylanar:onEffectChanged(context, alerts, changeType, abilityId,
     if abilityId == PIERCING_HAILSTONE then
         if changeType == EFFECT_RESULT_GAINED or changeType == EFFECT_RESULT_UPDATED then
             if AreUnitsEqual("player", unitTag) then
-                self.piercingHailstacks = GetUnitBuffStacks(unitTag, abilityId) or 1
+                self.piercingHailstacks = stackCount or 1
                 self.piercingHailName   = GetUnitDisplayName(unitTag) or unitName
                 self.lastPiercingHail   = GetGameTimeMilliseconds() / 1000
             end
@@ -461,7 +461,7 @@ function Lylanar:onEffectChanged(context, alerts, changeType, abilityId,
 
     -- ── Fire: Firebrand (HM brand tracking) ──────────────────────────────
     if abilityId == FIREBRAND and isHM then
-        if changeType == EFFECT_RESULT_GAINED_DURATION then
+        if changeType == EFFECT_RESULT_GAINED then
             local entry = { tag = unitTag,
                             name = GetUnitDisplayName(unitTag) or unitName }
             table.insert(self.firebrandTracker, entry)
@@ -477,7 +477,7 @@ function Lylanar:onEffectChanged(context, alerts, changeType, abilityId,
 
     -- ── Ice: Frostbrand (HM brand tracking) ──────────────────────────────
     if abilityId == FROSTBRAND and isHM then
-        if changeType == EFFECT_RESULT_GAINED_DURATION then
+        if changeType == EFFECT_RESULT_GAINED then
             local entry = { tag = unitTag,
                             name = GetUnitDisplayName(unitTag) or unitName }
             table.insert(self.frostbrandTracker, entry)
@@ -510,7 +510,7 @@ function Lylanar:onEffectChanged(context, alerts, changeType, abilityId,
 
     -- ── Fire: SummonFlameHound ────────────────────────────────────────────
     if abilityId == SUMMON_FLAME_HOUND then
-        if changeType == EFFECT_RESULT_GAINED_DURATION then
+        if changeType == EFFECT_RESULT_GAINED then
             self.flameHounds = self.flameHounds + 1
         elseif changeType == EFFECT_RESULT_FADED then
             if self.flameHounds > 0 then self.flameHounds = self.flameHounds - 1 end
@@ -520,7 +520,7 @@ function Lylanar:onEffectChanged(context, alerts, changeType, abilityId,
 
     -- ── Ice: SummonFrostHound ─────────────────────────────────────────────
     if abilityId == SUMMON_FROST_HOUND then
-        if changeType == EFFECT_RESULT_GAINED_DURATION then
+        if changeType == EFFECT_RESULT_GAINED then
             self.frostHounds = self.frostHounds + 1
         elseif changeType == EFFECT_RESULT_FADED then
             if self.frostHounds > 0 then self.frostHounds = self.frostHounds - 1 end
@@ -530,7 +530,7 @@ function Lylanar:onEffectChanged(context, alerts, changeType, abilityId,
 
     -- ── Shared: Hindered (slow on player) ────────────────────────────────
     if abilityId == HINDERED then
-        if changeType == EFFECT_RESULT_GAINED_DURATION and AreUnitsEqual("player", unitTag) then
+        if changeType == EFFECT_RESULT_GAINED and AreUnitsEqual("player", unitTag) then
             caAlertBorder(true, 12000, "yellow")
         end
         return

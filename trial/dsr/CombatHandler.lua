@@ -36,7 +36,7 @@ function CombatHandler.onEffectChanged(trial, eventCode,
     local boss = trial:getActiveBoss()
     if not boss or not boss.onEffectChanged then return end
     boss:onEffectChanged(trial.context, trial.alerts,
-        changeType, abilityId, unitTag, unitId, unitName)
+        changeType, abilityId, unitTag, unitId, unitName, stackCount)
 end
 
 return CombatHandler

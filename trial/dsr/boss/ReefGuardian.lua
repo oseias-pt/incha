@@ -159,7 +159,7 @@ end
 
 -- ── Effect changes ────────────────────────────────────────────────────────
 function ReefGuardian:onEffectChanged(context, alerts, changeType, abilityId,
-                                       unitTag, unitId, unitName)
+                                       unitTag, unitId, unitName, stackCount)
     if DreadsailCommon.handleEffect(alerts, changeType, abilityId, unitTag) then
         return
     end
@@ -168,7 +168,7 @@ function ReefGuardian:onEffectChanged(context, alerts, changeType, abilityId,
     if abilityId == BUILDING_STATIC_1 or abilityId == BUILDING_STATIC_2 then
         if changeType == EFFECT_RESULT_GAINED or changeType == EFFECT_RESULT_UPDATED then
             if AreUnitsEqual("player", unitTag) then
-                self.buildingStaticStacks  = GetUnitBuffStacks(unitTag, abilityId) or 1
+                self.buildingStaticStacks  = stackCount or 1
                 self.buildingStaticEndTime = GetGameTimeMilliseconds() / 1000 + 10
             end
         elseif changeType == EFFECT_RESULT_FADED then
@@ -184,7 +184,7 @@ function ReefGuardian:onEffectChanged(context, alerts, changeType, abilityId,
     if abilityId == VOLATILE_RESIDUE_1 or abilityId == VOLATILE_RESIDUE_2 then
         if changeType == EFFECT_RESULT_GAINED or changeType == EFFECT_RESULT_UPDATED then
             if AreUnitsEqual("player", unitTag) then
-                self.volatileResidueStacks  = GetUnitBuffStacks(unitTag, abilityId) or 1
+                self.volatileResidueStacks  = stackCount or 1
                 self.volatileResidueEndTime = GetGameTimeMilliseconds() / 1000 + 10
             end
         elseif changeType == EFFECT_RESULT_FADED then
@@ -229,7 +229,7 @@ function ReefGuardian:onEffectChanged(context, alerts, changeType, abilityId,
 
     -- ── King Orgnum fire debuff ───────────────────────────────────────────
     if abilityId == KING_ORGNUM_FIRE_DBF then
-        if changeType == EFFECT_RESULT_GAINED_DURATION
+        if changeType == EFFECT_RESULT_GAINED
            and AreUnitsEqual("player", unitTag) then
             caAlert(nil, "|cFF5500King Orgnum fire — MOVE!|r",
                 0xFF5500D9, SOUNDS.DUEL_START, 5000)
