@@ -103,5 +103,29 @@ legacy bridge.
       Phase 0–3 exist to fix.
 
 ---
-**Status:** planning stage, nothing implemented yet. Update checkboxes as
-phases land.
+**Status:** Phases 0–3 implemented. Update checkboxes as phases land.
+
+## In-game verification notes (from Phase 3)
+
+These need a real ESO session to confirm — can't be caught in code review:
+
+### Phase 0
+- [ ] Verify the `require` shim actually releases GC roots when
+      `package.loaded[x] = nil`. Run `collectgarbage("count")` before
+      entering a trial zone, leave it, call `collectgarbage("collect")`,
+      then check again. The number should return to baseline. If it
+      doesn't, the unload mechanism is logically correct but the GC isn't
+      releasing memory — everything in Phase 0 rests on this being true.
+
+### Phase 3 — `ui/Panel.lua`
+- [ ] **`CT_BACKDROP` edge rendering** — `SetCenterColor` is called but no
+      edge texture is set. Should produce a grey border by default, but if
+      it looks wrong either drop `SetEdgeColor` entirely or swap
+      `CT_BACKDROP` for a plain `CT_TEXTURE` (flat rectangle, simpler).
+- [ ] **`SetMovable` drag behaviour** — if dragging the panel does nothing,
+      the typical ESO fix is adding an explicit `OnMouseDown` handler:
+      ```lua
+      panel:SetHandler("OnMouseDown", function(c) c:StartMoving() end)
+      ```
+      Check how BSCHTKA's XML controls handle drag if this needs
+      adjustment — they likely have the same pattern already.
