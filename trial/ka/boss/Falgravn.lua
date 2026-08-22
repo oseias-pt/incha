@@ -1,4 +1,7 @@
 local Location = require("core.Location")
+local Timer = require("lib.Timer")
+
+local INSTABILITY_INITIAL_DELAY = 10
 
 local Falgravn = {
     id = 3,
@@ -38,21 +41,18 @@ local Falgravn = {
     },
 }
 
-Falgravn.CURRENT_STAGE = 1
+Falgravn.CURRENT_STAGE   = 1
+Falgravn.instabilityTimer = Timer.new(INSTABILITY_INITIAL_DELAY)
+
+-- Placeholders for mechanics not yet fully migrated from the legacy addon.
+-- Set to 0 until the corresponding event handlers are implemented.
 Falgravn.OPEN_GATES_TIME = 0
-Falgravn.TORTURER_TP = 0
-Falgravn.INSTABILITY_TIME = 10
-Falgravn.BLOODBALL_TIME = 0
+Falgravn.TORTURER_TP     = 0
+Falgravn.BLOODBALL_TIME  = 0
 
 local PRISONERS = {
-    Brekalda = 0,
-    Thjorlak = 0,
-    Aevar = 0,
-    Triveta = 0,
-    Skormgondar = 0,
-    Irthrig = 0,
-    Ama = 0,
-    Sislea = 0,
+    Brekalda = 0, Thjorlak = 0, Aevar    = 0, Triveta      = 0,
+    Skormgondar = 0, Irthrig = 0, Ama    = 0, Sislea       = 0,
 }
 
 local function resetPrisoners()
@@ -63,7 +63,7 @@ end
 
 function Falgravn:reset(forced)
     self.CURRENT_STAGE = 1
-    self.INSTABILITY_TIME = os.time() + 10
+    self.instabilityTimer:reset()
     resetPrisoners()
 
     if not BSCHTKA then
