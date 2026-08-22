@@ -1,5 +1,6 @@
 local Location = require("core.Location")
-local Timer = require("lib.Timer")
+local Settings = require("core.Settings")
+local Timer    = require("lib.Timer")
 
 local INSTABILITY_INITIAL_DELAY = 10
 
@@ -84,15 +85,15 @@ function Falgravn:reset(forced)
 end
 
 function Falgravn:onEnter(context)
-    context.extras.legacyFlag = "bFalgraven"
-    context.extras.showPercentUI = BSCHTKA and BSCHTKA.SV_ACC and BSCHTKA.SV_ACC.SHOW_UI_PERCENT
-    context.stage = self.CURRENT_STAGE
+    context.extras.legacyFlag    = "bFalgraven"
+    context.extras.showPercentUI = Settings.trial("ka").showPercent
+    context.stage                = self.CURRENT_STAGE
     self:syncLegacy()
 end
 
 function Falgravn:onPowerUpdate(context)
-    context.stage = self.CURRENT_STAGE
-    context.extras.showPercentUI = BSCHTKA and BSCHTKA.SV_ACC and BSCHTKA.SV_ACC.SHOW_UI_PERCENT
+    context.stage                = self.CURRENT_STAGE
+    context.extras.showPercentUI = Settings.trial("ka").showPercent
     self:syncLegacy()
 end
 

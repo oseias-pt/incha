@@ -1,4 +1,5 @@
 local Difficulty = require("core.Difficulty")
+local Settings   = require("core.Settings")
 
 local LegacyUI = {}
 
@@ -55,7 +56,7 @@ function LegacyUI.onBossEnter(boss, context)
     BSCHTKA.bVrol = boss.key == "vrol"
     BSCHTKA.bFalgraven = boss.key == "falgravn"
 
-    if BSCHTKA.SV_ACC and BSCHTKA.SV_ACC.SHOW_UI_BOSS then
+    if Settings.trial("ka").showBossUI then
         local hmStatus = context.difficulty == Difficulty.HARDMODE and "ON" or "OFF"
         local bossName = GetUnitName("boss1")
         resetInfoPanel(false)
