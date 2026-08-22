@@ -5,7 +5,7 @@
 ---   Floor 2: HP  70–40%  (boss escapes at 40%)
 ---   Floor 3: HP   0–40%
 ---
---- Phase RG-2: RockgroveCommon.handle() call (trash mechanics)
+--- Phase RG-2: RockgroveCommon.handle() (trash mechanics) ✓
 --- Phase RG-5: Xalvakka-specific mechanics
 ---   ScathingEvisceration (149180/153448/153450): targeted player → AlertCast
 ---   Deadstar (149386/149075): BEGIN → Alert("Deadstar!")
@@ -24,6 +24,7 @@
 --- HM detection: effectiveMaxHealth > hmHealthThreshold.
 ---   TODO: verify exact HM health pool in-game.
 
+local RockgroveCommon  = require("trial.rg.RockgroveCommon")
 local SHIELD_EVENT_KEY = "Incha_RG_XalvakkaShield"
 
 -- ── Boss definition ───────────────────────────────────────────────────────
@@ -82,7 +83,9 @@ end
 function Xalvakka:onCombatEvent(context, alerts, result, abilityId,
                                  unitTag, sourceUnitTag, sourceUnitId, unitId,
                                  sourceUnitName, unitName)
-    -- Phase RG-2: RockgroveCommon.handle() goes here first
+    if RockgroveCommon.handle(alerts, result, abilityId, unitTag, sourceUnitName) then
+        return
+    end
     -- Phase RG-5: Xalvakka mechanics
 end
 

@@ -1,6 +1,6 @@
 --- Bahsei (Flame-Herald Bahsei) — Rockgrove boss 2
 ---
---- Phase RG-2: RockgroveCommon.handle() call (trash mechanics)
+--- Phase RG-2: RockgroveCommon.handle() (trash mechanics) ✓
 --- Phase RG-4: Bahsei-specific mechanics
 ---   CursedGround (152475): BEGIN → Alert; 28 s cycle
 ---   Salvo2/Interrupt (152463): BEGIN, tank-only → AlertCast + Alert("Interrupt!")
@@ -19,6 +19,8 @@
 ---   context difficulty set by BossRegistry:detectDifficulty
 ---
 --- Note: hmHealthThreshold set below. Verify exact value in-game.
+
+local RockgroveCommon = require("trial.rg.RockgroveCommon")
 
 -- ── Boss definition ───────────────────────────────────────────────────────
 local Bahsei = {
@@ -72,7 +74,9 @@ end
 function Bahsei:onCombatEvent(context, alerts, result, abilityId,
                                unitTag, sourceUnitTag, sourceUnitId, unitId,
                                sourceUnitName, unitName)
-    -- Phase RG-2: RockgroveCommon.handle() goes here first
+    if RockgroveCommon.handle(alerts, result, abilityId, unitTag, sourceUnitName) then
+        return
+    end
     -- Phase RG-4: Bahsei mechanics
 end
 

@@ -1,6 +1,6 @@
 --- Oaxiltso — Rockgrove boss 1
 ---
---- Phase RG-2: RockgroveCommon.handle() call (trash mechanics)
+--- Phase RG-2: RockgroveCommon.handle() (trash mechanics) ✓
 --- Phase RG-3: Oaxiltso-specific mechanics
 ---   SavageBlitz (149414 / 157932 HM): BEGIN → CastAlertsStart 2750 ms; 36 s cycle
 ---   NoxiousSludge (149190): BEGIN → Alert; 28 s cycle
@@ -10,6 +10,8 @@
 ---   EmberChains (152699): targeted player → AlertCast 750 ms
 ---   MeteorCrash/AddSpawn (152365): EFFECT_GAINED → "ADD SPAWNING!" 3 s
 ---   BossEnrage (152502) / MiniEnrage (152503): EFFECT_GAINED/FADED flags
+
+local RockgroveCommon = require("trial.rg.RockgroveCommon")
 
 -- ── Boss definition ───────────────────────────────────────────────────────
 local Oaxiltso = {
@@ -57,7 +59,9 @@ end
 function Oaxiltso:onCombatEvent(context, alerts, result, abilityId,
                                 unitTag, sourceUnitTag, sourceUnitId, unitId,
                                 sourceUnitName, unitName)
-    -- Phase RG-2: RockgroveCommon.handle() goes here first
+    if RockgroveCommon.handle(alerts, result, abilityId, unitTag, sourceUnitName) then
+        return
+    end
     -- Phase RG-3: Oaxiltso mechanics
 end
 
