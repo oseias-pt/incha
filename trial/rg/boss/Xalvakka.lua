@@ -260,24 +260,23 @@ function Xalvakka:onUpdate(context, alerts)
         alerts:showInfo(3, "")
     end
 
-    -- ── Info 4: Blob indicator (reinforces AlertBorder) ───────────────────
-    if self.onBlob then
+    -- ── Info 4: Run timer (priority) > Blob indicator ────────────────────
+    -- Run timer uses info4 (not showAction) to avoid clobbering reactive
+    -- event alerts (Block!, Dodge!, etc.) which use the action slot.
+    -- context.extras.healthPercent: 0–100, set by Trial:onPowerUpdate from boss1.
+    local hp = context.extras and context.extras.healthPercent
+    if hp and hp > RUN1_BOT and hp <= RUN1_TOP then
+        -- Floor 1 → Floor 2 transition approaching
+        alerts:showInfo(4, "|cffdd00RUN IN|r: " ..
+            string.format("%.1f%%", hp - RUN1_BOT))
+    elseif hp and hp > RUN2_BOT and hp <= RUN2_TOP then
+        -- Floor 2 → Floor 3 transition approaching
+        alerts:showInfo(4, "|cffdd00RUN IN|r: " ..
+            string.format("%.1f%%", hp - RUN2_BOT))
+    elseif self.onBlob then
         alerts:showInfo(4, "|c66ff66ON BLOB|r — stand still!")
     else
         alerts:showInfo(4, "")
-    end
-
-    -- ── showAction: Run timer (overrides for narrow HP windows) ─────────────
-    -- context.extras.healthPercent: 0–100, set by Trial:onPowerUpdate from boss1.
-    local hp = context.extras and context.extras.healthPercent
-    if hp then
-        if hp > RUN1_BOT and hp <= RUN1_TOP then
-            -- Floor 1 → Floor 2 transition approaching
-            alerts:showAction(string.format("RUN IN: %.1f%%", hp - RUN1_BOT))
-        elseif hp > RUN2_BOT and hp <= RUN2_TOP then
-            -- Floor 2 → Floor 3 transition approaching
-            alerts:showAction(string.format("RUN IN: %.1f%%", hp - RUN2_BOT))
-        end
     end
 end
 

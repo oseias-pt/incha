@@ -297,15 +297,25 @@ function Bahsei:onUpdate(context, alerts)
                 string.format("%.0f", delta) .. "s")
         else
             local dir = self.lastPortalCW and "|c00cc00CW|r" or "|cff8040CCW|r"
-            alerts:showInfo(2, "|c38bdf8Portal|r " .. dir .. " |c7b82a0in progress|r")
+            local cnt = self.numPlayersInPortal
+            alerts:showInfo(2, "|c38bdf8Portal|r " .. dir ..
+                " |c7b82a0in progress|r" ..
+                (cnt > 0 and (" |c888888(" .. cnt .. ")|r") or ""))
         end
     else
         alerts:showInfo(2, "")
     end
 
-    -- ── Info 3: Death Touch personal countdown, then Do-Not-Portal ────────
-    local dtDelta = (self.lastDeathTouch > 0) and (9 - (now - self.lastDeathTouch)) or -1
-    if dtDelta > 0 then
+    -- ── Info 3: Tank Exploding (3 s) > Death Touch personal (9 s) > No Portal ─
+    -- All three share one slot; priority runs top-to-bottom.
+    -- Using info3 (not showAction) keeps it out of the reactive action area,
+    -- which is reserved for event-driven alerts (Block!, Dodge!, etc.).
+    local explodeDelta = (self.nextMtExplosion > 0) and (self.nextMtExplosion - now) or -1
+    local dtDelta      = (self.lastDeathTouch  > 0) and (9 - (now - self.lastDeathTouch)) or -1
+    if explodeDelta >= 0 and explodeDelta <= 3 then
+        alerts:showInfo(3, "|cff2020TANK EXPLODING|r: " ..
+            string.format("%.0f", explodeDelta) .. "s!")
+    elseif dtDelta > 0 then
         alerts:showInfo(3, "|c6699ffDeath Touch|r: " ..
             string.format("%.1f", dtDelta) .. "s")
     elseif isHM and self.selfDoNotPortalTime > 0 then
@@ -334,14 +344,6 @@ function Bahsei:onUpdate(context, alerts)
         alerts:showInfo(4, "")
     end
 
-    -- ── showAction: Tank Exploding (3 s critical window) ──────────────────
-    if self.nextMtExplosion > 0 then
-        local explodeDelta = self.nextMtExplosion - now
-        if explodeDelta >= 0 and explodeDelta <= 3 then
-            alerts:showAction("TANK EXPLODING: " ..
-                string.format("%.0f", explodeDelta) .. "s!")
-        end
-    end
 end
 
 return Bahsei
