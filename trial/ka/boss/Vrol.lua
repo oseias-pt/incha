@@ -1,8 +1,11 @@
 local Location = require("core.Location")
+local Timer = require("lib.Timer")
 
-local NEXT_PORTAL_TIME = 45
+local NEXT_PORTAL_TIME  = 45
 local NEXT_CONDUIT_TIME = 40
-local NEXT_FOG_TIME = 30
+local NEXT_FOG_TIME     = 30
+
+local INITIAL_PORTAL_DELAY = 15  -- first portal is shorter than the recurring interval
 
 local Vrol = {
     id = 2,
@@ -11,17 +14,17 @@ local Vrol = {
     location = Location.new(110200, 118500, 24500, 29000, 65000, 78800),
 }
 
-Vrol.PORTAL_TIME = 0
-Vrol.CONDUIT_TIME = 0
-Vrol.FOG_TIME = 0
-Vrol.bPORTAL_END = false
+-- Timers start expired; reset() arms them when a boss encounter begins.
+Vrol.portalTimer  = Timer.new(NEXT_PORTAL_TIME)
+Vrol.conduitTimer = Timer.new(NEXT_CONDUIT_TIME)
+Vrol.fogTimer     = Timer.new(NEXT_FOG_TIME)
+Vrol.bPORTAL_END  = false
 
 function Vrol:reset(forced)
-    local currentTime = os.time()
-
-    self.PORTAL_TIME = currentTime + 15
-    self.CONDUIT_TIME = currentTime + NEXT_CONDUIT_TIME
-    self.FOG_TIME = currentTime + NEXT_FOG_TIME
+    -- First portal always spawns sooner than the recurring interval.
+    self.portalTimer:reset(INITIAL_PORTAL_DELAY)
+    self.conduitTimer:reset()
+    self.fogTimer:reset()
     self.bPORTAL_END = false
 
     if BSCHTKA and BSCHTKA.SV_ACC and BSCHTKA.SV_ACC.PORTAL_ICON_VROL then
@@ -36,10 +39,11 @@ function Vrol:syncLegacy()
         return
     end
 
-    BSCHTKA.PORTAL_TIME = self.PORTAL_TIME
-    BSCHTKA.CONDUIT_TIME = self.CONDUIT_TIME
-    BSCHTKA.FOG_TIME = self.FOG_TIME
-    BSCHTKA.bPORTAL_END = self.bPORTAL_END
+    -- Legacy addon reads raw epoch timestamps, so expose expiresAt.
+    BSCHTKA.PORTAL_TIME  = self.portalTimer:getExpiresAt()
+    BSCHTKA.CONDUIT_TIME = self.conduitTimer:getExpiresAt()
+    BSCHTKA.FOG_TIME     = self.fogTimer:getExpiresAt()
+    BSCHTKA.bPORTAL_END  = self.bPORTAL_END
 end
 
 function Vrol:onEnter(context)

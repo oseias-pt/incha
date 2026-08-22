@@ -3,7 +3,7 @@ local BossRegistry = require("core.BossRegistry")
 local Difficulty = require("core.Difficulty")
 local EventPipeline = require("core.EventPipeline")
 local HealthRules = require("core.HealthRules")
-local Throttle = require("core.Throttle")
+local Throttle = require("lib.Throttle")
 local TrialContext = require("core.TrialContext")
 
 local Trial = {}
