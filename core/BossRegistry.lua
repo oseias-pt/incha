@@ -36,6 +36,18 @@ function BossRegistry:findAtPosition(x, y, z)
     return nil
 end
 
+-- Name-based fallback for trials whose bosses have no location bounding box.
+-- Matches boss.name against GetUnitName("boss1") (caller should guard existence).
+function BossRegistry:findByName(unitName)
+    if not unitName or unitName == "" then return nil end
+    for _, boss in ipairs(self.bosses) do
+        if boss.name == unitName then
+            return boss
+        end
+    end
+    return nil
+end
+
 function BossRegistry:detectDifficulty(boss, effectiveMaxHealth)
     if not boss or not boss.hmHealthThreshold then
         return Difficulty.NONE

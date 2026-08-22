@@ -9,6 +9,7 @@ local Panel = require("ui.Panel")
 local Menu  = require("ui.Menu")
 
 ZoneManager.registerTrial(1196, require("trial.ka.Dispatcher"))
+ZoneManager.registerTrial(1121, require("trial.ss.Dispatcher"))
 ZoneManager.registerTrial(1263, require("trial.rg.Dispatcher"))
 ZoneManager.registerTrial(1344, require("trial.dsr.Dispatcher"))
 

@@ -84,6 +84,12 @@ function Trial:onBossesChanged(forceReset)
     local _, x, y, z = GetUnitWorldPosition("player")
     local boss = self.registry:findAtPosition(x, y, z)
 
+    -- Fallback: name-based detection for trials whose bosses carry a `name`
+    -- field instead of (or in addition to) a location bounding box.
+    if not boss and DoesUnitExist("boss1") then
+        boss = self.registry:findByName(GetUnitName("boss1"))
+    end
+
     if boss then
         self.context:setBoss(boss)
 
