@@ -29,6 +29,12 @@ function Timer:isExpired()
     return os.time() >= self.expiresAt
 end
 
+--- Reset the timer to the expired/unarmed state (expiresAt = 0).
+--- Call this instead of poking the field directly.
+function Timer:clear()
+    self.expiresAt = 0
+end
+
 --- Raw epoch second at which this timer fires.
 --- Exposed for legacy syncing where the old addon reads the raw timestamp
 --- (e.g. BSCHTKA.GRYPHON_TIME).  Prefer :remaining()/:isExpired() in

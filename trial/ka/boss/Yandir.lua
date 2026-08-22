@@ -1,6 +1,18 @@
 local Location = require("core.Location")
 local Timer = require("lib.Timer")
 
+-- ── Ability IDs (from BSCHTKA_Yandir.lua) ─────────────────────────────────
+local TOTEM_POISION      = 133515  -- Chaurus Totem Spawn + cast  → resets timer + Dodge alert
+local TOTEM_POISION_CP   = 133559  -- Second Chaurus poison cast   (delayed alert, TODO Phase 4.2)
+local TOTEM_HARPY_SPWN   = 133510  -- Harpy Totem Spawn            → resets timer
+local TOTEM_DRAGON_SPWN  = 133045  -- Dragon Totem Spawn           → resets timer
+local TOTEM_GARGYL_SPWN  = 133513  -- Gargoyle Totem Spawn         → resets timer
+local TOTEM_GARGYL       = 133546  -- Gargoyle Totem cast          → Block alert
+local YANDIR_HEALING     = 133242  -- Yandir heal cast             → Healing alert
+local YANDIR_JUMP        = 132571  -- Yandir jump                  → Block alert
+local SEA_ADDER_BILE_SPRAY = 136591  -- Sea Adder spray (player-targeted) → Dodge alert
+
+-- ── Spawn/cast durations ──────────────────────────────────────────────────
 local TOTEM_SPAWN_TIME  = 20
 local GRYPHON_SPAWN_TIME = 60
 
@@ -54,6 +66,42 @@ function Yandir:onUpdate(context, alerts)
     local t2 = self.gryphonTimer:remaining()
     alerts:showInfo(1, "Totem:   " .. (t1 > 0 and ZO_FormatCountdownTimer(t1) or "ready"))
     alerts:showInfo(2, "Gryphon: " .. (t2 > 0 and ZO_FormatCountdownTimer(t2) or "ready"))
+end
+
+-- Combat mechanic alerts and timer resets.
+-- Phase 4.1: text-only (showAction).  Phase 4.2 adds CombatAlerts cast bars.
+-- NOT registered while KA Factory still uses LegacyUI (Phase 4.4 wires this in).
+function Yandir:onCombatEvent(context, alerts, result, abilityId,
+                               unitTag, sourceUnitTag, sourceUnitId, unitId)
+    -- Any totem spawn resets the recurring spawn countdown.
+    if result == ACTION_RESULT_BEGIN and (
+        abilityId == TOTEM_POISION    or abilityId == TOTEM_HARPY_SPWN  or
+        abilityId == TOTEM_DRAGON_SPWN or abilityId == TOTEM_GARGYL_SPWN)
+    then
+        self.totemTimer:reset()
+        self:syncLegacy()
+    end
+
+    -- Per-ability alerts.
+    if abilityId == TOTEM_POISION and result == ACTION_RESULT_BEGIN then
+        alerts:showAction("Dodge! (Poison Totem)")
+
+    elseif abilityId == TOTEM_GARGYL and result == ACTION_RESULT_BEGIN then
+        alerts:showAction("Block! (Gargoyle Totem)")
+
+    elseif abilityId == YANDIR_HEALING and result == ACTION_RESULT_BEGIN then
+        alerts:showAction("Casts Healing!")
+
+    elseif abilityId == YANDIR_JUMP and result == ACTION_RESULT_BEGIN then
+        alerts:showAction("(Jump) Block!!")
+
+    elseif abilityId == SEA_ADDER_BILE_SPRAY and result == ACTION_RESULT_BEGIN then
+        alerts:showAction("Dodge! (Sea Adder)")
+    end
+
+    -- TODO Phase 4.2: TOTEM_POISION_CP (133559) — BSCHTKA fires a second
+    -- CombatAlerts cast bar ~26.8 s after the totem gains its poison effect,
+    -- if the totem is still alive.  Implement once CombatAlerts is available.
 end
 
 function Yandir:onPowerUpdate(context, healthPercent)
