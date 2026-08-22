@@ -1,14 +1,20 @@
-local Panel  = require("ui.Panel")   -- already in package.loaded (pre-loaded by incha.lua)
 local Trial  = require("core.Trial")
-local config = require("trial.dsr.config")
+local Panel  = require("ui.Panel")
+
+local CombatHandler  = require("trial.dsr.CombatHandler")
+local Lylanar        = require("trial.dsr.boss.Lylanar")
+local ReefGuardian   = require("trial.dsr.boss.ReefGuardian")
+local Taleria        = require("trial.dsr.boss.Taleria")
 
 local dsrTrial = Trial.create({
-    id     = "dsr",
-    zoneId = config.zoneId,
-    eventPrefix = "Incha_DSR",
-    bosses = config.bosses,
-    bridge = Panel.bridge,
-    alerts = Panel.alerts,
+    id              = "dsr",
+    zoneId          = 1344,
+    eventPrefix     = "Incha_DSR",
+    bosses          = { Lylanar, ReefGuardian, Taleria },
+    bridge          = Panel.bridge,
+    alerts          = Panel.alerts,
+    onCombatEvent   = CombatHandler.onCombatEvent,
+    onEffectChanged = CombatHandler.onEffectChanged,
 })
 
 return dsrTrial

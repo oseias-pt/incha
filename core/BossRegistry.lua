@@ -37,12 +37,21 @@ function BossRegistry:findAtPosition(x, y, z)
 end
 
 -- Name-based fallback for trials whose bosses have no location bounding box.
--- Matches boss.name against GetUnitName("boss1") (caller should guard existence).
+-- Matches boss.name (or any entry in boss.nameAliases) against the supplied
+-- unit name. nameAliases lets a single boss entry cover multiple unit names
+-- (e.g. the Lylanar/Turlassil dual-boss pair in DSR).
 function BossRegistry:findByName(unitName)
     if not unitName or unitName == "" then return nil end
     for _, boss in ipairs(self.bosses) do
         if boss.name == unitName then
             return boss
+        end
+        if boss.nameAliases then
+            for _, alias in ipairs(boss.nameAliases) do
+                if alias == unitName then
+                    return boss
+                end
+            end
         end
     end
     return nil
