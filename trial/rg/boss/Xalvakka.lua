@@ -6,15 +6,20 @@
 ---   Floor 3: HP   0–40%
 ---
 --- Phase RG-2: RockgroveCommon.handle() (trash mechanics) ✓
---- Phase RG-5: Xalvakka-specific mechanics
+--- Phase RG-5: Xalvakka-specific mechanics ✓
 ---   ScathingEvisceration (149180/153448/153450): targeted player → AlertCast
 ---   Deadstar (149386/149075): BEGIN → Alert("Deadstar!")
 ---   FlamingPortal/Jump (157390): BEGIN → nextJump +35 s, numJumps++ (HM)
 ---   SoulResonance (152993): EFFECT_GAINED self → Alert("Purge!"), start timer
 ---   UnstableCharge/Blob (153164): EFFECT_GAINED/FADED self → AlertBorder green; info4
 ---   VolatileShell shield: EVENT_UNIT_ATTRIBUTE_VISUAL_* on "reticleover" → shellShield
----   ManifoldDebuff (157290): deferred to Phase RG-6 (OSI icons)
----   Run timer: HP 70–75% and 40–45% → showAction "RUN IN: X.X%"
+---   Run timer: HP 70–75% and 40–45% → info4 countdown
+--- Phase RG-6: ManifoldDebuff (157290) ✓
+---   EFFECT_GAINED self   → AlertBorder purple + "Manifold Curse!" caAlert
+---   EFFECT_GAINED others → name tracked in manifoldOthers[]
+---   EFFECT_FADED self    → border cleared, selfManifold = false
+---   EFFECT_FADED others  → removed from manifoldOthers[]
+---   onUpdate info3       → manifold list (priority) > shell shield value
 ---
 --- Shield tracking (Volatile Shell):
 ---   Registered in onEnter (scoped to the encounter), cleaned up in reset().
@@ -42,7 +47,7 @@ local DEADSTAR2       = 149075   -- Deadstar variant
 local FLAMING_PORTAL  = 157390   -- Boss repositioning jump (HM)
 local SOUL_RESONANCE  = 152993   -- Player debuff: purge required
 local UNSTABLE_CHARGE = 153164   -- Blob player debuff (Unstable Charge orb)
--- ManifoldDebuff (157290): deferred to Phase RG-6 (OSI curse icon)
+local MANIFOLD_DEBUFF = 157290   -- Curse: spread from cursed player, AlertBorder + tracker
 
 local SCATHING_IDS = { [149180]=true, [153448]=true, [153450]=true }
 local DEADSTAR_IDS = { [149386]=true, [149075]=true }
@@ -84,11 +89,13 @@ local Xalvakka = {
 }
 
 -- ── State ─────────────────────────────────────────────────────────────────
-Xalvakka.nextJump    = 0      -- s: absolute time of next expected jump
-Xalvakka.numJumps    = 0      -- jump count; hide timer when ≥ 4
-Xalvakka.shellShield = 0      -- current Volatile Shell HP (from shield events)
-Xalvakka.onBlob      = false  -- true while player carries Unstable Charge debuff
-Xalvakka.soulStart   = 0      -- s: when player gained Soul Resonance; 0 = inactive
+Xalvakka.nextJump      = 0      -- s: absolute time of next expected jump
+Xalvakka.numJumps      = 0      -- jump count; hide timer when ≥ 4
+Xalvakka.shellShield   = 0      -- current Volatile Shell HP (from shield events)
+Xalvakka.onBlob        = false  -- true while player carries Unstable Charge debuff
+Xalvakka.soulStart     = 0      -- s: when player gained Soul Resonance; 0 = inactive
+Xalvakka.selfManifold  = false  -- true while local player carries Manifold Curse
+Xalvakka.manifoldOthers = {}    -- [unitTag] → displayName for other players cursed
 
 -- ── Lifecycle ─────────────────────────────────────────────────────────────
 function Xalvakka:reset(forced)
@@ -96,11 +103,13 @@ function Xalvakka:reset(forced)
     EVENT_MANAGER:UnregisterForEvent(SHIELD_EVENT_KEY, EVENT_UNIT_ATTRIBUTE_VISUAL_UPDATED)
     EVENT_MANAGER:UnregisterForEvent(SHIELD_EVENT_KEY, EVENT_UNIT_ATTRIBUTE_VISUAL_REMOVED)
 
-    self.nextJump    = 0
-    self.numJumps    = 0
-    self.shellShield = 0
-    self.onBlob      = false
-    self.soulStart   = 0
+    self.nextJump       = 0
+    self.numJumps       = 0
+    self.shellShield    = 0
+    self.onBlob         = false
+    self.soulStart      = 0
+    self.selfManifold   = false
+    self.manifoldOthers = {}
 end
 
 -- ── Boss enter ────────────────────────────────────────────────────────────
@@ -145,11 +154,13 @@ function Xalvakka:onCombatState(context, inCombat, alerts)
     if inCombat then
         -- First jump expected ~35 s after pull in HM; same interval as subsequent jumps.
         -- TODO: verify first-jump timing in-game (may differ from subsequent 35 s interval).
-        self.nextJump    = GetGameTimeMilliseconds() / 1000 + 35
-        self.numJumps    = 0
-        self.shellShield = 0
-        self.onBlob      = false
-        self.soulStart   = 0
+        self.nextJump       = GetGameTimeMilliseconds() / 1000 + 35
+        self.numJumps       = 0
+        self.shellShield    = 0
+        self.onBlob         = false
+        self.soulStart      = 0
+        self.selfManifold   = false
+        self.manifoldOthers = {}
     end
 end
 
@@ -216,7 +227,29 @@ function Xalvakka:onEffectChanged(context, alerts, changeType, abilityId,
         return
     end
 
-    -- ManifoldDebuff (157290): deferred to Phase RG-6 (OSI curse icon)
+    -- ── ManifoldDebuff (RG-6): curse spread mechanic ──────────────────────
+    if abilityId == MANIFOLD_DEBUFF then
+        if changeType == EFFECT_RESULT_GAINED then
+            if AreUnitsEqual("player", unitTag) then
+                self.selfManifold = true
+                caAlertBorder(true, 20000, "purple")
+                caAlert(nil, "|cAA44ffManifold Curse|r on YOU — spread!",
+                    0xAA44FFD9, SOUNDS.DUEL_START, 5000)
+                PlaySound(SOUNDS.DUEL_START)
+            elseif IsUnitPlayer(unitTag) then
+                self.manifoldOthers[unitTag] =
+                    GetUnitDisplayName(unitTag) or unitName or "?"
+            end
+        elseif changeType == EFFECT_RESULT_FADED then
+            if AreUnitsEqual("player", unitTag) then
+                self.selfManifold = false
+                caAlertBorder(false, 0, nil)
+            else
+                self.manifoldOthers[unitTag] = nil
+            end
+        end
+        return
+    end
 end
 
 -- ── 200 ms display loop ───────────────────────────────────────────────────
@@ -252,8 +285,20 @@ function Xalvakka:onUpdate(context, alerts)
         alerts:showInfo(2, "")
     end
 
-    -- ── Info 3: Volatile Shell shield value ───────────────────────────────
-    if self.shellShield > 0 then
+    -- ── Info 3: Manifold Curse (priority) > Volatile Shell shield ────────────
+    -- When any player holds the Manifold Curse, list them first.
+    -- The local player is shown as "YOU"; others by display name.
+    local hasManifold = self.selfManifold or (next(self.manifoldOthers) ~= nil)
+    if hasManifold then
+        local parts = {}
+        if self.selfManifold then
+            parts[#parts + 1] = "|cAA44ffYOU|r"
+        end
+        for _, name in pairs(self.manifoldOthers) do
+            parts[#parts + 1] = "|cAA44ff" .. name .. "|r"
+        end
+        alerts:showInfo(3, "Manifold: " .. table.concat(parts, ", "))
+    elseif self.shellShield > 0 then
         alerts:showInfo(3,
             "|c75E6DAShield|r: " .. fmtShield(self.shellShield))
     else
