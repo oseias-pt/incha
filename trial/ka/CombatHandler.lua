@@ -27,8 +27,11 @@ function CombatHandler.onCombatEvent(trial, eventCode,
         sourceUnitId, unitId, abilityId)
     local boss = trial:getActiveBoss()
     if not boss or not boss.onCombatEvent then return end
+    -- Phase 4.2: pass sourceUnitName / unitName so boss handlers can build
+    -- CombatAlerts cast-bar captions without a separate GetUnitName() lookup.
     boss:onCombatEvent(trial.context, trial.alerts,
-        result, abilityId, unitTag, sourceUnitTag, sourceUnitId, unitId)
+        result, abilityId, unitTag, sourceUnitTag, sourceUnitId, unitId,
+        sourceUnitName, unitName)
 end
 
 function CombatHandler.onEffectChanged(trial, eventCode,

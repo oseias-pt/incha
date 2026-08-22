@@ -1,6 +1,15 @@
 local Location = require("core.Location")
-local Settings = require("core.Settings")
 local Timer    = require("lib.Timer")
+
+-- ── Phase 4.2: CombatAlerts helpers ──────────────────────────────────────
+local function caAlertCast(...) if CombatAlerts then return CombatAlerts.AlertCast(...) end end
+local function caAlert(...)     if CombatAlerts then return CombatAlerts.Alert(...)     end end
+local function caCastAlertsStart(...)
+    if CombatAlerts then return CombatAlerts.CastAlertsStart(...) end
+end
+local function caCastAlertsStop(id)
+    if CombatAlerts and id then CombatAlerts.CastAlertsStop(id) end
+end
 
 -- ── Ability IDs (from BSCHTKA_Vrol.lua) ───────────────────────────────────
 local VROL_PORTAL_CAST  = 133994  -- Portal cast BEGIN → reset portal timer + alert
@@ -31,6 +40,10 @@ Vrol.bPORTAL_END       = false
 -- Portal kill-timer: ms timestamp when the current portal debuff expires.
 -- Set in onEffectChanged(EFFECT_RESULT_GAINED) to detect pass/fail on FADED.
 Vrol.portalKillExpires = 0
+-- Phase 4.2: [unitId] → CA cast bar ID; cleared on reset/death.
+Vrol.alertList         = {}
+-- Phase 4.2: CA cast bar ID for the portal-kill debuff (started/stopped in onEffectChanged).
+Vrol.portalKillBarId   = nil
 
 function Vrol:reset(forced)
     -- First portal always spawns sooner than the recurring interval.
@@ -39,50 +52,61 @@ function Vrol:reset(forced)
     self.fogTimer:reset()
     self.bPORTAL_END = false
 
-    if Settings.trial("ka").portalIconVrol then
-        zo_callLater(function() BSCHTKA.AddPortalIcon() end, 3100)
-    end
-
-    self:syncLegacy()
+    -- Phase 4.2: stop any lingering cast bars from the previous pull.
+    for _, cid in pairs(self.alertList) do caCastAlertsStop(cid) end
+    self.alertList = {}
+    caCastAlertsStop(self.portalKillBarId)
+    self.portalKillBarId   = nil
+    self.portalKillExpires = 0
 end
 
-function Vrol:syncLegacy()
-    if not BSCHTKA then
+
+-- Combat mechanic alerts and timer resets.
+-- Phase 4.2: text alerts + CombatAlerts cast bars.
+-- NOT registered while KA Factory still uses LegacyUI (Phase 4.4 wires this in).
+function Vrol:onCombatEvent(context, alerts, result, abilityId,
+                             unitTag, sourceUnitTag, sourceUnitId, unitId,
+                             sourceUnitName, unitName)
+    -- Stop any tracked CA cast bars when the associated unit dies.
+    if result == ACTION_RESULT_DIED then
+        if unitId then
+            caCastAlertsStop(self.alertList[unitId])
+            self.alertList[unitId] = nil
+        end
+        if sourceUnitId then
+            caCastAlertsStop(self.alertList[sourceUnitId])
+            self.alertList[sourceUnitId] = nil
+        end
         return
     end
 
-    -- Legacy addon reads raw epoch timestamps, so expose expiresAt.
-    BSCHTKA.PORTAL_TIME  = self.portalTimer:getExpiresAt()
-    BSCHTKA.CONDUIT_TIME = self.conduitTimer:getExpiresAt()
-    BSCHTKA.FOG_TIME     = self.fogTimer:getExpiresAt()
-    BSCHTKA.bPORTAL_END  = self.bPORTAL_END
-end
-
-function Vrol:onEnter(context)
-    context.extras.legacyFlag = "bVrol"
-end
-
--- Combat mechanic alerts and timer resets.
--- NOT registered while KA Factory still uses LegacyUI (Phase 4.4 wires this in).
-function Vrol:onCombatEvent(context, alerts, result, abilityId,
-                             unitTag, sourceUnitTag, sourceUnitId, unitId)
     if abilityId == VROL_PORTAL_CAST and result == ACTION_RESULT_BEGIN then
         self.portalTimer:reset()
-        self:syncLegacy()
         alerts:showAction("KILL Conjurer!")
+        -- Use portal kill-time ability ID for the icon (matches BSCHTKA).
+        caAlertCast(VROL_PORTAL_KTIME, sourceUnitName, 3000,
+            { -3, 0, false, { 0.7, 0.2, 0.9, 0.4 }, { 0.7, 0.2, 0.9, 0.8 } })
 
     elseif abilityId == VROL_FOG_CAST and result == ACTION_RESULT_BEGIN then
         self.fogTimer:reset()
-        self:syncLegacy()
         alerts:showAction("Dodge/Move! (Fog)")
+        local cid = caAlertCast(abilityId, sourceUnitName, 1000,
+            { -3, 0, false, { 0.0, 0.0, 1, 0.4 }, { 0.1, 0.1, 1, 0.8 } })
+        if cid and unitId then self.alertList[unitId] = cid end
 
     elseif abilityId == VROL_HARPOON and result == ACTION_RESULT_BEGIN then
         self.conduitTimer:reset()
-        self:syncLegacy()
         alerts:showAction("Kill Harpoon! (~16 s)")
+        local cid = caCastAlertsStart(abilityId, GetAbilityName(abilityId),
+            16000, 16000,
+            { 1, 0.7, 0, 0.5 },
+            { 16000, "Harpoon!", 0.8, 0, 0, 0.9, SOUNDS.NONE })
+        if cid and unitId then self.alertList[unitId] = cid end
 
     elseif abilityId == VROL_APOTHECARY and result == ACTION_RESULT_BEGIN then
         alerts:showAction("Interrupt Apothecary!")
+        caAlert(nil, "Interrupt Apothecary!", 0x0099FFFF,
+            SOUNDS.CHAMPION_POINTS_COMMITTED, 2000)
     end
 end
 
@@ -98,12 +122,24 @@ function Vrol:onEffectChanged(context, alerts, changeType, abilityId, unitTag, u
     if changeType == EFFECT_RESULT_GAINED then
         self.portalKillExpires = GetGameTimeMilliseconds() + 20000
         alerts:showAction("KILL Conjurer! (20 s)")
+        -- Phase 4.2: CA cast bar for the full 20 s portal window.
+        self.portalKillBarId = caCastAlertsStart(
+            abilityId, GetAbilityName(abilityId),
+            20000, 20000,
+            { 1, 0.7, 0, 0.5 },
+            { 20000, "KILL Conjurer!", 0.8, 0, 0, 0.9, SOUNDS.NONE })
 
     elseif changeType == EFFECT_RESULT_FADED then
+        -- Stop the cast bar, then show pass/fail result.
+        caCastAlertsStop(self.portalKillBarId)
+        self.portalKillBarId = nil
+
         if GetGameTimeMilliseconds() < self.portalKillExpires then
             alerts:showAction("Portal OK!")
+            caAlert(nil, "Portal OK!", 0x119911FF, SOUNDS.DUEL_WON, 2000)
         else
             alerts:showAction("Portal Failed!")
+            caAlert(nil, "Portal Failed!", 0x991111FF, SOUNDS.DUEL_FORFEIT, 2000)
         end
         self.portalKillExpires = 0
     end
@@ -123,8 +159,6 @@ function Vrol:onPowerUpdate(context, healthPercent)
     if healthPercent < 50 then
         self.bPORTAL_END = true
     end
-
-    self:syncLegacy()
 end
 
 return Vrol

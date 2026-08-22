@@ -2,6 +2,16 @@ local Location = require("core.Location")
 local Settings = require("core.Settings")
 local Timer    = require("lib.Timer")
 
+-- ── Phase 4.2: CombatAlerts helpers ──────────────────────────────────────
+local function caAlertCast(...) if CombatAlerts then return CombatAlerts.AlertCast(...) end end
+local function caAlert(...)     if CombatAlerts then return CombatAlerts.Alert(...)     end end
+local function caCastAlertsStart(...)
+    if CombatAlerts then return CombatAlerts.CastAlertsStart(...) end
+end
+local function caCastAlertsStop(id)
+    if CombatAlerts and id then CombatAlerts.CastAlertsStop(id) end
+end
+
 -- ── Ability IDs (from BSCHTKA_Falgraven.lua) ──────────────────────────────
 -- Combat event IDs
 local INFUSER_CASTS         = 137289  -- Trash infuser cast
@@ -85,6 +95,10 @@ Falgravn.bConnect         = true
 -- Torturer encounter state.
 Falgravn.bStartTorturerCD = true
 Falgravn.torturerCount    = 8
+-- Phase 4.2: [unitId] → CA cast bar ID; cleared on reset/death.
+Falgravn.alertList        = {}
+-- Phase 4.2: CA cast bar for the Prison debuff (single-slot; simple like BSCHTKA).
+Falgravn.prisonBarId      = nil
 
 -- ── Timers ────────────────────────────────────────────────────────────────
 -- instabilityTimer is armed in reset() (begins on boss entry).
@@ -119,42 +133,24 @@ function Falgravn:reset(forced)
     self.openGatesTimer:clear()
     self.torturerTimer:clear()
     resetPrisoners()
-    self:syncLegacy()
 
-    -- Clear BSCHTKA's info lines if still loaded alongside Incha.
-    if BSCHTKAHelperInfoUI then
-        BSCHTKAHelperInfoUI:GetNamedChild("Info1"):SetText("")
-        BSCHTKAHelperInfoUI:GetNamedChild("Info2"):SetText("")
-        BSCHTKAHelperInfoUI:GetNamedChild("Info3"):SetText("")
-        BSCHTKAHelperInfoUI:GetNamedChild("Info4"):SetText("")
-    end
-    if self.DisableAllPosIconBlood then self:DisableAllPosIconBlood() end
-    if self.DisableAllPosIconConn  then self:DisableAllPosIconConn()  end
+    -- Phase 4.2: stop any lingering CA cast bars from the previous pull.
+    for _, cid in pairs(self.alertList) do caCastAlertsStop(cid) end
+    self.alertList   = {}
+    caCastAlertsStop(self.prisonBarId)
+    self.prisonBarId = nil
 end
 
 function Falgravn:onEnter(context, alerts)
-    context.extras.legacyFlag    = "bFalgraven"
     context.extras.showPercentUI = Settings.trial("ka").showPercent
     context.stage                = self.CURRENT_STAGE
-    self:syncLegacy()
 end
 
 function Falgravn:onPowerUpdate(context)
     context.stage                = self.CURRENT_STAGE
     context.extras.showPercentUI = Settings.trial("ka").showPercent
-    self:syncLegacy()
 end
 
--- Expose timer epochs to BSCHTKA globals so its Falg_UpdateUI keeps working
--- during the LegacyUI transition.  Removed once LegacyUI is retired (4.4).
-function Falgravn:syncLegacy()
-    if not BSCHTKA then return end
-    BSCHTKA.CURRENT_STAGE    = self.CURRENT_STAGE
-    BSCHTKA.INSTABILITY_TIME = self.instabilityTimer:getExpiresAt()
-    BSCHTKA.BLOODBALL_TIME   = self.bloodBallTimer:getExpiresAt()
-    BSCHTKA.OPEN_GATES_TIME  = self.openGatesTimer:getExpiresAt()
-    BSCHTKA.TORTURER_TP      = self.torturerTimer:getExpiresAt()
-end
 
 -- ── 200ms timer display ───────────────────────────────────────────────────
 -- Layout matches BSCHTKA's Falg_UpdateUI:
@@ -184,19 +180,37 @@ function Falgravn:onUpdate(context, alerts)
 end
 
 -- ── Combat event handler ──────────────────────────────────────────────────
--- Phase 4.1: text-only alerts via showAction.  Phase 4.2 adds CombatAlerts.
--- Phase 4.3 adds OSI icon calls where noted.
+-- Phase 4.2: text alerts + CombatAlerts cast bars.  Phase 4.3 adds OSI icons.
 -- NOT registered while KA Factory uses LegacyUI (Phase 4.4 wires this in).
 
 function Falgravn:onCombatEvent(context, alerts, result, abilityId,
-                                 unitTag, sourceUnitTag, sourceUnitId, unitId)
+                                 unitTag, sourceUnitTag, sourceUnitId, unitId,
+                                 sourceUnitName, unitName)
+    -- Phase 4.2: stop any tracked CA cast bars when the associated unit dies.
+    if result == ACTION_RESULT_DIED then
+        if unitId then
+            caCastAlertsStop(self.alertList[unitId])
+            self.alertList[unitId] = nil
+        end
+        if sourceUnitId then
+            caCastAlertsStop(self.alertList[sourceUnitId])
+            self.alertList[sourceUnitId] = nil
+        end
+        return
+    end
+
     -- ── Infuser trash ──────────────────────────────────────────────────
     if abilityId == INFUSER_CASTS and result == ACTION_RESULT_BEGIN then
         alerts:showAction("Interrupt Infuser!")
+        local cid = caAlertCast(abilityId, sourceUnitName, 1000,
+            { -3, 0, false, { 0.0, 0.0, 1, 0.4 }, { 0.1, 0.1, 1, 0.8 } })
+        -- Key by sourceUnitId so the bar stops if the infuser dies.
+        if cid and sourceUnitId then self.alertList[sourceUnitId] = cid end
         return
     end
     if abilityId == INFUSER_BUFF and result == ACTION_RESULT_EFFECT_GAINED then
         alerts:showAction("Infuser Buff passed!")
+        caAlert(nil, "Infuser Buff passed!", 0xFF8800FF, SOUNDS.DUEL_START, 3000)
         return
     end
 
@@ -220,6 +234,11 @@ function Falgravn:onCombatEvent(context, alerts, result, abilityId,
         if result == ACTION_RESULT_BEGIN and self.bMove then
             self.bMove = false
             alerts:showAction("Move!")
+            local cid = caCastAlertsStart(abilityId, GetAbilityName(abilityId),
+                12000, 12000,
+                { 1, 0.7, 0, 0.5 },
+                { 12000, "Move!", 0.8, 0, 0, 0.9, SOUNDS.NONE })
+            if cid and sourceUnitId then self.alertList[sourceUnitId] = cid end
         elseif result == ACTION_RESULT_EFFECT_FADED and not self.bMove then
             self.bMove = true
         end
@@ -230,19 +249,31 @@ function Falgravn:onCombatEvent(context, alerts, result, abilityId,
         if result == ACTION_RESULT_BEGIN and self.bBlock then
             self.bBlock = false
             alerts:showAction("Block Cast!")
+            local cid = caCastAlertsStart(abilityId, GetAbilityName(abilityId),
+                6000, 6000,
+                { 1, 0.7, 0, 0.5 },
+                { 6000, "Block Cast!", 0.8, 0, 0, 0.9, SOUNDS.NONE })
+            if cid and sourceUnitId then self.alertList[sourceUnitId] = cid end
         elseif result == ACTION_RESULT_EFFECT_FADED and not self.bBlock then
             self.bBlock = true
         end
         return
     end
-    -- Blood Cleave (no dedup needed — short duration)
+    -- Blood Cleave (no dedup — short animation; use ability cast info for duration)
     if abilityId == FALGRAVN_M_CLEAVE and result == ACTION_RESULT_BEGIN then
         alerts:showAction("DODGE!")
+        local dur = select(1, GetAbilityCastInfo(FALGRAVN_M_CLEAVE)) or 0
+        if dur <= 0 then dur = 2000 end
+        caCastAlertsStart(abilityId, sourceUnitName, dur, dur,
+            { 1, 0, 0.6, 0.4 },
+            { 700, "DODGE!", 1, 0, 0.6, 0.8, SOUNDS.CHAMPION_POINTS_COMMITTED })
         return
     end
     -- Blood Fountain
     if abilityId == FALGRAVN_BLOOD_FOUNT and result == ACTION_RESULT_BEGIN then
         alerts:showAction("Block Blood Fountain!")
+        caAlertCast(FALGRAVN_BLOOD_FOUNT, sourceUnitName, 3033,
+            { -3, 0, false, { 1, 0.2, 0.9, 0.4 }, { 1, 0.2, 0.9, 0.8 } })
         return
     end
 
@@ -251,16 +282,16 @@ function Falgravn:onCombatEvent(context, alerts, result, abilityId,
     if abilityId == FALGRAVN_LIGHTNING then
         if result == ACTION_RESULT_BEGIN and self.bConnect then
             self.bConnect = false
-            -- Phase 4.3: BSCHTKA.EnableAllPosIconConn()
+            -- Phase 4.3: OSI — enable connection floor icons
         elseif result == ACTION_RESULT_EFFECT_FADED and not self.bConnect then
             self.bConnect = true
-            -- Phase 4.3: BSCHTKA.DisableAllPosIconConn()
+            -- Phase 4.3: OSI — disable connection floor icons
         end
         return
     end
     -- Pulse fades → disable connection icons
     if abilityId == FALGRAVN_PULSE and result == ACTION_RESULT_EFFECT_FADED then
-        -- Phase 4.3: BSCHTKA.DisableAllPosIconConn()
+        -- Phase 4.3: OSI — disable connection floor icons
         alerts:showInfo(2, "")
         alerts:showInfo(3, "")
         alerts:showInfo(4, "")
@@ -270,7 +301,6 @@ function Falgravn:onCombatEvent(context, alerts, result, abilityId,
     -- ── Instability timer reset ────────────────────────────────────────
     if abilityId == FALGRAVN_INSTABILITY and result == ACTION_RESULT_EFFECT_GAINED_DURATION then
         self.instabilityTimer:reset(NEXT_INSTABILITY)
-        self:syncLegacy()
         return
     end
 
@@ -278,22 +308,18 @@ function Falgravn:onCombatEvent(context, alerts, result, abilityId,
     if abilityId == FALGRAVN_UNW_POWER and result == ACTION_RESULT_EFFECT_FADED then
         self.bloodBallTimer:reset(INITIAL_BLOODBALL_DELAY)
         self.instabilityTimer:reset(INSTABILITY_INITIAL_DELAY)
-        self:syncLegacy()
-        -- Phase 4.3: BSCHTKA.EnableAllPosIconBlood()
+        -- Phase 4.3: OSI.EnableAllPosIconBlood()
         return
     end
     -- Blood Ball effect drives stage 2 and its recurring timer
     if abilityId == FALGRAVN_BLOOTBALL then
         if self.CURRENT_STAGE ~= 2 then
             self.CURRENT_STAGE = 2
-            self:syncLegacy()
         end
         if result == ACTION_RESULT_EFFECT_GAINED_DURATION then
             self.bloodBallTimer:reset(30)
-            self:syncLegacy()
         elseif result == ACTION_RESULT_EFFECT_FADED then
             self.bloodBallTimer:reset(NEXT_BLOODBALL)
-            self:syncLegacy()
         end
         return
     end
@@ -301,7 +327,6 @@ function Falgravn:onCombatEvent(context, alerts, result, abilityId,
     if abilityId == FALGRAVN_START_STAGE2 and result == ACTION_RESULT_BEGIN then
         if self.CURRENT_STAGE ~= 2 then
             self.CURRENT_STAGE = 2
-            self:syncLegacy()
         end
         return
     end
@@ -311,11 +336,10 @@ function Falgravn:onCombatEvent(context, alerts, result, abilityId,
         if self.CURRENT_STAGE ~= 3 then
             self.CURRENT_STAGE = 3
             self.openGatesTimer:reset(INITIAL_OPENGATE_TIME)
-            self:syncLegacy()
             alerts:showInfo(2, "")
             alerts:showInfo(3, "")
             alerts:showInfo(4, "")
-            -- Phase 4.3: BSCHTKA.EnableAllTorturerIcons()
+            -- Phase 4.3: OSI.EnableAllTorturerIcons()
         end
         return
     end
@@ -323,8 +347,9 @@ function Falgravn:onCombatEvent(context, alerts, result, abilityId,
     if abilityId == FALGRAVN_OPEN_DOOR and result == ACTION_RESULT_BEGIN then
         self.openGatesTimer:reset(NEXT_OPENGATE_TIME)
         self.torturerTimer:reset(NEXT_TORTURER_TP)
-        self:syncLegacy()
         alerts:showAction("Open the Gates!")
+        caAlert(nil, "Open the Gates!", 0x991111FF,
+            SOUNDS.CHAMPION_POINTS_COMMITTED, 2000)
         return
     end
     -- Torturer feeding: start kill countdown (deduped per feed cycle)
@@ -333,6 +358,12 @@ function Falgravn:onCombatEvent(context, alerts, result, abilityId,
             if self.bStartTorturerCD then
                 self.bStartTorturerCD = false
                 alerts:showAction("KILL Torturer!")
+                local cid = caCastAlertsStart(abilityId, GetAbilityName(abilityId),
+                    10000, 10000,
+                    { 1, 0.7, 0, 0.5 },
+                    { 10000, "KILL Torturer!", 0.8, 0, 0, 0.9, SOUNDS.NONE })
+                -- Store by the torturer's sourceUnitId so the bar stops if it dies.
+                if cid and sourceUnitId then self.alertList[sourceUnitId] = cid end
             end
             -- Phase 4.3: UpdateTorturerIcon(name, feeding) — needs LibUnitTracker
         elseif result == ACTION_RESULT_EFFECT_FADED then
@@ -349,12 +380,15 @@ function Falgravn:onCombatEvent(context, alerts, result, abilityId,
     -- Torturer coming down
     if abilityId == FALGRAVN_TORTURER_ESC and result == ACTION_RESULT_BEGIN then
         alerts:showAction("Torturer Comes Down!")
+        caAlert(nil, "Torturer Comes Down!", 0xFF8800FF,
+            SOUNDS.CHAMPION_POINTS_COMMITTED, 3000)
         return
     end
     -- Torturer light attack — only alert non-tanks when they are targeted
     if abilityId == FALGRAVN_TORTURER_LA and result == ACTION_RESULT_BEGIN then
         if IsUnitPlayer(unitTag) and GetSelectedLFGRole() ~= LFG_ROLE_TANK then
             alerts:showAction("DODGE! (Torturer LA)")
+            caAlert("Torturer LA's", "DODGE!", 0xFF0000FF, SOUNDS.DUEL_START, 1000)
         end
         return
     end
@@ -367,9 +401,20 @@ function Falgravn:onEffectChanged(context, alerts, changeType, abilityId, unitTa
     if abilityId == FALGRAVN_PRISON then
         if changeType == EFFECT_RESULT_GAINED then
             alerts:showAction("KILL PRISON!")
+            -- Phase 4.2: 8 s CA cast bar; single slot (matches BSCHTKA pattern).
+            local dur = 8000
+            self.prisonBarId = caCastAlertsStart(
+                abilityId, GetAbilityName(abilityId),
+                dur, dur,
+                { 1, 0.7, 0, 0.5 },
+                { dur, "KILL PRISON!", 0.8, 0, 0, 0.9, SOUNDS.NONE })
             -- Phase 4.3: OSI.SetMechanicIconForUnit(displayName, ICON_PRISON, ...)
+        elseif changeType == EFFECT_RESULT_FADED then
+            -- Phase 4.2: stop the bar early if the prison was killed in time.
+            caCastAlertsStop(self.prisonBarId)
+            self.prisonBarId = nil
+            -- Phase 4.3: OSI.RemoveMechanicIconForUnit(displayName)
         end
-        -- Phase 4.3: on FADED → OSI.RemoveMechanicIconForUnit(displayName)
         return
     end
 
