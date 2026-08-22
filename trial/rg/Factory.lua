@@ -1,14 +1,20 @@
-local Panel  = require("ui.Panel")   -- already in package.loaded (pre-loaded by incha.lua)
 local Trial  = require("core.Trial")
-local config = require("trial.rg.config")
+local Panel  = require("ui.Panel")
+
+local CombatHandler = require("trial.rg.CombatHandler")
+local Oaxiltso = require("trial.rg.boss.Oaxiltso")
+local Bahsei   = require("trial.rg.boss.Bahsei")
+local Xalvakka = require("trial.rg.boss.Xalvakka")
 
 local rgTrial = Trial.create({
-    id     = "rg",
-    zoneId = config.zoneId,
-    eventPrefix = "Incha_RG",
-    bosses = config.bosses,
-    bridge = Panel.bridge,
-    alerts = Panel.alerts,
+    id              = "rg",
+    zoneId          = 1263,
+    eventPrefix     = "Incha_RG",
+    bosses          = { Oaxiltso, Bahsei, Xalvakka },
+    bridge          = Panel.bridge,
+    alerts          = Panel.alerts,
+    onCombatEvent   = CombatHandler.onCombatEvent,
+    onEffectChanged = CombatHandler.onEffectChanged,
 })
 
 return rgTrial
