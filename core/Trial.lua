@@ -38,15 +38,24 @@ function Trial.create(options)
         onPowerUpdate = function(eventCode, unitTag, powerIndex, powerType, powerValue, powerMax, powerEffectiveMax)
             self:onPowerUpdate(powerValue, powerMax)
         end,
-        onCombatState = options.onCombatState and function(eventCode, inCombat)
+        -- Always registered — Trial:onCombatState delegates to the active boss
+        -- if it has the callback, so no trial-level conditional is needed.
+        onCombatState = function(eventCode, inCombat)
             self:onCombatState(inCombat)
-        end or nil,
+        end,
         onCombatEvent = options.onCombatEvent and function(...)
             options.onCombatEvent(self, ...)
         end or nil,
         onEffectChanged = options.onEffectChanged and function(...)
             options.onEffectChanged(self, ...)
         end or nil,
+        -- 200ms timer-display loop.  Calls boss:onUpdate(context, alerts) when
+        -- a boss is active.  No-op otherwise, so the loop is always registered
+        -- without wasting ticks between encounters.
+        onUpdate = function()
+            self:onUpdate()
+        end,
+        updateInterval = 200,
     })
 
     return self
@@ -134,6 +143,13 @@ function Trial:onPowerUpdate(powerValue, powerMax)
     if not IsUnitInCombat("player") and self.bridge and self.bridge.checkHardmode then
         self.bridge.checkHardmode(self.context)
     end
+end
+
+function Trial:onUpdate()
+    if not self:isActiveZone() then return end
+    local boss = self:getActiveBoss()
+    if not boss or not boss.onUpdate then return end
+    boss:onUpdate(self.context, self.alerts)
 end
 
 function Trial:onCombatState(inCombat)

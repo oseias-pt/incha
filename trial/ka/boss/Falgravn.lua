@@ -91,6 +91,37 @@ function Falgravn:onEnter(context)
     self:syncLegacy()
 end
 
+-- 200ms timer display — writes to info lines 1-4 depending on stage.
+--
+-- instabilityTimer is a real Timer object (available now).
+-- BLOODBALL_TIME / OPEN_GATES_TIME / TORTURER_TP are raw epoch timestamps
+-- written by BSCHTKA's combat events; they become proper Timer objects in
+-- Phase 4.1 once those event handlers are migrated.
+function Falgravn:onUpdate(context, alerts)
+    local stage = self.CURRENT_STAGE
+
+    -- Info 1 — instability countdown (all stages).
+    local ti = self.instabilityTimer:remaining()
+    alerts:showInfo(1, "Instability: " .. (ti > 0 and ZO_FormatCountdownTimer(ti) or "up!"))
+
+    -- Stage 2: blood ball timer (line 2).
+    if stage >= 2 then
+        local tbb = self.BLOODBALL_TIME > 0
+                    and math.max(self.BLOODBALL_TIME - os.time(), 0) or 0
+        alerts:showInfo(2, "Blood Ball: " .. (tbb > 0 and ZO_FormatCountdownTimer(tbb) or "—"))
+    end
+
+    -- Stage 3: open gates + torturer teleport timers (lines 3-4).
+    if stage >= 3 then
+        local tog = self.OPEN_GATES_TIME > 0
+                    and math.max(self.OPEN_GATES_TIME - os.time(), 0) or 0
+        local ttp = self.TORTURER_TP > 0
+                    and math.max(self.TORTURER_TP - os.time(), 0) or 0
+        alerts:showInfo(3, "Open Gates:   " .. (tog > 0 and ZO_FormatCountdownTimer(tog) or "—"))
+        alerts:showInfo(4, "Torturer TP:  " .. (ttp > 0 and ZO_FormatCountdownTimer(ttp) or "—"))
+    end
+end
+
 function Falgravn:onPowerUpdate(context)
     context.stage                = self.CURRENT_STAGE
     context.extras.showPercentUI = Settings.trial("ka").showPercent

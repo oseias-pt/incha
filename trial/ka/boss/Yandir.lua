@@ -47,6 +47,15 @@ function Yandir:onEnter(context, alerts)
     context.extras.legacyFlag = "bYandir"
 end
 
+-- 200ms timer display — writes to info lines 1-2.
+-- No-op when sink has no info handler (e.g. LegacyUI during the KA transition).
+function Yandir:onUpdate(context, alerts)
+    local t1 = self.totemTimer:remaining()
+    local t2 = self.gryphonTimer:remaining()
+    alerts:showInfo(1, "Totem:   " .. (t1 > 0 and ZO_FormatCountdownTimer(t1) or "ready"))
+    alerts:showInfo(2, "Gryphon: " .. (t2 > 0 and ZO_FormatCountdownTimer(t2) or "ready"))
+end
+
 function Yandir:onPowerUpdate(context, healthPercent)
     if healthPercent < 60 and not self.gryphonTimer:isExpired() then
         if not self.bGRYPHON_SKIP then

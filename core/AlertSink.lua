@@ -21,6 +21,15 @@ function AlertSink:showProgress(text)
     self:emit("progress", text)
 end
 
+-- info lines take two args (slot index + text), so they can't route through
+-- the single-arg emit().  Handlers receive (n, text) directly.
+function AlertSink:showInfo(n, text)
+    local handler = self.handlers.info
+    if handler then
+        handler(n, text)
+    end
+end
+
 function AlertSink:showAction(text)
     self:emit("action", text)
 end

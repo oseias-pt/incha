@@ -6,7 +6,16 @@
 ---   - All steady-state updates are :SetText() / :SetHidden() only.
 ---   - No per-tick allocations anywhere in this file.
 ---
---- Used by rg/dsr automatically. KA keeps LegacyUI as its bridge for now.
+--- Alert vocabulary:
+---   header(text)    — boss name / HM status, small gold line at top
+---   info(n, text)   — timer countdown lines 1–4 (grey, small)
+---   action(text)    — prominent mid-fight call-out (orange, bold)
+---   hideAction()    — clears action without hiding panel
+---   clear()         — clears all text and hides the panel
+---   progress(text)  — backward-compat alias for info(1, text)
+---
+--- Used by rg/dsr automatically.  KA keeps LegacyUI as its bridge until
+--- Phase 4.4 completes the migration.
 
 local Settings = require("core.Settings")
 
@@ -15,18 +24,28 @@ local Panel = {}
 -- Control bundle — nil until first build(), populated exactly once.
 local ctrl = nil
 
+-- Whether the HUD scene is currently in the "showing" state.
+-- Shared by both hud and hudui scene callbacks.
+local hudVisible = true
+
 -- Panel dimensions (points, scales with ctrl.panel:SetScale).
-local W, H = 320, 90
+local W, H = 320, 160
+
+-- Show or hide the panel based on two independent gates:
+--   ctrl.active   — trial/boss content should be on screen
+--   hudVisible    — the hud/hudui scene allows it
+-- Call this instead of SetHidden directly so both gates stay in sync.
+local function applyVisibility()
+    if not ctrl then return end
+    ctrl.panel:SetHidden(not (ctrl.active and hudVisible))
+end
 
 local function applyPosition(panel)
     local sv = Settings.get().overlay
+    panel:ClearAnchors()
     if sv.offsetX >= 0 then
-        -- User has previously dragged the panel — restore that position.
-        panel:ClearAnchors()
         panel:SetAnchor(TOPLEFT, GuiRoot, TOPLEFT, sv.offsetX, sv.offsetY)
     else
-        -- First run: center near the top of the screen.
-        panel:ClearAnchors()
         local screenW = GuiRoot:GetWidth()
         panel:SetAnchor(TOPLEFT, GuiRoot, TOPLEFT, (screenW - W) / 2, 150)
     end
@@ -51,7 +70,6 @@ local function build()
         local s = Settings.get().overlay
         s.offsetX = c:GetLeft()
         s.offsetY = c:GetTop()
-        -- Re-anchor so scale changes don't drift the saved position.
         applyPosition(c)
     end)
 
@@ -61,101 +79,142 @@ local function build()
     bg:SetCenterColor(0.04, 0.04, 0.04, 0.82)
     bg:SetEdgeColor(0.35, 0.35, 0.35, 0.9)
 
-    -- Header — boss name / HM status. Small, gold.
+    -- Header — boss name / HM status.  Small, gold.
     local header = WINDOW_MANAGER:CreateControl(nil, panel, CT_LABEL)
     header:SetFont("ZoFontGameSmall")
     header:SetColor(1, 0.82, 0.22, 1)
     header:SetHorizontalAlignment(TEXT_ALIGN_CENTER)
-    header:SetAnchor(TOP, panel, TOP, 0, 8)
+    header:SetAnchor(TOPLEFT, panel, TOPLEFT, 8, 8)
     header:SetDimensions(W - 16, 18)
     header:SetText("")
 
-    -- Action — the prominent mid-fight call-out. Larger, orange.
+    -- Info lines 1–4 — timer countdowns.  Small, grey.
+    -- Stacked below the header with 2px gaps.
+    local info = {}
+    for i = 1, 4 do
+        local lbl = WINDOW_MANAGER:CreateControl(nil, panel, CT_LABEL)
+        lbl:SetFont("ZoFontGameSmall")
+        lbl:SetColor(0.75, 0.75, 0.75, 1)
+        lbl:SetHorizontalAlignment(TEXT_ALIGN_CENTER)
+        lbl:SetAnchor(TOPLEFT, panel, TOPLEFT, 8, 28 + (i - 1) * 18)
+        lbl:SetDimensions(W - 16, 16)
+        lbl:SetText("")
+        info[i] = lbl
+    end
+
+    -- Action — the prominent mid-fight call-out.  Larger, orange.
     local action = WINDOW_MANAGER:CreateControl(nil, panel, CT_LABEL)
     action:SetFont("ZoFontGameBold")
     action:SetColor(1, 0.42, 0.08, 1)
     action:SetHorizontalAlignment(TEXT_ALIGN_CENTER)
-    action:SetAnchor(CENTER, panel, CENTER, 0, 4)
-    action:SetDimensions(W - 16, 30)
+    action:SetAnchor(BOTTOM, panel, BOTTOM, 0, -10)
+    action:SetDimensions(W - 16, 28)
     action:SetText("")
 
-    -- Progress — secondary info line. Small, grey.
-    local progress = WINDOW_MANAGER:CreateControl(nil, panel, CT_LABEL)
-    progress:SetFont("ZoFontGameSmall")
-    progress:SetColor(0.75, 0.75, 0.75, 1)
-    progress:SetHorizontalAlignment(TEXT_ALIGN_CENTER)
-    progress:SetAnchor(BOTTOM, panel, BOTTOM, 0, -8)
-    progress:SetDimensions(W - 16, 18)
-    progress:SetText("")
+    ctrl = {
+        panel  = panel,
+        header = header,
+        info   = info,
+        action = action,
+        active = false,  -- gates applyVisibility()
+    }
 
-    ctrl = { panel = panel, header = header, action = action, progress = progress }
+    -- Hide the panel whenever we leave the HUD (menu, crafting, etc.) and
+    -- restore it when we return, without disturbing ctrl.active state.
+    local function onHudStateChange(_, newState)
+        hudVisible = (newState == "showing")
+        applyVisibility()
+    end
+    SCENE_MANAGER:GetScene("hud"):RegisterCallback("StateChange", onHudStateChange)
+    SCENE_MANAGER:GetScene("hudui"):RegisterCallback("StateChange", onHudStateChange)
 end
 
 -- ── AlertSink handler table ────────────────────────────────────────────────
--- Implements the same vocabulary as LegacyUI.alerts so Trial.create can
--- accept either without knowing which one it got.
 
 Panel.alerts = {
     header = function(text)
-        if ctrl then
-            ctrl.header:SetText(text or "")
-            ctrl.panel:SetHidden(false)
+        if not ctrl then return end
+        ctrl.header:SetText(text or "")
+        ctrl.active = true
+        applyVisibility()
+    end,
+
+    -- info(n, text) — timer countdown for slot n (1–4).
+    info = function(n, text)
+        if not ctrl then return end
+        local lbl = ctrl.info[n]
+        if lbl then
+            lbl:SetText(text or "")
+            ctrl.active = true
+            applyVisibility()
         end
     end,
 
     action = function(text)
-        if ctrl then
-            ctrl.action:SetText(text or "")
-            ctrl.panel:SetHidden(false)
-        end
+        if not ctrl then return end
+        ctrl.action:SetText(text or "")
+        ctrl.active = true
+        applyVisibility()
     end,
 
+    -- backward-compat alias: showProgress() → info line 1
     progress = function(text)
-        if ctrl then
-            ctrl.progress:SetText(text or "")
-            ctrl.panel:SetHidden(false)
-        end
+        if not ctrl then return end
+        ctrl.info[1]:SetText(text or "")
+        ctrl.active = true
+        applyVisibility()
     end,
 
     hideAction = function()
-        if ctrl then
-            ctrl.action:SetText("")
-        end
+        if not ctrl then return end
+        ctrl.action:SetText("")
+        -- leave panel visible — info lines may still carry timer data
     end,
 
     clear = function()
         if not ctrl then return end
         ctrl.header:SetText("")
         ctrl.action:SetText("")
-        ctrl.progress:SetText("")
-        ctrl.panel:SetHidden(true)
+        for i = 1, 4 do ctrl.info[i]:SetText("") end
+        ctrl.active = false
+        applyVisibility()
     end,
 }
 
 -- ── Bridge lifecycle table ─────────────────────────────────────────────────
--- Implements the same interface as LegacyUI so Trial.create can accept either.
 
 Panel.bridge = {
     onEnable = function()
-        build()  -- no-op after first call; safe to call on every zone enter
+        build()  -- no-op after first call; safe on every zone enter
     end,
 
     onDisable = function()
         if not ctrl then return end
         ctrl.header:SetText("")
         ctrl.action:SetText("")
-        ctrl.progress:SetText("")
-        ctrl.panel:SetHidden(true)
+        for i = 1, 4 do ctrl.info[i]:SetText("") end
+        ctrl.active = false
+        applyVisibility()
+    end,
+
+    onBossEnter = function(boss, context)
+        if ctrl then
+            ctrl.active = true
+            applyVisibility()
+        end
     end,
 
     onBossExit = function()
-        if ctrl then ctrl.panel:SetHidden(true) end
+        if not ctrl then return end
+        ctrl.header:SetText("")
+        ctrl.action:SetText("")
+        for i = 1, 4 do ctrl.info[i]:SetText("") end
+        ctrl.active = false
+        applyVisibility()
     end,
 }
 
 -- ── Settings refresh ───────────────────────────────────────────────────────
--- Call after changing overlay settings (lock, scale) so live controls
--- reflect the new values immediately without a reload.
 
 function Panel.refresh()
     if not ctrl then return end

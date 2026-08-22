@@ -51,6 +51,16 @@ function Vrol:onEnter(context)
     context.extras.legacyFlag = "bVrol"
 end
 
+-- 200ms timer display — writes to info lines 1-3.
+function Vrol:onUpdate(context, alerts)
+    local t1 = self.fogTimer:remaining()
+    local t2 = self.conduitTimer:remaining()
+    local t3 = self.portalTimer:remaining()
+    alerts:showInfo(1, "Fog:     " .. (t1 > 0 and ZO_FormatCountdownTimer(t1) or "ready"))
+    alerts:showInfo(2, "Conduit: " .. (t2 > 0 and ZO_FormatCountdownTimer(t2) or "ready"))
+    alerts:showInfo(3, "Portal:  " .. (t3 > 0 and ZO_FormatCountdownTimer(t3) or "ready"))
+end
+
 function Vrol:onPowerUpdate(context, healthPercent)
     if healthPercent < 50 then
         self.bPORTAL_END = true
