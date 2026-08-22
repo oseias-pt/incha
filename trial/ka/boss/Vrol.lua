@@ -1,5 +1,6 @@
 local Location = require("core.Location")
-local Timer = require("lib.Timer")
+local Settings = require("core.Settings")
+local Timer    = require("lib.Timer")
 
 local NEXT_PORTAL_TIME  = 45
 local NEXT_CONDUIT_TIME = 40
@@ -27,7 +28,7 @@ function Vrol:reset(forced)
     self.fogTimer:reset()
     self.bPORTAL_END = false
 
-    if BSCHTKA and BSCHTKA.SV_ACC and BSCHTKA.SV_ACC.PORTAL_ICON_VROL then
+    if Settings.trial("ka").portalIconVrol then
         zo_callLater(function() BSCHTKA.AddPortalIcon() end, 3100)
     end
 

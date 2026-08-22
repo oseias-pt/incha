@@ -1,0 +1,84 @@
+--- Incha's own SavedVariables.
+---
+--- IMPORTANT: Settings.init() must be called inside EVENT_ADD_ON_LOADED
+--- before any other module calls Settings.get() or Settings.trial().
+--- ESO does not populate SavedVars until that event fires.
+---
+--- The manifest (incha.txt) must declare:  ## SavedVariables: Incha_SV
+
+local Settings = {}
+
+-- Schema version. Increment this when the DEFAULTS shape changes in a
+-- way that requires a clean reset (ZO_SavedVars will wipe and re-apply).
+local SCHEMA_VERSION = 1
+
+-- Full default schema — defines every key the rest of the addon may read.
+-- ZO_SavedVars deep-merges this, so adding new keys here is safe without
+-- a schema version bump as long as you don't need to remove old ones.
+local DEFAULTS = {
+    debug = false,
+
+    overlay = {
+        locked   = false,
+        scale    = 1.0,
+        offsetX  = 0,
+        offsetY  = 0,
+    },
+
+    trials = {
+        ka = {
+            enabled        = true,
+            showBossUI     = true,   -- show the boss name / HM status panel
+            showPercent    = true,   -- show hp% milestone alerts (Falgravn etc.)
+            portalIconVrol = true,   -- show floor icon on Vrol portal spawn
+        },
+        rg  = { enabled = true },
+        dsr = { enabled = true },
+    },
+
+    -- Set true once we've attempted a one-time import from BSCHTKA.SV_ACC.
+    -- Stays false across sessions until BSCHTKA is actually present so we
+    -- retry automatically if load-order prevented it the first time.
+    migratedFromBSCHTKA = false,
+}
+
+-- Private live reference; populated by init().
+local _sv = nil
+
+--- Must be called once during EVENT_ADD_ON_LOADED.
+function Settings.init()
+    _sv = ZO_SavedVars:NewAccountWide("Incha_SV", SCHEMA_VERSION, nil, DEFAULTS)
+
+    -- One-time import from the legacy BSCHTKA addon so existing users keep
+    -- their preferences when they first run Incha without BSCHTKA.
+    -- We only attempt this when BSCHTKA is loaded AND has its SV table,
+    -- and retry on the next session if it wasn't available this time.
+    if not _sv.migratedFromBSCHTKA and BSCHTKA and BSCHTKA.SV_ACC then
+        local acc = BSCHTKA.SV_ACC
+
+        if acc.SHOW_UI_BOSS    ~= nil then _sv.trials.ka.showBossUI     = acc.SHOW_UI_BOSS    end
+        if acc.SHOW_UI_PERCENT ~= nil then _sv.trials.ka.showPercent    = acc.SHOW_UI_PERCENT end
+        if acc.PORTAL_ICON_VROL ~= nil then _sv.trials.ka.portalIconVrol = acc.PORTAL_ICON_VROL end
+
+        _sv.migratedFromBSCHTKA = true
+    end
+
+    -- Wire the debug logger to our saved flag so it survives reloads.
+    local Log = require("lib.Log")
+    Log.setEnabled(_sv.debug)
+end
+
+--- Returns the live SavedVars table.
+--- Callers may read any key; writes are automatically persisted by ESO.
+function Settings.get()
+    return _sv
+end
+
+--- Convenience accessor for a trial's sub-table, e.g.:
+---   local ka = Settings.trial("ka")
+---   if ka.showPercent then ... end
+function Settings.trial(trialId)
+    return _sv and _sv.trials[trialId]
+end
+
+return Settings

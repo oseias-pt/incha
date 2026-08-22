@@ -1,0 +1,8 @@
+## Title: Incha
+## Description: Trial helper — aggregates KA, RG, DSR mechanics
+## Version: 0.1.0
+## Author: Oseias
+## APIVersion: 101042
+## SavedVariables: Incha_SV
+
+incha.lua
