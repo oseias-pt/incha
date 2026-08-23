@@ -167,6 +167,19 @@ local OPTIONS = {
         getFunc = function() return Settings.get().trials.se.enabled end,
         setFunc = function(v) Settings.get().trials.se.enabled = v end,
     },
+
+    -- Section: Lucent Citadel
+    {
+        type = "header",
+        name = "Lucent Citadel",
+    },
+    {
+        type    = "checkbox",
+        name    = "Enable",
+        tooltip = "Track side assignment (Ryelaz/Zilyesset), Orphic Xoryn jump/cone timers, Xynizata interrupt CDs, and Xoryn current/knot alerts.",
+        getFunc = function() return Settings.get().trials.lc.enabled end,
+        setFunc = function(v) Settings.get().trials.lc.enabled = v end,
+    },
 }
 
 -- ── Slash command fallback ────────────────────────────────────────────────
