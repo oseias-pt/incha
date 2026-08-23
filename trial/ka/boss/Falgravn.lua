@@ -2,7 +2,7 @@ local Location = require("core.Location")
 local Settings = require("core.Settings")
 local Timer    = require("lib.Timer")
 
--- ── Phase 4.2: CombatAlerts helpers ──────────────────────────────────────
+-- ── CombatAlerts helpers ──────────────────────────────────────────────────
 local function caAlertCast(...) if CombatAlerts then return CombatAlerts.AlertCast(...) end end
 local function caAlert(...)     if CombatAlerts then return CombatAlerts.Alert(...)     end end
 local function caCastAlertsStart(...)
@@ -12,11 +12,34 @@ local function caCastAlertsStop(id)
     if CombatAlerts and id then CombatAlerts.CastAlertsStop(id) end
 end
 
+-- ── OSI helpers (OdySupportIcons, optional) ───────────────────────────────
+-- Textures: pulled from the live ability data so they always match the
+-- icon players see in their buff bar.  Evaluated once at load time.
+local ICON_PRISON      = GetAbilityIcon(132473)   -- FALGRAVN_PRISON
+local ICON_INSTABILITY = GetAbilityIcon(140944)   -- FALGRAVN_INSTABILITY
+local ICON_SYNERGY     = GetAbilityIcon(129936)   -- FALGRAVN_BLOPSYNERGIE
+
+local COL_PRISON      = { 0.8, 0.3, 1.0 }   -- lavender
+local COL_INSTABILITY = { 1.0, 0.6, 0.0 }   -- amber
+local COL_SYNERGY     = { 0.9, 0.1, 0.2 }   -- crimson
+
+local function osiSet(displayName, texture, color)
+    if OSI and displayName and displayName ~= "" then
+        OSI.SetMechanicIconForUnit(displayName, texture, nil, color, nil, nil)
+    end
+end
+
+local function osiRemove(displayName)
+    if OSI and displayName and displayName ~= "" then
+        OSI.RemoveMechanicIconForUnit(displayName)
+    end
+end
+
 -- ── Ability IDs (from BSCHTKA_Falgraven.lua) ──────────────────────────────
 -- Combat event IDs
 local INFUSER_CASTS         = 137289  -- Trash infuser cast
 local INFUSER_BUFF          = 139961  -- Infuser buff gained by ally
-local FALGRAVN_LIGHTNING    = 133428  -- Connect mechanic (90%/80%)  → OSI icons (Phase 4.3)
+local FALGRAVN_LIGHTNING    = 133428  -- Connect mechanic (90%/80%); OSI floor icons need world coords
 local FALGRAVN_OPEN_DOOR    = 136693  -- Open the gates cast
 local FALGRAVN_TUT_FEED     = 137314  -- Torturer feeding prisoner
 local FALGRAVN_M_MOVE       = 136965  -- Njordal ground move AoE
@@ -95,10 +118,15 @@ Falgravn.bConnect         = true
 -- Torturer encounter state.
 Falgravn.bStartTorturerCD = true
 Falgravn.torturerCount    = 8
--- Phase 4.2: [unitId] → CA cast bar ID; cleared on reset/death.
+-- [unitId] → CA cast bar ID; cleared on reset/death.
 Falgravn.alertList        = {}
--- Phase 4.2: CA cast bar for the Prison debuff (single-slot; simple like BSCHTKA).
+-- CA cast bar for the Prison debuff (single-slot; matches BSCHTKA pattern).
 Falgravn.prisonBarId      = nil
+-- OSI mechanic icon tracking: [unitTag] → displayName.
+-- Populated on EFFECT_RESULT_GAINED, cleared on FADED or reset.
+Falgravn.osiPrison      = {}
+Falgravn.osiInstability = {}
+Falgravn.osiSynergy     = {}
 
 -- ── Timers ────────────────────────────────────────────────────────────────
 -- instabilityTimer is armed in reset() (begins on boss entry).
@@ -134,11 +162,19 @@ function Falgravn:reset(forced)
     self.torturerTimer:clear()
     resetPrisoners()
 
-    -- Phase 4.2: stop any lingering CA cast bars from the previous pull.
+    -- Stop any lingering CA cast bars from the previous pull.
     for _, cid in pairs(self.alertList) do caCastAlertsStop(cid) end
     self.alertList   = {}
     caCastAlertsStop(self.prisonBarId)
     self.prisonBarId = nil
+
+    -- Remove any OSI mechanic icons left over from the previous pull.
+    for _, dn in pairs(self.osiPrison)      do osiRemove(dn) end
+    for _, dn in pairs(self.osiInstability) do osiRemove(dn) end
+    for _, dn in pairs(self.osiSynergy)     do osiRemove(dn) end
+    self.osiPrison      = {}
+    self.osiInstability = {}
+    self.osiSynergy     = {}
 end
 
 function Falgravn:onEnter(context, alerts)
@@ -275,20 +311,20 @@ function Falgravn:onCombatEvent(context, alerts, result, abilityId,
     end
 
     -- ── Lightning / connection mechanic ───────────────────────────────
-    -- OSI floor icons deferred to Phase 4.3; track bConnect state for now.
+    -- TODO (OSI floor icons): CreatePositionIcon at each connection-node
+    -- world position when bConnect transitions false → true, and
+    -- DiscardPositionIcon on EFFECT_FADED / FALGRAVN_PULSE fade.
+    -- Measure node coords in-game with OSI.PrintMyPosition().
     if abilityId == FALGRAVN_LIGHTNING then
         if result == ACTION_RESULT_BEGIN and self.bConnect then
             self.bConnect = false
-            -- Phase 4.3: OSI — enable connection floor icons
         elseif result == ACTION_RESULT_EFFECT_FADED and not self.bConnect then
             self.bConnect = true
-            -- Phase 4.3: OSI — disable connection floor icons
         end
         return
     end
-    -- Pulse fades → disable connection icons
+    -- Pulse fades → clear any connection-node position icons (TODO above).
     if abilityId == FALGRAVN_PULSE and result == ACTION_RESULT_EFFECT_FADED then
-        -- Phase 4.3: OSI — disable connection floor icons
         alerts:showInfo(2, "")
         alerts:showInfo(3, "")
         alerts:showInfo(4, "")
@@ -305,7 +341,8 @@ function Falgravn:onCombatEvent(context, alerts, result, abilityId,
     if abilityId == FALGRAVN_UNW_POWER and result == ACTION_RESULT_EFFECT_FADED then
         self.bloodBallTimer:reset(INITIAL_BLOODBALL_DELAY)
         self.instabilityTimer:reset(INSTABILITY_INITIAL_DELAY)
-        -- Phase 4.3: OSI.EnableAllPosIconBlood()
+        -- TODO (OSI floor icons): CreatePositionIcon for each blood-fountain
+        -- spawn position when Falgravn lands.  Measure coords in-game.
         return
     end
     -- Blood Ball effect drives stage 2 and its recurring timer
@@ -336,7 +373,8 @@ function Falgravn:onCombatEvent(context, alerts, result, abilityId,
             alerts:showInfo(2, "")
             alerts:showInfo(3, "")
             alerts:showInfo(4, "")
-            -- Phase 4.3: OSI.EnableAllTorturerIcons()
+            -- TODO (OSI floor icons): CreatePositionIcon for each torturer
+            -- spawn/walk position.  Measure world coords in-game.
         end
         return
     end
@@ -362,7 +400,9 @@ function Falgravn:onCombatEvent(context, alerts, result, abilityId,
                 -- Store by the torturer's sourceUnitId so the bar stops if it dies.
                 if cid and sourceUnitId then self.alertList[sourceUnitId] = cid end
             end
-            -- Phase 4.3: UpdateTorturerIcon(name, feeding) — needs LibUnitTracker
+            -- TODO (OSI floor icon): mark the active torturer's world position.
+            -- Torturers are NPCs so SetMechanicIconForUnit won't work; use
+            -- CreatePositionIcon with measured coords per torturer slot instead.
         elseif result == ACTION_RESULT_EFFECT_FADED then
             self.bStartTorturerCD = true
         end
@@ -371,7 +411,6 @@ function Falgravn:onCombatEvent(context, alerts, result, abilityId,
     -- Prisoner saved — decrement torturer count
     if abilityId == FALGRAVN_SACRIFICE then
         self.torturerCount = self.torturerCount - 1
-        -- Phase 4.3: UpdateTorturerIcon(name, saved) — needs LibUnitTracker
         return
     end
     -- Torturer coming down
@@ -394,31 +433,39 @@ end
 -- ── Effect change handler ─────────────────────────────────────────────────
 
 function Falgravn:onEffectChanged(context, alerts, changeType, abilityId, unitTag, unitId, unitName)
-    -- Prison debuff on a player: kill-countdown alert + OSI icon (Phase 4.3)
+    -- Prison debuff on a player: kill-countdown alert + OSI mechanic icon.
     if abilityId == FALGRAVN_PRISON then
         if changeType == EFFECT_RESULT_GAINED then
             alerts:showAction("KILL PRISON!")
-            -- Phase 4.2: 8 s CA cast bar; single slot (matches BSCHTKA pattern).
             local dur = 8000
             self.prisonBarId = caCastAlertsStart(
                 abilityId, GetAbilityName(abilityId),
                 dur, dur,
                 { 1, 0.7, 0, 0.5 },
                 { dur, "KILL PRISON!", 0.8, 0, 0, 0.9, SOUNDS.NONE })
-            -- Phase 4.3: OSI.SetMechanicIconForUnit(displayName, ICON_PRISON, ...)
+            local dn = GetUnitDisplayName(unitTag)
+            osiSet(dn, ICON_PRISON, COL_PRISON)
+            if dn and dn ~= "" then self.osiPrison[unitTag] = dn end
         elseif changeType == EFFECT_RESULT_FADED then
-            -- Phase 4.2: stop the bar early if the prison was killed in time.
             caCastAlertsStop(self.prisonBarId)
             self.prisonBarId = nil
-            -- Phase 4.3: OSI.RemoveMechanicIconForUnit(displayName)
+            osiRemove(self.osiPrison[unitTag])
+            self.osiPrison[unitTag] = nil
         end
         return
     end
 
-    -- Instability icon on affected players (OSI only — Phase 4.3)
+    -- Instability debuff on a player: OSI mechanic icon.
     if abilityId == FALGRAVN_INSTABILITY or abilityId == FALGRAVN_INSTABILITY2 then
-        -- Phase 4.3: GAINED → OSI.SetMechanicIconForUnit(displayName, ICON_LBOLT, ...)
-        --            FADED  → OSI.RemoveMechanicIconForUnit(displayName)
+        if not IsUnitPlayer(unitTag) then return end
+        if changeType == EFFECT_RESULT_GAINED then
+            local dn = GetUnitDisplayName(unitTag)
+            osiSet(dn, ICON_INSTABILITY, COL_INSTABILITY)
+            if dn and dn ~= "" then self.osiInstability[unitTag] = dn end
+        elseif changeType == EFFECT_RESULT_FADED then
+            osiRemove(self.osiInstability[unitTag])
+            self.osiInstability[unitTag] = nil
+        end
         return
     end
 
@@ -429,16 +476,23 @@ function Falgravn:onEffectChanged(context, alerts, changeType, abilityId, unitTa
             PRISONERS[name] = PRISONERS[name] + 1
             if PRISONERS[name] == 11 then
                 self.torturerCount = self.torturerCount - 1
-                -- Phase 4.3: UpdateTorturerIcon(name, dead) — needs LibUnitTracker
+                    -- (see torturer-feeding TODO above)
             end
         end
         return
     end
 
-    -- Execration synergy icon on player (OSI only — Phase 4.3)
+    -- Execration synergy on a player: OSI mechanic icon.
     if abilityId == FALGRAVN_BLOPSYNERGIE then
-        -- Phase 4.3: GAINED → OSI.SetMechanicIconForUnit(...)
-        --            FADED  → OSI.RemoveMechanicIconForUnit(...)
+        if not IsUnitPlayer(unitTag) then return end
+        if changeType == EFFECT_RESULT_GAINED then
+            local dn = GetUnitDisplayName(unitTag)
+            osiSet(dn, ICON_SYNERGY, COL_SYNERGY)
+            if dn and dn ~= "" then self.osiSynergy[unitTag] = dn end
+        elseif changeType == EFFECT_RESULT_FADED then
+            osiRemove(self.osiSynergy[unitTag])
+            self.osiSynergy[unitTag] = nil
+        end
         return
     end
 end
