@@ -1,12 +1,10 @@
 --- Settings UI entry point.
 ---
---- Phase 3A stopgap: a /incha slash command covers debug toggling,
---- overlay lock/scale/reset until LibAddonMenu-2.0 is wired in.
+--- Registers an in-game settings panel via LibAddonMenu-2.0 (LAM) when it
+--- is present, and always registers /incha as a slash-command fallback.
 ---
---- When LAM is added, replace the SLASH_COMMANDS block in Menu.init()
---- with LAM:RegisterAddonPanel / LAM:RegisterOptionControls calls built
---- from the OPTIONS table below — the schema is already LAM-shaped so
---- the migration will be mechanical.
+--- LAM panel ID: "InchPanel"
+--- Slash command: /incha  (debug | lock | scale <n> | reset)
 
 local Log      = require("lib.Log")
 local Panel    = require("ui.Panel")
@@ -14,12 +12,24 @@ local Settings = require("core.Settings")
 
 local Menu = {}
 
--- ── LAM-ready options schema ───────────────────────────────────────────────
--- Each entry mirrors a LAM control descriptor.  getFunc/setFunc read and
--- write directly into the live Settings table so no extra glue is needed.
--- Keep this in sync with the Settings defaults in core/Settings.lua.
---
--- TODO (Phase 3A): pass this to LAM:RegisterOptionControls("InchPanel", OPTIONS)
+local PANEL_ID = "InchPanel"
+
+-- ── LAM panel descriptor ───────────────────────────────────────────────────
+local PANEL = {
+    type                = "panel",
+    name                = "Incha",
+    displayName         = "|cFFD700Incha|r",
+    author              = "Oseias",
+    version             = "0.1.0",
+    slashCommand        = "/incha",
+    registerForRefresh  = false,
+    registerForDefaults = false,
+}
+
+-- ── Options schema ─────────────────────────────────────────────────────────
+-- Each entry is a LAM control descriptor.  getFunc/setFunc read and write
+-- directly into the live Settings table so no extra glue is needed.
+-- Keep in sync with the defaults in core/Settings.lua.
 
 local OPTIONS = {
     -- Section: general
@@ -120,7 +130,7 @@ local OPTIONS = {
     },
 }
 
--- ── Slash command (active until LAM replaces it) ───────────────────────────
+-- ── Slash command fallback ────────────────────────────────────────────────
 
 local function printHelp()
     d("|cFFD700[Incha]|r Commands:")
@@ -169,11 +179,20 @@ end
 -- ── Public API ─────────────────────────────────────────────────────────────
 
 function Menu.init()
+    -- Always register the slash command — useful even when LAM is present
+    -- and essential when it is not installed.
     SLASH_COMMANDS["/incha"] = handleSlash
+
+    -- Wire to LibAddonMenu-2.0 when it is loaded.
+    -- incha.txt declares ## OptionalDependsOn: LibAddonMenu-2.0 so ESO
+    -- loads LAM before Incha when both are present.
+    local LAM = LibAddonMenu2
+    if LAM then
+        LAM:RegisterAddonPanel(PANEL_ID, PANEL)
+        LAM:RegisterOptionControls(PANEL_ID, OPTIONS)
+    end
 end
 
--- Exposed so the LAM wiring (Phase 3A) can pass it directly to
--- LAM:RegisterOptionControls without any changes to this file.
 Menu.options = OPTIONS
 
 return Menu

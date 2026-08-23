@@ -4,5 +4,6 @@
 ## Author: Oseias
 ## APIVersion: 101042
 ## SavedVariables: Incha_SV
+## OptionalDependsOn: LibAddonMenu-2.0
 
 incha.lua
