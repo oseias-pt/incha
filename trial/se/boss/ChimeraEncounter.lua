@@ -27,7 +27,7 @@ local CHAIN_CD             = 20   -- subsequent chain lightning CD
 local COL_LIGHTNING = { -3, 0, false, { 1, 0.84, 0.4, 0.4 }, { 1, 0.84, 0.4, 0.8 } }  -- yellow
 
 local ChimeraEncounter = {
-    id                = 2,
+
     key               = "chimera",
     nameAliases       = { "Chimera" },
     hmHealthThreshold = 70000000,   -- vet ~46.5M, HM ~93.1M

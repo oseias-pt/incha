@@ -79,7 +79,7 @@ end
 
 -- ── Boss definition ───────────────────────────────────────────────────────
 local Xalvakka = {
-    id                = 3,
+
     key               = "xalvakka",
     name              = "Xalvakka",     -- TODO: verify exact unit name via GetUnitName("boss1")
     hmHealthThreshold = 100000001,      -- TODO: verify exact HM health pool
@@ -95,7 +95,7 @@ Xalvakka.selfManifold  = false  -- true while local player carries Manifold Curs
 Xalvakka.manifoldOthers = {}    -- [unitTag] → displayName for other players cursed
 
 -- ── Lifecycle ─────────────────────────────────────────────────────────────
-function Xalvakka:reset(forced)
+function Xalvakka:reset()
     EVENT_MANAGER:UnregisterForEvent(SHIELD_EVENT_KEY, EVENT_UNIT_ATTRIBUTE_VISUAL_ADDED)
     EVENT_MANAGER:UnregisterForEvent(SHIELD_EVENT_KEY, EVENT_UNIT_ATTRIBUTE_VISUAL_UPDATED)
     EVENT_MANAGER:UnregisterForEvent(SHIELD_EVENT_KEY, EVENT_UNIT_ATTRIBUTE_VISUAL_REMOVED)
@@ -305,8 +305,8 @@ function Xalvakka:onUpdate(context, alerts)
     -- ── Info 4: Run timer (priority) > Blob indicator ────────────────────
     -- Run timer uses info4 (not showAction) to avoid clobbering reactive
     -- event alerts (Block!, Dodge!, etc.) which use the action slot.
-    -- context.extras.healthPercent: 0–100, set by Trial:onPowerUpdate from boss1.
-    local hp = context.extras and context.extras.healthPercent
+    -- context.healthPercent: 0–100, set by Trial:onPowerUpdate.
+    local hp = context.healthPercent
     if hp and hp > RUN1_BOT and hp <= RUN1_TOP then
         -- Floor 1 → Floor 2 transition approaching
         alerts:showInfo(4, "|cffdd00RUN IN|r: " ..

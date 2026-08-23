@@ -19,7 +19,7 @@ local TOTEM_SPAWN_TIME  = 20
 local GRYPHON_SPAWN_TIME = 60
 
 local Yandir = {
-    id = 1,
+
     key = "yandir",
     hmHealthThreshold = 72769370,
     location = Location.new(63200, 68900, 24300, 26300, 90500, 99600),
@@ -33,7 +33,7 @@ Yandir.bGRYPHON_SKIP_FAILHP = 0
 -- Phase 4.2: [unitId] → CA cast bar ID; cleared and stopped on reset/death.
 Yandir.alertList = {}
 
-function Yandir:reset(forced)
+function Yandir:reset()
     self.totemTimer:reset()
     self.gryphonTimer:reset()
     self.bGRYPHON_SKIP      = false

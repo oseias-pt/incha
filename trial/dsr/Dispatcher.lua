@@ -10,18 +10,16 @@ local Dispatcher = {
 -- disable so the whole trial's code becomes eligible for GC when the
 -- player leaves the zone.
 local loadedModules = nil
+local activeTrial   = nil
 
 function Dispatcher.enable()
-    local trial
-    trial, loadedModules = ModuleLoader.loadScoped("trial.dsr.Factory")
-    trial:enable()
+    activeTrial, loadedModules = ModuleLoader.loadScoped("trial.dsr.Factory")
+    activeTrial:enable()
 end
 
 function Dispatcher.disable()
-    local factory = package.loaded["trial.dsr.Factory"]
-    if factory then
-        factory:disable()
-    end
+    if activeTrial then activeTrial:disable() end
+    activeTrial = nil
 
     if loadedModules then
         ModuleLoader.unload(loadedModules)

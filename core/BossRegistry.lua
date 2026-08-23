@@ -10,7 +10,8 @@ function BossRegistry.new(bosses)
         byKey = {},
     }, BossRegistry)
 
-    for _, boss in ipairs(self.bosses) do
+    for i, boss in ipairs(self.bosses) do
+        boss.id = i          -- auto-assigned from array position; matches Factory order
         self.byId[boss.id] = boss
         self.byKey[boss.key] = boss
     end
@@ -69,10 +70,10 @@ function BossRegistry:detectDifficulty(boss, effectiveMaxHealth)
     return Difficulty.NORMAL
 end
 
-function BossRegistry:resetAll(forced)
+function BossRegistry:resetAll()
     for _, boss in ipairs(self.bosses) do
         if boss.reset then
-            boss:reset(forced)
+            boss:reset()
         end
     end
 end

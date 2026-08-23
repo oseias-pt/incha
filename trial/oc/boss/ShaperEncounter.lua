@@ -11,7 +11,7 @@ local CHANNELER_SHIELD = 232510   -- EFFECT_GAINED → channelers shielding Shap
 local COL_CHARGE = { -3, 0, false, { 1, 0.4, 0, 0.4 }, { 1, 0.4, 0, 0.8 } }
 
 local ShaperEncounter = {
-    id                = 3,
+
     key               = "shaper",
     nameAliases       = { "Shaper of Flesh" },
     hmHealthThreshold = 0,

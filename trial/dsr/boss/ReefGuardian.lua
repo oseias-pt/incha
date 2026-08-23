@@ -49,7 +49,7 @@ local ACT_ACID    = { 8000, "MOVE OUT!", 0.3, 0.9, 0.1, 0.9, nil }
 
 -- ── Boss definition ───────────────────────────────────────────────────────
 local ReefGuardian = {
-    id   = 2,
+
     key  = "reef_guardian",
     name = "Reef Guardian",   -- TODO: verify via GetUnitName("boss1") in-game
     hmHealthThreshold = 100000001,  -- TODO: verify
@@ -72,7 +72,7 @@ ReefGuardian.acidicVulnLast = 0   -- time GAINED; 0 when inactive
 ReefGuardian.acidRefluxBarId = nil
 
 -- ── Lifecycle ─────────────────────────────────────────────────────────────
-function ReefGuardian:reset(forced)
+function ReefGuardian:reset()
     self.buildingStaticStacks   = 0
     self.buildingStaticEndTime  = 0
     self.volatileResidueStacks  = 0

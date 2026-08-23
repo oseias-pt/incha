@@ -46,7 +46,7 @@ end
 
 -- ── Boss definition ───────────────────────────────────────────────────────
 local Oaxiltso = {
-    id   = 1,
+
     key  = "oaxiltso",
     name = "Oaxiltso",   -- TODO: verify exact unit name via GetUnitName("boss1") in-game
 }
@@ -62,7 +62,7 @@ Oaxiltso.bossEnraged        = false
 Oaxiltso.miniEnraged        = false
 
 -- ── Lifecycle ─────────────────────────────────────────────────────────────
-function Oaxiltso:reset(forced)
+function Oaxiltso:reset()
     self.lastBlitz          = 0
     self.lastSludge         = 0
     self.lastPoisonTracker  = 0

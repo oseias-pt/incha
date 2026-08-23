@@ -17,7 +17,7 @@ local VITRIFY_CD       = 20.0
 local COL_INTERRUPT = { -3, 0, false, { 1, 0.1, 0.1, 0.4 }, { 1, 0.1, 0.1, 0.8 } }
 
 local XynizataEncounter = {
-    id                = 4,
+
     key               = "xynizata",
     nameAliases       = { "Xynizata" },
     hmHealthThreshold = 0,

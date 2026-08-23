@@ -126,7 +126,7 @@ end
 
 -- ── Boss definition ───────────────────────────────────────────────────────
 local Lokke = {
-    id   = 1,
+
     key  = "lokke",
     name = "Lokkestiiz",
     -- hmHealthThreshold: measure in-game
@@ -155,7 +155,7 @@ Lokke.landingTime   = 0      -- s: absolute time when boss lands
 Lokke.laserBarId    = nil    -- CA bar ID for laser countdown
 
 -- ── Lifecycle ─────────────────────────────────────────────────────────────
-function Lokke:reset(forced)
+function Lokke:reset()
     for _, cid in pairs(self.alertList) do CA.castAlertsStop(cid) end
     self.alertList = {}
     CA.castAlertsStop(self.laserBarId)
@@ -297,7 +297,7 @@ function Lokke:onUpdate(context, alerts)
     elseif landing > 0 then
         alerts:showInfo(4, "|c5cd65cLanding|r: " .. string.format("%.0f", landing) .. "s")
     else
-        local hp = context.extras.healthPercent
+        local hp = context.healthPercent
         if hp and hp > 20 then
             local flyAt
             if     hp >= 81 then flyAt = 81

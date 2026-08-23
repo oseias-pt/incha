@@ -9,7 +9,7 @@ local POWERFUL_THROW = 218971   -- BEGIN → caAlertCast; on player → explicit
 local COL_THROW = { -3, 0, false, { 1, 0.5, 0, 0.4 }, { 1, 0.5, 0, 0.8 } }
 
 local DarielEncounter = {
-    id                = 2,
+
     key               = "dariel",
     nameAliases       = { "Dariel" },
     hmHealthThreshold = 0,

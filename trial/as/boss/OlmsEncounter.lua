@@ -36,7 +36,7 @@ local SPAWN_DELAY = 12   -- Seconds after BOSS_EVENT before first mini ability
 local JUMP_THRESHOLDS = { 90, 75, 50, 25 }
 
 local OlmsEncounter = {
-    id           = 1,
+
     key          = "olms",
     nameAliases  = { "Saint Olms the Just" },
     -- hmHealthThreshold: TBD — verify in-game on vet HM

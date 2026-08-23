@@ -78,7 +78,7 @@ function Trial:onBossesChanged(forceReset)
         return
     end
 
-    self.registry:resetAll(forceReset)
+    self.registry:resetAll()
     self.healthThrottle:reset()
 
     local _, x, y, z = GetUnitWorldPosition("player")
@@ -135,7 +135,7 @@ function Trial:onPowerUpdate(powerValue, powerMax)
     end
 
     local healthPercent = powerValue / powerMax * 100
-    self.context.extras.healthPercent = healthPercent
+    self.context.healthPercent = healthPercent
 
     -- Boss mechanic callbacks run on every real tick regardless of
     -- throttling below - mechanic timing shouldn't depend on UI granularity.
@@ -198,7 +198,7 @@ function Trial:disable()
     end
 
     self.pipeline:disable()
-    self.registry:resetAll(true)
+    self.registry:resetAll()
     self.context:setBoss(nil)
     self.context:setDifficulty(Difficulty.NONE)
     self.healthThrottle:reset()

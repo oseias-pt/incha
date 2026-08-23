@@ -120,7 +120,7 @@ local COL_GALE  = { -3, 0, false, { 0, 0.87, 0.87, 0.4 }, { 0, 0.87, 0.87, 0.8 }
 local COL_ZMAJA = { -3, 0, false, { 0.6, 0, 0.8, 0.4 },   { 0.6, 0, 0.8, 0.8 } }   -- purple (shadow)
 
 local ZmajaEncounter = {
-    id           = 1,
+
     key          = "zmaja",
     nameAliases  = { "Z'Maja" },
     -- hmHealthThreshold: TBD — verify in-game on vet HM

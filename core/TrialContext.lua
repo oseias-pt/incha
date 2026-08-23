@@ -11,6 +11,7 @@ function TrialContext.new(trialId)
         difficulty = Difficulty.NONE,
         stage = 1,
         inCombat = false,
+        healthPercent = 0,
         extras = {},
     }, TrialContext)
 end

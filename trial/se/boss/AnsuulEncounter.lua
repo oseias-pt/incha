@@ -24,7 +24,7 @@ local CALAMITY_CD       = 25   -- subsequent calamity CD
 local COL_VOID = { -3, 0, false, { 0.5, 0, 0.7, 0.4 }, { 0.5, 0, 0.7, 0.8 } }  -- purple
 
 local AnsuulEncounter = {
-    id                = 3,
+
     key               = "ansuul",
     nameAliases       = { "Ansuul the Tormentor" },
     hmHealthThreshold = 100000000,  -- vet ~69M, HM ~160.7M

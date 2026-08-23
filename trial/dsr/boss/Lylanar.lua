@@ -95,7 +95,7 @@ local COL_ICE_HEAVY  = { -2, 0, false, { 0.3, 0.75, 1.0, 0.4 }, { 0.3, 0.75, 1.0
 
 -- ── Boss definition ───────────────────────────────────────────────────────
 local Lylanar = {
-    id           = 1,
+
     key          = "lylanar",
     name         = "Lylanar",        -- TODO: verify via GetUnitName("boss1") in-game
     nameAliases  = { "Turlassil" },  -- both bosses active simultaneously
@@ -136,7 +136,7 @@ Lylanar.frostHounds            = 0
 Lylanar.lastBrandMatch = 0   -- dedup for the combined MatchBrands alert
 
 -- ── Lifecycle ─────────────────────────────────────────────────────────────
-function Lylanar:reset(forced)
+function Lylanar:reset()
     self.cinderSurgeActive      = false
     self.lastFireImminentTime   = 0
     self.lastFireImminentPlayer = nil

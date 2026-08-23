@@ -23,7 +23,7 @@ local COL_LIGHTNING = { -3, 0, false, { 0.9, 0.9, 0.1, 0.4 }, { 0.9, 0.9, 0.1, 0
 local COL_CRYSTAL   = { -3, 0, false, { 0.7, 0.3, 1.0, 0.4 }, { 0.7, 0.3, 1.0, 0.8 } }
 
 local OrphicEncounter = {
-    id                = 3,
+
     key               = "orphic",
     nameAliases       = { "Orphic Shattered Shard" },
     hmHealthThreshold = 80000000,

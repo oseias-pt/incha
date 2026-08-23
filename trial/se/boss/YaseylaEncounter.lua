@@ -27,7 +27,7 @@ local COL_FIRE  = { -3, 0, false, { 1, 0.34, 0, 0.4 }, { 1, 0.34, 0, 0.8 } }    
 local COL_ICE   = { -3, 0, false, { 0.6, 0.8, 1, 0.4 }, { 0.6, 0.8, 1, 0.8 } }  -- pale blue
 
 local YaseylaEncounter = {
-    id                = 1,
+
     key               = "yaseyla",
     nameAliases       = { "Exarchanic Yaseyla" },
     hmHealthThreshold = 80000000,   -- vet ~65M, HM ~97.8M

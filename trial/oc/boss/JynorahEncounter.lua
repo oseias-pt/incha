@@ -48,7 +48,7 @@ local COL_ICE       = { -3, 0, false, { 0.3, 0.8, 1, 0.4 }, { 0.3, 0.8, 1, 0.8 }
 local COL_CLASH     = { -3, 0, false, { 1, 0.1, 0.1, 0.4 }, { 1, 0.1, 0.1, 0.8 } }
 
 local JynorahEncounter = {
-    id                = 1,
+
     key               = "jynorah",
     nameAliases       = { "Jynorah", "Skorkhif" },
     hmHealthThreshold = 0,

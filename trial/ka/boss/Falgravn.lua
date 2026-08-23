@@ -68,7 +68,7 @@ local NEXT_TORTURER_TP           = 25   -- torturer teleport countdown
 -- ── Boss definition ───────────────────────────────────────────────────────
 
 local Falgravn = {
-    id = 3,
+
     key = "falgravn",
     hmHealthThreshold = 248386060,
     location = Location.new(73700, 84500, 6000, 22500, 50200, 61900),
@@ -140,7 +140,7 @@ end
 
 -- ── Lifecycle ─────────────────────────────────────────────────────────────
 
-function Falgravn:reset(forced)
+function Falgravn:reset()
     self.CURRENT_STAGE    = 1
     self.bHM              = false
     self.bMove            = true

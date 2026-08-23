@@ -2,16 +2,16 @@ local ModuleLoader = require("core.ModuleLoader")
 
 local Dispatcher = { zoneId = 1427 }
 local loadedModules = nil
+local activeTrial   = nil
 
 function Dispatcher.enable()
-    local trial
-    trial, loadedModules = ModuleLoader.loadScoped("trial.se.Factory")
-    trial:enable()
+    activeTrial, loadedModules = ModuleLoader.loadScoped("trial.se.Factory")
+    activeTrial:enable()
 end
 
 function Dispatcher.disable()
-    local factory = package.loaded["trial.se.Factory"]
-    if factory then factory:disable() end
+    if activeTrial then activeTrial:disable() end
+    activeTrial = nil
     if loadedModules then
         ModuleLoader.unload(loadedModules)
         loadedModules = nil

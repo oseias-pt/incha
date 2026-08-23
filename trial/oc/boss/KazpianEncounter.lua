@@ -41,7 +41,7 @@ local COL_SLAM     = { -3, 0, false, { 1,   0.7, 0,   0.4 }, { 1,   0.7, 0,   0.
 local COL_SURGE    = { -3, 0, false, { 0.9, 0.9, 0.1, 0.4 }, { 0.9, 0.9, 0.1, 0.8 } }
 
 local KazpianEncounter = {
-    id                = 2,
+
     key               = "kazpian",
     nameAliases       = { "Overfiend Kazpian" },
     hmHealthThreshold = 0,

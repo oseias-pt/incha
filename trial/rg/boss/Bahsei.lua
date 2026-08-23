@@ -55,7 +55,7 @@ local ACT_METEOR    = { 10000, "KILL SUN!", 0.8, 0.0, 0.0, 0.9, nil }
 
 -- ── Boss definition ───────────────────────────────────────────────────────
 local Bahsei = {
-    id                = 2,
+
     key               = "bahsei",
     name              = "Bahsei",      -- TODO: verify; may be "Flame-Herald Bahsei"
     hmHealthThreshold = 100000001,     -- TODO: verify exact HM health pool in-game
@@ -76,7 +76,7 @@ Bahsei.sunBarId            = nil    -- CA CastAlertsStart bar for Prime Meteor
 Bahsei.lastPortalCW        = true   -- true=clockwise, false=CCW
 
 -- ── Lifecycle ─────────────────────────────────────────────────────────────
-function Bahsei:reset(forced)
+function Bahsei:reset()
     CA.castAlertsStop(self.sunBarId)
     self.sunBarId              = nil
     self.lastCursedGround      = 0

@@ -24,7 +24,7 @@ local COL_GEYSER = { -2, 0, false, { 1.0, 0.4, 0.0, 0.4 }, { 1.0, 0.4, 0.0, 0.8 
 
 -- ── Boss definition ───────────────────────────────────────────────────────
 local Yolna = {
-    id   = 2,
+
     key  = "yolna",
     name = "Yolnahkriin",
 }
@@ -36,7 +36,7 @@ Yolna.landingTime   = 0       -- s: absolute time when boss lands
 Yolna.cataBarId     = nil     -- CA CastAlertsStart bar ID
 
 -- ── Lifecycle ─────────────────────────────────────────────────────────────
-function Yolna:reset(forced)
+function Yolna:reset()
     for _, cid in pairs(self.alertList) do CA.castAlertsStop(cid) end
     self.alertList   = {}
     CA.castAlertsStop(self.cataBarId)
@@ -165,7 +165,7 @@ function Yolna:onUpdate(context, alerts)
     if landing > 0 then
         alerts:showInfo(4, "|c5cd65cLanding|r: " .. string.format("%.0f", landing) .. "s")
     else
-        local hp = context.extras.healthPercent
+        local hp = context.healthPercent
         if hp and hp > 25 then
             local flyAt
             if     hp >= 76 then flyAt = 76

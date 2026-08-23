@@ -48,7 +48,7 @@ local COL_THRASH = { -2, 0, false, { 0.9, 0.1,  0.1, 0.4 }, { 0.9, 0.1,  0.1, 0.
 
 -- ── Boss definition ───────────────────────────────────────────────────────
 local Nahvii = {
-    id   = 3,
+
     key  = "nahvii",
     name = "Nahviintaas",
 }
@@ -76,7 +76,7 @@ Nahvii.pinsTime         = 0     -- s: next pins attack (after bash + 20)
 Nahvii.thrashBarId      = nil
 
 -- ── Lifecycle ─────────────────────────────────────────────────────────────
-function Nahvii:reset(forced)
+function Nahvii:reset()
     for _, cid in pairs(self.alertList) do CA.castAlertsStop(cid) end
     self.alertList        = {}
     CA.castAlertsStop(self.thrashBarId)
@@ -386,7 +386,7 @@ function Nahvii:onUpdate(context, alerts)
     elseif wipeLeft > 0 then
         alerts:showInfo(4, "|c8a2be2Portal Wipe|r: " .. string.format("%.0f", wipeLeft) .. "s")
     elseif not self.inPortal then
-        local hp = context.extras.healthPercent
+        local hp = context.healthPercent
         if hp and hp > 39 then
             local flyAt
             if     hp >= 80 then flyAt = 80

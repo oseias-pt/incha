@@ -23,7 +23,7 @@ local COL_TEMPEST   = { -3, 0, false, { 0.2, 0.8, 1.0, 0.4 }, { 0.2, 0.8, 1.0, 0
 local COL_ATRONACH  = { -3, 0, false, { 1,   0.4, 0,   0.4 }, { 1,   0.4, 0,   0.8 } }
 
 local XorynEncounter = {
-    id                = 5,
+
     key               = "xoryn",
     nameAliases       = { "Xoryn" },
     hmHealthThreshold = 100000000,

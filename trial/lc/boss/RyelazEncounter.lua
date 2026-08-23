@@ -12,7 +12,7 @@ local PORCIN_DARK            = 219330   -- EFFECT_GAINED_DURATION → player on 
 local COL_ANNIHIL = { -3, 0, false, { 1, 0.65, 0, 0.4 }, { 1, 0.65, 0, 0.8 } }
 
 local RyelazEncounter = {
-    id                = 1,
+
     key               = "ryelaz",
     nameAliases       = { "Count Ryelaz", "Zilyesset" },
     hmHealthThreshold = 40000000,

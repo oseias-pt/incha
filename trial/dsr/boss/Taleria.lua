@@ -73,7 +73,7 @@ local ACT_BREAK  = { 4000, "Break free!", 0.9, 0.1, 0.1, 0.9, nil }
 
 -- ── Boss definition ───────────────────────────────────────────────────────
 local Taleria = {
-    id   = 3,
+
     key  = "taleria",
     name = "Tideborn Taleria",   -- TODO: verify via GetUnitName("boss1") in-game
     hmHealthThreshold = 100000001,  -- TODO: verify
@@ -96,7 +96,7 @@ Taleria.bridgeDone      = { false, false, false }
 Taleria.lureBarId = nil
 
 -- ── Lifecycle ─────────────────────────────────────────────────────────────
-function Taleria:reset(forced)
+function Taleria:reset()
     self.lastMaelstrom    = 0
     self.lastBehemothSumm = 0
     self.behemothSlam     = 0
@@ -397,7 +397,7 @@ function Taleria:onUpdate(context, alerts)
         alerts:showInfo(4, table.concat(bridgeLabels, "  "))
     else
         -- Show next bridge HP threshold if not all done
-        local hp = context.extras and context.extras.healthPercent
+        local hp = context.healthPercent
         local nextBridge = nil
         if hp then
             for i = 1, 3 do

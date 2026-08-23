@@ -7,18 +7,16 @@ local Dispatcher = {
 -- Loads trial.ss.Factory (and all its dependencies) on first zone entry;
 -- unloads everything on zone exit so trial code is eligible for GC.
 local loadedModules = nil
+local activeTrial   = nil
 
 function Dispatcher.enable()
-    local trial
-    trial, loadedModules = ModuleLoader.loadScoped("trial.ss.Factory")
-    trial:enable()
+    activeTrial, loadedModules = ModuleLoader.loadScoped("trial.ss.Factory")
+    activeTrial:enable()
 end
 
 function Dispatcher.disable()
-    local factory = package.loaded["trial.ss.Factory"]
-    if factory then
-        factory:disable()
-    end
+    if activeTrial then activeTrial:disable() end
+    activeTrial = nil
 
     if loadedModules then
         ModuleLoader.unload(loadedModules)

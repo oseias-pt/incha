@@ -22,7 +22,7 @@ local FOG_EXTEND_SECS   = 9      -- seconds added per extension cycle
 local INITIAL_PORTAL_DELAY = 15  -- first portal is shorter than the recurring interval
 
 local Vrol = {
-    id = 2,
+
     key = "vrol",
     hmHealthThreshold = 72769370,
     location = Location.new(110200, 118500, 24500, 29000, 65000, 78800),
@@ -45,7 +45,7 @@ Vrol.portalKillBarId   = nil
 Vrol.fogEndTime  = 0
 Vrol.fogHitCount = 0
 
-function Vrol:reset(forced)
+function Vrol:reset()
     -- First portal always spawns sooner than the recurring interval.
     self.portalTimer:reset(INITIAL_PORTAL_DELAY)
     self.conduitTimer:reset()
