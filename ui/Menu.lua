@@ -154,6 +154,19 @@ local OPTIONS = {
         getFunc = function() return Settings.get().trials.cr.enabled end,
         setFunc = function(v) Settings.get().trials.cr.enabled = v end,
     },
+
+    -- Section: Sanity's Edge
+    {
+        type = "header",
+        name = "Sanity's Edge",
+    },
+    {
+        type    = "checkbox",
+        name    = "Enable",
+        tooltip = "Track Yaseyla bomb timers, Chimera despawn/chain lightning, and Ansuul calamity/phase alerts.",
+        getFunc = function() return Settings.get().trials.se.enabled end,
+        setFunc = function(v) Settings.get().trials.se.enabled = v end,
+    },
 }
 
 -- ── Slash command fallback ────────────────────────────────────────────────
