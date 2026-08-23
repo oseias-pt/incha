@@ -1,7 +1,7 @@
 local Location = require("core.Location")
 local Timer    = require("lib.Timer")
 
--- ── Phase 4.2: CombatAlerts helpers ──────────────────────────────────────
+-- ── CombatAlerts helpers ──────────────────────────────────────────────────
 local function caAlertCast(...) if CombatAlerts then return CombatAlerts.AlertCast(...) end end
 local function caAlert(...)     if CombatAlerts then return CombatAlerts.Alert(...)     end end
 local function caCastAlertsStart(...)
@@ -13,7 +13,8 @@ end
 
 -- ── Ability IDs (from BSCHTKA_Vrol.lua) ───────────────────────────────────
 local VROL_PORTAL_CAST  = 133994  -- Portal cast BEGIN → reset portal timer + alert
-local VROL_FOG_CAST     = 133808  -- Fog cast BEGIN    → reset fog timer + alert
+local VROL_FOG_CAST     = 133808  -- Fog cast BEGIN    → starts fog duration countdown
+local VROL_FOG_INCREASE = 133756  -- Fog pulse hit     → every 3 hits extends fog by +9 s
 local VROL_PORTAL_KTIME = 134016  -- Portal kill-time debuff (EVENT_EFFECT_CHANGED, player only)
 local VROL_HARPOON      = 133913  -- Shocking Harpoon BEGIN → reset conduit timer + alert
 local VROL_APOTHECARY   = 140255  -- Apothecary BEGIN  → Interrupt alert
@@ -22,6 +23,9 @@ local VROL_APOTHECARY   = 140255  -- Apothecary BEGIN  → Interrupt alert
 local NEXT_PORTAL_TIME  = 45
 local NEXT_CONDUIT_TIME = 40
 local NEXT_FOG_TIME     = 30
+local FOG_DURATION      = 30     -- seconds the fog fills the room after the cast lands
+local FOG_EXTEND_HITS   = 3      -- pulse hits before fog duration extends
+local FOG_EXTEND_SECS   = 9      -- seconds added per extension cycle
 
 local INITIAL_PORTAL_DELAY = 15  -- first portal is shorter than the recurring interval
 
@@ -40,10 +44,14 @@ Vrol.bPORTAL_END       = false
 -- Portal kill-timer: ms timestamp when the current portal debuff expires.
 -- Set in onEffectChanged(EFFECT_RESULT_GAINED) to detect pass/fail on FADED.
 Vrol.portalKillExpires = 0
--- Phase 4.2: [unitId] → CA cast bar ID; cleared on reset/death.
+-- [unitId] → CA cast bar ID; cleared on reset/death.
 Vrol.alertList         = {}
--- Phase 4.2: CA cast bar ID for the portal-kill debuff (started/stopped in onEffectChanged).
+-- CA cast bar ID for the portal-kill debuff (started/stopped in onEffectChanged).
 Vrol.portalKillBarId   = nil
+-- Fog duration tracking: ms timestamp when the current fog clears (0 = no active fog).
+-- fogHitCount counts VROL_FOG_INCREASE pulses; resets every FOG_EXTEND_HITS.
+Vrol.fogEndTime  = 0
+Vrol.fogHitCount = 0
 
 function Vrol:reset(forced)
     -- First portal always spawns sooner than the recurring interval.
@@ -51,8 +59,10 @@ function Vrol:reset(forced)
     self.conduitTimer:reset()
     self.fogTimer:reset()
     self.bPORTAL_END = false
+    self.fogEndTime  = 0
+    self.fogHitCount = 0
 
-    -- Phase 4.2: stop any lingering cast bars from the previous pull.
+    -- Stop any lingering cast bars from the previous pull.
     for _, cid in pairs(self.alertList) do caCastAlertsStop(cid) end
     self.alertList = {}
     caCastAlertsStop(self.portalKillBarId)
@@ -88,10 +98,22 @@ function Vrol:onCombatEvent(context, alerts, result, abilityId,
 
     elseif abilityId == VROL_FOG_CAST and result == ACTION_RESULT_BEGIN then
         self.fogTimer:reset()
+        self.fogEndTime  = GetGameTimeMilliseconds() + FOG_DURATION * 1000
+        self.fogHitCount = 0
         alerts:showAction("Dodge/Move! (Fog)")
         local cid = caAlertCast(abilityId, sourceUnitName, 1000,
             { -3, 0, false, { 0.0, 0.0, 1, 0.4 }, { 0.1, 0.1, 1, 0.8 } })
         if cid and unitId then self.alertList[unitId] = cid end
+
+    elseif abilityId == VROL_FOG_INCREASE and result == ACTION_RESULT_BEGIN then
+        -- Each group of FOG_EXTEND_HITS pulses extends the active fog by FOG_EXTEND_SECS.
+        if self.fogEndTime > 0 then
+            self.fogHitCount = self.fogHitCount + 1
+            if self.fogHitCount >= FOG_EXTEND_HITS then
+                self.fogHitCount = 0
+                self.fogEndTime  = self.fogEndTime + FOG_EXTEND_SECS * 1000
+            end
+        end
 
     elseif abilityId == VROL_HARPOON and result == ACTION_RESULT_BEGIN then
         self.conduitTimer:reset()
@@ -146,10 +168,22 @@ end
 
 -- 200ms timer display — writes to info lines 1-3.
 function Vrol:onUpdate(context, alerts)
-    local t1 = self.fogTimer:remaining()
+    local now = GetGameTimeMilliseconds()
+
+    -- Info 1: fog duration while active, otherwise countdown to next cast.
+    local fogRemMs = self.fogEndTime - now
+    if fogRemMs > 0 then
+        local s = fogRemMs / 1000
+        local col = (s <= 5) and "|cff6666" or "|c6699ff"
+        alerts:showInfo(1, col .. "Fog clears:|r " .. string.format("%.1f", s) .. "s")
+    else
+        if self.fogEndTime > 0 then self.fogEndTime = 0 end   -- auto-clear stale timestamp
+        local t1 = self.fogTimer:remaining()
+        alerts:showInfo(1, "Next fog: " .. (t1 > 0 and ZO_FormatCountdownTimer(t1) or "soon!"))
+    end
+
     local t2 = self.conduitTimer:remaining()
     local t3 = self.portalTimer:remaining()
-    alerts:showInfo(1, "Fog:     " .. (t1 > 0 and ZO_FormatCountdownTimer(t1) or "ready"))
     alerts:showInfo(2, "Conduit: " .. (t2 > 0 and ZO_FormatCountdownTimer(t2) or "ready"))
     alerts:showInfo(3, "Portal:  " .. (t3 > 0 and ZO_FormatCountdownTimer(t3) or "ready"))
 end

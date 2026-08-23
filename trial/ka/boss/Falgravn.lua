@@ -43,7 +43,8 @@ local FALGRAVN_LIGHTNING    = 133428  -- Connect mechanic (90%/80%); OSI floor i
 local FALGRAVN_OPEN_DOOR    = 136693  -- Open the gates cast
 local FALGRAVN_TUT_FEED     = 137314  -- Torturer feeding prisoner
 local FALGRAVN_M_MOVE       = 136965  -- Njordal ground move AoE
-local FALGRAVN_M_BLOCK      = 136953  -- Njordal charge cast
+local FALGRAVN_M_BLOCK      = 136953  -- Njordal charge (triggers heavy; use 137499 for the bar)
+local FALGRAVN_M_BLOCK_HEAVY = 137499 -- "Bloody Frenzy" — the actual heavy-attack ability
 local FALGRAVN_M_CLEAVE     = 136976  -- Njordal blood cleave
 local FALGRAVN_BLOOD_FOUNT  = 140294  -- Blood Fountain cast
 local FALGRAVN_TORTURER_ESC = 139633  -- Torturer coming down
@@ -277,15 +278,17 @@ function Falgravn:onCombatEvent(context, alerts, result, abilityId,
         end
         return
     end
-    -- Block Cast (same dedup pattern)
+    -- Block Cast (same dedup pattern).
+    -- The charge (136953) immediately precedes the heavy attack (137499 "Bloody Frenzy");
+    -- use the heavy's ability ID for the cast bar so the icon/name match the telegraphed hit.
     if abilityId == FALGRAVN_M_BLOCK then
         if result == ACTION_RESULT_BEGIN and self.bBlock then
             self.bBlock = false
             alerts:showAction("Block Cast!")
-            local cid = caCastAlertsStart(abilityId, GetAbilityName(abilityId),
-                6000, 6000,
+            local cid = caCastAlertsStart(FALGRAVN_M_BLOCK_HEAVY, "Bloody Frenzy",
+                6500, 6500,
                 { 1, 0.7, 0, 0.5 },
-                { 6000, "Block Cast!", 0.8, 0, 0, 0.9, SOUNDS.NONE })
+                { 6500, "Block Cast!", 0.8, 0, 0, 0.9, SOUNDS.NONE })
             if cid and sourceUnitId then self.alertList[sourceUnitId] = cid end
         elseif result == ACTION_RESULT_EFFECT_FADED and not self.bBlock then
             self.bBlock = true
@@ -378,13 +381,21 @@ function Falgravn:onCombatEvent(context, alerts, result, abilityId,
         end
         return
     end
-    -- Open the Gates — recurring cast + timer reset
+    -- Open the Gates — recurring cast + timer reset.
+    -- 25 s after each gate opens the active torturer does a heavy attack on the tank;
+    -- schedule a CA cast bar so tanks know to block in time.
     if abilityId == FALGRAVN_OPEN_DOOR and result == ACTION_RESULT_BEGIN then
         self.openGatesTimer:reset(NEXT_OPENGATE_TIME)
         self.torturerTimer:reset(NEXT_TORTURER_TP)
         alerts:showAction("Open the Gates!")
         caAlert(nil, "Open the Gates!", 0x991111FF,
             SOUNDS.CHAMPION_POINTS_COMMITTED, 2000)
+        local capturedSrc = sourceUnitName or ""
+        zo_callLater(function()
+            if not IsUnitInCombat("player") then return end
+            caAlertCast(FALGRAVN_OPEN_DOOR, capturedSrc, 7500,
+                { -3, 0, false, { 0, 0, 0.7, 0.4 }, { 0, 0, 0.7, 0.8 } })
+        end, 25000)
         return
     end
     -- Torturer feeding: start kill countdown (deduped per feed cycle)
