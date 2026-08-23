@@ -35,54 +35,42 @@ local SPAWN_DELAY = 12   -- Seconds after BOSS_EVENT before first mini ability
 -- ── Jump milestone thresholds (%) ────────────────────────────────────────
 local JUMP_THRESHOLDS = { 90, 75, 50, 25 }
 
-local OlmsEncounter = {
+local OlmsEncounter = {}
+OlmsEncounter.__index = OlmsEncounter
 
-    key          = "olms",
-    nameAliases  = { "Saint Olms the Just" },
-    -- hmHealthThreshold: TBD — verify in-game on vet HM
-    hmHealthThreshold = 0,
-    -- Location: entire arena — name-based detection is used instead.
-    location = Location.new(0, 0, 0, 0, 0, 0),
-}
+OlmsEncounter.key               = "olms"
+OlmsEncounter.nameAliases       = { "Saint Olms the Just" }
+-- hmHealthThreshold: TBD — verify in-game on vet HM
+OlmsEncounter.hmHealthThreshold = 0
+-- Location: entire arena — name-based detection is used instead.
+OlmsEncounter.location          = Location.new(0, 0, 0, 0, 0, 0)
 
--- ── Timers ────────────────────────────────────────────────────────────────
--- Olms
-OlmsEncounter.stormTimer   = Timer.new(STORM_CD)
-OlmsEncounter.steamTimer   = Timer.new(STEAM_CD)
-OlmsEncounter.chargesTimer = Timer.new(CHARGES_CD)
-OlmsEncounter.fireTimer    = Timer.new(FIRE_CD)
--- Llothis
-OlmsEncounter.blastTimer   = Timer.new(BLAST_CD)
-OlmsEncounter.boltsTimer   = Timer.new(BOLTS_CD)
--- Felms
-OlmsEncounter.jumpTimer    = Timer.new(JUMP_CD)
+function OlmsEncounter.new()
+    return setmetatable({
+        -- Olms
+        stormTimer         = Timer.new(STORM_CD),
+        steamTimer         = Timer.new(STEAM_CD),
+        chargesTimer       = Timer.new(CHARGES_CD),
+        fireTimer          = Timer.new(FIRE_CD),
+        -- Llothis
+        blastTimer         = Timer.new(BLAST_CD),
+        boltsTimer         = Timer.new(BOLTS_CD),
+        -- Felms
+        jumpTimer          = Timer.new(JUMP_CD),
+        -- state
+        llothisActive      = false,
+        llothisSpawnTime   = nil,    -- os.time() at BOSS_EVENT for Llothis
+        felmsActive        = false,
+        felmsSpawnTime     = nil,    -- os.time() at BOSS_EVENT for Felms
+        protectorUp        = false,  -- true while Protector's Static Shield is active
+        nextJumpThreshold  = 1,
+        alertList          = {},
+    }, OlmsEncounter)
+end
 
--- ── State ─────────────────────────────────────────────────────────────────
-OlmsEncounter.llothisActive    = false
-OlmsEncounter.llothisSpawnTime = nil    -- os.time() at BOSS_EVENT for Llothis
-OlmsEncounter.felmsActive      = false
-OlmsEncounter.felmsSpawnTime   = nil    -- os.time() at BOSS_EVENT for Felms
-OlmsEncounter.protectorUp      = false  -- true while Protector's Static Shield is active
-OlmsEncounter.nextJumpThreshold = 1
--- CA cast-bar tracking: [unitId] → cid
-OlmsEncounter.alertList = {}
-
-function OlmsEncounter:reset()
-    self.stormTimer:reset()
-    self.steamTimer:reset()
-    self.chargesTimer:reset()
-    self.fireTimer:reset()
-    self.blastTimer:clear()
-    self.boltsTimer:clear()
-    self.jumpTimer:clear()
-    self.llothisActive      = false
-    self.llothisSpawnTime   = nil
-    self.felmsActive        = false
-    self.felmsSpawnTime     = nil
-    self.protectorUp        = false
-    self.nextJumpThreshold  = 1
+-- ── Lifecycle ─────────────────────────────────────────────────────────────
+function OlmsEncounter:onLeave(context)
     for _, cid in pairs(self.alertList) do CA.castAlertsStop(cid) end
-    self.alertList = {}
 end
 
 -- ── Timer seeding helper ──────────────────────────────────────────────────

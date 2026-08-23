@@ -40,29 +40,22 @@ local COL_LEAP_RED = { -3, 0, false, { 1,   0.1, 0.1, 0.4 }, { 1,   0.1, 0.1, 0.
 local COL_SLAM     = { -3, 0, false, { 1,   0.7, 0,   0.4 }, { 1,   0.7, 0,   0.8 } }
 local COL_SURGE    = { -3, 0, false, { 0.9, 0.9, 0.1, 0.4 }, { 0.9, 0.9, 0.1, 0.8 } }
 
-local KazpianEncounter = {
+local KazpianEncounter = {}
+KazpianEncounter.__index = KazpianEncounter
 
-    key               = "kazpian",
-    nameAliases       = { "Overfiend Kazpian" },
-    hmHealthThreshold = 0,
-    location          = Location.new(0, 0, 0, 0, 0, 0),
-}
+KazpianEncounter.key               = "kazpian"
+KazpianEncounter.nameAliases       = { "Overfiend Kazpian" }
+KazpianEncounter.hmHealthThreshold = 0
+KazpianEncounter.location          = Location.new(0, 0, 0, 0, 0, 0)
 
--- ── Timers ────────────────────────────────────────────────────────────────
-KazpianEncounter.bombDebounce = Timer.new(5.0)   -- dedup Agonizer Bombs spam
-
--- ── State ─────────────────────────────────────────────────────────────────
-KazpianEncounter.portalPhase     = 0
-KazpianEncounter.channelersDead  = 0
-KazpianEncounter.chainedA        = nil   -- first chained player name
-KazpianEncounter.chainedB        = nil   -- second chained player name
-
-function KazpianEncounter:reset()
-    self.bombDebounce:clear()
-    self.portalPhase    = 0
-    self.channelersDead = 0
-    self.chainedA       = nil
-    self.chainedB       = nil
+function KazpianEncounter.new()
+    return setmetatable({
+        bombDebounce    = Timer.new(5.0),   -- dedup Agonizer Bombs spam
+        portalPhase     = 0,
+        channelersDead  = 0,
+        chainedA        = nil,  -- first chained player name
+        chainedB        = nil,  -- second chained player name
+    }, KazpianEncounter)
 end
 
 function KazpianEncounter:onCombatEvent(context, alerts,

@@ -26,30 +26,27 @@ local CHAIN_CD             = 20   -- subsequent chain lightning CD
 -- ── CA colour palettes ────────────────────────────────────────────────────
 local COL_LIGHTNING = { -3, 0, false, { 1, 0.84, 0.4, 0.4 }, { 1, 0.84, 0.4, 0.8 } }  -- yellow
 
-local ChimeraEncounter = {
+local ChimeraEncounter = {}
+ChimeraEncounter.__index = ChimeraEncounter
 
-    key               = "chimera",
-    nameAliases       = { "Chimera" },
-    hmHealthThreshold = 70000000,   -- vet ~46.5M, HM ~93.1M
-    location          = Location.new(0, 0, 0, 0, 0, 0),
-}
+ChimeraEncounter.key               = "chimera"
+ChimeraEncounter.nameAliases       = { "Chimera" }
+ChimeraEncounter.hmHealthThreshold = 70000000   -- vet ~46.5M, HM ~93.1M
+ChimeraEncounter.location          = Location.new(0, 0, 0, 0, 0, 0)
 
--- ── Timers ────────────────────────────────────────────────────────────────
-ChimeraEncounter.despawnTimer = Timer.new(DESPAWN_CD)
-ChimeraEncounter.chainTimer   = Timer.new(CHAIN_CD)
+function ChimeraEncounter.new()
+    return setmetatable({
+        despawnTimer   = Timer.new(DESPAWN_CD),
+        chainTimer     = Timer.new(CHAIN_CD),
+        chimeraActive  = false,
+        firstChain     = true,
+        alertList      = {},
+    }, ChimeraEncounter)
+end
 
--- ── State ─────────────────────────────────────────────────────────────────
-ChimeraEncounter.chimeraActive    = false
-ChimeraEncounter.firstChain       = true
-ChimeraEncounter.alertList        = {}
-
-function ChimeraEncounter:reset()
-    self.despawnTimer:clear()
-    self.chainTimer:clear()
-    self.chimeraActive = false
-    self.firstChain    = true
+-- ── Lifecycle ─────────────────────────────────────────────────────────────
+function ChimeraEncounter:onLeave(context)
     for _, cid in pairs(self.alertList) do CA.castAlertsStop(cid) end
-    self.alertList = {}
 end
 
 function ChimeraEncounter:onCombatEvent(context, alerts,

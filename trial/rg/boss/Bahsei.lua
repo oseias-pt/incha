@@ -25,6 +25,7 @@
 ---
 --- HM detection: context.difficulty == Difficulty.HARDMODE
 ---   (set by BossRegistry:detectDifficulty via hmHealthThreshold=100000001)
+---   TODO: verify exact HM health pool in-game.
 
 local Difficulty      = require("core.Difficulty")
 local RockgroveCommon = require("trial.rg.RockgroveCommon")
@@ -54,58 +55,38 @@ local COL_METEOR    = { 1.0, 0.70, 0.0, 0.5 }
 local ACT_METEOR    = { 10000, "KILL SUN!", 0.8, 0.0, 0.0, 0.9, nil }
 
 -- ── Boss definition ───────────────────────────────────────────────────────
-local Bahsei = {
+local Bahsei = {}
+Bahsei.__index = Bahsei
 
-    key               = "bahsei",
-    name              = "Bahsei",      -- TODO: verify; may be "Flame-Herald Bahsei"
-    hmHealthThreshold = 100000001,     -- TODO: verify exact HM health pool in-game
-}
+Bahsei.key               = "bahsei"
+Bahsei.name              = "Bahsei"      -- TODO: verify; may be "Flame-Herald Bahsei"
+Bahsei.hmHealthThreshold = 100000001     -- TODO: verify exact HM health pool in-game
 
--- ── State ─────────────────────────────────────────────────────────────────
-Bahsei.lastCursedGround    = 0      -- s: last Cursed Ground cast time
-Bahsei.nextPortal          = 0      -- s: absolute time of next portal opening
-Bahsei.portalNumber        = 1      -- 1 or 2, alternates each cycle
-Bahsei.selfDoNotPortalTime = 0      -- s: until player's Malignant Marrow expires
-Bahsei.numPlayersInPortal  = 0
-Bahsei.portalTracker       = {}     -- [unitId] = true while in portal
-Bahsei.lastDeathTouch      = 0      -- s: when the local player received death touch
-Bahsei.nextMtExplosion     = 0      -- s: expected MT explosion time (lastDT + 9)
-Bahsei.mtUnitId            = nil    -- unitId of current main tank
-Bahsei.nextSickle          = 0      -- s: absolute time of next expected sickle
-Bahsei.sunBarId            = nil    -- CA CastAlertsStart bar for Prime Meteor
-Bahsei.lastPortalCW        = true   -- true=clockwise, false=CCW
+function Bahsei.new()
+    return setmetatable({
+        lastCursedGround    = 0,     -- s: last Cursed Ground cast time
+        nextPortal          = 0,     -- s: absolute time of next portal opening
+        portalNumber        = 1,     -- 1 or 2, alternates each cycle
+        selfDoNotPortalTime = 0,     -- s: until player's Malignant Marrow expires
+        numPlayersInPortal  = 0,
+        portalTracker       = {},    -- [unitId] = true while in portal
+        lastDeathTouch      = 0,     -- s: when the local player received death touch
+        nextMtExplosion     = 0,     -- s: expected MT explosion time (lastDT + 9)
+        mtUnitId            = nil,   -- unitId of current main tank
+        nextSickle          = 0,     -- s: absolute time of next expected sickle
+        sunBarId            = nil,   -- CA CastAlertsStart bar for Prime Meteor
+        lastPortalCW        = true,  -- true=clockwise, false=CCW
+    }, Bahsei)
+end
 
 -- ── Lifecycle ─────────────────────────────────────────────────────────────
-function Bahsei:reset()
+function Bahsei:onLeave(context)
     CA.castAlertsStop(self.sunBarId)
-    self.sunBarId              = nil
-    self.lastCursedGround      = 0
-    self.nextPortal            = 0
-    self.portalNumber          = 1
-    self.selfDoNotPortalTime   = 0
-    self.numPlayersInPortal    = 0
-    self.portalTracker         = {}
-    self.lastDeathTouch        = 0
-    self.nextMtExplosion       = 0
-    self.mtUnitId              = nil
-    self.nextSickle            = 0
-    self.lastPortalCW          = true
 end
 
 -- ── Combat state ──────────────────────────────────────────────────────────
 function Bahsei:onCombatState(context, inCombat, alerts)
     if inCombat then
-        CA.castAlertsStop(self.sunBarId)
-        self.sunBarId              = nil
-        self.lastCursedGround      = 0
-        self.portalNumber          = 1
-        self.numPlayersInPortal    = 0
-        self.portalTracker         = {}
-        self.lastDeathTouch        = 0
-        self.nextMtExplosion       = 0
-        self.nextSickle            = 0
-        self.selfDoNotPortalTime   = 0
-
         -- First portal opens ~20 s into the fight.
         -- HM only — nextPortal is displayed only when context.difficulty == HARDMODE.
         self.nextPortal = GetGameTimeMilliseconds() / 1000 + 20

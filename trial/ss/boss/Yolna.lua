@@ -23,27 +23,26 @@ local CA = require("lib.CA")
 local COL_GEYSER = { -2, 0, false, { 1.0, 0.4, 0.0, 0.4 }, { 1.0, 0.4, 0.0, 0.8 } }
 
 -- ── Boss definition ───────────────────────────────────────────────────────
-local Yolna = {
+local Yolna = {}
+Yolna.__index = Yolna
 
-    key  = "yolna",
-    name = "Yolnahkriin",
-}
+Yolna.key  = "yolna"
+Yolna.name = "Yolnahkriin"
 
-Yolna.alertList    = {}       -- [sourceUnitId] → CA bar ID (currently unused; kept for consistency)
-Yolna.nextFlareTime = 0       -- s: absolute time when next flare is due
-Yolna.cataEndTime   = 0       -- ms: absolute time when cataclysm channel ends
-Yolna.landingTime   = 0       -- s: absolute time when boss lands
-Yolna.cataBarId     = nil     -- CA CastAlertsStart bar ID
+function Yolna.new()
+    return setmetatable({
+        alertList     = {},   -- [sourceUnitId] → CA bar ID (currently unused; kept for consistency)
+        nextFlareTime = 0,    -- s: absolute time when next flare is due
+        cataEndTime   = 0,    -- ms: absolute time when cataclysm channel ends
+        landingTime   = 0,    -- s: absolute time when boss lands
+        cataBarId     = nil,  -- CA CastAlertsStart bar ID
+    }, Yolna)
+end
 
 -- ── Lifecycle ─────────────────────────────────────────────────────────────
-function Yolna:reset()
+function Yolna:onLeave(context)
     for _, cid in pairs(self.alertList) do CA.castAlertsStop(cid) end
-    self.alertList   = {}
     CA.castAlertsStop(self.cataBarId)
-    self.cataBarId     = nil
-    self.nextFlareTime = 0
-    self.cataEndTime   = 0
-    self.landingTime   = 0
 end
 
 -- ── Combat state (fight start / wipe) ─────────────────────────────────────

@@ -67,108 +67,94 @@ local NEXT_TORTURER_TP           = 25   -- torturer teleport countdown
 
 -- ── Boss definition ───────────────────────────────────────────────────────
 
-local Falgravn = {
+local Falgravn = {}
+Falgravn.__index = Falgravn
 
-    key = "falgravn",
-    hmHealthThreshold = 248386060,
-    location = Location.new(73700, 84500, 6000, 22500, 50200, 61900),
-    hideActionWhenNoRule = true,
-    healthRules = {
-        {
-            id   = "conga_90",
-            min  = 90, max = 93,
-            text = "Connect Soon! (90% / {hp}%)",
-            when = function(ctx, boss) return boss.showPercentUI end,
-        },
-        {
-            id   = "conga_80",
-            min  = 80, max = 83,
-            text = "Connect Soon! (80% / {hp}%)",
-            when = function(ctx, boss) return boss.showPercentUI end,
-        },
-        {
-            id   = "floor_shatter",
-            min  = 70, max = 73,
-            text = "Dont Ult (Floor Shatter)! (70% / {hp}%)",
-            when = function(ctx, boss) return boss.showPercentUI end,
-        },
-        {
-            id   = "dont_ult",
-            min  = 35, max = 38,
-            text = "Dont Ult! (35% / {hp}%)",
-            when = function(ctx, boss) return boss.showPercentUI and ctx.stage < 3 end,
-        },
+Falgravn.key                  = "falgravn"
+Falgravn.hmHealthThreshold    = 248386060
+Falgravn.location             = Location.new(73700, 84500, 6000, 22500, 50200, 61900)
+Falgravn.hideActionWhenNoRule = true
+Falgravn.healthRules          = {
+    {
+        id   = "conga_90",
+        min  = 90, max = 93,
+        text = "Connect Soon! (90% / {hp}%)",
+        when = function(ctx, boss) return boss.showPercentUI end,
+    },
+    {
+        id   = "conga_80",
+        min  = 80, max = 83,
+        text = "Connect Soon! (80% / {hp}%)",
+        when = function(ctx, boss) return boss.showPercentUI end,
+    },
+    {
+        id   = "floor_shatter",
+        min  = 70, max = 73,
+        text = "Dont Ult (Floor Shatter)! (70% / {hp}%)",
+        when = function(ctx, boss) return boss.showPercentUI end,
+    },
+    {
+        id   = "dont_ult",
+        min  = 35, max = 38,
+        text = "Dont Ult! (35% / {hp}%)",
+        when = function(ctx, boss) return boss.showPercentUI and ctx.stage < 3 end,
     },
 }
 
--- ── Stage / mechanic state ────────────────────────────────────────────────
-Falgravn.showPercentUI    = false  -- reflects Settings.trial("ka").showPercent; read by healthRules.when()
-Falgravn.CURRENT_STAGE    = 1
-Falgravn.bHM              = false
--- Dedup flags for Njordal's recurring mechanics (reset each encounter).
-Falgravn.bMove            = true
-Falgravn.bBlock           = true
-Falgravn.bConnect         = true
--- Torturer encounter state.
-Falgravn.bStartTorturerCD = true
-Falgravn.torturerCount    = 8
--- [unitId] → CA cast bar ID; cleared on reset/death.
-Falgravn.alertList        = {}
--- CA cast bar for the Prison debuff (single-slot; matches BSCHTKA pattern).
-Falgravn.prisonBarId      = nil
--- OSI mechanic icon tracking: [unitTag] → displayName.
--- Populated on EFFECT_RESULT_GAINED, cleared on FADED or reset.
-Falgravn.osiPrison      = {}
-Falgravn.osiInstability = {}
-Falgravn.osiSynergy     = {}
-
--- ── Timers ────────────────────────────────────────────────────────────────
--- instabilityTimer is armed in reset() (begins on boss entry).
--- The other three are armed only by specific combat events.
-Falgravn.instabilityTimer = Timer.new(INSTABILITY_INITIAL_DELAY)
-Falgravn.bloodBallTimer   = Timer.new(NEXT_BLOODBALL)
-Falgravn.openGatesTimer   = Timer.new(NEXT_OPENGATE_TIME)
-Falgravn.torturerTimer    = Timer.new(NEXT_TORTURER_TP)
-
--- ── Prisoner tracking ─────────────────────────────────────────────────────
-local PRISONERS = {
-    Brekalda = 0, Thjorlak = 0, Aevar       = 0, Triveta = 0,
-    Skormgondar = 0, Irthrig = 0, Ama        = 0, Sislea  = 0,
-}
-local function resetPrisoners()
-    for name in pairs(PRISONERS) do PRISONERS[name] = 0 end
+function Falgravn.new()
+    return setmetatable({
+        -- Stage / mechanic state
+        showPercentUI    = false,  -- reflects Settings.trial("ka").showPercent; read by healthRules.when()
+        CURRENT_STAGE    = 1,
+        bHM              = false,
+        -- Dedup flags for Njordal's recurring mechanics (reset each encounter).
+        bMove            = true,
+        bBlock           = true,
+        bConnect         = true,
+        -- Torturer encounter state.
+        bStartTorturerCD = true,
+        torturerCount    = 8,
+        -- [unitId] → CA cast bar ID; cleared on leave/death.
+        alertList        = {},
+        -- CA cast bar for the Prison debuff (single-slot; matches BSCHTKA pattern).
+        prisonBarId      = nil,
+        -- OSI mechanic icon tracking: [unitTag] → displayName.
+        -- Populated on EFFECT_RESULT_GAINED, cleared on FADED or leave.
+        osiPrison      = {},
+        osiInstability = {},
+        osiSynergy     = {},
+        -- Timers; instabilityTimer is armed in onCombatState (begins on boss entry).
+        -- The other three are armed only by specific combat events.
+        instabilityTimer = Timer.new(INSTABILITY_INITIAL_DELAY),
+        bloodBallTimer   = Timer.new(NEXT_BLOODBALL),
+        openGatesTimer   = Timer.new(NEXT_OPENGATE_TIME),
+        torturerTimer    = Timer.new(NEXT_TORTURER_TP),
+        -- Prisoner tracking: stack count per prisoner name.
+        PRISONERS = {
+            Brekalda = 0, Thjorlak = 0, Aevar       = 0, Triveta = 0,
+            Skormgondar = 0, Irthrig = 0, Ama        = 0, Sislea  = 0,
+        },
+    }, Falgravn)
 end
 
 -- ── Lifecycle ─────────────────────────────────────────────────────────────
 
-function Falgravn:reset()
-    self.CURRENT_STAGE    = 1
-    self.bHM              = false
-    self.bMove            = true
-    self.bBlock           = true
-    self.bConnect         = true
-    self.bStartTorturerCD = true
-    self.torturerCount    = 8
-    self.instabilityTimer:reset()
-    -- Combat-event-armed timers: clear to expired so :remaining() returns 0.
-    self.bloodBallTimer:clear()
-    self.openGatesTimer:clear()
-    self.torturerTimer:clear()
-    resetPrisoners()
-
-    -- Stop any lingering CA cast bars from the previous pull.
+function Falgravn:onLeave(context)
+    -- Stop any lingering CA cast bars.
     for _, cid in pairs(self.alertList) do CA.castAlertsStop(cid) end
-    self.alertList   = {}
     CA.castAlertsStop(self.prisonBarId)
-    self.prisonBarId = nil
-
-    -- Remove any OSI mechanic icons left over from the previous pull.
+    -- Remove any OSI mechanic icons.
     for _, dn in pairs(self.osiPrison)      do osiRemove(dn) end
     for _, dn in pairs(self.osiInstability) do osiRemove(dn) end
     for _, dn in pairs(self.osiSynergy)     do osiRemove(dn) end
-    self.osiPrison      = {}
-    self.osiInstability = {}
-    self.osiSynergy     = {}
+end
+
+-- ── Combat state ──────────────────────────────────────────────────────────
+
+function Falgravn:onCombatState(context, inCombat, alerts)
+    if inCombat then
+        self.instabilityTimer:reset()
+    end
 end
 
 function Falgravn:onEnter(context, alerts)
@@ -476,9 +462,9 @@ function Falgravn:onEffectChanged(context, alerts, changeType, abilityId, unitTa
     -- Prisoner stack tracking — 11 stacks means that torturer's prisoner is lost
     if abilityId == FALGRAVN_PRISONER_F and changeType == EFFECT_RESULT_GAINED then
         local name = zo_strformat("<<1>>", unitName)
-        if PRISONERS[name] ~= nil then
-            PRISONERS[name] = PRISONERS[name] + 1
-            if PRISONERS[name] == 11 then
+        if self.PRISONERS[name] ~= nil then
+            self.PRISONERS[name] = self.PRISONERS[name] + 1
+            if self.PRISONERS[name] == 11 then
                 self.torturerCount = self.torturerCount - 1
                     -- (see torturer-feeding TODO above)
             end

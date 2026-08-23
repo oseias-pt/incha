@@ -50,6 +50,10 @@ function Trial.create(options)
         context = TrialContext.new(options.id),
         alerts = AlertSink.new(options.alerts),
         enabled = false,
+        -- The live boss instance for the current encounter; nil between bosses.
+        -- Always a fresh object created by the boss class's new() factory —
+        -- never the class prototype itself.
+        activeBoss = nil,
         -- Only gates the cosmetic health-rule text (and the AlertSink calls
         -- it triggers), not boss:onPowerUpdate itself, so mechanic timing
         -- logic still sees every real tick. 1% granularity is safe since
@@ -92,11 +96,7 @@ function Trial:isActiveZone()
 end
 
 function Trial:getActiveBoss()
-    if not self.context.bossId then
-        return nil
-    end
-
-    return self.registry:getById(self.context.bossId)
+    return self.activeBoss
 end
 
 function Trial:onBossesChanged(forceReset)
@@ -104,40 +104,50 @@ function Trial:onBossesChanged(forceReset)
         return
     end
 
-    self.registry:resetAll()
+    -- Give the outgoing boss a chance to clean up (stop CA bars, unregister events).
+    if self.activeBoss then
+        if self.activeBoss.onLeave then
+            self.activeBoss:onLeave(self.context)
+        end
+        self.activeBoss = nil
+    end
+
     self.healthThrottle:reset()
 
     local _, x, y, z = GetUnitWorldPosition("player")
-    local boss = self.registry:findAtPosition(x, y, z)
+    local bossClass = self.registry:findAtPosition(x, y, z)
 
     -- Fallback: name-based detection for trials whose bosses carry a `name`
     -- field instead of (or in addition to) a location bounding box.
     -- Check boss1–boss4 so concurrent-boss encounters (e.g. Ryelaz+Zilyesset)
     -- are detected correctly regardless of which slot the engine assigns first.
-    if not boss then
+    if not bossClass then
         for _, slot in ipairs({"boss1", "boss2", "boss3", "boss4"}) do
             if DoesUnitExist(slot) then
                 local candidate = self.registry:findByName(GetUnitName(slot))
                 if candidate then
-                    boss = candidate
+                    bossClass = candidate
                     break
                 end
             end
         end
     end
 
-    if boss then
-        self.context:setBoss(boss)
+    if bossClass then
+        -- Create a fresh instance — no state carried over from previous pulls.
+        local instance = bossClass.new()
+        self.activeBoss = instance
+        self.context:setBoss(instance)
 
         local _, _, effectiveMax = GetUnitPower("boss1", POWERTYPE_HEALTH)
-        self.context:setDifficulty(self.registry:detectDifficulty(boss, effectiveMax))
+        self.context:setDifficulty(self.registry:detectDifficulty(bossClass, effectiveMax))
 
-        if boss.onEnter then
-            boss:onEnter(self.context, self.alerts)
+        if instance.onEnter then
+            instance:onEnter(self.context, self.alerts)
         end
 
         if self.bridge and self.bridge.onBossEnter then
-            self.bridge.onBossEnter(boss, self.context)
+            self.bridge.onBossEnter(instance, self.context)
         end
     else
         self.context:setBoss(nil)
@@ -224,7 +234,12 @@ function Trial:disable()
     end
 
     self.pipeline:disable()
-    self.registry:resetAll()
+
+    if self.activeBoss and self.activeBoss.onLeave then
+        self.activeBoss:onLeave(self.context)
+    end
+    self.activeBoss = nil
+
     self.context:setBoss(nil)
     self.context:setDifficulty(Difficulty.NONE)
     self.healthThrottle:reset()

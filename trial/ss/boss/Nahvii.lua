@@ -47,53 +47,42 @@ local COL_STONE  = { -2, 0, false, { 0.7, 0.52, 0.0, 0.4 }, { 0.7, 0.52, 0.0, 0.
 local COL_THRASH = { -2, 0, false, { 0.9, 0.1,  0.1, 0.4 }, { 0.9, 0.1,  0.1, 0.8 } }
 
 -- ── Boss definition ───────────────────────────────────────────────────────
-local Nahvii = {
+local Nahvii = {}
+Nahvii.__index = Nahvii
 
-    key  = "nahvii",
-    name = "Nahviintaas",
-}
+Nahvii.key  = "nahvii"
+Nahvii.name = "Nahviintaas"
 
-Nahvii.alertList        = {}    -- [sourceUnitId] → CA bar (Slam/Stonefist)
--- Meteor
-Nahvii.meteorTargets    = {}    -- [unitTag] → displayName
-Nahvii.meteorDisplayEnd = 0     -- ms: when to stop showing meteor targets
--- NextMeteor / Thrash
-Nahvii.nextMeteorTime   = 0     -- s: when next meteor is due
--- FireStorm / landing
-Nahvii.stormTime        = 0     -- s: absolute time when storm ends (FireStorm begins + 13.7)
-Nahvii.landingTime      = 0     -- s: stormTime + 6.6
-Nahvii.firstStormTrig   = true  -- skip-first dedup
--- Portal
-Nahvii.portalTime       = 0     -- s: portal window expires (open + 14)
-Nahvii.wipeTime         = 0     -- s: raid wipe (portal open + 98)
-Nahvii.cptPortal        = 0     -- group members who entered portal this cycle
-Nahvii.inPortal         = false
--- Portal interrupt
-Nahvii.interruptTime    = 0     -- ms: interrupt window expires
-Nahvii.interruptUnitId  = nil   -- unitId of eternal servant being interrupted
-Nahvii.pinsTime         = 0     -- s: next pins attack (after bash + 20)
--- Misc CA bars
-Nahvii.thrashBarId      = nil
+function Nahvii.new()
+    return setmetatable({
+        alertList        = {},    -- [sourceUnitId] → CA bar (Slam/Stonefist)
+        -- Meteor
+        meteorTargets    = {},    -- [unitTag] → displayName
+        meteorDisplayEnd = 0,     -- ms: when to stop showing meteor targets
+        -- NextMeteor / Thrash
+        nextMeteorTime   = 0,     -- s: when next meteor is due
+        -- FireStorm / landing
+        stormTime        = 0,     -- s: absolute time when storm ends (FireStorm begins + 13.7)
+        landingTime      = 0,     -- s: stormTime + 6.6
+        firstStormTrig   = true,  -- skip-first dedup
+        -- Portal
+        portalTime       = 0,     -- s: portal window expires (open + 14)
+        wipeTime         = 0,     -- s: raid wipe (portal open + 98)
+        cptPortal        = 0,     -- group members who entered portal this cycle
+        inPortal         = false,
+        -- Portal interrupt
+        interruptTime    = 0,     -- ms: interrupt window expires
+        interruptUnitId  = nil,   -- unitId of eternal servant being interrupted
+        pinsTime         = 0,     -- s: next pins attack (after bash + 20)
+        -- Misc CA bars
+        thrashBarId      = nil,
+    }, Nahvii)
+end
 
 -- ── Lifecycle ─────────────────────────────────────────────────────────────
-function Nahvii:reset()
+function Nahvii:onLeave(context)
     for _, cid in pairs(self.alertList) do CA.castAlertsStop(cid) end
-    self.alertList        = {}
     CA.castAlertsStop(self.thrashBarId)
-    self.thrashBarId      = nil
-    self.meteorTargets    = {}
-    self.meteorDisplayEnd = 0
-    self.nextMeteorTime   = 0
-    self.stormTime        = 0
-    self.landingTime      = 0
-    self.firstStormTrig   = true
-    self.portalTime       = 0
-    self.wipeTime         = 0
-    self.cptPortal        = 0
-    self.inPortal         = false
-    self.interruptTime    = 0
-    self.interruptUnitId  = nil
-    self.pinsTime         = 0
 end
 
 -- ── Combat events ─────────────────────────────────────────────────────────

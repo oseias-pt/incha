@@ -26,36 +26,30 @@ local FROST_CD           = 25     -- subsequent frost bomb CD
 local COL_FIRE  = { -3, 0, false, { 1, 0.34, 0, 0.4 }, { 1, 0.34, 0, 0.8 } }    -- orange-red
 local COL_ICE   = { -3, 0, false, { 0.6, 0.8, 1, 0.4 }, { 0.6, 0.8, 1, 0.8 } }  -- pale blue
 
-local YaseylaEncounter = {
+local YaseylaEncounter = {}
+YaseylaEncounter.__index = YaseylaEncounter
 
-    key               = "yaseyla",
-    nameAliases       = { "Exarchanic Yaseyla" },
-    hmHealthThreshold = 80000000,   -- vet ~65M, HM ~97.8M
-    location          = Location.new(0, 0, 0, 0, 0, 0),
-}
+YaseylaEncounter.key               = "yaseyla"
+YaseylaEncounter.nameAliases       = { "Exarchanic Yaseyla" }
+YaseylaEncounter.hmHealthThreshold = 80000000   -- vet ~65M, HM ~97.8M
+YaseylaEncounter.location          = Location.new(0, 0, 0, 0, 0, 0)
 
--- ── Timers ────────────────────────────────────────────────────────────────
-YaseylaEncounter.firebombTimer = Timer.new(FIREBOMB_CD)
-YaseylaEncounter.chainTimer    = Timer.new(CHAIN_CD)
-YaseylaEncounter.frostTimer    = Timer.new(FROST_CD)
+function YaseylaEncounter.new()
+    return setmetatable({
+        firebombTimer  = Timer.new(FIREBOMB_CD),
+        chainTimer     = Timer.new(CHAIN_CD),
+        frostTimer     = Timer.new(FROST_CD),
+        executePhase   = false,
+        firstFirebomb  = true,
+        firstFrost     = true,
+        shrapnelCount  = 0,
+        alertList      = {},
+    }, YaseylaEncounter)
+end
 
--- ── State ─────────────────────────────────────────────────────────────────
-YaseylaEncounter.executePhase     = false
-YaseylaEncounter.firstFirebomb    = true
-YaseylaEncounter.firstFrost       = true
-YaseylaEncounter.shrapnelCount    = 0
-YaseylaEncounter.alertList        = {}
-
-function YaseylaEncounter:reset()
-    self.firebombTimer:clear()
-    self.chainTimer:clear()
-    self.frostTimer:clear()
-    self.executePhase  = false
-    self.firstFirebomb = true
-    self.firstFrost    = true
-    self.shrapnelCount = 0
+-- ── Lifecycle ─────────────────────────────────────────────────────────────
+function YaseylaEncounter:onLeave(context)
     for _, cid in pairs(self.alertList) do CA.castAlertsStop(cid) end
-    self.alertList = {}
 end
 
 function YaseylaEncounter:onCombatEvent(context, alerts,

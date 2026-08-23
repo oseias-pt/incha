@@ -22,25 +22,20 @@ local COL_NECROTIC  = { -3, 0, false, { 0.5, 0,   0.9, 0.4 }, { 0.5, 0,   0.9, 0
 local COL_TEMPEST   = { -3, 0, false, { 0.2, 0.8, 1.0, 0.4 }, { 0.2, 0.8, 1.0, 0.8 } }
 local COL_ATRONACH  = { -3, 0, false, { 1,   0.4, 0,   0.4 }, { 1,   0.4, 0,   0.8 } }
 
-local XorynEncounter = {
+local XorynEncounter = {}
+XorynEncounter.__index = XorynEncounter
 
-    key               = "xoryn",
-    nameAliases       = { "Xoryn" },
-    hmHealthThreshold = 100000000,
-    location          = Location.new(0, 0, 0, 0, 0, 0),
-}
+XorynEncounter.key               = "xoryn"
+XorynEncounter.nameAliases       = { "Xoryn" }
+XorynEncounter.hmHealthThreshold = 100000000
+XorynEncounter.location          = Location.new(0, 0, 0, 0, 0, 0)
 
--- ── Timers ────────────────────────────────────────────────────────────────
-XorynEncounter.currentTimer = Timer.new(CURRENT_MAX_DUR)
-
--- ── State ─────────────────────────────────────────────────────────────────
-XorynEncounter.holdingKnot    = false
-XorynEncounter.holdingCurrent = false
-
-function XorynEncounter:reset()
-    self.currentTimer:clear()
-    self.holdingKnot    = false
-    self.holdingCurrent = false
+function XorynEncounter.new()
+    return setmetatable({
+        currentTimer    = Timer.new(CURRENT_MAX_DUR),
+        holdingKnot     = false,
+        holdingCurrent  = false,
+    }, XorynEncounter)
 end
 
 function XorynEncounter:onCombatEvent(context, alerts,

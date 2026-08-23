@@ -16,27 +16,21 @@ local VITRIFY_CD       = 20.0
 -- ── CA colour palettes ────────────────────────────────────────────────────
 local COL_INTERRUPT = { -3, 0, false, { 1, 0.1, 0.1, 0.4 }, { 1, 0.1, 0.1, 0.8 } }
 
-local XynizataEncounter = {
+local XynizataEncounter = {}
+XynizataEncounter.__index = XynizataEncounter
 
-    key               = "xynizata",
-    nameAliases       = { "Xynizata" },
-    hmHealthThreshold = 0,
-    location          = Location.new(0, 0, 0, 0, 0, 0),
-}
+XynizataEncounter.key               = "xynizata"
+XynizataEncounter.nameAliases       = { "Xynizata" }
+XynizataEncounter.hmHealthThreshold = 0
+XynizataEncounter.location          = Location.new(0, 0, 0, 0, 0, 0)
 
--- ── Timers ────────────────────────────────────────────────────────────────
-XynizataEncounter.piercingBeamTimer = Timer.new(BEAM_CD)
-XynizataEncounter.vitrifyTimer      = Timer.new(VITRIFY_CD)
-
--- ── State ─────────────────────────────────────────────────────────────────
-XynizataEncounter.firstBeam    = true
-XynizataEncounter.firstVitrify = true
-
-function XynizataEncounter:reset()
-    self.piercingBeamTimer:clear()
-    self.vitrifyTimer:clear()
-    self.firstBeam    = true
-    self.firstVitrify = true
+function XynizataEncounter.new()
+    return setmetatable({
+        piercingBeamTimer = Timer.new(BEAM_CD),
+        vitrifyTimer      = Timer.new(VITRIFY_CD),
+        firstBeam         = true,
+        firstVitrify      = true,
+    }, XynizataEncounter)
 end
 
 function XynizataEncounter:onCombatEvent(context, alerts,

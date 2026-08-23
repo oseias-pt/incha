@@ -94,85 +94,49 @@ local COL_FIRE_HEAVY = { -2, 0, false, { 1.0, 0.35, 0.1, 0.4 }, { 1.0, 0.35, 0.1
 local COL_ICE_HEAVY  = { -2, 0, false, { 0.3, 0.75, 1.0, 0.4 }, { 0.3, 0.75, 1.0, 0.8 } }
 
 -- ── Boss definition ───────────────────────────────────────────────────────
-local Lylanar = {
+local Lylanar = {}
+Lylanar.__index = Lylanar
 
-    key          = "lylanar",
-    name         = "Lylanar",        -- TODO: verify via GetUnitName("boss1") in-game
-    nameAliases  = { "Turlassil" },  -- both bosses active simultaneously
-    hmHealthThreshold = 100000001,   -- TODO: verify exact HM health pool
-}
+Lylanar.key          = "lylanar"
+Lylanar.name         = "Lylanar"        -- TODO: verify via GetUnitName("boss1") in-game
+Lylanar.nameAliases  = { "Turlassil" }  -- both bosses active simultaneously
+Lylanar.hmHealthThreshold = 100000001   -- TODO: verify exact HM health pool
 
--- ── State — Fire ──────────────────────────────────────────────────────────
-Lylanar.cinderSurgeActive      = false   -- currently channelling ice dome
-Lylanar.lastFireImminentTime   = 0
-Lylanar.lastFireImminentPlayer = nil
-Lylanar.lastFireFragilityTime  = 0
-Lylanar.lastFireFragilityPlyr  = nil
-Lylanar.lastMagmaSpike         = 0
-Lylanar.lastIncendiaryAxe      = 0
-Lylanar.destructiveEmberStacks = 0
-Lylanar.destructiveEmberName   = nil
-Lylanar.lastDestructiveEmber   = 0       -- last GAINED/UPDATED time
-Lylanar.firebrandTracker       = {}      -- {unitId, name} pairs collected this cast
-Lylanar.lastBrandMatchFire     = 0       -- dedup gate
-Lylanar.flameHounds            = 0
+function Lylanar.new()
+    return setmetatable({
+        -- State — Fire
+        cinderSurgeActive      = false,
+        lastFireImminentTime   = 0,
+        lastFireImminentPlayer = nil,
+        lastFireFragilityTime  = 0,
+        lastFireFragilityPlyr  = nil,
+        lastMagmaSpike         = 0,
+        lastIncendiaryAxe      = 0,
+        destructiveEmberStacks = 0,
+        destructiveEmberName   = nil,
+        lastDestructiveEmber   = 0,      -- last GAINED/UPDATED time
+        firebrandTracker       = {},     -- {unitId, name} pairs collected this cast
+        lastBrandMatchFire     = 0,      -- dedup gate
+        flameHounds            = 0,
 
--- ── State — Ice ───────────────────────────────────────────────────────────
-Lylanar.numbingShardsActive    = false
-Lylanar.lastIceImminentTime    = 0
-Lylanar.lastIceImminentPlayer  = nil
-Lylanar.lastIceFragilityTime   = 0
-Lylanar.lastIceFragilityPlyr   = nil
-Lylanar.lastGlacialSpike       = 0
-Lylanar.lastCalamitousSword    = 0
-Lylanar.piercingHailstacks     = 0
-Lylanar.piercingHailName       = nil
-Lylanar.lastPiercingHail       = 0
-Lylanar.frostbrandTracker      = {}
-Lylanar.lastBrandMatchIce      = 0
-Lylanar.frostHounds            = 0
+        -- State — Ice
+        numbingShardsActive    = false,
+        lastIceImminentTime    = 0,
+        lastIceImminentPlayer  = nil,
+        lastIceFragilityTime   = 0,
+        lastIceFragilityPlyr   = nil,
+        lastGlacialSpike       = 0,
+        lastCalamitousSword    = 0,
+        piercingHailstacks     = 0,
+        piercingHailName       = nil,
+        lastPiercingHail       = 0,
+        frostbrandTracker      = {},
+        lastBrandMatchIce      = 0,
+        frostHounds            = 0,
 
--- ── State — Shared ────────────────────────────────────────────────────────
-Lylanar.lastBrandMatch = 0   -- dedup for the combined MatchBrands alert
-
--- ── Lifecycle ─────────────────────────────────────────────────────────────
-function Lylanar:reset()
-    self.cinderSurgeActive      = false
-    self.lastFireImminentTime   = 0
-    self.lastFireImminentPlayer = nil
-    self.lastFireFragilityTime  = 0
-    self.lastFireFragilityPlyr  = nil
-    self.lastMagmaSpike         = 0
-    self.lastIncendiaryAxe      = 0
-    self.destructiveEmberStacks = 0
-    self.destructiveEmberName   = nil
-    self.lastDestructiveEmber   = 0
-    self.firebrandTracker       = {}
-    self.lastBrandMatchFire     = 0
-    self.flameHounds            = 0
-
-    self.numbingShardsActive    = false
-    self.lastIceImminentTime    = 0
-    self.lastIceImminentPlayer  = nil
-    self.lastIceFragilityTime   = 0
-    self.lastIceFragilityPlyr   = nil
-    self.lastGlacialSpike       = 0
-    self.lastCalamitousSword    = 0
-    self.piercingHailstacks     = 0
-    self.piercingHailName       = nil
-    self.lastPiercingHail       = 0
-    self.frostbrandTracker      = {}
-    self.lastBrandMatchIce      = 0
-    self.frostHounds            = 0
-
-    self.lastBrandMatch = 0
-end
-
--- ── Combat state ──────────────────────────────────────────────────────────
-function Lylanar:onCombatState(context, inCombat, alerts)
-    if inCombat then
-        self:reset(false)
-    end
+        -- State — Shared
+        lastBrandMatch = 0,  -- dedup for the combined MatchBrands alert
+    }, Lylanar)
 end
 
 -- ── Brand matching (HM) ───────────────────────────────────────────────────

@@ -125,48 +125,44 @@ local function iceFaded(self, unitId)
 end
 
 -- ── Boss definition ───────────────────────────────────────────────────────
-local Lokke = {
+local Lokke = {}
+Lokke.__index = Lokke
 
-    key  = "lokke",
-    name = "Lokkestiiz",
-    -- hmHealthThreshold: measure in-game
-}
+Lokke.key  = "lokke"
+Lokke.name = "Lokkestiiz"
+-- hmHealthThreshold: measure in-game
 
--- alertList: [sourceUnitId] → CA bar ID (GlacialFist, keyed by atronarch)
-Lokke.alertList     = {}
--- IceTomb machine
-Lokke.iceNumber     = 0
-Lokke.iceTime       = 0      -- s: tomb cast + 13 (cycle display ref)
-Lokke.iceNext       = 0      -- s: expected next tomb (cast + 23)
-Lokke.prevIce       = 0      -- ms: when last tomb fired
-Lokke.tombsClear    = true
-Lokke.iceDouble     = false
-Lokke.checkDouble   = true
-Lokke.iceState      = 0
-Lokke.tCast         = 0
-Lokke.tArmed        = 0
-Lokke.tFaded        = 0
-Lokke.iGained       = 0
-Lokke.iFaded        = 0
-Lokke.iceTomb       = newTombSlots()
--- Laser / landing
-Lokke.laserTime     = 0      -- s: absolute time when laser fires
-Lokke.landingTime   = 0      -- s: absolute time when boss lands
-Lokke.laserBarId    = nil    -- CA bar ID for laser countdown
+function Lokke.new()
+    local self = setmetatable({
+        -- alertList: [sourceUnitId] → CA bar ID (GlacialFist, keyed by atronarch)
+        alertList    = {},
+        -- IceTomb machine
+        iceNumber    = 0,
+        iceTime      = 0,      -- s: tomb cast + 13 (cycle display ref)
+        iceNext      = 0,      -- s: expected next tomb (cast + 23)
+        prevIce      = 0,      -- ms: when last tomb fired
+        tombsClear   = true,
+        iceDouble    = false,
+        checkDouble  = true,
+        iceState     = 0,
+        tCast        = 0,
+        tArmed       = 0,
+        tFaded       = 0,
+        iGained      = 0,
+        iFaded       = 0,
+        iceTomb      = newTombSlots(),
+        -- Laser / landing
+        laserTime    = 0,      -- s: absolute time when laser fires
+        landingTime  = 0,      -- s: absolute time when boss lands
+        laserBarId   = nil,    -- CA bar ID for laser countdown
+    }, Lokke)
+    return self
+end
 
 -- ── Lifecycle ─────────────────────────────────────────────────────────────
-function Lokke:reset()
+function Lokke:onLeave(context)
     for _, cid in pairs(self.alertList) do CA.castAlertsStop(cid) end
-    self.alertList = {}
     CA.castAlertsStop(self.laserBarId)
-    self.laserBarId  = nil
-    self.laserTime   = 0
-    self.landingTime = 0
-    clearTombs(self)
-    self.iceNumber   = 0
-    self.iceTime     = 0
-    self.iceNext     = 0
-    self.prevIce     = 0
 end
 
 -- ── Combat events ─────────────────────────────────────────────────────────

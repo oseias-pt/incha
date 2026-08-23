@@ -48,49 +48,35 @@ local COL_ACID    = { 0.4, 0.9, 0.2, 0.5 }
 local ACT_ACID    = { 8000, "MOVE OUT!", 0.3, 0.9, 0.1, 0.9, nil }
 
 -- ── Boss definition ───────────────────────────────────────────────────────
-local ReefGuardian = {
+local ReefGuardian = {}
+ReefGuardian.__index = ReefGuardian
 
-    key  = "reef_guardian",
-    name = "Reef Guardian",   -- TODO: verify via GetUnitName("boss1") in-game
-    hmHealthThreshold = 100000001,  -- TODO: verify
-}
+ReefGuardian.key              = "reef_guardian"
+ReefGuardian.name             = "Reef Guardian"   -- TODO: verify via GetUnitName("boss1") in-game
+ReefGuardian.hmHealthThreshold = 100000001         -- TODO: verify
 
--- ── State ─────────────────────────────────────────────────────────────────
-ReefGuardian.buildingStaticStacks   = 0
-ReefGuardian.buildingStaticEndTime  = 0
-ReefGuardian.volatileResidueStacks  = 0
-ReefGuardian.volatileResidueEndTime = 0
-ReefGuardian.playerSheltered        = false
-ReefGuardian.lastShelteredTime      = 0   -- for brief "CLEANSED" label in info1/2
+function ReefGuardian.new()
+    return setmetatable({
+        buildingStaticStacks   = 0,
+        buildingStaticEndTime  = 0,
+        volatileResidueStacks  = 0,
+        volatileResidueEndTime = 0,
+        playerSheltered        = false,
+        lastShelteredTime      = 0,   -- for brief "CLEANSED" label in info1/2
 
--- Reef portals: up to 3 can be open simultaneously.
--- Each entry: { openTime, wipeActive }
-ReefGuardian.reefPortals   = {}   -- table of open reef timers
-ReefGuardian.reefNum       = 0    -- total reefs opened (sequential)
+        -- Reef portals: up to 3 can be open simultaneously.
+        -- Each entry: { openTime, wipeActive }
+        reefPortals   = {},   -- table of open reef timers
+        reefNum       = 0,    -- total reefs opened (sequential)
 
-ReefGuardian.acidicVulnLast = 0   -- time GAINED; 0 when inactive
-ReefGuardian.acidRefluxBarId = nil
-
--- ── Lifecycle ─────────────────────────────────────────────────────────────
-function ReefGuardian:reset()
-    self.buildingStaticStacks   = 0
-    self.buildingStaticEndTime  = 0
-    self.volatileResidueStacks  = 0
-    self.volatileResidueEndTime = 0
-    self.playerSheltered        = false
-    self.lastShelteredTime      = 0
-    self.reefPortals            = {}
-    self.reefNum                = 0
-    self.acidicVulnLast         = 0
-    CA.castAlertsStop(self.acidRefluxBarId)
-    self.acidRefluxBarId        = nil
+        acidicVulnLast  = 0,   -- time GAINED; 0 when inactive
+        acidRefluxBarId = nil,
+    }, ReefGuardian)
 end
 
--- ── Combat state ──────────────────────────────────────────────────────────
-function ReefGuardian:onCombatState(context, inCombat, alerts)
-    if inCombat then
-        self:reset(false)
-    end
+-- ── Lifecycle ─────────────────────────────────────────────────────────────
+function ReefGuardian:onLeave(context)
+    CA.castAlertsStop(self.acidRefluxBarId)
 end
 
 -- ── Combat events ─────────────────────────────────────────────────────────

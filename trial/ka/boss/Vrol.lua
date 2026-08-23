@@ -21,45 +21,48 @@ local FOG_EXTEND_SECS   = 9      -- seconds added per extension cycle
 
 local INITIAL_PORTAL_DELAY = 15  -- first portal is shorter than the recurring interval
 
-local Vrol = {
+local Vrol = {}
+Vrol.__index = Vrol
 
-    key = "vrol",
-    hmHealthThreshold = 72769370,
-    location = Location.new(110200, 118500, 24500, 29000, 65000, 78800),
-}
+Vrol.key               = "vrol"
+Vrol.hmHealthThreshold = 72769370
+Vrol.location          = Location.new(110200, 118500, 24500, 29000, 65000, 78800)
 
--- Timers start expired; reset() arms them when a boss encounter begins.
-Vrol.portalTimer       = Timer.new(NEXT_PORTAL_TIME)
-Vrol.conduitTimer      = Timer.new(NEXT_CONDUIT_TIME)
-Vrol.fogTimer          = Timer.new(NEXT_FOG_TIME)
-Vrol.bPORTAL_END       = false
--- Portal kill-timer: ms timestamp when the current portal debuff expires.
--- Set in onEffectChanged(EFFECT_RESULT_GAINED) to detect pass/fail on FADED.
-Vrol.portalKillExpires = 0
--- [unitId] → CA cast bar ID; cleared on reset/death.
-Vrol.alertList         = {}
--- CA cast bar ID for the portal-kill debuff (started/stopped in onEffectChanged).
-Vrol.portalKillBarId   = nil
--- Fog duration tracking: ms timestamp when the current fog clears (0 = no active fog).
--- fogHitCount counts VROL_FOG_INCREASE pulses; resets every FOG_EXTEND_HITS.
-Vrol.fogEndTime  = 0
-Vrol.fogHitCount = 0
+function Vrol.new()
+    return setmetatable({
+        -- Timers start expired; onCombatState arms them when the fight begins.
+        portalTimer       = Timer.new(NEXT_PORTAL_TIME),
+        conduitTimer      = Timer.new(NEXT_CONDUIT_TIME),
+        fogTimer          = Timer.new(NEXT_FOG_TIME),
+        bPORTAL_END       = false,
+        -- Portal kill-timer: ms timestamp when the current portal debuff expires.
+        -- Set in onEffectChanged(EFFECT_RESULT_GAINED) to detect pass/fail on FADED.
+        portalKillExpires = 0,
+        -- [unitId] → CA cast bar ID; cleared on leave/death.
+        alertList         = {},
+        -- CA cast bar ID for the portal-kill debuff (started/stopped in onEffectChanged).
+        portalKillBarId   = nil,
+        -- Fog duration tracking: ms timestamp when fog clears (0 = no active fog).
+        -- fogHitCount counts VROL_FOG_INCREASE pulses; resets every FOG_EXTEND_HITS.
+        fogEndTime        = 0,
+        fogHitCount       = 0,
+    }, Vrol)
+end
 
-function Vrol:reset()
-    -- First portal always spawns sooner than the recurring interval.
-    self.portalTimer:reset(INITIAL_PORTAL_DELAY)
-    self.conduitTimer:reset()
-    self.fogTimer:reset()
-    self.bPORTAL_END = false
-    self.fogEndTime  = 0
-    self.fogHitCount = 0
-
-    -- Stop any lingering cast bars from the previous pull.
+-- ── Lifecycle ─────────────────────────────────────────────────────────────
+function Vrol:onLeave(context)
     for _, cid in pairs(self.alertList) do CA.castAlertsStop(cid) end
-    self.alertList = {}
     CA.castAlertsStop(self.portalKillBarId)
-    self.portalKillBarId   = nil
-    self.portalKillExpires = 0
+end
+
+-- ── Combat state ──────────────────────────────────────────────────────────
+function Vrol:onCombatState(context, inCombat, alerts)
+    if inCombat then
+        -- First portal always spawns sooner than the recurring interval.
+        self.portalTimer:reset(INITIAL_PORTAL_DELAY)
+        self.conduitTimer:reset()
+        self.fogTimer:reset()
+    end
 end
 
 

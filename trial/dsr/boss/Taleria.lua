@@ -72,51 +72,35 @@ local COL_FEAR   = { 0.6, 0.0, 0.9, 0.5 }
 local ACT_BREAK  = { 4000, "Break free!", 0.9, 0.1, 0.1, 0.9, nil }
 
 -- ── Boss definition ───────────────────────────────────────────────────────
-local Taleria = {
+local Taleria = {}
+Taleria.__index = Taleria
 
-    key  = "taleria",
-    name = "Tideborn Taleria",   -- TODO: verify via GetUnitName("boss1") in-game
-    hmHealthThreshold = 100000001,  -- TODO: verify
-}
+Taleria.key              = "taleria"
+Taleria.name             = "Tideborn Taleria"   -- TODO: verify via GetUnitName("boss1") in-game
+Taleria.hmHealthThreshold = 100000001            -- TODO: verify
 
--- ── State ─────────────────────────────────────────────────────────────────
-Taleria.lastMaelstrom     = 0     -- s: when maelstrom channel began
-Taleria.lastBehemothSumm  = 0     -- s: last behemoth summon
-Taleria.behemothSlam      = 0     -- s: expected next slam time
-Taleria.lastStormWall     = 0     -- s: when storm wall began spinning
-Taleria.stormWallCW       = true  -- true = CW, false = CCW
-Taleria.lastPlatformFall  = 0     -- s: when last bridge opened (portal suppresses storm display)
+function Taleria.new()
+    return setmetatable({
+        lastMaelstrom     = 0,     -- s: when maelstrom channel began
+        lastBehemothSumm  = 0,     -- s: last behemoth summon
+        behemothSlam      = 0,     -- s: expected next slam time
+        lastStormWall     = 0,     -- s: when storm wall began spinning
+        stormWallCW       = true,  -- true = CW, false = CCW
+        lastPlatformFall  = 0,     -- s: when last bridge opened (portal suppresses storm display)
 
--- Bridge state: index 1/2/3 = green/yellow/purple
-Taleria.bridgeOpen      = { false, false, false }
-Taleria.bridgeWipeStart = { 0, 0, 0 }          -- s: when wipe timer began
-Taleria.bridgeDone      = { false, false, false }
+        -- Bridge state: index 1/2/3 = green/yellow/purple
+        bridgeOpen      = { false, false, false },
+        bridgeWipeStart = { 0, 0, 0 },          -- s: when wipe timer began
+        bridgeDone      = { false, false, false },
 
--- Lure of the Sea bar ID for cleanup
-Taleria.lureBarId = nil
-
--- ── Lifecycle ─────────────────────────────────────────────────────────────
-function Taleria:reset()
-    self.lastMaelstrom    = 0
-    self.lastBehemothSumm = 0
-    self.behemothSlam     = 0
-    self.lastStormWall    = 0
-    self.stormWallCW      = true
-    self.lastPlatformFall = 0
-
-    self.bridgeOpen      = { false, false, false }
-    self.bridgeWipeStart = { 0, 0, 0 }
-    self.bridgeDone      = { false, false, false }
-
-    CA.castAlertsStop(self.lureBarId)
-    self.lureBarId = nil
+        -- Lure of the Sea bar ID for cleanup
+        lureBarId = nil,
+    }, Taleria)
 end
 
--- ── Combat state ──────────────────────────────────────────────────────────
-function Taleria:onCombatState(context, inCombat, alerts)
-    if inCombat then
-        self:reset(false)
-    end
+-- ── Lifecycle ─────────────────────────────────────────────────────────────
+function Taleria:onLeave(context)
+    CA.castAlertsStop(self.lureBarId)
 end
 
 -- ── Combat events ─────────────────────────────────────────────────────────

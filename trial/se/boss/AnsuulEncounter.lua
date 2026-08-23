@@ -23,30 +23,22 @@ local CALAMITY_CD       = 25   -- subsequent calamity CD
 -- ── CA colour palettes ────────────────────────────────────────────────────
 local COL_VOID = { -3, 0, false, { 0.5, 0, 0.7, 0.4 }, { 0.5, 0, 0.7, 0.8 } }  -- purple
 
-local AnsuulEncounter = {
+local AnsuulEncounter = {}
+AnsuulEncounter.__index = AnsuulEncounter
 
-    key               = "ansuul",
-    nameAliases       = { "Ansuul the Tormentor" },
-    hmHealthThreshold = 100000000,  -- vet ~69M, HM ~160.7M
-    location          = Location.new(0, 0, 0, 0, 0, 0),
-}
+AnsuulEncounter.key               = "ansuul"
+AnsuulEncounter.nameAliases       = { "Ansuul the Tormentor" }
+AnsuulEncounter.hmHealthThreshold = 100000000  -- vet ~69M, HM ~160.7M
+AnsuulEncounter.location          = Location.new(0, 0, 0, 0, 0, 0)
 
--- ── Timers ────────────────────────────────────────────────────────────────
-AnsuulEncounter.calamityTimer = Timer.new(CALAMITY_CD)
-
--- ── State ─────────────────────────────────────────────────────────────────
-AnsuulEncounter.firstCalamity  = true
-AnsuulEncounter.inMaze         = false    -- TheRitual active
-AnsuulEncounter.inTriplet      = false    -- Breakdown active (split phase)
-AnsuulEncounter.alertList      = {}
-
-function AnsuulEncounter:reset()
-    self.calamityTimer:clear()
-    self.firstCalamity = true
-    self.inMaze        = false
-    self.inTriplet     = false
-    for _, cid in pairs(self.alertList) do CA.castAlertsStop(cid) end
-    self.alertList = {}
+function AnsuulEncounter.new()
+    return setmetatable({
+        calamityTimer  = Timer.new(CALAMITY_CD),
+        firstCalamity  = true,
+        inMaze         = false,   -- TheRitual active
+        inTriplet      = false,   -- Breakdown active (split phase)
+        alertList      = {},
+    }, AnsuulEncounter)
 end
 
 function AnsuulEncounter:onCombatEvent(context, alerts,

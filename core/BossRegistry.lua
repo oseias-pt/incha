@@ -70,12 +70,4 @@ function BossRegistry:detectDifficulty(boss, effectiveMaxHealth)
     return Difficulty.NORMAL
 end
 
-function BossRegistry:resetAll()
-    for _, boss in ipairs(self.bosses) do
-        if boss.reset then
-            boss:reset()
-        end
-    end
-end
-
 return BossRegistry

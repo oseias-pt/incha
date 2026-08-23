@@ -11,22 +11,22 @@ local PORCIN_DARK            = 219330   -- EFFECT_GAINED_DURATION → player on 
 -- ── CA colour palettes ────────────────────────────────────────────────────
 local COL_ANNIHIL = { -3, 0, false, { 1, 0.65, 0, 0.4 }, { 1, 0.65, 0, 0.8 } }
 
-local RyelazEncounter = {
+local RyelazEncounter = {}
+RyelazEncounter.__index = RyelazEncounter
 
-    key               = "ryelaz",
-    nameAliases       = { "Count Ryelaz", "Zilyesset" },
-    hmHealthThreshold = 40000000,
-    location          = Location.new(0, 0, 0, 0, 0, 0),
-}
+RyelazEncounter.key               = "ryelaz"
+RyelazEncounter.nameAliases       = { "Count Ryelaz", "Zilyesset" }
+RyelazEncounter.hmHealthThreshold = 40000000
+RyelazEncounter.location          = Location.new(0, 0, 0, 0, 0, 0)
 
 -- ── State ─────────────────────────────────────────────────────────────────
--- "ryelaz" = player on Ryelaz dark side
+-- "ryelaz"    = player on Ryelaz dark side
 -- "zilyesset" = player on Zilyesset light side
--- nil = assignment unknown (split hasn't happened or effect not yet seen)
-RyelazEncounter.playerSide = nil
-
-function RyelazEncounter:reset()
-    self.playerSide = nil
+-- nil         = assignment unknown (split hasn't happened or effect not yet seen)
+function RyelazEncounter.new()
+    return setmetatable({
+        playerSide = nil,
+    }, RyelazEncounter)
 end
 
 function RyelazEncounter:onCombatEvent(context, alerts,

@@ -44,6 +44,15 @@ function Timer:isActive()
     return e > 0 and GetGameTimeMilliseconds() / 1000 < e
 end
 
+--- True when the timer has never been started or was explicitly cleared.
+--- Useful to distinguish "not yet armed" from "expired" in display loops:
+---   isIdle()    → expiresAt == 0 (unarmed, never seen an event)
+---   isActive()  → armed and countdown is still running
+---   isExpired() → was armed but time has passed (note: also true when idle)
+function Timer:isIdle()
+    return self.expiresAt == 0
+end
+
 --- Reset the timer to the expired/unarmed state (expiresAt = 0).
 --- Call this instead of poking the field directly.
 function Timer:clear()

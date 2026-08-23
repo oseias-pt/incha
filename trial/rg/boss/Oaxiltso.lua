@@ -45,44 +45,23 @@ local function distSq(x1, y1, z1, x2, y2, z2)
 end
 
 -- ── Boss definition ───────────────────────────────────────────────────────
-local Oaxiltso = {
+local Oaxiltso = {}
+Oaxiltso.__index = Oaxiltso
 
-    key  = "oaxiltso",
-    name = "Oaxiltso",   -- TODO: verify exact unit name via GetUnitName("boss1") in-game
-}
+Oaxiltso.key  = "oaxiltso"
+Oaxiltso.name = "Oaxiltso"   -- TODO: verify exact unit name via GetUnitName("boss1") in-game
 
--- ── State ─────────────────────────────────────────────────────────────────
-Oaxiltso.lastBlitz          = 0      -- s: last Savage Blitz cast time
-Oaxiltso.lastSludge         = 0      -- s: last Noxious Sludge cast time
-Oaxiltso.lastPoisonTracker  = 0      -- s: dedup gate (SLUDGE_DEBUFF fires 3× per cast)
-Oaxiltso.sludgeTracker1     = 0      -- unitId   of first poisoned player
-Oaxiltso.sludgeTracker1Tag  = nil    -- unitTag  of first poisoned player
-Oaxiltso.sludgeTracker1Name = nil    -- display name of first poisoned player
-Oaxiltso.bossEnraged        = false
-Oaxiltso.miniEnraged        = false
-
--- ── Lifecycle ─────────────────────────────────────────────────────────────
-function Oaxiltso:reset()
-    self.lastBlitz          = 0
-    self.lastSludge         = 0
-    self.lastPoisonTracker  = 0
-    self.sludgeTracker1     = 0
-    self.sludgeTracker1Tag  = nil
-    self.sludgeTracker1Name = nil
-    self.bossEnraged        = false
-    self.miniEnraged        = false
-end
-
--- ── Combat state ──────────────────────────────────────────────────────────
-function Oaxiltso:onCombatState(context, inCombat, alerts)
-    if inCombat then
-        self.lastBlitz          = 0
-        self.lastSludge         = 0
-        self.lastPoisonTracker  = 0
-        self.sludgeTracker1     = 0
-        self.sludgeTracker1Tag  = nil
-        self.sludgeTracker1Name = nil
-    end
+function Oaxiltso.new()
+    return setmetatable({
+        lastBlitz          = 0,     -- s: last Savage Blitz cast time
+        lastSludge         = 0,     -- s: last Noxious Sludge cast time
+        lastPoisonTracker  = 0,     -- s: dedup gate (SLUDGE_DEBUFF fires 3× per cast)
+        sludgeTracker1     = 0,     -- unitId   of first poisoned player
+        sludgeTracker1Tag  = nil,   -- unitTag  of first poisoned player
+        sludgeTracker1Name = nil,   -- display name of first poisoned player
+        bossEnraged        = false,
+        miniEnraged        = false,
+    }, Oaxiltso)
 end
 
 -- ── Combat events ─────────────────────────────────────────────────────────

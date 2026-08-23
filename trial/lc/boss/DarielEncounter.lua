@@ -8,15 +8,17 @@ local POWERFUL_THROW = 218971   -- BEGIN → caAlertCast; on player → explicit
 -- ── CA colour palettes ────────────────────────────────────────────────────
 local COL_THROW = { -3, 0, false, { 1, 0.5, 0, 0.4 }, { 1, 0.5, 0, 0.8 } }
 
-local DarielEncounter = {
+local DarielEncounter = {}
+DarielEncounter.__index = DarielEncounter
 
-    key               = "dariel",
-    nameAliases       = { "Dariel" },
-    hmHealthThreshold = 0,
-    location          = Location.new(0, 0, 0, 0, 0, 0),
-}
+DarielEncounter.key               = "dariel"
+DarielEncounter.nameAliases       = { "Dariel" }
+DarielEncounter.hmHealthThreshold = 0
+DarielEncounter.location          = Location.new(0, 0, 0, 0, 0, 0)
 
-function DarielEncounter:reset() end
+function DarielEncounter.new()
+    return setmetatable({}, DarielEncounter)
+end
 
 function DarielEncounter:onCombatEvent(context, alerts,
         result, abilityId, unitTag, sourceUnitTag, sourceUnitId, unitId,

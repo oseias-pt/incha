@@ -22,7 +22,7 @@
 ---   onUpdate info3       → manifold list (priority) > shell shield value
 ---
 --- Shield tracking (Volatile Shell):
----   Registered in onEnter (scoped to the encounter), cleaned up in reset().
+---   Registered in onEnter (scoped to the encounter), cleaned up in onLeave().
 ---   CombatHandler does NOT carry EVENT_UNIT_ATTRIBUTE_VISUAL_*; registration
 ---   is self-contained here using key SHIELD_EVENT_KEY.
 ---
@@ -78,35 +78,30 @@ local function fmtShield(v)
 end
 
 -- ── Boss definition ───────────────────────────────────────────────────────
-local Xalvakka = {
+local Xalvakka = {}
+Xalvakka.__index = Xalvakka
 
-    key               = "xalvakka",
-    name              = "Xalvakka",     -- TODO: verify exact unit name via GetUnitName("boss1")
-    hmHealthThreshold = 100000001,      -- TODO: verify exact HM health pool
-}
+Xalvakka.key               = "xalvakka"
+Xalvakka.name              = "Xalvakka"     -- TODO: verify exact unit name via GetUnitName("boss1")
+Xalvakka.hmHealthThreshold = 100000001      -- TODO: verify exact HM health pool
 
--- ── State ─────────────────────────────────────────────────────────────────
-Xalvakka.nextJump      = 0      -- s: absolute time of next expected jump
-Xalvakka.numJumps      = 0      -- jump count; hide timer when ≥ 4
-Xalvakka.shellShield   = 0      -- current Volatile Shell HP (from shield events)
-Xalvakka.onBlob        = false  -- true while player carries Unstable Charge debuff
-Xalvakka.soulStart     = 0      -- s: when player gained Soul Resonance; 0 = inactive
-Xalvakka.selfManifold  = false  -- true while local player carries Manifold Curse
-Xalvakka.manifoldOthers = {}    -- [unitTag] → displayName for other players cursed
+function Xalvakka.new()
+    return setmetatable({
+        nextJump       = 0,     -- s: absolute time of next expected jump
+        numJumps       = 0,     -- jump count; hide timer when ≥ 4
+        shellShield    = 0,     -- current Volatile Shell HP (from shield events)
+        onBlob         = false, -- true while player carries Unstable Charge debuff
+        soulStart      = 0,     -- s: when player gained Soul Resonance; 0 = inactive
+        selfManifold   = false, -- true while local player carries Manifold Curse
+        manifoldOthers = {},    -- [unitTag] → displayName for other players cursed
+    }, Xalvakka)
+end
 
 -- ── Lifecycle ─────────────────────────────────────────────────────────────
-function Xalvakka:reset()
+function Xalvakka:onLeave(context)
     EVENT_MANAGER:UnregisterForEvent(SHIELD_EVENT_KEY, EVENT_UNIT_ATTRIBUTE_VISUAL_ADDED)
     EVENT_MANAGER:UnregisterForEvent(SHIELD_EVENT_KEY, EVENT_UNIT_ATTRIBUTE_VISUAL_UPDATED)
     EVENT_MANAGER:UnregisterForEvent(SHIELD_EVENT_KEY, EVENT_UNIT_ATTRIBUTE_VISUAL_REMOVED)
-
-    self.nextJump       = 0
-    self.numJumps       = 0
-    self.shellShield    = 0
-    self.onBlob         = false
-    self.soulStart      = 0
-    self.selfManifold   = false
-    self.manifoldOthers = {}
 end
 
 -- ── Boss enter ────────────────────────────────────────────────────────────
@@ -151,13 +146,8 @@ function Xalvakka:onCombatState(context, inCombat, alerts)
     if inCombat then
         -- First jump expected ~35 s after pull in HM; same interval as subsequent jumps.
         -- TODO: verify first-jump timing in-game (may differ from subsequent 35 s interval).
-        self.nextJump       = GetGameTimeMilliseconds() / 1000 + 35
-        self.numJumps       = 0
-        self.shellShield    = 0
-        self.onBlob         = false
-        self.soulStart      = 0
-        self.selfManifold   = false
-        self.manifoldOthers = {}
+        self.nextJump = GetGameTimeMilliseconds() / 1000 + 35
+        self.numJumps = 0
     end
 end
 

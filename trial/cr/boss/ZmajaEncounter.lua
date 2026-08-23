@@ -119,68 +119,49 @@ local COL_RELE  = { -3, 0, false, { 0.2, 0.6, 1, 0.4 },   { 0.2, 0.6, 1, 0.8 } }
 local COL_GALE  = { -3, 0, false, { 0, 0.87, 0.87, 0.4 }, { 0, 0.87, 0.87, 0.8 } } -- cyan (frost)
 local COL_ZMAJA = { -3, 0, false, { 0.6, 0, 0.8, 0.4 },   { 0.6, 0, 0.8, 0.8 } }   -- purple (shadow)
 
-local ZmajaEncounter = {
+local ZmajaEncounter = {}
+ZmajaEncounter.__index = ZmajaEncounter
 
-    key          = "zmaja",
-    nameAliases  = { "Z'Maja" },
-    -- hmHealthThreshold: TBD — verify in-game on vet HM
-    hmHealthThreshold = 0,
-    -- Location: entire arena — name-based detection is used instead.
-    location = Location.new(0, 0, 0, 0, 0, 0),
-}
+ZmajaEncounter.key               = "zmaja"
+ZmajaEncounter.nameAliases       = { "Z'Maja" }
+-- hmHealthThreshold: TBD — verify in-game on vet HM
+ZmajaEncounter.hmHealthThreshold = 0
+-- Location: entire arena — name-based detection is used instead.
+ZmajaEncounter.location          = Location.new(0, 0, 0, 0, 0, 0)
 
--- ── Timers ────────────────────────────────────────────────────────────────
--- Siroria
-ZmajaEncounter.siroJumpTimer   = Timer.new(SIRO_JUMP_CD)
-ZmajaEncounter.siroBannerTimer = Timer.new(SIRO_BANNER_CD)
--- Relequen
-ZmajaEncounter.releJumpTimer   = Timer.new(RELE_JUMP_CD)
-ZmajaEncounter.releBashTimer   = Timer.new(RELE_BASH_CD)
-ZmajaEncounter.releJoltTimer   = Timer.new(RELE_JOLT_CD)
--- Galenwe
-ZmajaEncounter.galeJumpTimer   = Timer.new(GALE_JUMP_CD)
-ZmajaEncounter.galeBashTimer   = Timer.new(GALE_BASH_CD)
-ZmajaEncounter.galeDonutTimer  = Timer.new(GALE_DONUT_CD)
--- Portal
-ZmajaEncounter.portalTimer     = Timer.new(PORTAL_OPEN_DUR)  -- open → close countdown
-ZmajaEncounter.portalNextTimer = Timer.new(PORTAL_NEXT_CD)   -- close → next open countdown
+function ZmajaEncounter.new()
+    return setmetatable({
+        -- Siroria
+        siroJumpTimer   = Timer.new(SIRO_JUMP_CD),
+        siroBannerTimer = Timer.new(SIRO_BANNER_CD),
+        -- Relequen
+        releJumpTimer   = Timer.new(RELE_JUMP_CD),
+        releBashTimer   = Timer.new(RELE_BASH_CD),
+        releJoltTimer   = Timer.new(RELE_JOLT_CD),
+        -- Galenwe
+        galeJumpTimer   = Timer.new(GALE_JUMP_CD),
+        galeBashTimer   = Timer.new(GALE_BASH_CD),
+        galeDonutTimer  = Timer.new(GALE_DONUT_CD),
+        -- Portal
+        portalTimer     = Timer.new(PORTAL_OPEN_DUR),  -- open → close countdown
+        portalNextTimer = Timer.new(PORTAL_NEXT_CD),   -- close → next open countdown
+        -- Mini-boss presence
+        siroActive      = false,
+        releActive      = false,
+        galeActive      = false,
+        -- Portal / Z'Maja state
+        portalGroup     = 0,      -- increments on each PORTAL_OPEN (1, 2, 3…)
+        portalActive    = false,
+        executePhase    = false,
+        spearCount      = 0,
+        coreAlert       = nil,    -- "Core out!" / "Core MISSED!" / nil
+        alertList       = {},
+    }, ZmajaEncounter)
+end
 
--- ── Mini-boss presence ────────────────────────────────────────────────────
-ZmajaEncounter.siroActive = false
-ZmajaEncounter.releActive = false
-ZmajaEncounter.galeActive = false
-
--- ── Portal / Z'Maja state ─────────────────────────────────────────────────
-ZmajaEncounter.portalGroup   = 0      -- increments on each PORTAL_OPEN (1, 2, 3…)
-ZmajaEncounter.portalActive  = false
-ZmajaEncounter.executePhase  = false
-ZmajaEncounter.spearCount    = 0
-ZmajaEncounter.coreAlert     = nil    -- "Core out!" / "Core MISSED!" / nil
-
--- ── CA cast-bar tracking ──────────────────────────────────────────────────
-ZmajaEncounter.alertList = {}
-
-function ZmajaEncounter:reset()
-    self.siroJumpTimer:clear()
-    self.siroBannerTimer:clear()
-    self.releJumpTimer:clear()
-    self.releBashTimer:clear()
-    self.releJoltTimer:clear()
-    self.galeJumpTimer:clear()
-    self.galeBashTimer:clear()
-    self.galeDonutTimer:clear()
-    self.portalTimer:clear()
-    self.portalNextTimer:clear()
-    self.siroActive    = false
-    self.releActive    = false
-    self.galeActive    = false
-    self.portalGroup   = 0
-    self.portalActive  = false
-    self.executePhase  = false
-    self.spearCount    = 0
-    self.coreAlert     = nil
+-- ── Lifecycle ─────────────────────────────────────────────────────────────
+function ZmajaEncounter:onLeave(context)
     for _, cid in pairs(self.alertList) do CA.castAlertsStop(cid) end
-    self.alertList = {}
 end
 
 -- ── Combat events ─────────────────────────────────────────────────────────

@@ -22,29 +22,22 @@ local FLOOD_CD        = 21.5   -- steady-state Flood CD
 local COL_LIGHTNING = { -3, 0, false, { 0.9, 0.9, 0.1, 0.4 }, { 0.9, 0.9, 0.1, 0.8 } }
 local COL_CRYSTAL   = { -3, 0, false, { 0.7, 0.3, 1.0, 0.4 }, { 0.7, 0.3, 1.0, 0.8 } }
 
-local OrphicEncounter = {
+local OrphicEncounter = {}
+OrphicEncounter.__index = OrphicEncounter
 
-    key               = "orphic",
-    nameAliases       = { "Orphic Shattered Shard" },
-    hmHealthThreshold = 80000000,
-    location          = Location.new(0, 0, 0, 0, 0, 0),
-}
+OrphicEncounter.key               = "orphic"
+OrphicEncounter.nameAliases       = { "Orphic Shattered Shard" }
+OrphicEncounter.hmHealthThreshold = 80000000
+OrphicEncounter.location          = Location.new(0, 0, 0, 0, 0, 0)
 
--- ── Timers ────────────────────────────────────────────────────────────────
-OrphicEncounter.thunderThrallTimer  = Timer.new(THRALL_CD)
-OrphicEncounter.lightningFloodTimer = Timer.new(FLOOD_CD)
-
--- ── State ─────────────────────────────────────────────────────────────────
-OrphicEncounter.xorynActive  = false
-OrphicEncounter.firstThrall  = true   -- true until first Thrall after a Xoryn return
-OrphicEncounter.firstFlood   = true
-
-function OrphicEncounter:reset()
-    self.thunderThrallTimer:clear()
-    self.lightningFloodTimer:clear()
-    self.xorynActive = false
-    self.firstThrall = true
-    self.firstFlood  = true
+function OrphicEncounter.new()
+    return setmetatable({
+        thunderThrallTimer  = Timer.new(THRALL_CD),
+        lightningFloodTimer = Timer.new(FLOOD_CD),
+        xorynActive         = false,
+        firstThrall         = true,   -- true until first Thrall after a Xoryn return
+        firstFlood          = true,
+    }, OrphicEncounter)
 end
 
 function OrphicEncounter:onCombatEvent(context, alerts,

@@ -18,33 +18,30 @@ local SEA_ADDER_BILE_SPRAY = 136591  -- Sea Adder spray (player-targeted) → Do
 local TOTEM_SPAWN_TIME  = 20
 local GRYPHON_SPAWN_TIME = 60
 
-local Yandir = {
+local Yandir = {}
+Yandir.__index = Yandir
 
-    key = "yandir",
-    hmHealthThreshold = 72769370,
-    location = Location.new(63200, 68900, 24300, 26300, 90500, 99600),
-}
+Yandir.key               = "yandir"
+Yandir.hmHealthThreshold = 72769370
+Yandir.location          = Location.new(63200, 68900, 24300, 26300, 90500, 99600)
 
-Yandir.totemTimer   = Timer.new(TOTEM_SPAWN_TIME)
-Yandir.gryphonTimer = Timer.new(GRYPHON_SPAWN_TIME)
-Yandir.bGRYPHON_SKIP      = false
-Yandir.bGRYPHON_SKIP_TIME = -1
-Yandir.bGRYPHON_SKIP_FAILHP = 0
--- Phase 4.2: [unitId] → CA cast bar ID; cleared and stopped on reset/death.
-Yandir.alertList = {}
+function Yandir.new()
+    return setmetatable({
+        totemTimer           = Timer.new(TOTEM_SPAWN_TIME),
+        gryphonTimer         = Timer.new(GRYPHON_SPAWN_TIME),
+        bGRYPHON_SKIP        = false,
+        bGRYPHON_SKIP_TIME   = -1,
+        bGRYPHON_SKIP_FAILHP = 0,
+        PosionTotemID        = -1,
+        BTotemCall           = false,
+        -- Phase 4.2: [unitId] → CA cast bar ID; cleared and stopped on leave/death.
+        alertList            = {},
+    }, Yandir)
+end
 
-function Yandir:reset()
-    self.totemTimer:reset()
-    self.gryphonTimer:reset()
-    self.bGRYPHON_SKIP      = false
-    self.bGRYPHON_SKIP_TIME = -1
-    self.bGRYPHON_SKIP_FAILHP = 0
-    self.PosionTotemID = -1
-    self.BTotemCall    = false
-
-    -- Phase 4.2: stop any lingering cast bars from the previous pull.
+-- ── Lifecycle ─────────────────────────────────────────────────────────────
+function Yandir:onLeave(context)
     for _, cid in pairs(self.alertList) do CA.castAlertsStop(cid) end
-    self.alertList = {}
 end
 
 

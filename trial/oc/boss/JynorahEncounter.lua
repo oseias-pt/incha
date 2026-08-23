@@ -47,27 +47,21 @@ local COL_FIRE      = { -3, 0, false, { 1, 0.4, 0,   0.4 }, { 1, 0.4, 0,   0.8 }
 local COL_ICE       = { -3, 0, false, { 0.3, 0.8, 1, 0.4 }, { 0.3, 0.8, 1, 0.8 } }
 local COL_CLASH     = { -3, 0, false, { 1, 0.1, 0.1, 0.4 }, { 1, 0.1, 0.1, 0.8 } }
 
-local JynorahEncounter = {
+local JynorahEncounter = {}
+JynorahEncounter.__index = JynorahEncounter
 
-    key               = "jynorah",
-    nameAliases       = { "Jynorah", "Skorkhif" },
-    hmHealthThreshold = 0,
-    location          = Location.new(0, 0, 0, 0, 0, 0),
-}
+JynorahEncounter.key               = "jynorah"
+JynorahEncounter.nameAliases       = { "Jynorah", "Skorkhif" }
+JynorahEncounter.hmHealthThreshold = 0
+JynorahEncounter.location          = Location.new(0, 0, 0, 0, 0, 0)
 
--- ── Timers ────────────────────────────────────────────────────────────────
-JynorahEncounter.leapTimer  = Timer.new(LEAP_CD)
-JynorahEncounter.clashTimer = Timer.new(37.5)   -- Titanic Clash active phase duration
-
--- ── State ─────────────────────────────────────────────────────────────────
-JynorahEncounter.firstLeap  = true
-JynorahEncounter.clashActive = false
-
-function JynorahEncounter:reset()
-    self.leapTimer:clear()
-    self.clashTimer:clear()
-    self.firstLeap   = true
-    self.clashActive = false
+function JynorahEncounter.new()
+    return setmetatable({
+        leapTimer    = Timer.new(LEAP_CD),
+        clashTimer   = Timer.new(37.5),   -- Titanic Clash active phase duration
+        firstLeap    = true,
+        clashActive  = false,
+    }, JynorahEncounter)
 end
 
 function JynorahEncounter:onCombatEvent(context, alerts,

@@ -10,19 +10,18 @@ local CHANNELER_SHIELD = 232510   -- EFFECT_GAINED → channelers shielding Shap
 -- ── CA colour palettes ────────────────────────────────────────────────────
 local COL_CHARGE = { -3, 0, false, { 1, 0.4, 0, 0.4 }, { 1, 0.4, 0, 0.8 } }
 
-local ShaperEncounter = {
+local ShaperEncounter = {}
+ShaperEncounter.__index = ShaperEncounter
 
-    key               = "shaper",
-    nameAliases       = { "Shaper of Flesh" },
-    hmHealthThreshold = 0,
-    location          = Location.new(0, 0, 0, 0, 0, 0),
-}
+ShaperEncounter.key               = "shaper"
+ShaperEncounter.nameAliases       = { "Shaper of Flesh" }
+ShaperEncounter.hmHealthThreshold = 0
+ShaperEncounter.location          = Location.new(0, 0, 0, 0, 0, 0)
 
--- ── State ─────────────────────────────────────────────────────────────────
-ShaperEncounter.shaperShielded = false
-
-function ShaperEncounter:reset()
-    self.shaperShielded = false
+function ShaperEncounter.new()
+    return setmetatable({
+        shaperShielded = false,
+    }, ShaperEncounter)
 end
 
 function ShaperEncounter:onCombatEvent(context, alerts,
