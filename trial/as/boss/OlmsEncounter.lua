@@ -59,6 +59,8 @@ OlmsEncounter.fireTimer    = Timer.new(FIRE_CD)
 -- Llothis
 OlmsEncounter.blastTimer   = Timer.new(BLAST_CD)
 OlmsEncounter.boltsTimer   = Timer.new(BOLTS_CD)
+-- Felms
+OlmsEncounter.jumpTimer    = Timer.new(JUMP_CD)
 
 -- ── State ─────────────────────────────────────────────────────────────────
 OlmsEncounter.llothisActive    = false
@@ -77,6 +79,7 @@ function OlmsEncounter:reset()
     self.fireTimer:reset()
     self.blastTimer:clear()
     self.boltsTimer:clear()
+    self.jumpTimer:clear()
     self.llothisActive      = false
     self.llothisSpawnTime   = nil
     self.felmsActive        = false
@@ -87,16 +90,16 @@ function OlmsEncounter:reset()
     self.alertList = {}
 end
 
--- ── Timer seeding helpers ─────────────────────────────────────────────────
--- Seeds a timer pair accounting for SPAWN_DELAY elapsed since BOSS_EVENT.
--- If spawnTime is nil (no BOSS_EVENT seen), seeds with 0 (fires immediately).
-local function seedMiniTimers(t1, t2, spawnTime)
+-- ── Timer seeding helper ──────────────────────────────────────────────────
+-- Seeds one timer accounting for the SPAWN_DELAY already elapsed since
+-- BOSS_EVENT. If spawnTime is nil (no event seen) or seed <= 0, falls back
+-- to the timer's own full duration so it fires at the next ordinary interval.
+local function seedTimer(t, spawnTime)
     local seed = 0
     if spawnTime then
         seed = math.max(0, SPAWN_DELAY - (os.time() - spawnTime))
     end
-    t1:reset(seed > 0 and seed or t1.duration)
-    t2:reset(seed > 0 and seed or t2.duration)
+    t:reset(seed > 0 and seed or t.duration)
 end
 
 -- ── Combat events ─────────────────────────────────────────────────────────
@@ -134,20 +137,15 @@ function OlmsEncounter:onCombatEvent(context, alerts,
         end
 
     -- ── Llothis: spawn detection ──────────────────────────────────────────
-    -- BOSS_EVENT (10298) fires when a mini-boss materialises. unitName identifies
-    -- which mini-boss received the effect. We record the timestamp and seed the
-    -- ability timers with the SPAWN_DELAY offset so the first timer expires at
-    -- roughly the same time as Llothis's first cast.
     elseif abilityId == BOSS_EVENT and result == ACTION_RESULT_EFFECT_GAINED
            and unitName and unitName:find("Llothis") then
         self.llothisSpawnTime = os.time()
         self.llothisActive    = true
-        seedMiniTimers(self.blastTimer, self.boltsTimer, self.llothisSpawnTime)
+        seedTimer(self.blastTimer, self.llothisSpawnTime)
+        seedTimer(self.boltsTimer, self.llothisSpawnTime)
 
     -- ── Llothis: combat abilities ─────────────────────────────────────────
     elseif abilityId == LLOTHIS_DEFILING_BLAST and result == ACTION_RESULT_BEGIN then
-        -- Cone attack: alert with the targeted player's name so the group
-        -- knows who to move away from.
         local target = (unitName and unitName ~= "") and unitName or "?"
         alerts:showAction("Blast! → " .. target)
         local dur = select(1, GetAbilityCastInfo(LLOTHIS_DEFILING_BLAST)) or 0
@@ -162,8 +160,25 @@ function OlmsEncounter:onCombatEvent(context, alerts,
         caAlert(nil, "Interrupt!", 0xFF0000FF, SOUNDS.NONE, 2000)
         self.boltsTimer:reset()
 
-    -- ── AS-4: Felms mechanics ─────────────────────────────────────────────
-    -- (implemented in AS-4)
+    -- ── Felms: spawn detection ────────────────────────────────────────────
+    elseif abilityId == BOSS_EVENT and result == ACTION_RESULT_EFFECT_GAINED
+           and unitName and unitName:find("Felms") then
+        self.felmsSpawnTime = os.time()
+        self.felmsActive    = true
+        seedTimer(self.jumpTimer, self.felmsSpawnTime)
+
+    -- ── Felms: combat abilities ───────────────────────────────────────────
+    elseif abilityId == FELMS_TELEPORT_STRIKE and result == ACTION_RESULT_BEGIN then
+        -- Teleport Strike: Felms blinks to a specific player and heavy-attacks.
+        -- Alerting the target name lets the group know who to peel for.
+        local target = (unitName and unitName ~= "") and unitName or "?"
+        alerts:showAction("Strike! → " .. target)
+        local dur = select(1, GetAbilityCastInfo(FELMS_TELEPORT_STRIKE)) or 0
+        if dur <= 0 then dur = 1000 end
+        local cid = caAlertCast(abilityId, "Strike → " .. target, dur,
+            { -3, 0, false, { 0, 0.6, 0.8, 0.4 }, { 0, 0.6, 0.8, 0.8 } })
+        if cid and unitId then self.alertList[unitId] = cid end
+        self.jumpTimer:reset()
 
     -- ── AS-5: Protector / Static Shield ──────────────────────────────────
     -- (implemented in AS-5)
@@ -179,22 +194,28 @@ function OlmsEncounter:onEffectChanged(context, alerts,
     -- ── Llothis dormant state ─────────────────────────────────────────────
     if unitName and unitName:find("Llothis") then
         if changeType == EFFECT_RESULT_GAINED then
-            -- Llothis goes to sleep
             self.llothisActive = false
             self.blastTimer:clear()
             self.boltsTimer:clear()
         elseif changeType == EFFECT_RESULT_FADED then
-            -- Llothis wakes up; re-seed timers from original spawn timestamp.
-            -- If BOSS_EVENT fired again on this wake, spawnTime is already fresh;
-            -- otherwise seed = 0 and the timers start immediately.
             self.llothisActive = true
-            seedMiniTimers(self.blastTimer, self.boltsTimer, self.llothisSpawnTime)
+            seedTimer(self.blastTimer, self.llothisSpawnTime)
+            seedTimer(self.boltsTimer, self.llothisSpawnTime)
         end
         return
     end
 
     -- ── Felms dormant state ───────────────────────────────────────────────
-    -- (AS-4: implemented in AS-4)
+    if unitName and unitName:find("Felms") then
+        if changeType == EFFECT_RESULT_GAINED then
+            self.felmsActive = false
+            self.jumpTimer:clear()
+        elseif changeType == EFFECT_RESULT_FADED then
+            self.felmsActive = true
+            seedTimer(self.jumpTimer, self.felmsSpawnTime)
+        end
+        return
+    end
 end
 
 -- ── 200 ms display update ─────────────────────────────────────────────────
@@ -211,7 +232,6 @@ function OlmsEncounter:onUpdate(context, alerts)
 
     -- Line 5: Llothis status
     if self.llothisSpawnTime == nil then
-        -- Llothis has not yet spawned this pull
         alerts:showInfo(5, "")
     elseif not self.llothisActive then
         alerts:showInfo(5, "Llothis: DORMANT")
@@ -228,7 +248,15 @@ function OlmsEncounter:onUpdate(context, alerts)
         alerts:showInfo(6, "")
     end
 
-    -- Line 7: reserved for Felms (AS-4)
+    -- Line 7: Felms status
+    if self.felmsSpawnTime == nil then
+        alerts:showInfo(7, "")
+    elseif not self.felmsActive then
+        alerts:showInfo(7, "Felms:   DORMANT")
+    else
+        local t7 = self.jumpTimer:remaining()
+        alerts:showInfo(7, "Strike:  " .. (t7 > 0 and ZO_FormatCountdownTimer(t7) or "ready"))
+    end
 end
 
 -- ── HP milestone pre-warning ──────────────────────────────────────────────
