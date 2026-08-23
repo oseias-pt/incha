@@ -180,120 +180,97 @@ local function matchBrands(self)
     PlaySound(SOUNDS.DUEL_START)
 end
 
--- ── Combat events ─────────────────────────────────────────────────────────
-function Lylanar:onCombatEvent(context, alerts, result, abilityId,
+-- ── Routing tables (C3) ──────────────────────────────────────────────────
+-- Shared trash mechanic handler.
+Lylanar.common = DreadsailCommon
+
+Lylanar.combatRoutes = {
+    -- ── Fire ───────────────────────────────────────────────────────────────
+    [BROILING_HEW] = function(self, context, alerts, result, abilityId,
+                               unitTag, sourceUnitTag, sourceUnitId, unitId,
+                               sourceUnitName, unitName)
+        if result ~= ACTION_RESULT_BEGIN then return end
+        if not IsUnitPlayer(unitTag) then return end
+        local dur = select(1, GetAbilityCastInfo(abilityId)) or 0
+        if dur <= 0 then dur = 1500 end
+        CA.alertCast(abilityId, sourceUnitName, dur, COL_FIRE_HEAVY)
+    end,
+    [TORRID_CLEAVE] = function(self, context, alerts, result, abilityId,
                                 unitTag, sourceUnitTag, sourceUnitId, unitId,
                                 sourceUnitName, unitName)
-    if DreadsailCommon.handle(alerts, result, abilityId, unitTag, sourceUnitName) then
-        return
-    end
-
-    if result ~= ACTION_RESULT_BEGIN then return end
-
-    local isHM = (context.difficulty == Difficulty.HARDMODE)
-
-    -- ── Fire: BroilingHew (heavy melee) ──────────────────────────────────
-    if abilityId == BROILING_HEW then
-        if not IsUnitPlayer(unitTag) then return end
-        local dur = select(1, GetAbilityCastInfo(abilityId)) or 0
-        if dur <= 0 then dur = 1500 end
-        CA.alertCast(abilityId, sourceUnitName, dur, COL_FIRE_HEAVY)
-        return
-    end
-
-    -- ── Fire: TorridCleave (frontal cleave) ──────────────────────────────
-    if abilityId == TORRID_CLEAVE then
+        if result ~= ACTION_RESULT_BEGIN then return end
         if not IsUnitPlayer(unitTag) then return end
         local dur = select(1, GetAbilityCastInfo(abilityId)) or 0
         if dur <= 0 then dur = 1500 end
         alerts:showAction("Dodge! (Cleave)")
         CA.alertCast(abilityId, sourceUnitName, dur, COL_FIRE_HEAVY)
-        return
-    end
-
-    -- ── Fire: ScaldingSwell (fire wave) ──────────────────────────────────
-    if abilityId == SCALDING_SWELL then
+    end,
+    [SCALDING_SWELL] = function(self, context, alerts, result, abilityId, ...)
+        if result ~= ACTION_RESULT_BEGIN then return end
         CA.alert(nil, "|cFF5733Fire wave|r — move!", 0xFF5733D9,
             SOUNDS.CHAMPION_POINTS_COMMITTED, 5500)
-        return
-    end
-
-    -- ── Fire: CharredConstriction (fire jump, spike cage) ─────────────────
-    if abilityId == CHARRED_CONSTRICTION then
+    end,
+    [CHARRED_CONSTRICTION] = function(self, context, alerts, result, abilityId, ...)
+        if result ~= ACTION_RESULT_BEGIN then return end
         CA.alert(nil, "|cFF5733Fire jump!|r (spike — block)", 0xFF5733D9,
             SOUNDS.CHAMPION_POINTS_COMMITTED, 2500)
-        return
-    end
-
-    -- ── Fire: MagmaSpike (spike cage appears) ────────────────────────────
-    if abilityId == MAGMA_SPIKE then
+    end,
+    [MAGMA_SPIKE] = function(self, context, alerts, result, abilityId, ...)
+        if result ~= ACTION_RESULT_BEGIN then return end
         self.lastMagmaSpike = GetGameTimeMilliseconds() / 1000
-        return
-    end
-
-    -- ── Fire: IncendiaryAxe weapon cast (HM, 40 s cd) ────────────────────
-    if abilityId == INCENDIARY_AXE and isHM then
-        self.lastIncendiaryAxe = GetGameTimeMilliseconds() / 1000
-        return
-    end
-
-    -- ── Ice: StingingShear (heavy melee) ──────────────────────────────────
-    if abilityId == STINGING_SHEAR then
+    end,
+    [INCENDIARY_AXE] = function(self, context, alerts, result, abilityId, ...)
+        if result ~= ACTION_RESULT_BEGIN then return end
+        if context.difficulty == Difficulty.HARDMODE then
+            self.lastIncendiaryAxe = GetGameTimeMilliseconds() / 1000
+        end
+    end,
+    -- ── Ice ────────────────────────────────────────────────────────────────
+    [STINGING_SHEAR] = function(self, context, alerts, result, abilityId,
+                                 unitTag, sourceUnitTag, sourceUnitId, unitId,
+                                 sourceUnitName, unitName)
+        if result ~= ACTION_RESULT_BEGIN then return end
         if not IsUnitPlayer(unitTag) then return end
         local dur = select(1, GetAbilityCastInfo(abilityId)) or 0
         if dur <= 0 then dur = 1500 end
         CA.alertCast(abilityId, sourceUnitName, dur, COL_ICE_HEAVY)
-        return
-    end
-
-    -- ── Ice: BriskRip (frontal cleave) ───────────────────────────────────
-    if abilityId == BRISK_RIP then
+    end,
+    [BRISK_RIP] = function(self, context, alerts, result, abilityId,
+                            unitTag, sourceUnitTag, sourceUnitId, unitId,
+                            sourceUnitName, unitName)
+        if result ~= ACTION_RESULT_BEGIN then return end
         if not IsUnitPlayer(unitTag) then return end
         local dur = select(1, GetAbilityCastInfo(abilityId)) or 0
         if dur <= 0 then dur = 1500 end
         alerts:showAction("Dodge! (Cleave)")
         CA.alertCast(abilityId, sourceUnitName, dur, COL_ICE_HEAVY)
-        return
-    end
-
-    -- ── Ice: BitingBillow (ice wave) ─────────────────────────────────────
-    if abilityId == BITING_BILLOW then
+    end,
+    [BITING_BILLOW] = function(self, context, alerts, result, abilityId, ...)
+        if result ~= ACTION_RESULT_BEGIN then return end
         CA.alert(nil, "|c99CCffIce wave|r — move!", 0x99CCffD9,
             SOUNDS.CHAMPION_POINTS_COMMITTED, 5500)
-        return
-    end
-
-    -- ── Ice: Frigidarium (ice jump, spike cage) ───────────────────────────
-    if abilityId == FRIGIDARIUM then
+    end,
+    [FRIGIDARIUM] = function(self, context, alerts, result, abilityId, ...)
+        if result ~= ACTION_RESULT_BEGIN then return end
         CA.alert(nil, "|c99CCffIce jump!|r (spike — block)", 0x99CCffD9,
             SOUNDS.CHAMPION_POINTS_COMMITTED, 2500)
-        return
-    end
-
-    -- ── Ice: GlacialSpike (spike cage appears) ────────────────────────────
-    if abilityId == GLACIAL_SPIKE then
+    end,
+    [GLACIAL_SPIKE] = function(self, context, alerts, result, abilityId, ...)
+        if result ~= ACTION_RESULT_BEGIN then return end
         self.lastGlacialSpike = GetGameTimeMilliseconds() / 1000
-        return
-    end
+    end,
+    [CALAMITOUS_SWORD] = function(self, context, alerts, result, abilityId, ...)
+        if result ~= ACTION_RESULT_BEGIN then return end
+        if context.difficulty == Difficulty.HARDMODE then
+            self.lastCalamitousSword = GetGameTimeMilliseconds() / 1000
+        end
+    end,
+}
 
-    -- ── Ice: CalamitousSword weapon cast (HM, 40 s cd) ────────────────────
-    if abilityId == CALAMITOUS_SWORD and isHM then
-        self.lastCalamitousSword = GetGameTimeMilliseconds() / 1000
-        return
-    end
-end
-
--- ── Effect changes ────────────────────────────────────────────────────────
-function Lylanar:onEffectChanged(context, alerts, changeType, abilityId,
-                                  unitTag, unitId, unitName, stackCount)
-    if DreadsailCommon.handleEffect(alerts, changeType, abilityId, unitTag) then
-        return
-    end
-
-    local isHM = (context.difficulty == Difficulty.HARDMODE)
-
-    -- ── Fire: CinderSurge → interrupt ice dome ────────────────────────────
-    if abilityId == CINDER_SURGE then
+Lylanar.effectRoutes = {
+    -- ── Fire: CinderSurge → interrupt ice dome ─────────────────────────────
+    [CINDER_SURGE] = function(self, context, alerts, changeType, abilityId,
+                               unitTag, unitId, unitName, stackCount)
         if changeType == EFFECT_RESULT_GAINED then
             self.cinderSurgeActive = true
             zo_callLater(function()
@@ -306,11 +283,10 @@ function Lylanar:onEffectChanged(context, alerts, changeType, abilityId,
         elseif changeType == EFFECT_RESULT_FADED then
             self.cinderSurgeActive = false
         end
-        return
-    end
-
-    -- ── Ice: NumbingShards → interrupt fire dome ──────────────────────────
-    if abilityId == NUMBING_SHARDS then
+    end,
+    -- ── Ice: NumbingShards → interrupt fire dome ───────────────────────────
+    [NUMBING_SHARDS] = function(self, context, alerts, changeType, abilityId,
+                                 unitTag, unitId, unitName, stackCount)
         if changeType == EFFECT_RESULT_GAINED then
             self.numbingShardsActive = true
             zo_callLater(function()
@@ -323,11 +299,10 @@ function Lylanar:onEffectChanged(context, alerts, changeType, abilityId,
         elseif changeType == EFFECT_RESULT_FADED then
             self.numbingShardsActive = false
         end
-        return
-    end
-
-    -- ── Fire: ImminentBlister (tank/heal warning) ─────────────────────────
-    if abilityId == IMMINENT_BLISTER then
+    end,
+    -- ── Fire: ImminentBlister (tank/heal warning, 10 s) ────────────────────
+    [IMMINENT_BLISTER] = function(self, context, alerts, changeType, abilityId,
+                                   unitTag, unitId, unitName, stackCount)
         if changeType == EFFECT_RESULT_GAINED then
             local _, isHeal, isTank = GetPlayerRoles()
             if isTank or isHeal then
@@ -337,11 +312,10 @@ function Lylanar:onEffectChanged(context, alerts, changeType, abilityId,
         elseif changeType == EFFECT_RESULT_FADED then
             self.lastFireImminentTime = 0
         end
-        return
-    end
-
-    -- ── Ice: ImminentChill (tank/heal warning) ────────────────────────────
-    if abilityId == IMMINENT_CHILL then
+    end,
+    -- ── Ice: ImminentChill (tank/heal warning, 10 s) ───────────────────────
+    [IMMINENT_CHILL] = function(self, context, alerts, changeType, abilityId,
+                                 unitTag, unitId, unitName, stackCount)
         if changeType == EFFECT_RESULT_GAINED then
             local _, isHeal, isTank = GetPlayerRoles()
             if isTank or isHeal then
@@ -351,11 +325,10 @@ function Lylanar:onEffectChanged(context, alerts, changeType, abilityId,
         elseif changeType == EFFECT_RESULT_FADED then
             self.lastIceImminentTime = 0
         end
-        return
-    end
-
-    -- ── Fire: BlisteringFragility ─────────────────────────────────────────
-    if abilityId == BLISTERING_FRAGILITY then
+    end,
+    -- ── Fire: BlisteringFragility (20 s debuff on local player) ───────────
+    [BLISTERING_FRAGILITY] = function(self, context, alerts, changeType, abilityId,
+                                       unitTag, unitId, unitName, stackCount)
         if changeType == EFFECT_RESULT_GAINED then
             if AreUnitsEqual("player", unitTag) then
                 self.lastFireFragilityTime = GetGameTimeMilliseconds() / 1000
@@ -366,11 +339,10 @@ function Lylanar:onEffectChanged(context, alerts, changeType, abilityId,
                 self.lastFireFragilityTime = 0
             end
         end
-        return
-    end
-
-    -- ── Ice: ChillingFragility ────────────────────────────────────────────
-    if abilityId == CHILLING_FRAGILITY then
+    end,
+    -- ── Ice: ChillingFragility (20 s debuff on local player) ──────────────
+    [CHILLING_FRAGILITY] = function(self, context, alerts, changeType, abilityId,
+                                     unitTag, unitId, unitName, stackCount)
         if changeType == EFFECT_RESULT_GAINED then
             if AreUnitsEqual("player", unitTag) then
                 self.lastIceFragilityTime = GetGameTimeMilliseconds() / 1000
@@ -381,11 +353,10 @@ function Lylanar:onEffectChanged(context, alerts, changeType, abilityId,
                 self.lastIceFragilityTime = 0
             end
         end
-        return
-    end
-
-    -- ── Fire: DestructiveEmber (fire bubble stacks on player) ─────────────
-    if abilityId == DESTRUCTIVE_EMBER then
+    end,
+    -- ── Fire: DestructiveEmber (fire bubble stacks, stackCount used!) ───────
+    [DESTRUCTIVE_EMBER] = function(self, context, alerts, changeType, abilityId,
+                                    unitTag, unitId, unitName, stackCount)
         if changeType == EFFECT_RESULT_GAINED or changeType == EFFECT_RESULT_UPDATED then
             if AreUnitsEqual("player", unitTag) then
                 self.destructiveEmberStacks = stackCount or 1
@@ -399,11 +370,10 @@ function Lylanar:onEffectChanged(context, alerts, changeType, abilityId,
                 self.lastDestructiveEmber   = 0
             end
         end
-        return
-    end
-
-    -- ── Ice: PiercingHailstone (ice bubble stacks on player) ──────────────
-    if abilityId == PIERCING_HAILSTONE then
+    end,
+    -- ── Ice: PiercingHailstone (ice bubble stacks, stackCount used!) ────────
+    [PIERCING_HAILSTONE] = function(self, context, alerts, changeType, abilityId,
+                                     unitTag, unitId, unitName, stackCount)
         if changeType == EFFECT_RESULT_GAINED or changeType == EFFECT_RESULT_UPDATED then
             if AreUnitsEqual("player", unitTag) then
                 self.piercingHailstacks = stackCount or 1
@@ -417,86 +387,67 @@ function Lylanar:onEffectChanged(context, alerts, changeType, abilityId,
                 self.lastPiercingHail   = 0
             end
         end
-        return
-    end
-
+    end,
     -- ── Fire: Firebrand (HM brand tracking) ──────────────────────────────
-    if abilityId == FIREBRAND and isHM then
-        if changeType == EFFECT_RESULT_GAINED then
-            local entry = { tag = unitTag,
-                            name = GetUnitDisplayName(unitTag) or unitName }
-            table.insert(self.firebrandTracker, entry)
-            if #self.firebrandTracker >= 2 and #self.frostbrandTracker >= 2 then
-                matchBrands(self)
-                -- reset trackers for the next brand set
-                self.firebrandTracker = {}
-                self.frostbrandTracker = {}
-            end
+    [FIREBRAND] = function(self, context, alerts, changeType, abilityId,
+                            unitTag, unitId, unitName, stackCount)
+        if context.difficulty ~= Difficulty.HARDMODE then return end
+        if changeType ~= EFFECT_RESULT_GAINED then return end
+        local entry = { tag = unitTag, name = GetUnitDisplayName(unitTag) or unitName }
+        table.insert(self.firebrandTracker, entry)
+        if #self.firebrandTracker >= 2 and #self.frostbrandTracker >= 2 then
+            matchBrands(self)
+            self.firebrandTracker  = {}
+            self.frostbrandTracker = {}
         end
-        return
-    end
-
+    end,
     -- ── Ice: Frostbrand (HM brand tracking) ──────────────────────────────
-    if abilityId == FROSTBRAND and isHM then
-        if changeType == EFFECT_RESULT_GAINED then
-            local entry = { tag = unitTag,
-                            name = GetUnitDisplayName(unitTag) or unitName }
-            table.insert(self.frostbrandTracker, entry)
-            if #self.firebrandTracker >= 2 and #self.frostbrandTracker >= 2 then
-                matchBrands(self)
-                self.firebrandTracker  = {}
-                self.frostbrandTracker = {}
-            end
+    [FROSTBRAND] = function(self, context, alerts, changeType, abilityId,
+                             unitTag, unitId, unitName, stackCount)
+        if context.difficulty ~= Difficulty.HARDMODE then return end
+        if changeType ~= EFFECT_RESULT_GAINED then return end
+        local entry = { tag = unitTag, name = GetUnitDisplayName(unitTag) or unitName }
+        table.insert(self.frostbrandTracker, entry)
+        if #self.firebrandTracker >= 2 and #self.frostbrandTracker >= 2 then
+            matchBrands(self)
+            self.firebrandTracker  = {}
+            self.frostbrandTracker = {}
         end
-        return
-    end
-
-    -- ── Fire: Lylanar multiloc (teleport) ─────────────────────────────────
-    if abilityId == LYLANAR_MULTILOC then
+    end,
+    [LYLANAR_MULTILOC] = function(self, context, alerts, changeType, abilityId, ...)
         if changeType == EFFECT_RESULT_GAINED then
             CA.alert(nil, "|cFF5733Lylanar teleports|r — reposition!",
                 0xFF5733D9, SOUNDS.CHAMPION_POINTS_COMMITTED, 4000)
         end
-        return
-    end
-
-    -- ── Ice: Turlassil multiloc (teleport) ────────────────────────────────
-    if abilityId == TURLASSIL_MULTILOC then
+    end,
+    [TURLASSIL_MULTILOC] = function(self, context, alerts, changeType, abilityId, ...)
         if changeType == EFFECT_RESULT_GAINED then
             CA.alert(nil, "|c99CCffTurlassil teleports|r — reposition!",
                 0x99CCffD9, SOUNDS.CHAMPION_POINTS_COMMITTED, 4000)
         end
-        return
-    end
-
-    -- ── Fire: SummonFlameHound ────────────────────────────────────────────
-    if abilityId == SUMMON_FLAME_HOUND then
+    end,
+    [SUMMON_FLAME_HOUND] = function(self, context, alerts, changeType, abilityId, ...)
         if changeType == EFFECT_RESULT_GAINED then
             self.flameHounds = self.flameHounds + 1
         elseif changeType == EFFECT_RESULT_FADED then
             if self.flameHounds > 0 then self.flameHounds = self.flameHounds - 1 end
         end
-        return
-    end
-
-    -- ── Ice: SummonFrostHound ─────────────────────────────────────────────
-    if abilityId == SUMMON_FROST_HOUND then
+    end,
+    [SUMMON_FROST_HOUND] = function(self, context, alerts, changeType, abilityId, ...)
         if changeType == EFFECT_RESULT_GAINED then
             self.frostHounds = self.frostHounds + 1
         elseif changeType == EFFECT_RESULT_FADED then
             if self.frostHounds > 0 then self.frostHounds = self.frostHounds - 1 end
         end
-        return
-    end
-
-    -- ── Shared: Hindered (slow on player) ────────────────────────────────
-    if abilityId == HINDERED then
+    end,
+    -- ── Shared: Hindered (slow on player → yellow border 12 s) ──────────
+    [HINDERED] = function(self, context, alerts, changeType, abilityId,
+                           unitTag, unitId, unitName, stackCount)
         if changeType == EFFECT_RESULT_GAINED and AreUnitsEqual("player", unitTag) then
             CA.border(true, 12000, "yellow")
         end
-        return
-    end
-end
+    end,
+}
 
 -- ── 200 ms display loop ───────────────────────────────────────────────────
 function Lylanar:onUpdate(context, alerts)

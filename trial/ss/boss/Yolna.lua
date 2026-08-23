@@ -54,30 +54,27 @@ function Yolna:onCombatState(context, inCombat, alerts)
     end
 end
 
--- ── Combat events ─────────────────────────────────────────────────────────
-function Yolna:onCombatEvent(context, alerts, result, abilityId,
-                              unitTag, sourceUnitTag, sourceUnitId, unitId,
-                              sourceUnitName, unitName)
-    -- cross-trial alerts (HA, Block, Leap, Charge, Breath, Spit)
-    if SunspireCommon.handle(alerts, result, abilityId, unitTag, sourceUnitName) then
-        return
-    end
+-- ── Routing tables (C3) ──────────────────────────────────────────────────
+-- Shared cross-trial mechanic handler.
+Yolna.common = SunspireCommon
 
-    -- alertList cleanup
-    if result == ACTION_RESULT_DIED then
-        if unitId then CA.castAlertsStop(self.alertList[unitId]); self.alertList[unitId] = nil end
-        return
-    end
+-- DIED: clean up any tracked CA bars.
+function Yolna:onDied(context, alerts,
+                       unitTag, sourceUnitTag, sourceUnitId, unitId,
+                       sourceUnitName, unitName)
+    if unitId then CA.castAlertsStop(self.alertList[unitId]); self.alertList[unitId] = nil end
+end
 
-    -- ── AtroSpawn: summon fire atronarchs ─────────────────────────────
-    if abilityId == ATRO_SPAWN and result == ACTION_RESULT_BEGIN then
+Yolna.combatRoutes = {
+    [ATRO_SPAWN] = function(self, context, alerts, result, abilityId, ...)
+        if result ~= ACTION_RESULT_BEGIN then return end
         alerts:showAction("Kill Atro!")
         CA.alert(nil, "Kill Atro!", 0xFF8000FF, SOUNDS.NONE, 4500)
-        return
-    end
-
-    -- ── LavaGeyser: player or nearby group member ─────────────────────
-    if abilityId == LAVA_GEYSER and result == ACTION_RESULT_BEGIN then
+    end,
+    [LAVA_GEYSER] = function(self, context, alerts, result, abilityId,
+                              unitTag, sourceUnitTag, sourceUnitId, unitId,
+                              sourceUnitName, unitName)
+        if result ~= ACTION_RESULT_BEGIN then return end
         local show = false
         if IsUnitPlayer(unitTag) then
             if AreUnitsEqual("player", unitTag) then
@@ -98,38 +95,31 @@ function Yolna:onCombatEvent(context, alerts, result, abilityId,
             if dur <= 0 then dur = 2500 end
             CA.alertCast(abilityId, sourceUnitName, dur, COL_GEYSER)
         end
-        return
-    end
-
-    -- ── NextFlare timer updates ────────────────────────────────────────
-    if abilityId == NEXT_FLARE_A and result == ACTION_RESULT_BEGIN then
+    end,
+    -- NextFlare: BEGIN → +32 s; EFFECT_FADED → +30 s.
+    [NEXT_FLARE_A] = function(self, context, alerts, result, abilityId, ...)
+        if result ~= ACTION_RESULT_BEGIN then return end
         self.nextFlareTime = GetGameTimeMilliseconds() / 1000 + 32
-        return
-    end
-
-    if abilityId == NEXT_FLARE_B and result == ACTION_RESULT_EFFECT_FADED then
+    end,
+    [NEXT_FLARE_B] = function(self, context, alerts, result, abilityId, ...)
+        if result ~= ACTION_RESULT_EFFECT_FADED then return end
         self.nextFlareTime = GetGameTimeMilliseconds() / 1000 + 30
-        return
-    end
-
-    -- ── Cataclysm: fire channel → landing ─────────────────────────────
-    if abilityId == CATACLYSM and result == ACTION_RESULT_BEGIN then
+    end,
+    [CATACLYSM] = function(self, context, alerts, result, abilityId, ...)
+        if result ~= ACTION_RESULT_BEGIN then return end
         local now_ms = GetGameTimeMilliseconds()
         local dur = select(1, GetAbilityCastInfo(CATACLYSM)) or 0
         if dur <= 0 then dur = 4600 end   -- empirical fallback (~4.6 s)
-
         self.cataEndTime = now_ms + dur
         self.landingTime = (self.cataEndTime / 1000) + 6.8
-
         CA.castAlertsStop(self.cataBarId)
         self.cataBarId = CA.castAlertsStart(
             abilityId, "Cataclysm",
             dur, dur,
             { 0.9, 0.2, 0.1, 0.5 },
             { dur, "Cata Ends!", 0.9, 0.2, 0.1, 0.9, SOUNDS.NONE })
-        return
-    end
-end
+    end,
+}
 
 -- ── 200 ms display loop ───────────────────────────────────────────────────
 function Yolna:onUpdate(context, alerts)

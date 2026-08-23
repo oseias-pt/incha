@@ -33,33 +33,28 @@ function XynizataEncounter.new()
     }, XynizataEncounter)
 end
 
-function XynizataEncounter:onCombatEvent(context, alerts,
-        result, abilityId, unitTag, sourceUnitTag, sourceUnitId, unitId,
-        sourceUnitName, unitName)
+-- ── Routing tables (C3) ──────────────────────────────────────────────────
 
-    if result ~= ACTION_RESULT_BEGIN then return end
-
-    if abilityId == PIERCING_BEAM then
+XynizataEncounter.combatRoutes = {
+    [PIERCING_BEAM] = function(self, context, alerts, result, abilityId, ...)
+        if result ~= ACTION_RESULT_BEGIN then return end
         self.firstBeam = false
         self.piercingBeamTimer:reset(BEAM_CD)
         local dur = select(1, GetAbilityCastInfo(abilityId)) or 0
         if dur <= 0 then dur = 2500 end
         CA.alertCast(abilityId, "INTERRUPT — Beam!", dur, COL_INTERRUPT)
         alerts:showAction("INTERRUPT — Piercing Beam!")
-
-    elseif abilityId == VITRIFY then
+    end,
+    [VITRIFY] = function(self, context, alerts, result, abilityId, ...)
+        if result ~= ACTION_RESULT_BEGIN then return end
         self.firstVitrify = false
         self.vitrifyTimer:reset(VITRIFY_CD)
         local dur = select(1, GetAbilityCastInfo(abilityId)) or 0
         if dur <= 0 then dur = 2000 end
         CA.alertCast(abilityId, "INTERRUPT — Vitrify!", dur, COL_INTERRUPT)
         alerts:showAction("INTERRUPT — Vitrify!")
-    end
-end
-
-function XynizataEncounter:onEffectChanged(context, alerts,
-        changeType, abilityId, unitTag, unitId, unitName)
-end
+    end,
+}
 
 function XynizataEncounter:onUpdate(context, alerts)
     -- Line 1: Piercing Beam CD

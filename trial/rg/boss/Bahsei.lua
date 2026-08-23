@@ -93,40 +93,41 @@ function Bahsei:onCombatState(context, inCombat, alerts)
     end
 end
 
--- ── Combat events ─────────────────────────────────────────────────────────
-function Bahsei:onCombatEvent(context, alerts, result, abilityId,
-                               unitTag, sourceUnitTag, sourceUnitId, unitId,
-                               sourceUnitName, unitName)
-    if RockgroveCommon.handle(alerts, result, abilityId, unitTag, sourceUnitName) then
-        return
-    end
+-- ── Routing tables (C3) ──────────────────────────────────────────────────
+-- Shared trash mechanic handler.
+Bahsei.common = RockgroveCommon
 
-    -- ── Main tank detection ───────────────────────────────────────────────
-    -- Bahsei's direct attacks on a player identify them as the MT.
-    if MT_ATTACK_IDS[abilityId] and IsUnitPlayer(unitTag) then
-        self.mtUnitId = unitId
-    end
-
-    -- ── Dead players: clean up portal tracker ─────────────────────────────
-    if result == ACTION_RESULT_DIED then
-        if unitId and self.portalTracker[unitId] then
-            self.portalTracker[unitId] = false
-            if self.numPlayersInPortal > 0 then
-                self.numPlayersInPortal = self.numPlayersInPortal - 1
-            end
+-- DIED: clean up portal tracker for the dead player.
+function Bahsei:onDied(context, alerts,
+                        unitTag, sourceUnitTag, sourceUnitId, unitId,
+                        sourceUnitName, unitName)
+    if unitId and self.portalTracker[unitId] then
+        self.portalTracker[unitId] = false
+        if self.numPlayersInPortal > 0 then
+            self.numPlayersInPortal = self.numPlayersInPortal - 1
         end
-        return
     end
+end
 
-    -- ── Cursed Ground ─────────────────────────────────────────────────────
-    if abilityId == CURSED_GROUND and result == ACTION_RESULT_BEGIN then
+-- MT_ATTACK_IDS (carve/slice/rendflesh): player hit → update mtUnitId.
+local function handleMtDetect(self, context, alerts, result, abilityId,
+                               unitTag, sourceUnitTag, sourceUnitId, unitId, ...)
+    if IsUnitPlayer(unitTag) then self.mtUnitId = unitId end
+end
+
+Bahsei.combatRoutes = {
+    [150047] = handleMtDetect,   -- carve
+    [150048] = handleMtDetect,   -- slice
+    [150065] = handleMtDetect,   -- rendflesh
+    [CURSED_GROUND] = function(self, context, alerts, result, abilityId, ...)
+        if result ~= ACTION_RESULT_BEGIN then return end
         self.lastCursedGround = GetGameTimeMilliseconds() / 1000
         CA.alert(nil, "Cursed Ground", 0xEE82EED9, SOUNDS.CHAMPION_POINTS_COMMITTED, 2000)
-        return
-    end
-
-    -- ── Salvo2: channeled cast → tanks interrupt ──────────────────────────
-    if abilityId == SALVO2 and result == ACTION_RESULT_BEGIN then
+    end,
+    [SALVO2] = function(self, context, alerts, result, abilityId,
+                         unitTag, sourceUnitTag, sourceUnitId, unitId,
+                         sourceUnitName, unitName)
+        if result ~= ACTION_RESULT_BEGIN then return end
         local _, _, isTank = GetPlayerRoles()
         if isTank then
             local dur = select(1, GetAbilityCastInfo(SALVO2)) or 0
@@ -134,67 +135,59 @@ function Bahsei:onCombatEvent(context, alerts, result, abilityId,
             CA.alertCast(abilityId, sourceUnitName, dur, COL_INTERRUPT)
             CA.alert(nil, "Interrupt!", 0xFF2020FF, SOUNDS.CHAMPION_POINTS_COMMITTED, 2000)
         end
-        return
-    end
-
-    -- ── Sickle ────────────────────────────────────────────────────────────
-    if abilityId == SICKLE and result == ACTION_RESULT_BEGIN then
+    end,
+    [SICKLE] = function(self, context, alerts, result, abilityId,
+                         unitTag, sourceUnitTag, sourceUnitId, unitId,
+                         sourceUnitName, unitName)
+        if result ~= ACTION_RESULT_BEGIN then return end
         self.nextSickle = GetGameTimeMilliseconds() / 1000 + 15
         if IsUnitPlayer(unitTag) then
             local dur = select(1, GetAbilityCastInfo(SICKLE)) or 0
             if dur <= 0 then dur = 1500 end
             CA.alertCast(abilityId, sourceUnitName, dur, COL_SICKLE)
         end
-        return
-    end
-
-    -- ── Flesh Abomination: Hemorrhage (bleed DoT on player) ──────────────
-    if abilityId == HEMORRHAGE and result == ACTION_RESULT_BEGIN then
+    end,
+    [HEMORRHAGE] = function(self, context, alerts, result, abilityId, unitTag, ...)
+        if result ~= ACTION_RESULT_BEGIN then return end
         if not IsUnitPlayer(unitTag) then return end
         PlaySound(SOUNDS.DUEL_START)
         PlaySound(SOUNDS.DUEL_START)
         CA.alert(nil, "Bleeding", 0xCC0000D9, SOUNDS.DUEL_START, 9000)
-        return
-    end
-
-    -- ── Flesh Abomination: Rancid Hammer (AoE slam, tanks) ───────────────
-    if abilityId == RANCID_HAMMER and result == ACTION_RESULT_BEGIN then
+    end,
+    [RANCID_HAMMER] = function(self, context, alerts, result, abilityId,
+                                unitTag, sourceUnitTag, sourceUnitId, unitId,
+                                sourceUnitName, unitName)
+        if result ~= ACTION_RESULT_BEGIN then return end
         local _, _, isTank = GetPlayerRoles()
         if isTank then
             local dur = select(1, GetAbilityCastInfo(RANCID_HAMMER)) or 0
             if dur <= 0 then dur = 2000 end
             CA.alertCast(abilityId, sourceUnitName, dur, COL_HAMMER)
         end
-        return
-    end
-
-    -- ── Meteor Swarm: Prime Meteor (HM, < ~31% HP) ───────────────────────
-    if abilityId == METEOR_SWARM
-       and result == ACTION_RESULT_EFFECT_GAINED_DURATION
-       and context.difficulty == Difficulty.HARDMODE then
+    end,
+    -- Prime Meteor (HM, < ~31% HP): starts a 13.5 s cast bar.
+    [METEOR_SWARM] = function(self, context, alerts, result, abilityId, ...)
+        if result ~= ACTION_RESULT_EFFECT_GAINED_DURATION then return end
+        if context.difficulty ~= Difficulty.HARDMODE then return end
         self.nextSickle = 0   -- sickle irrelevant from here; free the slot
         CA.castAlertsStop(self.sunBarId)
         self.sunBarId = CA.castAlertsStart(
             abilityId, "Prime Meteor",
             13500, 13500, COL_METEOR, ACT_METEOR)
         PlaySound(SOUNDS.DUEL_START)
-        return
-    end
+    end,
+    [EYE_CW]  = function(self, context, alerts, result, abilityId, ...)
+        if result == ACTION_RESULT_EFFECT_GAINED then self.lastPortalCW = true  end
+    end,
+    [EYE_CCW] = function(self, context, alerts, result, abilityId, ...)
+        if result == ACTION_RESULT_EFFECT_GAINED then self.lastPortalCW = false end
+    end,
+}
 
-    -- ── Portal eye direction (HM) ─────────────────────────────────────────
-    if abilityId == EYE_CW  and result == ACTION_RESULT_EFFECT_GAINED then
-        self.lastPortalCW = true;  return
-    end
-    if abilityId == EYE_CCW and result == ACTION_RESULT_EFFECT_GAINED then
-        self.lastPortalCW = false; return
-    end
-end
-
--- ── Effect changes ────────────────────────────────────────────────────────
-function Bahsei:onEffectChanged(context, alerts, changeType, abilityId,
-                                unitTag, unitId, unitName)
-    -- ── Death Touch ───────────────────────────────────────────────────────
-    if abilityId == DEATH_TOUCH and changeType == EFFECT_RESULT_GAINED then
+Bahsei.effectRoutes = {
+    [DEATH_TOUCH] = function(self, context, alerts, changeType, abilityId,
+                              unitTag, unitId, unitName, stackCount)
+        if changeType ~= EFFECT_RESULT_GAINED then return end
         -- Personal border: player received the curse
         if AreUnitsEqual("player", unitTag) then
             self.lastDeathTouch = GetGameTimeMilliseconds() / 1000
@@ -204,11 +197,9 @@ function Bahsei:onEffectChanged(context, alerts, changeType, abilityId,
         if unitId and unitId == self.mtUnitId then
             self.nextMtExplosion = GetGameTimeMilliseconds() / 1000 + 9
         end
-        return
-    end
-
-    -- ── Malignant Marrow (exited portal) ──────────────────────────────────
-    if abilityId == MALIGNANT_MARROW then
+    end,
+    [MALIGNANT_MARROW] = function(self, context, alerts, changeType, abilityId,
+                                   unitTag, unitId, unitName, stackCount)
         if changeType == EFFECT_RESULT_GAINED then
             -- Event fires up to 3 times — accept only once per 5 s window.
             local now = GetGameTimeMilliseconds() / 1000
@@ -222,30 +213,25 @@ function Bahsei:onEffectChanged(context, alerts, changeType, abilityId,
             if AreUnitsEqual("player", unitTag) then
                 self.selfDoNotPortalTime = now + 120
             end
-
         elseif changeType == EFFECT_RESULT_FADED then
             if AreUnitsEqual("player", unitTag) then
                 self.selfDoNotPortalTime = 0
             end
         end
-        return
-    end
-
-    -- ── Bitter Marrow (in portal) ─────────────────────────────────────────
-    if abilityId == BITTER_MARROW then
+    end,
+    [BITTER_MARROW] = function(self, context, alerts, changeType, abilityId,
+                                unitTag, unitId, unitName, stackCount)
         if changeType == EFFECT_RESULT_GAINED then
             self.numPlayersInPortal = self.numPlayersInPortal + 1
             if unitId then self.portalTracker[unitId] = true end
-
         elseif changeType == EFFECT_RESULT_FADED then
             if self.numPlayersInPortal > 0 then
                 self.numPlayersInPortal = self.numPlayersInPortal - 1
             end
             if unitId then self.portalTracker[unitId] = false end
         end
-        return
-    end
-end
+    end,
+}
 
 -- ── 200 ms display loop ───────────────────────────────────────────────────
 function Bahsei:onUpdate(context, alerts)

@@ -20,11 +20,13 @@ function DarielEncounter.new()
     return setmetatable({}, DarielEncounter)
 end
 
-function DarielEncounter:onCombatEvent(context, alerts,
-        result, abilityId, unitTag, sourceUnitTag, sourceUnitId, unitId,
-        sourceUnitName, unitName)
+-- ── Routing tables (C3) ──────────────────────────────────────────────────
 
-    if result == ACTION_RESULT_BEGIN and abilityId == POWERFUL_THROW then
+DarielEncounter.combatRoutes = {
+    [POWERFUL_THROW] = function(self, context, alerts, result, abilityId,
+                                 unitTag, sourceUnitTag, sourceUnitId, unitId,
+                                 sourceUnitName, unitName)
+        if result ~= ACTION_RESULT_BEGIN then return end
         local target = (unitName and unitName ~= "") and unitName or "?"
         local dur = select(1, GetAbilityCastInfo(abilityId)) or 0
         if dur <= 0 then dur = 2500 end
@@ -34,12 +36,8 @@ function DarielEncounter:onCombatEvent(context, alerts,
         else
             alerts:showAction("Powerful Throw → " .. target)
         end
-    end
-end
-
-function DarielEncounter:onEffectChanged(context, alerts,
-        changeType, abilityId, unitTag, unitId, unitName)
-end
+    end,
+}
 
 function DarielEncounter:onUpdate(context, alerts)
     alerts:showInfo(1, "")

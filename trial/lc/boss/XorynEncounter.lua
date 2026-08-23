@@ -38,76 +38,79 @@ function XorynEncounter.new()
     }, XorynEncounter)
 end
 
-function XorynEncounter:onCombatEvent(context, alerts,
-        result, abilityId, unitTag, sourceUnitTag, sourceUnitId, unitId,
-        sourceUnitName, unitName)
-
-    if result == ACTION_RESULT_BEGIN then
-        if abilityId == NECROTIC_BARRAGE then
-            local dur = select(1, GetAbilityCastInfo(abilityId)) or 0
-            if dur <= 0 then dur = 3000 end
-            CA.alertCast(abilityId, "Necrotic Barrage!", dur, COL_NECROTIC)
-
-        elseif abilityId == ACCELERATING_CHARGE then
-            CA.alert(nil, "Chain Lightning incoming!", 0xFFFF44FF, SOUNDS.NONE, 3000)
-            alerts:showAction("Accelerating Charge → Chain Lightning!")
-
-        elseif abilityId == TEMPEST then
-            local dur = select(1, GetAbilityCastInfo(abilityId)) or 0
-            if dur <= 0 then dur = 2000 end
-            CA.alertCast(abilityId, "MOVE from line!", dur, COL_TEMPEST)
-            alerts:showAction("Tempest! MOVE from mirror line!")
-
-        elseif abilityId == GLASS_STOMP_CAST then
-            local target = (unitName and unitName ~= "") and unitName or "?"
-            local dur = select(1, GetAbilityCastInfo(abilityId)) or 0
-            if dur <= 0 then dur = 2000 end
-            CA.alertCast(abilityId, "Atronach AOE → " .. target, dur, COL_ATRONACH)
-            if IsUnitPlayer(unitTag) then
-                alerts:showAction("Atronach AOE on YOU!")
-            end
-
-        elseif abilityId == LUSTROUS_JAVELIN and IsUnitPlayer(unitTag) then
-            CA.alert(nil, "Javelin on YOU!", 0xFF8844FF, SOUNDS.NONE, 3000)
-            alerts:showAction("Lustrous Javelin on you!")
+-- ── Routing tables (C3) ──────────────────────────────────────────────────
+XorynEncounter.combatRoutes = {
+    [NECROTIC_BARRAGE] = function(self, context, alerts, result, abilityId, ...)
+        if result ~= ACTION_RESULT_BEGIN then return end
+        local dur = select(1, GetAbilityCastInfo(abilityId)) or 0
+        if dur <= 0 then dur = 3000 end
+        CA.alertCast(abilityId, "Necrotic Barrage!", dur, COL_NECROTIC)
+    end,
+    [ACCELERATING_CHARGE] = function(self, context, alerts, result, abilityId, ...)
+        if result ~= ACTION_RESULT_BEGIN then return end
+        CA.alert(nil, "Chain Lightning incoming!", 0xFFFF44FF, SOUNDS.NONE, 3000)
+        alerts:showAction("Accelerating Charge → Chain Lightning!")
+    end,
+    [TEMPEST] = function(self, context, alerts, result, abilityId, ...)
+        if result ~= ACTION_RESULT_BEGIN then return end
+        local dur = select(1, GetAbilityCastInfo(abilityId)) or 0
+        if dur <= 0 then dur = 2000 end
+        CA.alertCast(abilityId, "MOVE from line!", dur, COL_TEMPEST)
+        alerts:showAction("Tempest! MOVE from mirror line!")
+    end,
+    [GLASS_STOMP_CAST] = function(self, context, alerts, result, abilityId,
+                                   unitTag, sourceUnitTag, sourceUnitId, unitId,
+                                   sourceUnitName, unitName)
+        if result ~= ACTION_RESULT_BEGIN then return end
+        local target = (unitName and unitName ~= "") and unitName or "?"
+        local dur = select(1, GetAbilityCastInfo(abilityId)) or 0
+        if dur <= 0 then dur = 2000 end
+        CA.alertCast(abilityId, "Atronach AOE → " .. target, dur, COL_ATRONACH)
+        if IsUnitPlayer(unitTag) then
+            alerts:showAction("Atronach AOE on YOU!")
         end
-
-    elseif result == ACTION_RESULT_EFFECT_GAINED_DURATION then
+    end,
+    [LUSTROUS_JAVELIN] = function(self, context, alerts, result, abilityId, unitTag, ...)
+        if result ~= ACTION_RESULT_BEGIN then return end
         if not IsUnitPlayer(unitTag) then return end
-
-        if abilityId == ARCANE_KNOT then
+        CA.alert(nil, "Javelin on YOU!", 0xFF8844FF, SOUNDS.NONE, 3000)
+        alerts:showAction("Lustrous Javelin on you!")
+    end,
+    [ARCANE_KNOT] = function(self, context, alerts, result, abilityId, unitTag, ...)
+        if not IsUnitPlayer(unitTag) then return end
+        if result == ACTION_RESULT_EFFECT_GAINED_DURATION then
             self.holdingKnot = true
             CA.alert(nil, "Carry knot! Pass it!", 0xFFAA44FF, SOUNDS.NONE, 4000)
             alerts:showAction("Arcane Knot — carry and pass!")
-
-        elseif abilityId == ARCANE_CONV_DEBUFF then
-            CA.alert(nil, "TETHER! Move away!", 0xFF4444FF, SOUNDS.NONE, 3000)
-            alerts:showAction("Tether on you! Separate from partner!")
-
-        elseif abilityId == FLUCTUATING_CURRENT then
+        elseif result == ACTION_RESULT_EFFECT_FADED then
+            self.holdingKnot = false
+        end
+    end,
+    [ARCANE_CONV_DEBUFF] = function(self, context, alerts, result, abilityId, unitTag, ...)
+        if result ~= ACTION_RESULT_EFFECT_GAINED_DURATION then return end
+        if not IsUnitPlayer(unitTag) then return end
+        CA.alert(nil, "TETHER! Move away!", 0xFF4444FF, SOUNDS.NONE, 3000)
+        alerts:showAction("Tether on you! Separate from partner!")
+    end,
+    [FLUCTUATING_CURRENT] = function(self, context, alerts, result, abilityId, unitTag, ...)
+        if not IsUnitPlayer(unitTag) then return end
+        if result == ACTION_RESULT_EFFECT_GAINED_DURATION then
             self.holdingCurrent = true
             self.currentTimer:reset(CURRENT_MAX_DUR)
             CA.alert(nil, "Hold current! Drop at edge!", 0x44CCFFFF, SOUNDS.NONE, 3000)
             alerts:showAction("Fluctuating Current — hold, then drop!")
-
-        elseif abilityId == OVERLOADED_CURRENT then
-            CA.alert(nil, "DROP current!", 0xFF0000FF, SOUNDS.NONE, 2000)
-            alerts:showAction("Overloaded — DROP the current!")
-        end
-
-    elseif result == ACTION_RESULT_EFFECT_FADED and IsUnitPlayer(unitTag) then
-        if abilityId == ARCANE_KNOT then
-            self.holdingKnot = false
-        elseif abilityId == FLUCTUATING_CURRENT then
+        elseif result == ACTION_RESULT_EFFECT_FADED then
             self.holdingCurrent = false
             self.currentTimer:clear()
         end
-    end
-end
-
-function XorynEncounter:onEffectChanged(context, alerts,
-        changeType, abilityId, unitTag, unitId, unitName)
-end
+    end,
+    [OVERLOADED_CURRENT] = function(self, context, alerts, result, abilityId, unitTag, ...)
+        if result ~= ACTION_RESULT_EFFECT_GAINED_DURATION then return end
+        if not IsUnitPlayer(unitTag) then return end
+        CA.alert(nil, "DROP current!", 0xFF0000FF, SOUNDS.NONE, 2000)
+        alerts:showAction("Overloaded — DROP the current!")
+    end,
+}
 
 function XorynEncounter:onUpdate(context, alerts)
     -- Line 1: Fluctuating Current countdown (drop before 15s expires)

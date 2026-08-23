@@ -52,11 +52,28 @@ function YaseylaEncounter:onLeave(context)
     for _, cid in pairs(self.alertList) do CA.castAlertsStop(cid) end
 end
 
-function YaseylaEncounter:onCombatEvent(context, alerts,
-        result, abilityId, unitTag, sourceUnitTag, sourceUnitId, unitId,
-        sourceUnitName, unitName)
+-- ── Routing tables (C3) ──────────────────────────────────────────────────
 
-    if abilityId == FIRE_BOMBS and result == ACTION_RESULT_BEGIN then
+-- Frost Bomb: shared handler for both ability IDs.
+local function handleFrostBomb(self, context, alerts, result, abilityId,
+                                unitTag, sourceUnitTag, sourceUnitId, unitId,
+                                sourceUnitName, unitName)
+    if result ~= ACTION_RESULT_EFFECT_GAINED_DURATION then return end
+    self.firstFrost = false
+    self.frostTimer:reset(FROST_CD)
+    if IsUnitPlayer(unitTag) then
+        alerts:showAction("Frost Bomb on you! Drop it!")
+        CA.alert(nil, "FROST BOMB — drop!", 0x99CCFFFF, SOUNDS.NONE, 3000)
+    elseif unitName and unitName ~= "" then
+        alerts:showAction("Frost Bomb → " .. unitName)
+    end
+end
+
+YaseylaEncounter.combatRoutes = {
+    [FIRE_BOMBS] = function(self, context, alerts, result, abilityId,
+                             unitTag, sourceUnitTag, sourceUnitId, unitId,
+                             sourceUnitName, unitName)
+        if result ~= ACTION_RESULT_BEGIN then return end
         self.firstFirebomb = false
         local cd = self.executePhase and FIREBOMB_EXEC_CD or FIREBOMB_CD
         self.firebombTimer:reset(cd)
@@ -66,44 +83,35 @@ function YaseylaEncounter:onCombatEvent(context, alerts,
         if dur <= 0 then dur = 2000 end
         local cid = CA.alertCast(abilityId, "Fire Bombs!", dur, COL_FIRE)
         if cid and unitId then self.alertList[unitId] = cid end
-
-    elseif abilityId == CHAIN_PULL and result == ACTION_RESULT_BEGIN then
+    end,
+    [CHAIN_PULL] = function(self, context, alerts, result, abilityId, ...)
+        if result ~= ACTION_RESULT_BEGIN then return end
         self.chainTimer:reset(CHAIN_CD)
         alerts:showAction("Chains!")
-
-    elseif (abilityId == FROST_BOMB_1 or abilityId == FROST_BOMB_2)
-           and result == ACTION_RESULT_EFFECT_GAINED_DURATION then
-        self.firstFrost = false
-        self.frostTimer:reset(FROST_CD)
-        if IsUnitPlayer(unitTag) then
-            alerts:showAction("Frost Bomb on you! Drop it!")
-            CA.alert(nil, "FROST BOMB — drop!", 0x99CCFFFF, SOUNDS.NONE, 3000)
-        elseif unitName and unitName ~= "" then
-            alerts:showAction("Frost Bomb → " .. unitName)
-        end
-
-    elseif abilityId == IGNITE and result == ACTION_RESULT_EFFECT_GAINED_DURATION
-           and IsUnitPlayer(unitTag) then
+    end,
+    [FROST_BOMB_1] = handleFrostBomb,
+    [FROST_BOMB_2] = handleFrostBomb,
+    [IGNITE] = function(self, context, alerts, result, abilityId, unitTag, ...)
+        if result ~= ACTION_RESULT_EFFECT_GAINED_DURATION then return end
+        if not IsUnitPlayer(unitTag) then return end
         alerts:showAction("Ignite on you! Move!")
-
-    elseif abilityId == DEFLECT and result == ACTION_RESULT_BEGIN then
-        -- hitValue not available directly; Shrapnel fires at ACTION_RESULT_BEGIN
+    end,
+    [DEFLECT] = function(self, context, alerts, result, abilityId, ...)
+        if result ~= ACTION_RESULT_BEGIN then return end
         self.shrapnelCount = self.shrapnelCount + 1
         alerts:showAction("SHRAPNEL! Stack! (" .. self.shrapnelCount .. ")")
         CA.alert(nil, "STACK!", 0xFF0033FF, SOUNDS.NONE, 3000)
-
-    elseif abilityId == WAMASU_CHARGE and result == ACTION_RESULT_BEGIN then
+    end,
+    [WAMASU_CHARGE] = function(self, context, alerts, result, abilityId,
+                                unitTag, sourceUnitTag, sourceUnitId, unitId,
+                                sourceUnitName, unitName)
+        if result ~= ACTION_RESULT_BEGIN then return end
         local target = (unitName and unitName ~= "") and unitName or "?"
         local dur = select(1, GetAbilityCastInfo(abilityId)) or 0
         if dur <= 0 then dur = 2000 end
         CA.alertCast(abilityId, "Charge → " .. target, dur, COL_FIRE)
-    end
-end
-
-function YaseylaEncounter:onEffectChanged(context, alerts,
-        changeType, abilityId, unitTag, unitId, unitName)
-    -- No persistent effect tracking needed for Yaseyla; handled in onCombatEvent.
-end
+    end,
+}
 
 function YaseylaEncounter:onUpdate(context, alerts)
     -- Line 1: Fire Bombs CD

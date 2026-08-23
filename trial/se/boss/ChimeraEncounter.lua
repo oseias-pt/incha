@@ -49,65 +49,64 @@ function ChimeraEncounter:onLeave(context)
     for _, cid in pairs(self.alertList) do CA.castAlertsStop(cid) end
 end
 
-function ChimeraEncounter:onCombatEvent(context, alerts,
-        result, abilityId, unitTag, sourceUnitTag, sourceUnitId, unitId,
-        sourceUnitName, unitName)
+-- ── Routing tables (C3) ──────────────────────────────────────────────────
 
-    -- ── Chimera spawn / despawn ───────────────────────────────────────────
-    if abilityId == VIVIFY and result == ACTION_RESULT_EFFECT_FADED then
+-- Portal mantle: personal alert when assigned to a portal.
+local function makePortalHandler(color, label, colorHex)
+    return function(self, context, alerts, result, abilityId, unitTag, ...)
+        if result ~= ACTION_RESULT_EFFECT_GAINED then return end
+        if not IsUnitPlayer(unitTag) then return end
+        alerts:showAction(label .. "!")
+        CA.alert(nil, label, colorHex, SOUNDS.NONE, 4000)
+    end
+end
+
+ChimeraEncounter.combatRoutes = {
+    -- Spawn / despawn
+    [VIVIFY] = function(self, context, alerts, result, abilityId, ...)
+        if result ~= ACTION_RESULT_EFFECT_FADED then return end
         self.chimeraActive = true
         self.firstChain    = true
         self.despawnTimer:reset(DESPAWN_CD)
         self.chainTimer:reset(CHAIN_FIRST_CD)
         alerts:showHeader("Chimera spawned!")
-
-    elseif abilityId == PETRIFY and result == ACTION_RESULT_EFFECT_GAINED_DURATION then
+    end,
+    [PETRIFY] = function(self, context, alerts, result, abilityId, ...)
+        if result ~= ACTION_RESULT_EFFECT_GAINED_DURATION then return end
         self.chimeraActive = false
         self.despawnTimer:clear()
         self.chainTimer:clear()
         alerts:showAction("Chimera despawning…")
-
-    -- ── Chimera abilities ─────────────────────────────────────────────────
-    elseif abilityId == CHAIN_LIGHTNING and result == ACTION_RESULT_BEGIN then
+    end,
+    -- Chimera abilities
+    [CHAIN_LIGHTNING] = function(self, context, alerts, result, abilityId, ...)
+        if result ~= ACTION_RESULT_BEGIN then return end
         self.firstChain = false
         self.chainTimer:reset(CHAIN_CD)
         alerts:showAction("Chain Lightning!")
         CA.alert(nil, "CHAIN LIGHTNING", 0xFFD666FF, SOUNDS.NONE, 2500)
-
-    elseif abilityId == CHIMERA_BOLT and result == ACTION_RESULT_BEGIN then
+    end,
+    [CHIMERA_BOLT] = function(self, context, alerts, result, abilityId,
+                               unitTag, sourceUnitTag, sourceUnitId, unitId,
+                               sourceUnitName, unitName)
+        if result ~= ACTION_RESULT_BEGIN then return end
         local target = (unitName and unitName ~= "") and unitName or "?"
         alerts:showAction("Lightning Bolt → " .. target)
         local dur = select(1, GetAbilityCastInfo(abilityId)) or 0
         if dur <= 0 then dur = 2000 end
         local cid = CA.alertCast(abilityId, "Bolt!", dur, COL_LIGHTNING)
         if cid and unitId then self.alertList[unitId] = cid end
-
-    elseif abilityId == GRYPHON_WIND_LANCE and result == ACTION_RESULT_BEGIN then
+    end,
+    [GRYPHON_WIND_LANCE] = function(self, context, alerts, result, abilityId, ...)
+        if result ~= ACTION_RESULT_BEGIN then return end
         alerts:showAction("Wind Lance! Move!")
         CA.alert(nil, "WIND LANCE", 0xD1F1F9FF, SOUNDS.NONE, 2000)
-
-    -- ── Portal mantle buffs (player assigned to a portal) ─────────────────
-    elseif abilityId == MANTLE_WAMASU and result == ACTION_RESULT_EFFECT_GAINED
-           and IsUnitPlayer(unitTag) then
-        alerts:showAction("Wamasu Portal (Green)!")
-        CA.alert(nil, "WAMASU PORTAL", 0x02FF00FF, SOUNDS.NONE, 4000)
-
-    elseif abilityId == MANTLE_LION and result == ACTION_RESULT_EFFECT_GAINED
-           and IsUnitPlayer(unitTag) then
-        alerts:showAction("Lion Portal (Red)!")
-        CA.alert(nil, "LION PORTAL", 0xFF0000FF, SOUNDS.NONE, 4000)
-
-    elseif abilityId == MANTLE_GRYPHON and result == ACTION_RESULT_EFFECT_GAINED
-           and IsUnitPlayer(unitTag) then
-        alerts:showAction("Gryphon Portal (Blue)!")
-        CA.alert(nil, "GRYPHON PORTAL", 0x0044FFFF, SOUNDS.NONE, 4000)
-    end
-end
-
-function ChimeraEncounter:onEffectChanged(context, alerts,
-        changeType, abilityId, unitTag, unitId, unitName)
-    -- No additional effect tracking needed.
-end
+    end,
+    -- Portal mantle buffs
+    [MANTLE_WAMASU]  = makePortalHandler("green",  "Wamasu Portal (Green)", 0x02FF00FF),
+    [MANTLE_LION]    = makePortalHandler("red",    "Lion Portal (Red)",     0xFF0000FF),
+    [MANTLE_GRYPHON] = makePortalHandler("blue",   "Gryphon Portal (Blue)", 0x0044FFFF),
+}
 
 function ChimeraEncounter:onUpdate(context, alerts)
     -- Line 1: Despawn countdown (only when Chimera is active)

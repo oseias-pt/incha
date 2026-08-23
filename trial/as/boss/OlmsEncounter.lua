@@ -85,18 +85,20 @@ local function seedTimer(t, spawnTime)
     t:reset(seed > 0 and seed or t.duration)
 end
 
--- ── Combat events ─────────────────────────────────────────────────────────
-function OlmsEncounter:onCombatEvent(context, alerts,
-        result, abilityId, unitTag, sourceUnitTag, sourceUnitId, unitId,
-        sourceUnitName, unitName)
+-- ── Routing tables (C3) ──────────────────────────────────────────────────
+-- (Olms has no shared common module; no per-unit DIED cleanup needed.)
 
+OlmsEncounter.combatRoutes = {
     -- ── Olms ──────────────────────────────────────────────────────────────
-    if abilityId == OLMS_STORM_THE_HEAVENS and result == ACTION_RESULT_BEGIN then
+    [OLMS_STORM_THE_HEAVENS] = function(self, context, alerts, result, abilityId, ...)
+        if result ~= ACTION_RESULT_BEGIN then return end
         alerts:showAction("Kite! (Storm the Heavens)")
         CA.alert(nil, "KITE!", 0xFF4400FF, SOUNDS.NONE, 3000)
         self.stormTimer:reset()
-
-    elseif abilityId == OLMS_SCALDING_ROAR and result == ACTION_RESULT_BEGIN then
+    end,
+    [OLMS_SCALDING_ROAR] = function(self, context, alerts, result, abilityId,
+                                     unitTag, sourceUnitTag, sourceUnitId, unitId, ...)
+        if result ~= ACTION_RESULT_BEGIN then return end
         alerts:showAction("Steam Breath! Move!")
         local dur = select(1, GetAbilityCastInfo(OLMS_SCALDING_ROAR)) or 0
         if dur <= 0 then dur = 2000 end
@@ -104,31 +106,45 @@ function OlmsEncounter:onCombatEvent(context, alerts,
             { -3, 0, false, { 0.8, 0.4, 0, 0.4 }, { 0.8, 0.4, 0, 0.8 } })
         if cid and unitId then self.alertList[unitId] = cid end
         self.steamTimer:reset()
-
-    elseif abilityId == OLMS_EXHAUSTIVE_CHARGES and result == ACTION_RESULT_BEGIN then
+    end,
+    [OLMS_EXHAUSTIVE_CHARGES] = function(self, context, alerts, result, abilityId, ...)
+        if result ~= ACTION_RESULT_BEGIN then return end
         alerts:showAction("Charges!")
         self.chargesTimer:reset()
-
-    elseif abilityId == OLMS_TRIAL_BY_FIRE and result == ACTION_RESULT_BEGIN then
+    end,
+    [OLMS_TRIAL_BY_FIRE] = function(self, context, alerts, result, abilityId, ...)
+        if result ~= ACTION_RESULT_BEGIN then return end
         alerts:showAction("Trial by Fire!")
         self.fireTimer:reset()
-
-    elseif abilityId == OLMS_GUSTS_OF_STEAM and result == ACTION_RESULT_BEGIN then
+    end,
+    [OLMS_GUSTS_OF_STEAM] = function(self, context, alerts, result, abilityId, ...)
+        if result ~= ACTION_RESULT_BEGIN then return end
         alerts:showAction("Jump! Dodge!")
         if self.nextJumpThreshold <= #JUMP_THRESHOLDS then
             self.nextJumpThreshold = self.nextJumpThreshold + 1
         end
-
-    -- ── Llothis: spawn detection ──────────────────────────────────────────
-    elseif abilityId == BOSS_EVENT and result == ACTION_RESULT_EFFECT_GAINED
-           and unitName and unitName:find("Llothis") then
-        self.llothisSpawnTime = os.time()
-        self.llothisActive    = true
-        seedTimer(self.blastTimer, self.llothisSpawnTime)
-        seedTimer(self.boltsTimer, self.llothisSpawnTime)
-
-    -- ── Llothis: combat abilities ─────────────────────────────────────────
-    elseif abilityId == LLOTHIS_DEFILING_BLAST and result == ACTION_RESULT_BEGIN then
+    end,
+    -- ── Mini-boss spawn detection (Llothis and Felms share BOSS_EVENT ID) ─
+    [BOSS_EVENT] = function(self, context, alerts, result, abilityId,
+                             unitTag, sourceUnitTag, sourceUnitId, unitId,
+                             sourceUnitName, unitName)
+        if result ~= ACTION_RESULT_EFFECT_GAINED then return end
+        if unitName and unitName:find("Llothis") then
+            self.llothisSpawnTime = os.time()
+            self.llothisActive    = true
+            seedTimer(self.blastTimer, self.llothisSpawnTime)
+            seedTimer(self.boltsTimer, self.llothisSpawnTime)
+        elseif unitName and unitName:find("Felms") then
+            self.felmsSpawnTime = os.time()
+            self.felmsActive    = true
+            seedTimer(self.jumpTimer, self.felmsSpawnTime)
+        end
+    end,
+    -- ── Llothis: combat abilities ──────────────────────────────────────────
+    [LLOTHIS_DEFILING_BLAST] = function(self, context, alerts, result, abilityId,
+                                         unitTag, sourceUnitTag, sourceUnitId, unitId,
+                                         sourceUnitName, unitName)
+        if result ~= ACTION_RESULT_BEGIN then return end
         local target = (unitName and unitName ~= "") and unitName or "?"
         alerts:showAction("Blast! → " .. target)
         local dur = select(1, GetAbilityCastInfo(LLOTHIS_DEFILING_BLAST)) or 0
@@ -137,21 +153,18 @@ function OlmsEncounter:onCombatEvent(context, alerts,
             { -3, 0, false, { 0.6, 0, 0.8, 0.4 }, { 0.6, 0, 0.8, 0.8 } })
         if cid and unitId then self.alertList[unitId] = cid end
         self.blastTimer:reset()
-
-    elseif abilityId == LLOTHIS_OPPRESSIVE_BOLTS and result == ACTION_RESULT_BEGIN then
+    end,
+    [LLOTHIS_OPPRESSIVE_BOLTS] = function(self, context, alerts, result, abilityId, ...)
+        if result ~= ACTION_RESULT_BEGIN then return end
         alerts:showAction("Interrupt Llothis!")
         CA.alert(nil, "Interrupt!", 0xFF0000FF, SOUNDS.NONE, 2000)
         self.boltsTimer:reset()
-
-    -- ── Felms: spawn detection ────────────────────────────────────────────
-    elseif abilityId == BOSS_EVENT and result == ACTION_RESULT_EFFECT_GAINED
-           and unitName and unitName:find("Felms") then
-        self.felmsSpawnTime = os.time()
-        self.felmsActive    = true
-        seedTimer(self.jumpTimer, self.felmsSpawnTime)
-
-    -- ── Felms: combat abilities ───────────────────────────────────────────
-    elseif abilityId == FELMS_TELEPORT_STRIKE and result == ACTION_RESULT_BEGIN then
+    end,
+    -- ── Felms: combat abilities ────────────────────────────────────────────
+    [FELMS_TELEPORT_STRIKE] = function(self, context, alerts, result, abilityId,
+                                        unitTag, sourceUnitTag, sourceUnitId, unitId,
+                                        sourceUnitName, unitName)
+        if result ~= ACTION_RESULT_BEGIN then return end
         local target = (unitName and unitName ~= "") and unitName or "?"
         alerts:showAction("Strike! → " .. target)
         local dur = select(1, GetAbilityCastInfo(FELMS_TELEPORT_STRIKE)) or 0
@@ -160,15 +173,13 @@ function OlmsEncounter:onCombatEvent(context, alerts,
             { -3, 0, false, { 0, 0.6, 0.8, 0.4 }, { 0, 0.6, 0.8, 0.8 } })
         if cid and unitId then self.alertList[unitId] = cid end
         self.jumpTimer:reset()
-    end
-end
+    end,
+}
 
--- ── Effect changed ────────────────────────────────────────────────────────
-function OlmsEncounter:onEffectChanged(context, alerts,
-        changeType, abilityId, unitTag, unitId, unitName)
-
-    -- ── DORMANT (mini-boss sleep/wake) ────────────────────────────────────
-    if abilityId == DORMANT then
+OlmsEncounter.effectRoutes = {
+    -- DORMANT: mini-boss sleep/wake cycle (Llothis and Felms share this ID).
+    [DORMANT] = function(self, context, alerts, changeType, abilityId,
+                          unitTag, unitId, unitName, stackCount)
         if unitName and unitName:find("Llothis") then
             if changeType == EFFECT_RESULT_GAINED then
                 self.llothisActive = false
@@ -188,13 +199,9 @@ function OlmsEncounter:onEffectChanged(context, alerts,
                 seedTimer(self.jumpTimer, self.felmsSpawnTime)
             end
         end
-        return
-    end
-
-    -- ── Static Shield (Protector alive → Olms shielded) ──────────────────
-    -- The Protector NPC channels this buff onto Olms.  When it's active,
-    -- dealing damage to Olms is largely wasted — kill the Protector first.
-    if abilityId == STATIC_SHIELD then
+    end,
+    -- Static Shield: Protector NPC channels this onto Olms; kill Protector first.
+    [STATIC_SHIELD] = function(self, context, alerts, changeType, abilityId, ...)
         if changeType == EFFECT_RESULT_GAINED then
             self.protectorUp = true
             alerts:showAction("Kill the Protector!")
@@ -203,9 +210,8 @@ function OlmsEncounter:onEffectChanged(context, alerts,
             self.protectorUp = false
             alerts:showAction("Shield down!")
         end
-        return
-    end
-end
+    end,
+}
 
 -- ── 200 ms display update ─────────────────────────────────────────────────
 function OlmsEncounter:onUpdate(context, alerts)

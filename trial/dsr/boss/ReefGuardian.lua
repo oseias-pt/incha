@@ -50,6 +50,7 @@ local ACT_ACID    = { 8000, "MOVE OUT!", 0.3, 0.9, 0.1, 0.9, nil }
 -- ── Boss definition ───────────────────────────────────────────────────────
 local ReefGuardian = {}
 ReefGuardian.__index = ReefGuardian
+ReefGuardian.common = DreadsailCommon   -- C3: common mechanic dispatch
 
 ReefGuardian.key              = "reef_guardian"
 ReefGuardian.name             = "Reef Guardian"   -- TODO: verify via GetUnitName("boss1") in-game
@@ -79,156 +80,138 @@ function ReefGuardian:onLeave(context)
     CA.castAlertsStop(self.acidRefluxBarId)
 end
 
--- ── Combat events ─────────────────────────────────────────────────────────
-function ReefGuardian:onCombatEvent(context, alerts, result, abilityId,
-                                     unitTag, sourceUnitTag, sourceUnitId, unitId,
-                                     sourceUnitName, unitName)
-    if DreadsailCommon.handle(alerts, result, abilityId, unitTag, sourceUnitName) then
-        return
-    end
+-- ── Routing tables (C3) ──────────────────────────────────────────────────
+-- (No onDied needed — ReefGuardian has no alertList.)
 
-    if result == ACTION_RESULT_BEGIN then
-        -- ── Reef portal opening (Heartburn cast) ──────────────────────────
-        if abilityId == HEARTBURN then
-            self.reefNum = self.reefNum + 1
-            local idx = self.reefNum
-            self.reefPortals[idx] = { openTime = GetGameTimeMilliseconds() / 1000,
-                                      wipeActive = false }
-            CA.alert(nil, "Reef " .. idx .. ": OPEN — 60 s!",
-                0xFFD700D9, SOUNDS.DUEL_START, 5000)
-            PlaySound(SOUNDS.DUEL_START)
-            return
+-- Heavy / player-targeted attacks: shared handler for 5 ability IDs.
+local function handleHeavy(self, context, alerts, result, abilityId,
+                            unitTag, sourceUnitTag, sourceUnitId, unitId,
+                            sourceUnitName, unitName)
+    if result ~= ACTION_RESULT_BEGIN then return end
+    if not IsUnitPlayer(unitTag) then return end
+    local dur = select(1, GetAbilityCastInfo(abilityId)) or 0
+    if dur <= 0 then dur = 1500 end
+    CA.alertCast(abilityId, sourceUnitName, dur, COL_HEAVY)
+end
+
+ReefGuardian.combatRoutes = {
+    -- Reef portal opening
+    [HEARTBURN] = function(self, context, alerts, result, abilityId, ...)
+        if result ~= ACTION_RESULT_BEGIN then return end
+        self.reefNum = self.reefNum + 1
+        local idx = self.reefNum
+        self.reefPortals[idx] = { openTime = GetGameTimeMilliseconds() / 1000,
+                                  wipeActive = false }
+        CA.alert(nil, "Reef " .. idx .. ": OPEN — 60 s!",
+            0xFFD700D9, SOUNDS.DUEL_START, 5000)
+        PlaySound(SOUNDS.DUEL_START)
+    end,
+    -- Acid Reflux channel + 5 pool alerts
+    [ACID_REFLUX] = function(self, context, alerts, result, abilityId, ...)
+        if result ~= ACTION_RESULT_BEGIN then return end
+        CA.castAlertsStop(self.acidRefluxBarId)
+        self.acidRefluxBarId = CA.castAlertsStart(
+            abilityId, "Acid Reflux", 10000, 10000, COL_ACID, ACT_ACID)
+        for i = 1, ACID_COUNT do
+            local delay = i * ACID_INTERVAL
+            zo_callLater(function()
+                CA.alert(nil,
+                    "Acid pool " .. i .. "/" .. ACID_COUNT .. " — MOVE!",
+                    0x44DD22D9, SOUNDS.CHAMPION_POINTS_COMMITTED, 1500)
+            end, delay)
         end
+    end,
+    -- Boss replication
+    [REPLICATION] = function(self, context, alerts, result, abilityId, ...)
+        if result ~= ACTION_RESULT_BEGIN then return end
+        CA.alert(nil, "Replication!", 0xFF8800D9,
+            SOUNDS.CHAMPION_POINTS_COMMITTED, 3000)
+    end,
+    -- Heavy / targeted attacks (5 IDs, shared handler)
+    [CRAB_MONSTROUS_CLAW] = handleHeavy,
+    [CRAB_SWIPE]          = handleHeavy,
+    [CRUSH]               = handleHeavy,
+    [CLAW_ATTACK]         = handleHeavy,
+    [CRACKDOWN]           = handleHeavy,
+}
 
-        -- ── Acid Reflux channel ───────────────────────────────────────────
-        if abilityId == ACID_REFLUX then
-            CA.castAlertsStop(self.acidRefluxBarId)
-            self.acidRefluxBarId = CA.castAlertsStart(
-                abilityId, "Acid Reflux", 10000, 10000, COL_ACID, ACT_ACID)
-            -- Chain 5 × acid pool alerts, each 1750 ms apart
-            for i = 1, ACID_COUNT do
-                local delay = i * ACID_INTERVAL
-                zo_callLater(function()
-                    CA.alert(nil,
-                        "Acid pool " .. i .. "/" .. ACID_COUNT .. " — MOVE!",
-                        0x44DD22D9, SOUNDS.CHAMPION_POINTS_COMMITTED, 1500)
-                end, delay)
-            end
-            return
+-- Building Static: shared handler for both lightning stack IDs.
+local function handleBuildingStatic(self, context, alerts, changeType, abilityId,
+                                     unitTag, unitId, unitName, stackCount)
+    if changeType == EFFECT_RESULT_GAINED or changeType == EFFECT_RESULT_UPDATED then
+        if AreUnitsEqual("player", unitTag) then
+            self.buildingStaticStacks  = stackCount or 1
+            self.buildingStaticEndTime = GetGameTimeMilliseconds() / 1000 + 10
         end
-
-        -- ── Replication ───────────────────────────────────────────────────
-        if abilityId == REPLICATION then
-            CA.alert(nil, "Replication!", 0xFF8800D9,
-                SOUNDS.CHAMPION_POINTS_COMMITTED, 3000)
-            return
-        end
-
-        -- ── Heavy / targeted attacks (player only) ────────────────────────
-        if abilityId == CRAB_MONSTROUS_CLAW
-           or abilityId == CRAB_SWIPE
-           or abilityId == CRUSH
-           or abilityId == CLAW_ATTACK
-           or abilityId == CRACKDOWN then
-            if not IsUnitPlayer(unitTag) then return end
-            local dur = select(1, GetAbilityCastInfo(abilityId)) or 0
-            if dur <= 0 then dur = 1500 end
-            CA.alertCast(abilityId, sourceUnitName, dur, COL_HEAVY)
-            return
+    elseif changeType == EFFECT_RESULT_FADED then
+        if AreUnitsEqual("player", unitTag) then
+            self.buildingStaticStacks  = 0
+            self.buildingStaticEndTime = 0
         end
     end
 end
 
--- ── Effect changes ────────────────────────────────────────────────────────
-function ReefGuardian:onEffectChanged(context, alerts, changeType, abilityId,
-                                       unitTag, unitId, unitName, stackCount)
-    if DreadsailCommon.handleEffect(alerts, changeType, abilityId, unitTag) then
-        return
-    end
-
-    -- ── Building Static (lightning stacks) ───────────────────────────────
-    if abilityId == BUILDING_STATIC_1 or abilityId == BUILDING_STATIC_2 then
-        if changeType == EFFECT_RESULT_GAINED or changeType == EFFECT_RESULT_UPDATED then
-            if AreUnitsEqual("player", unitTag) then
-                self.buildingStaticStacks  = stackCount or 1
-                self.buildingStaticEndTime = GetGameTimeMilliseconds() / 1000 + 10
-            end
-        elseif changeType == EFFECT_RESULT_FADED then
-            if AreUnitsEqual("player", unitTag) then
-                self.buildingStaticStacks = 0
-                self.buildingStaticEndTime = 0
-            end
+-- Volatile Residue: shared handler for both poison stack IDs.
+local function handleVolatileResidue(self, context, alerts, changeType, abilityId,
+                                      unitTag, unitId, unitName, stackCount)
+    if changeType == EFFECT_RESULT_GAINED or changeType == EFFECT_RESULT_UPDATED then
+        if AreUnitsEqual("player", unitTag) then
+            self.volatileResidueStacks  = stackCount or 1
+            self.volatileResidueEndTime = GetGameTimeMilliseconds() / 1000 + 10
         end
-        return
-    end
-
-    -- ── Volatile Residue (poison stacks) ─────────────────────────────────
-    if abilityId == VOLATILE_RESIDUE_1 or abilityId == VOLATILE_RESIDUE_2 then
-        if changeType == EFFECT_RESULT_GAINED or changeType == EFFECT_RESULT_UPDATED then
-            if AreUnitsEqual("player", unitTag) then
-                self.volatileResidueStacks  = stackCount or 1
-                self.volatileResidueEndTime = GetGameTimeMilliseconds() / 1000 + 10
-            end
-        elseif changeType == EFFECT_RESULT_FADED then
-            if AreUnitsEqual("player", unitTag) then
-                self.volatileResidueStacks = 0
-                self.volatileResidueEndTime = 0
-            end
+    elseif changeType == EFFECT_RESULT_FADED then
+        if AreUnitsEqual("player", unitTag) then
+            self.volatileResidueStacks  = 0
+            self.volatileResidueEndTime = 0
         end
-        return
     end
+end
 
-    -- ── Sheltered (cleansing aura — resets stacks) ────────────────────────
-    if abilityId == SHELTERED then
+ReefGuardian.effectRoutes = {
+    [BUILDING_STATIC_1]  = handleBuildingStatic,
+    [BUILDING_STATIC_2]  = handleBuildingStatic,
+    [VOLATILE_RESIDUE_1] = handleVolatileResidue,
+    [VOLATILE_RESIDUE_2] = handleVolatileResidue,
+    [SHELTERED] = function(self, context, alerts, changeType, abilityId,
+                            unitTag, unitId, unitName, stackCount)
         if changeType == EFFECT_RESULT_GAINED and AreUnitsEqual("player", unitTag) then
             self.playerSheltered   = true
             self.lastShelteredTime = GetGameTimeMilliseconds() / 1000
-            -- Stacks reset when sheltered
             self.buildingStaticStacks  = 0
             self.volatileResidueStacks = 0
         elseif changeType == EFFECT_RESULT_FADED and AreUnitsEqual("player", unitTag) then
             self.playerSheltered = false
         end
-        return
-    end
-
-    -- ── Heartburn effect changed (reef portal wipe timer start) ───────────
-    if abilityId == HEARTBURN_EFFECT then
-        if changeType == EFFECT_RESULT_GAINED then
-            -- Associate with the most recently opened reef (simple heuristic)
-            local now = GetGameTimeMilliseconds() / 1000
-            for i = self.reefNum, 1, -1 do
-                local reef = self.reefPortals[i]
-                if reef and not reef.wipeActive and (now - reef.openTime) < 5 then
-                    reef.wipeActive = true
-                    reef.wipeStart  = now
-                    break
-                end
+    end,
+    -- Heartburn effect: reef portal wipe timer start.
+    [HEARTBURN_EFFECT] = function(self, context, alerts, changeType, abilityId, ...)
+        if changeType ~= EFFECT_RESULT_GAINED then return end
+        local now = GetGameTimeMilliseconds() / 1000
+        for i = self.reefNum, 1, -1 do
+            local reef = self.reefPortals[i]
+            if reef and not reef.wipeActive and (now - reef.openTime) < 5 then
+                reef.wipeActive = true
+                reef.wipeStart  = now
+                break
             end
         end
-        return
-    end
-
-    -- ── King Orgnum fire debuff ───────────────────────────────────────────
-    if abilityId == KING_ORGNUM_FIRE_DBF then
-        if changeType == EFFECT_RESULT_GAINED
-           and AreUnitsEqual("player", unitTag) then
+    end,
+    [KING_ORGNUM_FIRE_DBF] = function(self, context, alerts, changeType, abilityId,
+                                       unitTag, unitId, unitName, stackCount)
+        if changeType == EFFECT_RESULT_GAINED and AreUnitsEqual("player", unitTag) then
             CA.alert(nil, "|cFF5500King Orgnum fire — MOVE!|r",
                 0xFF5500D9, SOUNDS.DUEL_START, 5000)
         end
-        return
-    end
-
-    -- ── Acidic Vulnerability ─────────────────────────────────────────────
-    if abilityId == ACIDIC_VULN then
+    end,
+    [ACIDIC_VULN] = function(self, context, alerts, changeType, abilityId,
+                              unitTag, unitId, unitName, stackCount)
         if changeType == EFFECT_RESULT_GAINED and AreUnitsEqual("player", unitTag) then
             self.acidicVulnLast = GetGameTimeMilliseconds() / 1000
         elseif changeType == EFFECT_RESULT_FADED and AreUnitsEqual("player", unitTag) then
             self.acidicVulnLast = 0
         end
-        return
-    end
-end
+    end,
+}
 
 -- ── 200 ms display loop ───────────────────────────────────────────────────
 function ReefGuardian:onUpdate(context, alerts)

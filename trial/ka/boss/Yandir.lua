@@ -54,48 +54,49 @@ function Yandir:onUpdate(context, alerts)
     alerts:showInfo(2, "Gryphon: " .. (t2 > 0 and ZO_FormatCountdownTimer(t2) or "ready"))
 end
 
--- Combat mechanic alerts and timer resets.
--- Phase 4.2: text alerts (showAction) + CombatAlerts cast bars side-by-side.
-function Yandir:onCombatEvent(context, alerts, result, abilityId,
-                               unitTag, sourceUnitTag, sourceUnitId, unitId,
-                               sourceUnitName, unitName)
-    -- Stop any tracked CA cast bars when the associated unit dies.
-    if result == ACTION_RESULT_DIED then
-        if unitId then
-            CA.castAlertsStop(self.alertList[unitId])
-            self.alertList[unitId] = nil
-        end
-        if sourceUnitId then
-            CA.castAlertsStop(self.alertList[sourceUnitId])
-            self.alertList[sourceUnitId] = nil
-        end
-        -- If the player targeted by the poison totem dies, cancel delayed bar.
-        if self.PosionTotemID == unitId or self.PosionTotemID == sourceUnitId then
-            self.PosionTotemID = -1
-            self.BTotemCall    = false
-        end
-        return
+-- ── Routing tables (C3) ──────────────────────────────────────────────────
+-- DIED: clean up alertList + totem tracker.
+function Yandir:onDied(context, alerts,
+                        unitTag, sourceUnitTag, sourceUnitId, unitId,
+                        sourceUnitName, unitName)
+    if unitId then
+        CA.castAlertsStop(self.alertList[unitId])
+        self.alertList[unitId] = nil
     end
+    if sourceUnitId then
+        CA.castAlertsStop(self.alertList[sourceUnitId])
+        self.alertList[sourceUnitId] = nil
+    end
+    -- If the player targeted by the poison totem dies, cancel delayed bar.
+    if self.PosionTotemID == unitId or self.PosionTotemID == sourceUnitId then
+        self.PosionTotemID = -1
+        self.BTotemCall    = false
+    end
+end
 
-    -- Any totem spawn resets the recurring spawn countdown.
-    if result == ACTION_RESULT_BEGIN and (
-        abilityId == TOTEM_POISION    or abilityId == TOTEM_HARPY_SPWN  or
-        abilityId == TOTEM_DRAGON_SPWN or abilityId == TOTEM_GARGYL_SPWN)
-    then
+-- Any totem spawn (Harpy/Dragon/Gargoyle spawn IDs) resets the recurring timer.
+local function resetTotemTimer(self, context, alerts, result, abilityId, ...)
+    if result == ACTION_RESULT_BEGIN then self.totemTimer:reset() end
+end
+
+Yandir.combatRoutes = {
+    [TOTEM_POISION] = function(self, context, alerts, result, abilityId,
+                                unitTag, sourceUnitTag, sourceUnitId, unitId,
+                                sourceUnitName, unitName)
+        if result ~= ACTION_RESULT_BEGIN then return end
         self.totemTimer:reset()
-    end
-
-    -- Per-ability alerts + CA cast bars.
-    if abilityId == TOTEM_POISION and result == ACTION_RESULT_BEGIN then
         alerts:showAction("Dodge! (Poison Totem)")
         local cid = CA.alertCast(abilityId, sourceUnitName, 4300,
             { -3, 0, false, { 0, 0.8, 0, 0.4 }, { 0, 0.8, 0, 0.8 } })
         if cid and unitId then self.alertList[unitId] = cid end
         self.PosionTotemID = unitId  -- track for delayed second-poison bar
-
-    elseif abilityId == TOTEM_POISION_CP and result == ACTION_RESULT_EFFECT_GAINED then
+    end,
+    [TOTEM_POISION_CP] = function(self, context, alerts, result, abilityId,
+                                   unitTag, sourceUnitTag, sourceUnitId, unitId,
+                                   sourceUnitName, unitName)
         -- Second poison from the same totem ~26.8 s after first cast.
         -- Guard with BTotemCall so only one delayed bar fires per totem spawn.
+        if result ~= ACTION_RESULT_EFFECT_GAINED then return end
         if self.BTotemCall then return end
         self.BTotemCall = true
         local capturedSrc  = sourceUnitName or ""
@@ -107,33 +108,46 @@ function Yandir:onCombatEvent(context, alerts, result, abilityId,
                     { -3, 0, false, { 0, 0.8, 0, 0.4 }, { 0, 0.8, 0, 0.8 } })
             end
         end, 26800)
-
-    elseif abilityId == TOTEM_GARGYL and result == ACTION_RESULT_BEGIN then
+    end,
+    [TOTEM_HARPY_SPWN]  = resetTotemTimer,
+    [TOTEM_DRAGON_SPWN] = resetTotemTimer,
+    [TOTEM_GARGYL_SPWN] = resetTotemTimer,
+    [TOTEM_GARGYL] = function(self, context, alerts, result, abilityId,
+                               unitTag, sourceUnitTag, sourceUnitId, unitId,
+                               sourceUnitName, unitName)
+        if result ~= ACTION_RESULT_BEGIN then return end
         alerts:showAction("Block! (Gargoyle Totem)")
         local dur = select(1, GetAbilityCastInfo(TOTEM_GARGYL)) or 0
         if dur <= 0 then dur = 5000 end
         local cid = CA.alertCast(abilityId, "Block!!", dur,
             { -3, 0, false, { 0.7, 0.7, 0.7, 0.4 }, { 0.7, 0.7, 0.7, 0.8 } })
         if cid and unitId then self.alertList[unitId] = cid end
-
-    elseif abilityId == YANDIR_HEALING and result == ACTION_RESULT_BEGIN then
+    end,
+    [YANDIR_HEALING] = function(self, context, alerts, result, abilityId, ...)
+        if result ~= ACTION_RESULT_BEGIN then return end
         alerts:showAction("Casts Healing!")
         CA.alert(nil, "Casts Healing!", 0x991111FF, SOUNDS.NONE, 2000)
-
-    elseif abilityId == YANDIR_JUMP and result == ACTION_RESULT_BEGIN then
+    end,
+    [YANDIR_JUMP] = function(self, context, alerts, result, abilityId,
+                              unitTag, sourceUnitTag, sourceUnitId, unitId,
+                              sourceUnitName, unitName)
+        if result ~= ACTION_RESULT_BEGIN then return end
         alerts:showAction("(Jump) Block!!")
         local cid = CA.alertCast(abilityId, "(Jump) Block!!", 3000,
             { -3, 0, false, { 0.7, 0.7, 0.7, 0.4 }, { 0.7, 0.7, 0.7, 0.8 } })
         if cid and unitId then self.alertList[unitId] = cid end
-
-    elseif abilityId == SEA_ADDER_BILE_SPRAY and result == ACTION_RESULT_BEGIN
-           and IsUnitPlayer(unitTag) then
+    end,
+    [SEA_ADDER_BILE_SPRAY] = function(self, context, alerts, result, abilityId,
+                                       unitTag, sourceUnitTag, sourceUnitId, unitId,
+                                       sourceUnitName, unitName)
+        if result ~= ACTION_RESULT_BEGIN then return end
+        if not IsUnitPlayer(unitTag) then return end
         alerts:showAction("Dodge! (Sea Adder)")
         local cid = CA.alertCast(abilityId, sourceUnitName, 1933,
             { -3, 0, false, { 0.7, 0.7, 0.7, 0.4 }, { 0.7, 0.7, 0.7, 0.8 } })
         if cid and unitId then self.alertList[unitId] = cid end
-    end
-end
+    end,
+}
 
 function Yandir:onPowerUpdate(context, healthPercent)
     if healthPercent < 60 and not self.gryphonTimer:isExpired() then

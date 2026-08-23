@@ -41,78 +41,78 @@ function AnsuulEncounter.new()
     }, AnsuulEncounter)
 end
 
-function AnsuulEncounter:onCombatEvent(context, alerts,
-        result, abilityId, unitTag, sourceUnitTag, sourceUnitId, unitId,
-        sourceUnitName, unitName)
+-- ── Routing tables (C3) ──────────────────────────────────────────────────
 
-    if abilityId == CALAMITY and result == ACTION_RESULT_BEGIN then
+-- Breakdown (split phase): shared handler for red/blue/green clones.
+local function handleBreakdown(self, context, alerts, result, abilityId, ...)
+    if result == ACTION_RESULT_EFFECT_GAINED then
+        if not self.inTriplet then
+            self.inTriplet = true
+            self.firstCalamity = true
+            self.calamityTimer:reset(CALAMITY_FIRST_CD)
+            alerts:showHeader("TRIPLET PHASE!")
+        end
+    elseif result == ACTION_RESULT_EFFECT_FADED then
+        self.inTriplet = false
+        self.firstCalamity = true
+        self.calamityTimer:reset(CALAMITY_CD)
+        alerts:showAction("Triplet ended!")
+    end
+end
+
+AnsuulEncounter.combatRoutes = {
+    [CALAMITY] = function(self, context, alerts, result, abilityId, ...)
+        if result ~= ACTION_RESULT_BEGIN then return end
         self.firstCalamity = false
         self.calamityTimer:reset(CALAMITY_CD)
         alerts:showAction("Calamity! Stack!")
-
-    elseif abilityId == WRACK and result == ACTION_RESULT_BEGIN then
+    end,
+    [WRACK] = function(self, context, alerts, result, abilityId, ...)
+        if result ~= ACTION_RESULT_BEGIN then return end
         alerts:showAction("Kite! Wrack incoming!")
         CA.alert(nil, "KITE!", 0xFFD666FF, SOUNDS.NONE, 3000)
-
-    elseif abilityId == EXECUTE and result == ACTION_RESULT_BEGIN then
+    end,
+    [EXECUTE] = function(self, context, alerts, result, abilityId, ...)
+        if result ~= ACTION_RESULT_BEGIN then return end
         alerts:showAction("INTERRUPT! Execute!")
         CA.alert(nil, "INTERRUPT!", 0xFF0033FF, SOUNDS.NONE, 2500)
-
-    elseif abilityId == SUNBURST and result == ACTION_RESULT_BEGIN
-           and IsUnitPlayer(unitTag) then
+    end,
+    [SUNBURST] = function(self, context, alerts, result, abilityId, unitTag, ...)
+        if result ~= ACTION_RESULT_BEGIN then return end
+        if not IsUnitPlayer(unitTag) then return end
         alerts:showAction("Sunburst on you! Dodge!")
-        local dur = select(1, GetAbilityCastInfo(abilityId)) or 0
+        local dur = select(1, GetAbilityCastInfo(SUNBURST)) or 0
         if dur <= 0 then dur = 2000 end
-        CA.alertCast(abilityId, "SUNBURST", dur, COL_VOID)
-
-    elseif abilityId == WRATHSTORM and result == ACTION_RESULT_BEGIN then
-        local dur = select(1, GetAbilityCastInfo(abilityId)) or 0
+        CA.alertCast(SUNBURST, "SUNBURST", dur, COL_VOID)
+    end,
+    [WRATHSTORM] = function(self, context, alerts, result, abilityId, ...)
+        if result ~= ACTION_RESULT_BEGIN then return end
+        local dur = select(1, GetAbilityCastInfo(WRATHSTORM)) or 0
         if dur <= 0 then dur = 4000 end
-        CA.alertCast(abilityId, "Wrathstorm!", dur, COL_VOID)
-
-    elseif abilityId == POISONED_MIND
-           and result == ACTION_RESULT_EFFECT_GAINED_DURATION
-           and IsUnitPlayer(unitTag) then
+        CA.alertCast(WRATHSTORM, "Wrathstorm!", dur, COL_VOID)
+    end,
+    [POISONED_MIND] = function(self, context, alerts, result, abilityId,
+                                unitTag, ...)
+        if result ~= ACTION_RESULT_EFFECT_GAINED_DURATION then return end
+        if not IsUnitPlayer(unitTag) then return end
         alerts:showAction("Poisoned Mind on you!")
         CA.border(true, 8000, "green")
-
-    elseif abilityId == THE_RITUAL then
+    end,
+    [THE_RITUAL] = function(self, context, alerts, result, abilityId, ...)
         if result == ACTION_RESULT_EFFECT_GAINED_DURATION then
             self.inMaze = true
             alerts:showHeader("Maze phase!")
         elseif result == ACTION_RESULT_EFFECT_FADED then
             self.inMaze = false
-            -- Reset calamity timer: first calamity comes ~9s after maze ends
             self.firstCalamity = true
             self.calamityTimer:reset(CALAMITY_FIRST_CD)
             alerts:showAction("Maze cleared! Calamity in ~9s")
         end
-
-    elseif (abilityId == BREAKDOWN_RED or abilityId == BREAKDOWN_BLUE
-            or abilityId == BREAKDOWN_GREEN) then
-        if result == ACTION_RESULT_EFFECT_GAINED then
-            if not self.inTriplet then
-                self.inTriplet = true
-                -- Red clone performs calamity; reset timer for triplet
-                self.firstCalamity = true
-                self.calamityTimer:reset(CALAMITY_FIRST_CD)
-                alerts:showHeader("TRIPLET PHASE!")
-            end
-        elseif result == ACTION_RESULT_EFFECT_FADED then
-            -- All three FADED events fire; only clear on last
-            -- Safe to clear on any: if it fires, triplet is ending
-            self.inTriplet = false
-            self.firstCalamity = true
-            self.calamityTimer:reset(CALAMITY_CD)
-            alerts:showAction("Triplet ended!")
-        end
-    end
-end
-
-function AnsuulEncounter:onEffectChanged(context, alerts,
-        changeType, abilityId, unitTag, unitId, unitName)
-    -- No additional effect tracking beyond onCombatEvent.
-end
+    end,
+    [BREAKDOWN_RED]   = handleBreakdown,
+    [BREAKDOWN_BLUE]  = handleBreakdown,
+    [BREAKDOWN_GREEN] = handleBreakdown,
+}
 
 function AnsuulEncounter:onUpdate(context, alerts)
     -- Line 1: Calamity countdown

@@ -103,193 +103,157 @@ function Taleria:onLeave(context)
     CA.castAlertsStop(self.lureBarId)
 end
 
--- ── Combat events ─────────────────────────────────────────────────────────
-function Taleria:onCombatEvent(context, alerts, result, abilityId,
-                                unitTag, sourceUnitTag, sourceUnitId, unitId,
-                                sourceUnitName, unitName)
-    if DreadsailCommon.handle(alerts, result, abilityId, unitTag, sourceUnitName) then
-        return
-    end
+-- ── Routing tables (C3) ──────────────────────────────────────────────────
+-- Shared trash mechanic handler.
+Taleria.common = DreadsailCommon
 
+-- Crashing Wave: two IDs, same handler.
+local function handleCrashingWave(self, context, alerts, result, abilityId,
+                                   unitTag, sourceUnitTag, sourceUnitId, unitId,
+                                   sourceUnitName, unitName)
     if result ~= ACTION_RESULT_BEGIN then return end
+    if not IsUnitPlayer(unitTag) then return end
+    local dur = select(1, GetAbilityCastInfo(abilityId)) or 0
+    if dur <= 0 then dur = 2000 end
+    CA.alertCast(abilityId, sourceUnitName, dur, COL_HEAVY)
+end
 
-    local isHM = (context.difficulty == Difficulty.HARDMODE)
-
-    -- ── Crashing Wave (tank-targeted) ─────────────────────────────────────
-    if abilityId == CRASHING_WAVE_1 or abilityId == CRASHING_WAVE_2 then
-        if not IsUnitPlayer(unitTag) then return end
-        local dur = select(1, GetAbilityCastInfo(abilityId)) or 0
-        if dur <= 0 then dur = 2000 end
-        CA.alertCast(abilityId, sourceUnitName, dur, COL_HEAVY)
-        return
-    end
-
-    -- ── Coral Slam (heavy) ────────────────────────────────────────────────
-    if abilityId == CORAL_SLAM then
-        if not IsUnitPlayer(unitTag) then return end
-        local dur = select(1, GetAbilityCastInfo(abilityId)) or 0
-        if dur <= 0 then dur = 1500 end
-        CA.alertCast(abilityId, sourceUnitName, dur, COL_HEAVY)
-        return
-    end
-
-    -- ── Barnacle's Blade (light + targeted) ───────────────────────────────
-    if abilityId == BARNACLE_BLADE then
-        if not IsUnitPlayer(unitTag) then return end
-        local dur = select(1, GetAbilityCastInfo(abilityId)) or 0
-        if dur <= 0 then dur = 1000 end
-        CA.alertCast(abilityId, sourceUnitName, dur, COL_HEAVY)
-        return
-    end
-
-    -- ── Maelstrom ─────────────────────────────────────────────────────────
-    if abilityId == MAELSTROM_CAST then
-        self.lastMaelstrom = GetGameTimeMilliseconds() / 1000
-        CA.alert(nil, "|c66CC66Maelstrom — HEAL!|r (6 s)",
-            0x66CC66D9, SOUNDS.CHAMPION_POINTS_COMMITTED, 6000)
-        return
-    end
-
-    -- ── Behemoth summon ───────────────────────────────────────────────────
-    if abilityId == BEHEMOTH_SUMMON then
+-- Bridge open: closes over the bridge index.
+local function makeBridgeHandler(bridgeIdx)
+    return function(self, context, alerts, result, abilityId, ...)
+        if result ~= ACTION_RESULT_BEGIN then return end
         local now = GetGameTimeMilliseconds() / 1000
-        self.lastBehemothSumm = now
-        self.behemothSlam     = now + 10   -- first slam ~10 s after summon
-        CA.alert(nil, "Sea Behemoth summoned!",
-            0xFF8800D9, SOUNDS.CHAMPION_POINTS_COMMITTED, 3000)
-        return
-    end
-
-    -- ── Arctic Annihilation (slam) ────────────────────────────────────────
-    if abilityId == ARCTIC_ANNIH then
-        local now = GetGameTimeMilliseconds() / 1000
-        self.behemothSlam = now + SLAM_CD
-        CA.alert(nil, "|cFF8800Behemoth SLAM!|r",
-            0xFF8800D9, SOUNDS.DUEL_START, 3000)
-        return
-    end
-
-    -- ── Lure of the Sea (fear) ────────────────────────────────────────────
-    if abilityId == LURE_OF_SEA then
-        CA.castAlertsStop(self.lureBarId)
-        self.lureBarId = CA.castAlertsStart(
-            abilityId, "Lure of the Sea", 4000, 4000, COL_FEAR, ACT_BREAK)
-        return
-    end
-
-    -- ── Aspect of Terror (Sea Boiler fear) ───────────────────────────────
-    if abilityId == ASPECT_TERROR then
-        if not IsUnitPlayer(unitTag) then return end
-        local dur = select(1, GetAbilityCastInfo(abilityId)) or 0
-        if dur <= 0 then dur = 2000 end
-        CA.alertCast(abilityId, sourceUnitName, dur, COL_FEAR)
-        return
-    end
-
-    -- ── Bridge timers: opened on BEGIN ────────────────────────────────────
-    -- Each bridge begins at a specific HP threshold; timer starts on the cast.
-    local bridgeIdx = nil
-    if abilityId == BRIDGE_1 then bridgeIdx = 1
-    elseif abilityId == BRIDGE_2 then bridgeIdx = 2
-    elseif abilityId == BRIDGE_3 then bridgeIdx = 3
-    end
-    if bridgeIdx then
-        local now = GetGameTimeMilliseconds() / 1000
-        self.lastPlatformFall      = now
+        self.lastPlatformFall           = now
         self.bridgeWipeStart[bridgeIdx] = now
         CA.alert(nil,
             "Bridge " .. bridgeIdx .. " open — " .. BRIDGE_WIPE .. " s!",
             0xFF8800D9, SOUNDS.DUEL_START, 5000)
         PlaySound(SOUNDS.DUEL_START)
-        return
     end
 end
 
--- ── Effect changes ────────────────────────────────────────────────────────
-function Taleria:onEffectChanged(context, alerts, changeType, abilityId,
-                                  unitTag, unitId, unitName)
-    if DreadsailCommon.handleEffect(alerts, changeType, abilityId, unitTag) then
-        return
-    end
+Taleria.combatRoutes = {
+    [CRASHING_WAVE_1] = handleCrashingWave,
+    [CRASHING_WAVE_2] = handleCrashingWave,
+    [CORAL_SLAM] = function(self, context, alerts, result, abilityId,
+                             unitTag, sourceUnitTag, sourceUnitId, unitId,
+                             sourceUnitName, unitName)
+        if result ~= ACTION_RESULT_BEGIN then return end
+        if not IsUnitPlayer(unitTag) then return end
+        local dur = select(1, GetAbilityCastInfo(abilityId)) or 0
+        if dur <= 0 then dur = 1500 end
+        CA.alertCast(abilityId, sourceUnitName, dur, COL_HEAVY)
+    end,
+    [BARNACLE_BLADE] = function(self, context, alerts, result, abilityId,
+                                 unitTag, sourceUnitTag, sourceUnitId, unitId,
+                                 sourceUnitName, unitName)
+        if result ~= ACTION_RESULT_BEGIN then return end
+        if not IsUnitPlayer(unitTag) then return end
+        local dur = select(1, GetAbilityCastInfo(abilityId)) or 0
+        if dur <= 0 then dur = 1000 end
+        CA.alertCast(abilityId, sourceUnitName, dur, COL_HEAVY)
+    end,
+    [MAELSTROM_CAST] = function(self, context, alerts, result, abilityId, ...)
+        if result ~= ACTION_RESULT_BEGIN then return end
+        self.lastMaelstrom = GetGameTimeMilliseconds() / 1000
+        CA.alert(nil, "|c66CC66Maelstrom — HEAL!|r (6 s)",
+            0x66CC66D9, SOUNDS.CHAMPION_POINTS_COMMITTED, 6000)
+    end,
+    [BEHEMOTH_SUMMON] = function(self, context, alerts, result, abilityId, ...)
+        if result ~= ACTION_RESULT_BEGIN then return end
+        local now = GetGameTimeMilliseconds() / 1000
+        self.lastBehemothSumm = now
+        self.behemothSlam     = now + 10   -- first slam ~10 s after summon
+        CA.alert(nil, "Sea Behemoth summoned!",
+            0xFF8800D9, SOUNDS.CHAMPION_POINTS_COMMITTED, 3000)
+    end,
+    [ARCTIC_ANNIH] = function(self, context, alerts, result, abilityId, ...)
+        if result ~= ACTION_RESULT_BEGIN then return end
+        self.behemothSlam = GetGameTimeMilliseconds() / 1000 + SLAM_CD
+        CA.alert(nil, "|cFF8800Behemoth SLAM!|r",
+            0xFF8800D9, SOUNDS.DUEL_START, 3000)
+    end,
+    [LURE_OF_SEA] = function(self, context, alerts, result, abilityId, ...)
+        if result ~= ACTION_RESULT_BEGIN then return end
+        CA.castAlertsStop(self.lureBarId)
+        self.lureBarId = CA.castAlertsStart(
+            abilityId, "Lure of the Sea", 4000, 4000, COL_FEAR, ACT_BREAK)
+    end,
+    [ASPECT_TERROR] = function(self, context, alerts, result, abilityId,
+                                unitTag, sourceUnitTag, sourceUnitId, unitId,
+                                sourceUnitName, unitName)
+        if result ~= ACTION_RESULT_BEGIN then return end
+        if not IsUnitPlayer(unitTag) then return end
+        local dur = select(1, GetAbilityCastInfo(abilityId)) or 0
+        if dur <= 0 then dur = 2000 end
+        CA.alertCast(abilityId, sourceUnitName, dur, COL_FEAR)
+    end,
+    [BRIDGE_1] = makeBridgeHandler(1),
+    [BRIDGE_2] = makeBridgeHandler(2),
+    [BRIDGE_3] = makeBridgeHandler(3),
+}
 
-    -- ── Rapid Deluge bubble on player ─────────────────────────────────────
-    if abilityId == RAPID_DELUGE_N
-       or abilityId == RAPID_DELUGE_V
-       or abilityId == RAPID_DELUGE_HM then
-        if changeType == EFFECT_RESULT_GAINED and AreUnitsEqual("player", unitTag) then
-            CA.alert(nil, "|c66AAffMove bubble!|r — don't stack",
-                0x66AAffD9, SOUNDS.CHAMPION_POINTS_COMMITTED, 5000)
-        end
-        return
+-- Rapid Deluge: three IDs, same handler.
+local function handleRapidDeluge(self, context, alerts, changeType, abilityId,
+                                  unitTag, unitId, unitName, stackCount)
+    if changeType == EFFECT_RESULT_GAINED and AreUnitsEqual("player", unitTag) then
+        CA.alert(nil, "|c66AAffMove bubble!|r — don't stack",
+            0x66AAffD9, SOUNDS.CHAMPION_POINTS_COMMITTED, 5000)
     end
+end
 
-    -- ── Storm Wall CW ─────────────────────────────────────────────────────
-    if abilityId == STORM_WALL_CW then
+Taleria.effectRoutes = {
+    [RAPID_DELUGE_N]  = handleRapidDeluge,
+    [RAPID_DELUGE_V]  = handleRapidDeluge,
+    [RAPID_DELUGE_HM] = handleRapidDeluge,
+    [STORM_WALL_CW] = function(self, context, alerts, changeType, abilityId, ...)
         if changeType == EFFECT_RESULT_GAINED then
             self.lastStormWall = GetGameTimeMilliseconds() / 1000
             self.stormWallCW   = true
         end
-        return
-    end
-
-    -- ── Storm Wall CCW ────────────────────────────────────────────────────
-    if abilityId == STORM_WALL_CCW then
+    end,
+    [STORM_WALL_CCW] = function(self, context, alerts, changeType, abilityId, ...)
         if changeType == EFFECT_RESULT_GAINED then
             self.lastStormWall = GetGameTimeMilliseconds() / 1000
             self.stormWallCW   = false
         end
-        return
-    end
-
-    -- ── Venom Evoker (green) portal opens ────────────────────────────────
-    if abilityId == VENOM_EVOKER_P then
-        if changeType == EFFECT_RESULT_GAINED then
-            local now = GetGameTimeMilliseconds() / 1000
-            self.bridgeOpen[1]      = true
-            self.bridgeWipeStart[1] = now
-            self.lastPlatformFall   = now
-            CA.alert(nil, "|c22CC22Green portal open|r — 60 s!",
-                0x22CC22D9, SOUNDS.DUEL_START, 4000)
-        end
-        return
-    end
-
-    -- ── Sea Boiler (yellow) portal opens ─────────────────────────────────
-    if abilityId == SEA_BOILER_P then
-        if changeType == EFFECT_RESULT_GAINED then
-            local now = GetGameTimeMilliseconds() / 1000
-            self.bridgeOpen[2]      = true
-            self.bridgeWipeStart[2] = now
-            self.lastPlatformFall   = now
-            CA.alert(nil, "|cDDCC00Yellow portal open|r — 60 s!",
-                0xDDCC00D9, SOUNDS.DUEL_START, 4000)
-        end
-        return
-    end
-
-    -- ── Tidal Mage (purple) portal opens ─────────────────────────────────
-    if abilityId == TIDAL_MAGE_P then
-        if changeType == EFFECT_RESULT_GAINED then
-            local now = GetGameTimeMilliseconds() / 1000
-            self.bridgeOpen[3]      = true
-            self.bridgeWipeStart[3] = now
-            self.lastPlatformFall   = now
-            CA.alert(nil, "|c8822DDPurple portal open|r — 60 s!",
-                0x8822DDD9, SOUNDS.DUEL_START, 4000)
-        end
-        return
-    end
-
-    -- ── Whirlpool (pool on player) ────────────────────────────────────────
-    if abilityId == WHIRLPOOL then
+    end,
+    [VENOM_EVOKER_P] = function(self, context, alerts, changeType, abilityId, ...)
+        if changeType ~= EFFECT_RESULT_GAINED then return end
+        local now = GetGameTimeMilliseconds() / 1000
+        self.bridgeOpen[1]      = true
+        self.bridgeWipeStart[1] = now
+        self.lastPlatformFall   = now
+        CA.alert(nil, "|c22CC22Green portal open|r — 60 s!",
+            0x22CC22D9, SOUNDS.DUEL_START, 4000)
+    end,
+    [SEA_BOILER_P] = function(self, context, alerts, changeType, abilityId, ...)
+        if changeType ~= EFFECT_RESULT_GAINED then return end
+        local now = GetGameTimeMilliseconds() / 1000
+        self.bridgeOpen[2]      = true
+        self.bridgeWipeStart[2] = now
+        self.lastPlatformFall   = now
+        CA.alert(nil, "|cDDCC00Yellow portal open|r — 60 s!",
+            0xDDCC00D9, SOUNDS.DUEL_START, 4000)
+    end,
+    [TIDAL_MAGE_P] = function(self, context, alerts, changeType, abilityId, ...)
+        if changeType ~= EFFECT_RESULT_GAINED then return end
+        local now = GetGameTimeMilliseconds() / 1000
+        self.bridgeOpen[3]      = true
+        self.bridgeWipeStart[3] = now
+        self.lastPlatformFall   = now
+        CA.alert(nil, "|c8822DDPurple portal open|r — 60 s!",
+            0x8822DDD9, SOUNDS.DUEL_START, 4000)
+    end,
+    [WHIRLPOOL] = function(self, context, alerts, changeType, abilityId,
+                            unitTag, unitId, unitName, stackCount)
         if changeType == EFFECT_RESULT_GAINED and AreUnitsEqual("player", unitTag) then
             CA.border(true, 8000, "green")
         elseif changeType == EFFECT_RESULT_FADED and AreUnitsEqual("player", unitTag) then
             CA.border(false, 0, nil)
         end
-        return
-    end
-end
+    end,
+}
 
 -- ── 200 ms display loop ───────────────────────────────────────────────────
 function Taleria:onUpdate(context, alerts)

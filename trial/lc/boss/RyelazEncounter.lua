@@ -29,42 +29,47 @@ function RyelazEncounter.new()
     }, RyelazEncounter)
 end
 
-function RyelazEncounter:onCombatEvent(context, alerts,
-        result, abilityId, unitTag, sourceUnitTag, sourceUnitId, unitId,
-        sourceUnitName, unitName)
+-- ── Routing tables (C3) ──────────────────────────────────────────────────
 
-    if result == ACTION_RESULT_BEGIN then
-        if abilityId == BRILLIANT_ANNIHILATION then
-            local dur = select(1, GetAbilityCastInfo(abilityId)) or 0
-            if dur <= 0 then dur = 3000 end
-            CA.alertCast(abilityId, "STACK — Annihilation!", dur, COL_ANNIHIL)
-            alerts:showAction("Brilliant Annihilation! STACK!")
-
-        elseif abilityId == BLEAK_ANNIHILATION then
-            local dur = select(1, GetAbilityCastInfo(abilityId)) or 0
-            if dur <= 0 then dur = 3000 end
-            CA.alertCast(abilityId, "STACK — Annihilation!", dur, COL_ANNIHIL)
-            alerts:showAction("Bleak Annihilation! STACK!")
-        end
-
-    elseif result == ACTION_RESULT_EFFECT_GAINED_DURATION and IsUnitPlayer(unitTag) then
-        if abilityId == PORCIN_LIGHT then
-            self.playerSide = "ryelaz"
-        elseif abilityId == PORCIN_DARK then
-            self.playerSide = "zilyesset"
-        end
-
-    elseif result == ACTION_RESULT_EFFECT_FADED and IsUnitPlayer(unitTag) then
-        if abilityId == PORCIN_LIGHT or abilityId == PORCIN_DARK then
-            self.playerSide = nil
-        end
+-- Annihilation: shared alertCast, different showAction label.
+local function makeAnnihilHandler(label)
+    return function(self, context, alerts, result, abilityId, ...)
+        if result ~= ACTION_RESULT_BEGIN then return end
+        local dur = select(1, GetAbilityCastInfo(abilityId)) or 0
+        if dur <= 0 then dur = 3000 end
+        CA.alertCast(abilityId, "STACK — Annihilation!", dur, COL_ANNIHIL)
+        alerts:showAction(label .. " STACK!")
     end
 end
 
-function RyelazEncounter:onEffectChanged(context, alerts,
-        changeType, abilityId, unitTag, unitId, unitName)
-    -- Side assignment is tracked via onCombatEvent.
+-- Porcin FADED: shared for both light/dark — clear playerSide.
+local function handlePorcinFaded(self, context, alerts, result, abilityId,
+                                  unitTag, ...)
+    if result ~= ACTION_RESULT_EFFECT_FADED then return end
+    if not IsUnitPlayer(unitTag) then return end
+    self.playerSide = nil
 end
+
+RyelazEncounter.combatRoutes = {
+    [BRILLIANT_ANNIHILATION] = makeAnnihilHandler("Brilliant Annihilation!"),
+    [BLEAK_ANNIHILATION]     = makeAnnihilHandler("Bleak Annihilation!"),
+    [PORCIN_LIGHT] = function(self, context, alerts, result, abilityId,
+                               unitTag, ...)
+        if result == ACTION_RESULT_EFFECT_GAINED_DURATION and IsUnitPlayer(unitTag) then
+            self.playerSide = "ryelaz"
+        elseif result == ACTION_RESULT_EFFECT_FADED and IsUnitPlayer(unitTag) then
+            self.playerSide = nil
+        end
+    end,
+    [PORCIN_DARK] = function(self, context, alerts, result, abilityId,
+                              unitTag, ...)
+        if result == ACTION_RESULT_EFFECT_GAINED_DURATION and IsUnitPlayer(unitTag) then
+            self.playerSide = "zilyesset"
+        elseif result == ACTION_RESULT_EFFECT_FADED and IsUnitPlayer(unitTag) then
+            self.playerSide = nil
+        end
+    end,
+}
 
 function RyelazEncounter:onUpdate(context, alerts)
     if self.playerSide == "ryelaz" then

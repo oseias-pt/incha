@@ -80,6 +80,7 @@ end
 -- ── Boss definition ───────────────────────────────────────────────────────
 local Xalvakka = {}
 Xalvakka.__index = Xalvakka
+Xalvakka.common = RockgroveCommon   -- C3: common mechanic dispatch
 
 Xalvakka.key               = "xalvakka"
 Xalvakka.name              = "Xalvakka"     -- TODO: verify exact unit name via GetUnitName("boss1")
@@ -151,59 +152,59 @@ function Xalvakka:onCombatState(context, inCombat, alerts)
     end
 end
 
--- ── Combat events ─────────────────────────────────────────────────────────
-function Xalvakka:onCombatEvent(context, alerts, result, abilityId,
-                                 unitTag, sourceUnitTag, sourceUnitId, unitId,
-                                 sourceUnitName, unitName)
-    if RockgroveCommon.handle(alerts, result, abilityId, unitTag, sourceUnitName) then
-        return
-    end
+-- ── Routing tables (C3) ──────────────────────────────────────────────────
+-- (No onDied needed — Xalvakka has no alertList.)
 
+-- ScathingEvisceration: player-targeted frontal heavy (3 IDs, shared handler).
+local function handleScathing(self, context, alerts, result, abilityId,
+                               unitTag, sourceUnitTag, sourceUnitId, unitId,
+                               sourceUnitName, unitName)
     if result ~= ACTION_RESULT_BEGIN then return end
+    if not IsUnitPlayer(unitTag) then return end
+    local dur = select(1, GetAbilityCastInfo(abilityId)) or 0
+    if dur <= 0 then dur = 1500 end
+    CA.alertCast(abilityId, sourceUnitName, dur, COL_SCATHING)
+end
 
-    -- ── ScathingEvisceration (frontal heavy, player-targeted) ─────────────
-    if SCATHING_IDS[abilityId] then
-        if not IsUnitPlayer(unitTag) then return end
-        local dur = select(1, GetAbilityCastInfo(abilityId)) or 0
-        if dur <= 0 then dur = 1500 end
-        CA.alertCast(abilityId, sourceUnitName, dur, COL_SCATHING)
-        return
-    end
+-- Deadstar add explosion (2 IDs, shared handler).
+local function handleDeadstar(self, context, alerts, result, abilityId, ...)
+    if result ~= ACTION_RESULT_BEGIN then return end
+    CA.alert(nil, "Deadstar!", 0xFFCC00D9, SOUNDS.CHAMPION_POINTS_COMMITTED, 2500)
+end
 
-    -- ── Deadstar (add explosion) ──────────────────────────────────────────
-    if DEADSTAR_IDS[abilityId] then
-        CA.alert(nil, "Deadstar!", 0xFFCC00D9, SOUNDS.CHAMPION_POINTS_COMMITTED, 2500)
-        return
-    end
-
-    -- ── Flaming Portal (repositioning jump, HM) ───────────────────────────
-    if abilityId == FLAMING_PORTAL
-       and context.difficulty == Difficulty.HARDMODE then
+Xalvakka.combatRoutes = {
+    -- ScathingEvisceration (base + two HM variants)
+    [SCATHING1] = handleScathing,
+    [SCATHING2] = handleScathing,
+    [SCATHING3] = handleScathing,
+    -- Deadstar add-explosion (two variants)
+    [DEADSTAR1] = handleDeadstar,
+    [DEADSTAR2] = handleDeadstar,
+    -- Flaming Portal (repositioning jump, HM only)
+    [FLAMING_PORTAL] = function(self, context, alerts, result, abilityId, ...)
+        if result ~= ACTION_RESULT_BEGIN then return end
+        if context.difficulty ~= Difficulty.HARDMODE then return end
         local now = GetGameTimeMilliseconds() / 1000
         self.numJumps = self.numJumps + 1
         self.nextJump = now + 35
-        return
-    end
-end
+    end,
+}
 
--- ── Effect changes ────────────────────────────────────────────────────────
-function Xalvakka:onEffectChanged(context, alerts, changeType, abilityId,
-                                   unitTag, unitId, unitName)
-    -- ── Soul Resonance (player must purge) ────────────────────────────────
-    if abilityId == SOUL_RESONANCE then
+Xalvakka.effectRoutes = {
+    -- Soul Resonance: personal purge alert.
+    [SOUL_RESONANCE] = function(self, context, alerts, changeType, abilityId,
+                                 unitTag, unitId, unitName, stackCount)
         if changeType == EFFECT_RESULT_GAINED and AreUnitsEqual("player", unitTag) then
             self.soulStart = GetGameTimeMilliseconds() / 1000
-            CA.alert(nil, "Purge Soul Resonance!", 0xFF6600D9,
-                SOUNDS.DUEL_START, 4000)
+            CA.alert(nil, "Purge Soul Resonance!", 0xFF6600D9, SOUNDS.DUEL_START, 4000)
             PlaySound(SOUNDS.DUEL_START)
         elseif changeType == EFFECT_RESULT_FADED and AreUnitsEqual("player", unitTag) then
             self.soulStart = 0
         end
-        return
-    end
-
-    -- ── Unstable Charge / Blob (player standing on orb) ──────────────────
-    if abilityId == UNSTABLE_CHARGE then
+    end,
+    -- Unstable Charge / Blob: green border while standing on orb.
+    [UNSTABLE_CHARGE] = function(self, context, alerts, changeType, abilityId,
+                                  unitTag, unitId, unitName, stackCount)
         if changeType == EFFECT_RESULT_GAINED and AreUnitsEqual("player", unitTag) then
             self.onBlob = true
             CA.border(true, 8000, "green")
@@ -211,11 +212,10 @@ function Xalvakka:onEffectChanged(context, alerts, changeType, abilityId,
             self.onBlob = false
             CA.border(false, 0, nil)
         end
-        return
-    end
-
-    -- ── ManifoldDebuff (RG-6): curse spread mechanic ──────────────────────
-    if abilityId == MANIFOLD_DEBUFF then
+    end,
+    -- Manifold Curse: purple border for self, name tracker for others.
+    [MANIFOLD_DEBUFF] = function(self, context, alerts, changeType, abilityId,
+                                  unitTag, unitId, unitName, stackCount)
         if changeType == EFFECT_RESULT_GAINED then
             if AreUnitsEqual("player", unitTag) then
                 self.selfManifold = true
@@ -235,9 +235,8 @@ function Xalvakka:onEffectChanged(context, alerts, changeType, abilityId,
                 self.manifoldOthers[unitTag] = nil
             end
         end
-        return
-    end
-end
+    end,
+}
 
 -- ── 200 ms display loop ───────────────────────────────────────────────────
 function Xalvakka:onUpdate(context, alerts)

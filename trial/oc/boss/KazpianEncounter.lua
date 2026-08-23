@@ -58,110 +58,145 @@ function KazpianEncounter.new()
     }, KazpianEncounter)
 end
 
-function KazpianEncounter:onCombatEvent(context, alerts,
-        result, abilityId, unitTag, sourceUnitTag, sourceUnitId, unitId,
-        sourceUnitName, unitName)
+-- ── Routing tables (C3) ──────────────────────────────────────────────────
 
-    if result == ACTION_RESULT_BEGIN then
-        if abilityId == VILE_LEAP then
-            local dur = select(1, GetAbilityCastInfo(abilityId)) or 0
-            if dur <= 0 then dur = 2000 end
-            CA.alertCast(abilityId, "Vile Leap!", dur, COL_LEAP)
-            alerts:showAction("Vile Leap!")
-
-        elseif abilityId == SEETHING_LEAP then
-            local dur = select(1, GetAbilityCastInfo(abilityId)) or 0
-            if dur <= 0 then dur = 2000 end
-            CA.alertCast(abilityId, "VILE LEAP (enrage)!", dur, COL_LEAP_RED)
-            alerts:showAction("Seething Vile Leap!")
-
-        elseif abilityId == AGONIZER_BOMBS then
-            if self.bombDebounce:isExpired() then
-                self.bombDebounce:reset(5.0)
-                CA.alert(nil, "Agonizer Bombs!", 0xFF8844FF, SOUNDS.NONE, 3000)
-                alerts:showAction("Agonizer Bombs!")
-            end
-
-        elseif abilityId == BITING_BLAZE_1 or abilityId == BITING_BLAZE_2 then
-            local target = (unitName and unitName ~= "") and unitName or "?"
-            alerts:showAction("Biting Blaze → " .. target)
-
-        elseif abilityId == GIANT_CONES then
-            CA.alert(nil, "Dodge cones!", 0xFFFF44FF, SOUNDS.NONE, 2500)
-
-        elseif abilityId == GIANT_PULSE_1 or abilityId == GIANT_PULSE_2 then
-            local dur = select(1, GetAbilityCastInfo(abilityId)) or 0
-            if dur <= 0 then dur = 2000 end
-            CA.alertCast(abilityId, "Giant Sword!", dur, COL_SLAM)
-
-        elseif abilityId == SHOCK_SPEAR then
-            CA.alert(nil, "Dodge spear!", 0x44CCFFFF, SOUNDS.NONE, 2500)
-
-        elseif abilityId == STORM_SLAM then
-            local dur = select(1, GetAbilityCastInfo(abilityId)) or 0
-            if dur <= 0 then dur = 2000 end
-            CA.alertCast(abilityId, "DODGE — Storm Slam!", dur, COL_SLAM)
-            alerts:showAction("Molag Kena Storm Slam — DODGE!")
-
-        elseif abilityId == STORM_SURGE then
-            local dur = select(1, GetAbilityCastInfo(abilityId)) or 0
-            if dur <= 0 then dur = 2000 end
-            CA.alertCast(abilityId, "Storm Surge!", dur, COL_SURGE)
-
-        elseif abilityId == HEAVY_SHOCK and IsUnitPlayer(unitTag) then
-            CA.alert(nil, "Heavy Shock on YOU!", 0x44CCFFFF, SOUNDS.NONE, 2500)
-            alerts:showAction("Molag Kena Heavy Shock on you!")
-
-        elseif abilityId == IMMOLATING_SPHRE and IsUnitPlayer(unitTag) then
-            CA.alert(nil, "Immolating Sphere!", 0xFF6600FF, SOUNDS.NONE, 3000)
-            alerts:showAction("Immolating Sphere on you!")
-
-        elseif abilityId == VILE_TELEPORT then
-            self.portalPhase = self.portalPhase + 1
-            alerts:showAction("Portal phase " .. self.portalPhase .. "!")
+-- Chains: pairs two chained players and alerts when the pair is formed.
+local function handleChains(self, context, alerts, result, abilityId,
+                              unitTag, sourceUnitTag, sourceUnitId, unitId,
+                              sourceUnitName, unitName)
+    if result ~= ACTION_RESULT_EFFECT_GAINED_DURATION then return end
+    local name = IsUnitPlayer(unitTag) and "YOU" or (unitName or "?")
+    if not self.chainedA then
+        self.chainedA = name
+    elseif not self.chainedB then
+        self.chainedB = name
+        alerts:showAction("Chains: " .. self.chainedA .. " ↔ " .. self.chainedB)
+        if self.chainedA == "YOU" or self.chainedB == "YOU" then
+            CA.alert(nil, "CHAINED — pull apart!", 0xFF4444FF, SOUNDS.NONE, 4000)
         end
-
-    elseif result == ACTION_RESULT_EFFECT_GAINED_DURATION then
-        if (abilityId == CHAINS_1 or abilityId == CHAINS_2) then
-            local name = IsUnitPlayer(unitTag) and "YOU" or (unitName or "?")
-            if not self.chainedA then
-                self.chainedA = name
-            elseif not self.chainedB then
-                self.chainedB = name
-                alerts:showAction("Chains: " .. self.chainedA .. " ↔ " .. self.chainedB)
-                if self.chainedA == "YOU" or self.chainedB == "YOU" then
-                    CA.alert(nil, "CHAINED — pull apart!", 0xFF4444FF, SOUNDS.NONE, 4000)
-                end
-                self.chainedA = nil
-                self.chainedB = nil
-            end
-
-        elseif abilityId == STRICKEN and IsUnitPlayer(unitTag) then
-            CA.alert(nil, "Stricken on YOU!", 0xFF4444FF, SOUNDS.NONE, 4000)
-            alerts:showAction("Stricken — tank mechanic!")
-
-        elseif abilityId == FIREBOMB_DEBUF and IsUnitPlayer(unitTag) then
-            CA.alert(nil, "Firebomb on YOU!", 0xFF6600FF, SOUNDS.NONE, 3000)
-            alerts:showAction("Firebomb — spread!")
-        end
-
-    elseif result == ACTION_RESULT_EFFECT_GAINED and IsUnitPlayer(unitTag) then
-        if abilityId == TORTUOUS_CHAINS then
-            CA.border(true, 5000, "red")
-            alerts:showAction("Tortuous Chains — run from Kazpian!")
-        end
-
-    elseif result == ACTION_RESULT_EFFECT_FADED then
-        if abilityId == CHANNELER_RITUAL then
-            self.channelersDead = self.channelersDead + 1
-            alerts:showAction("Channeler down! (" .. self.channelersDead .. " dead)")
-        end
+        self.chainedA = nil
+        self.chainedB = nil
     end
 end
 
-function KazpianEncounter:onEffectChanged(context, alerts,
-        changeType, abilityId, unitTag, unitId, unitName)
+-- Biting Blaze: shared handler for both variants.
+local function handleBitingBlaze(self, context, alerts, result, abilityId,
+                                  unitTag, sourceUnitTag, sourceUnitId, unitId,
+                                  sourceUnitName, unitName)
+    if result ~= ACTION_RESULT_BEGIN then return end
+    local target = (unitName and unitName ~= "") and unitName or "?"
+    alerts:showAction("Biting Blaze → " .. target)
 end
+
+-- Giant Pulse: shared handler for both variants.
+local function handleGiantPulse(self, context, alerts, result, abilityId, ...)
+    if result ~= ACTION_RESULT_BEGIN then return end
+    local dur = select(1, GetAbilityCastInfo(abilityId)) or 0
+    if dur <= 0 then dur = 2000 end
+    CA.alertCast(abilityId, "Giant Sword!", dur, COL_SLAM)
+end
+
+KazpianEncounter.combatRoutes = {
+    -- Leaps
+    [VILE_LEAP] = function(self, context, alerts, result, abilityId, ...)
+        if result ~= ACTION_RESULT_BEGIN then return end
+        local dur = select(1, GetAbilityCastInfo(abilityId)) or 0
+        if dur <= 0 then dur = 2000 end
+        CA.alertCast(abilityId, "Vile Leap!", dur, COL_LEAP)
+        alerts:showAction("Vile Leap!")
+    end,
+    [SEETHING_LEAP] = function(self, context, alerts, result, abilityId, ...)
+        if result ~= ACTION_RESULT_BEGIN then return end
+        local dur = select(1, GetAbilityCastInfo(abilityId)) or 0
+        if dur <= 0 then dur = 2000 end
+        CA.alertCast(abilityId, "VILE LEAP (enrage)!", dur, COL_LEAP_RED)
+        alerts:showAction("Seething Vile Leap!")
+    end,
+    -- Agonizer Bombs (debounced)
+    [AGONIZER_BOMBS] = function(self, context, alerts, result, abilityId, ...)
+        if result ~= ACTION_RESULT_BEGIN then return end
+        if self.bombDebounce:isExpired() then
+            self.bombDebounce:reset(5.0)
+            CA.alert(nil, "Agonizer Bombs!", 0xFF8844FF, SOUNDS.NONE, 3000)
+            alerts:showAction("Agonizer Bombs!")
+        end
+    end,
+    [BITING_BLAZE_1] = handleBitingBlaze,
+    [BITING_BLAZE_2] = handleBitingBlaze,
+    [GIANT_CONES] = function(self, context, alerts, result, abilityId, ...)
+        if result ~= ACTION_RESULT_BEGIN then return end
+        CA.alert(nil, "Dodge cones!", 0xFFFF44FF, SOUNDS.NONE, 2500)
+    end,
+    [GIANT_PULSE_1] = handleGiantPulse,
+    [GIANT_PULSE_2] = handleGiantPulse,
+    [SHOCK_SPEAR] = function(self, context, alerts, result, abilityId, ...)
+        if result ~= ACTION_RESULT_BEGIN then return end
+        CA.alert(nil, "Dodge spear!", 0x44CCFFFF, SOUNDS.NONE, 2500)
+    end,
+    [STORM_SLAM] = function(self, context, alerts, result, abilityId, ...)
+        if result ~= ACTION_RESULT_BEGIN then return end
+        local dur = select(1, GetAbilityCastInfo(abilityId)) or 0
+        if dur <= 0 then dur = 2000 end
+        CA.alertCast(abilityId, "DODGE — Storm Slam!", dur, COL_SLAM)
+        alerts:showAction("Molag Kena Storm Slam — DODGE!")
+    end,
+    [STORM_SURGE] = function(self, context, alerts, result, abilityId, ...)
+        if result ~= ACTION_RESULT_BEGIN then return end
+        local dur = select(1, GetAbilityCastInfo(abilityId)) or 0
+        if dur <= 0 then dur = 2000 end
+        CA.alertCast(abilityId, "Storm Surge!", dur, COL_SURGE)
+    end,
+    [HEAVY_SHOCK] = function(self, context, alerts, result, abilityId,
+                              unitTag, ...)
+        if result ~= ACTION_RESULT_BEGIN then return end
+        if not IsUnitPlayer(unitTag) then return end
+        CA.alert(nil, "Heavy Shock on YOU!", 0x44CCFFFF, SOUNDS.NONE, 2500)
+        alerts:showAction("Molag Kena Heavy Shock on you!")
+    end,
+    [IMMOLATING_SPHRE] = function(self, context, alerts, result, abilityId,
+                                   unitTag, ...)
+        if result ~= ACTION_RESULT_BEGIN then return end
+        if not IsUnitPlayer(unitTag) then return end
+        CA.alert(nil, "Immolating Sphere!", 0xFF6600FF, SOUNDS.NONE, 3000)
+        alerts:showAction("Immolating Sphere on you!")
+    end,
+    [VILE_TELEPORT] = function(self, context, alerts, result, abilityId, ...)
+        if result ~= ACTION_RESULT_BEGIN then return end
+        self.portalPhase = self.portalPhase + 1
+        alerts:showAction("Portal phase " .. self.portalPhase .. "!")
+    end,
+    -- Chains (EFFECT_GAINED_DURATION)
+    [CHAINS_1] = handleChains,
+    [CHAINS_2] = handleChains,
+    [STRICKEN] = function(self, context, alerts, result, abilityId,
+                           unitTag, ...)
+        if result ~= ACTION_RESULT_EFFECT_GAINED_DURATION then return end
+        if not IsUnitPlayer(unitTag) then return end
+        CA.alert(nil, "Stricken on YOU!", 0xFF4444FF, SOUNDS.NONE, 4000)
+        alerts:showAction("Stricken — tank mechanic!")
+    end,
+    [FIREBOMB_DEBUF] = function(self, context, alerts, result, abilityId,
+                                 unitTag, ...)
+        if result ~= ACTION_RESULT_EFFECT_GAINED_DURATION then return end
+        if not IsUnitPlayer(unitTag) then return end
+        CA.alert(nil, "Firebomb on YOU!", 0xFF6600FF, SOUNDS.NONE, 3000)
+        alerts:showAction("Firebomb — spread!")
+    end,
+    -- Tortuous Chains (EFFECT_GAINED)
+    [TORTUOUS_CHAINS] = function(self, context, alerts, result, abilityId,
+                                  unitTag, ...)
+        if result ~= ACTION_RESULT_EFFECT_GAINED then return end
+        if not IsUnitPlayer(unitTag) then return end
+        CA.border(true, 5000, "red")
+        alerts:showAction("Tortuous Chains — run from Kazpian!")
+    end,
+    -- Channeler ritual (EFFECT_FADED = channeler killed)
+    [CHANNELER_RITUAL] = function(self, context, alerts, result, abilityId, ...)
+        if result ~= ACTION_RESULT_EFFECT_FADED then return end
+        self.channelersDead = self.channelersDead + 1
+        alerts:showAction("Channeler down! (" .. self.channelersDead .. " dead)")
+    end,
+}
 
 function KazpianEncounter:onUpdate(context, alerts)
     -- Line 1: portal phase

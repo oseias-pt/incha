@@ -164,223 +164,293 @@ function ZmajaEncounter:onLeave(context)
     for _, cid in pairs(self.alertList) do CA.castAlertsStop(cid) end
 end
 
--- ── Combat events ─────────────────────────────────────────────────────────
-function ZmajaEncounter:onCombatEvent(context, alerts,
-        result, abilityId, unitTag, sourceUnitTag, sourceUnitId, unitId,
-        sourceUnitName, unitName)
+-- ── Routing tables (C3) ──────────────────────────────────────────────────
+-- (Z'Maja has no shared common module; no per-unit DIED cleanup needed.)
 
-    -- ── Mini activation: first ability from a mini marks it as live ───────
-    if not self.siroActive and SIRO_IDS[abilityId] then
-        self.siroActive = true
-    elseif not self.releActive and RELE_IDS[abilityId] then
-        self.releActive = true
-    elseif not self.galeActive and GALE_IDS[abilityId] then
-        self.galeActive = true
+-- Mini-boss shackle: Z'Maja removes a mini from the fight.
+local function handleShackle(self, context, alerts, result, abilityId,
+                               unitTag, sourceUnitTag, sourceUnitId, unitId,
+                               sourceUnitName, unitName)
+    if result ~= ACTION_RESULT_EFFECT_GAINED then return end
+    if unitName and unitName:find("Siroria") then
+        self.siroActive = false
+        self.siroJumpTimer:clear(); self.siroBannerTimer:clear()
+    elseif unitName and unitName:find("Relequen") then
+        self.releActive = false
+        self.releJumpTimer:clear(); self.releBashTimer:clear(); self.releJoltTimer:clear()
+    elseif unitName and unitName:find("Galenwe") then
+        self.galeActive = false
+        self.galeJumpTimer:clear(); self.galeBashTimer:clear(); self.galeDonutTimer:clear()
     end
+end
 
-    -- ── Mini death: Z'Maja shackles the mini out of the fight ────────────
-    if abilityId == ZMAJA_SHACKLE and result == ACTION_RESULT_EFFECT_GAINED then
-        if unitName and unitName:find("Siroria") then
-            self.siroActive = false
-            self.siroJumpTimer:clear()
-            self.siroBannerTimer:clear()
-        elseif unitName and unitName:find("Relequen") then
-            self.releActive = false
-            self.releJumpTimer:clear()
-            self.releBashTimer:clear()
-            self.releJoltTimer:clear()
-        elseif unitName and unitName:find("Galenwe") then
-            self.galeActive = false
-            self.galeJumpTimer:clear()
-            self.galeBashTimer:clear()
-            self.galeDonutTimer:clear()
-        end
-        return
+-- Roaring Flare: shared handler for base and execute variant.
+local function handleSiroFlare(self, context, alerts, result, abilityId,
+                                unitTag, sourceUnitTag, sourceUnitId, unitId,
+                                sourceUnitName, unitName)
+    if not self.siroActive then self.siroActive = true end
+    if result ~= ACTION_RESULT_BEGIN then return end
+    local target = (unitName and unitName ~= "") and unitName or "?"
+    alerts:showAction("Flare → " .. target)
+    local dur = select(1, GetAbilityCastInfo(abilityId)) or 0
+    if dur <= 0 then dur = math.floor(FLARE_WINDOW * 1000) end
+    local cid = CA.alertCast(abilityId, "Flare → " .. target, dur, COL_SIRO)
+    if cid and unitId then self.alertList[unitId] = cid end
+end
+
+-- Hoarfrost: EFFECT_GAINED on player (carrier) or non-player (announce name).
+local function handleGaleHoarfrost(self, context, alerts, result, abilityId,
+                                    unitTag, sourceUnitTag, sourceUnitId, unitId,
+                                    sourceUnitName, unitName)
+    if not self.galeActive then self.galeActive = true end
+    if result ~= ACTION_RESULT_EFFECT_GAINED then return end
+    if IsUnitPlayer(unitTag) then
+        local carrier = GetUnitDisplayName("player") or "you"
+        alerts:showAction("Frost! Drop in 6s (" .. carrier .. ")")
+        CA.alert(nil, "FROST — drop in 6s", 0x00EEEEff, SOUNDS.NONE, 4000)
+    elseif unitName and unitName ~= "" then
+        alerts:showAction("Frost → " .. unitName)
     end
+end
 
-    -- ── SIRORIA ───────────────────────────────────────────────────────────
-    if abilityId == SIRO_HA and result == ACTION_RESULT_BEGIN then
+-- Hoarfrost synergy: player uses synergy to drop frost.
+local function handleGaleHoarfrostSy(self, context, alerts, result, abilityId,
+                                      unitTag, ...)
+    if not self.galeActive then self.galeActive = true end
+    if result ~= ACTION_RESULT_EFFECT_GAINED_DURATION then return end
+    if not IsUnitPlayer(unitTag) then return end
+    alerts:showAction("Drop frost now!")
+    CA.alert(nil, "DROP FROST!", 0x00EEEEff, SOUNDS.NONE, 2000)
+end
+
+-- Chilling Comet: personal alert on EFFECT_GAINED.
+local function handleGaleComet(self, context, alerts, result, abilityId,
+                                unitTag, ...)
+    if not self.galeActive then self.galeActive = true end
+    if result ~= ACTION_RESULT_EFFECT_GAINED then return end
+    if not IsUnitPlayer(unitTag) then return end
+    alerts:showAction("Chilling Comet! Move!")
+    CA.alert(nil, "COMET — move!", 0x00AAFFFF, SOUNDS.NONE, 2500)
+end
+
+-- Portal close: shared handler for normal close and PC win.
+local function handlePortalClose(self, context, alerts, result, abilityId, ...)
+    if result ~= ACTION_RESULT_BEGIN then return end
+    self.portalActive = false
+    self.portalTimer:clear()
+    self.portalNextTimer:reset(PORTAL_NEXT_CD)
+    self.coreAlert = nil
+end
+
+-- Crushing Darkness: shared handler for 3 variants.
+local function handleCrushingDark(self, context, alerts, result, abilityId, ...)
+    if result ~= ACTION_RESULT_BEGIN then return end
+    alerts:showAction("Kite! Crushing Darkness")
+    local dur = select(1, GetAbilityCastInfo(abilityId)) or 0
+    if dur <= 0 then dur = 6000 end
+    CA.alertCast(abilityId, "KITE!", dur, COL_ZMAJA)
+end
+
+ZmajaEncounter.combatRoutes = {
+    -- Mini shackle (fires before specific-ability handlers in original)
+    [ZMAJA_SHACKLE] = handleShackle,
+
+    -- ── SIRORIA ────────────────────────────────────────────────────────────
+    [SIRO_HA] = function(self, context, alerts, result, abilityId,
+                          unitTag, sourceUnitTag, sourceUnitId, unitId,
+                          sourceUnitName, unitName)
+        if not self.siroActive then self.siroActive = true end
+        if result ~= ACTION_RESULT_BEGIN then return end
         local target = (unitName and unitName ~= "") and unitName or "?"
         alerts:showAction("Siroria HA! (" .. target .. ")")
         local dur = select(1, GetAbilityCastInfo(SIRO_HA)) or 0
         if dur <= 0 then dur = 1500 end
         local cid = CA.alertCast(abilityId, "Siro HA!", dur, COL_SIRO)
         if cid and unitId then self.alertList[unitId] = cid end
-
-    elseif abilityId == SIRO_JUMP and result == ACTION_RESULT_BEGIN then
+    end,
+    [SIRO_JUMP] = function(self, context, alerts, result, abilityId, ...)
+        if not self.siroActive then self.siroActive = true end
+        if result ~= ACTION_RESULT_BEGIN then return end
         alerts:showAction("Siroria jumping!")
         self.siroJumpTimer:reset()
-
-    elseif abilityId == SIRO_BANNER and result == ACTION_RESULT_BEGIN then
+    end,
+    [SIRO_BANNER] = function(self, context, alerts, result, abilityId, ...)
+        if not self.siroActive then self.siroActive = true end
+        if result ~= ACTION_RESULT_BEGIN then return end
         alerts:showAction("Siroria Banner!")
         self.siroBannerTimer:reset()
-
-    elseif (abilityId == SIRO_FLARE or abilityId == SIRO_FLARE_EXEC)
-           and result == ACTION_RESULT_BEGIN then
-        -- Roaring Flare: Siroria targets a player; show who needs to move
-        local target = (unitName and unitName ~= "") and unitName or "?"
-        alerts:showAction("Flare → " .. target)
-        local dur = select(1, GetAbilityCastInfo(abilityId)) or 0
-        if dur <= 0 then dur = math.floor(FLARE_WINDOW * 1000) end
-        local cid = CA.alertCast(abilityId, "Flare → " .. target, dur, COL_SIRO)
-        if cid and unitId then self.alertList[unitId] = cid end
-
-    elseif abilityId == SIRO_DARK_TALONS and result == ACTION_RESULT_EFFECT_GAINED
-           and IsUnitPlayer(unitTag) then
+    end,
+    [SIRO_FLARE]      = handleSiroFlare,
+    [SIRO_FLARE_EXEC] = handleSiroFlare,
+    [SIRO_DARK_TALONS] = function(self, context, alerts, result, abilityId,
+                                   unitTag, ...)
+        if not self.siroActive then self.siroActive = true end
+        if result ~= ACTION_RESULT_EFFECT_GAINED then return end
+        if not IsUnitPlayer(unitTag) then return end
         alerts:showAction("Rooted! (Siroria)")
+    end,
 
-    -- ── RELEQUEN ──────────────────────────────────────────────────────────
-    elseif abilityId == RELE_HA and result == ACTION_RESULT_BEGIN then
+    -- ── RELEQUEN ───────────────────────────────────────────────────────────
+    [RELE_HA] = function(self, context, alerts, result, abilityId,
+                          unitTag, sourceUnitTag, sourceUnitId, unitId,
+                          sourceUnitName, unitName)
+        if not self.releActive then self.releActive = true end
+        if result ~= ACTION_RESULT_BEGIN then return end
         local target = (unitName and unitName ~= "") and unitName or "?"
         alerts:showAction("Relequen HA! (" .. target .. ")")
         local dur = select(1, GetAbilityCastInfo(RELE_HA)) or 0
         if dur <= 0 then dur = 1500 end
         local cid = CA.alertCast(abilityId, "Rele HA!", dur, COL_RELE)
         if cid and unitId then self.alertList[unitId] = cid end
-
-    elseif abilityId == RELE_JUMP and result == ACTION_RESULT_BEGIN then
+    end,
+    [RELE_JUMP] = function(self, context, alerts, result, abilityId, ...)
+        if not self.releActive then self.releActive = true end
+        if result ~= ACTION_RESULT_BEGIN then return end
         alerts:showAction("Relequen jumping!")
         self.releJumpTimer:reset()
-
-    elseif abilityId == RELE_DIRECT_CURR and result == ACTION_RESULT_BEGIN then
+    end,
+    [RELE_DIRECT_CURR] = function(self, context, alerts, result, abilityId, ...)
+        if not self.releActive then self.releActive = true end
+        if result ~= ACTION_RESULT_BEGIN then return end
         alerts:showAction("Interrupt Relequen!")
         CA.alert(nil, "INTERRUPT!", 0xFF0000FF, SOUNDS.NONE, 2500)
         self.releBashTimer:reset()
-
-    elseif abilityId == RELE_JOLT and result == ACTION_RESULT_BEGIN then
+    end,
+    [RELE_JOLT] = function(self, context, alerts, result, abilityId, ...)
+        if not self.releActive then self.releActive = true end
+        if result ~= ACTION_RESULT_BEGIN then return end
         alerts:showAction("Relequen Jolt! Move!")
         self.releJoltTimer:reset()
+    end,
+    [RELE_OVERLOAD_1] = function(self, context, alerts, result, abilityId,
+                                  unitTag, ...)
+        if not self.releActive then self.releActive = true end
+        if result ~= ACTION_RESULT_EFFECT_GAINED_DURATION then return end
+        if not IsUnitPlayer(unitTag) then return end
+        alerts:showAction("Overload incoming — bar swap!")
+    end,
+    [RELE_OVERLOAD_2] = function(self, context, alerts, result, abilityId,
+                                  unitTag, ...)
+        if not self.releActive then self.releActive = true end
+        if result ~= ACTION_RESULT_EFFECT_GAINED_DURATION then return end
+        if not IsUnitPlayer(unitTag) then return end
+        alerts:showAction("Overload on you — swap now!")
+        CA.alert(nil, "BAR SWAP", 0x3399FFFF, SOUNDS.NONE, 3000)
+    end,
 
-    elseif (abilityId == RELE_OVERLOAD_1 or abilityId == RELE_OVERLOAD_2)
-           and result == ACTION_RESULT_EFFECT_GAINED_DURATION
-           and IsUnitPlayer(unitTag) then
-        if abilityId == RELE_OVERLOAD_1 then
-            alerts:showAction("Overload incoming — bar swap!")
-        else
-            alerts:showAction("Overload on you — swap now!")
-            CA.alert(nil, "BAR SWAP", 0x3399FFFF, SOUNDS.NONE, 3000)
-        end
-
-    -- ── GALENWE ───────────────────────────────────────────────────────────
-    elseif abilityId == GALE_HA and result == ACTION_RESULT_BEGIN then
+    -- ── GALENWE ────────────────────────────────────────────────────────────
+    [GALE_HA] = function(self, context, alerts, result, abilityId,
+                          unitTag, sourceUnitTag, sourceUnitId, unitId,
+                          sourceUnitName, unitName)
+        if not self.galeActive then self.galeActive = true end
+        if result ~= ACTION_RESULT_BEGIN then return end
         local target = (unitName and unitName ~= "") and unitName or "?"
         alerts:showAction("Galenwe HA! (" .. target .. ")")
         local dur = select(1, GetAbilityCastInfo(GALE_HA)) or 0
         if dur <= 0 then dur = 1500 end
         local cid = CA.alertCast(abilityId, "Gale HA!", dur, COL_GALE)
         if cid and unitId then self.alertList[unitId] = cid end
-
-    elseif abilityId == GALE_JUMP and result == ACTION_RESULT_BEGIN then
+    end,
+    [GALE_JUMP] = function(self, context, alerts, result, abilityId, ...)
+        if not self.galeActive then self.galeActive = true end
+        if result ~= ACTION_RESULT_BEGIN then return end
         alerts:showAction("Galenwe jumping!")
         self.galeJumpTimer:reset()
-
-    elseif abilityId == GALE_GLACIAL and result == ACTION_RESULT_BEGIN then
+    end,
+    [GALE_GLACIAL] = function(self, context, alerts, result, abilityId, ...)
+        if not self.galeActive then self.galeActive = true end
+        if result ~= ACTION_RESULT_BEGIN then return end
         alerts:showAction("Interrupt Galenwe!")
         CA.alert(nil, "INTERRUPT!", 0xFF0000FF, SOUNDS.NONE, 2500)
         self.galeBashTimer:reset()
-
-    elseif abilityId == GALE_DONUT and result == ACTION_RESULT_BEGIN then
+    end,
+    [GALE_DONUT] = function(self, context, alerts, result, abilityId, ...)
+        if not self.galeActive then self.galeActive = true end
+        if result ~= ACTION_RESULT_BEGIN then return end
         alerts:showAction("Galenwe Donut! Out!")
         self.galeDonutTimer:reset()
+    end,
+    [GALE_HOARFROST_C]   = function(self, ...) if not self.galeActive then self.galeActive = true end end,
+    [GALE_HOARFROST_C2]  = function(self, ...) if not self.galeActive then self.galeActive = true end end,
+    [GALE_HOARFROST]     = handleGaleHoarfrost,
+    [GALE_HOARFROST_2]   = handleGaleHoarfrost,
+    [GALE_HOARFROST_SY]  = handleGaleHoarfrostSy,
+    [GALE_HOARFROST_S2]  = handleGaleHoarfrostSy,
+    [GALE_COMET]         = handleGaleComet,
+    [GALE_COMET_2]       = handleGaleComet,
 
-    elseif (abilityId == GALE_HOARFROST or abilityId == GALE_HOARFROST_2)
-           and result == ACTION_RESULT_EFFECT_GAINED
-           and IsUnitPlayer(unitTag) then
-        -- Player picked up hoarfrost — show name and 6 s drop countdown
-        local carrier = GetUnitDisplayName("player") or "you"
-        alerts:showAction("Frost! Drop in 6s (" .. carrier .. ")")
-        CA.alert(nil, "FROST — drop in 6s", 0x00EEEEff, SOUNDS.NONE, 4000)
-
-    elseif (abilityId == GALE_HOARFROST or abilityId == GALE_HOARFROST_2)
-           and result == ACTION_RESULT_EFFECT_GAINED
-           and not IsUnitPlayer(unitTag)
-           and unitName and unitName ~= "" then
-        -- Another player got hoarfrost — announce their name
-        alerts:showAction("Frost → " .. unitName)
-
-    elseif (abilityId == GALE_HOARFROST_SY or abilityId == GALE_HOARFROST_S2)
-           and result == ACTION_RESULT_EFFECT_GAINED_DURATION
-           and IsUnitPlayer(unitTag) then
-        alerts:showAction("Drop frost now!")
-        CA.alert(nil, "DROP FROST!", 0x00EEEEff, SOUNDS.NONE, 2000)
-
-    elseif (abilityId == GALE_COMET or abilityId == GALE_COMET_2)
-           and result == ACTION_RESULT_EFFECT_GAINED
-           and IsUnitPlayer(unitTag) then
-        alerts:showAction("Chilling Comet! Move!")
-        CA.alert(nil, "COMET — move!", 0x00AAFFFF, SOUNDS.NONE, 2500)
-
-    -- ── ENVIRONMENT ───────────────────────────────────────────────────────
-    elseif abilityId == RAZOR_THORNS and result == ACTION_RESULT_EFFECT_GAINED
-           and IsUnitPlayer(unitTag) then
+    -- ── Environment ────────────────────────────────────────────────────────
+    [RAZOR_THORNS] = function(self, context, alerts, result, abilityId,
+                               unitTag, ...)
+        if result ~= ACTION_RESULT_EFFECT_GAINED then return end
+        if not IsUnitPlayer(unitTag) then return end
         alerts:showAction("Rooted! (Creeper)")
+    end,
 
-    -- ── PORTAL ────────────────────────────────────────────────────────────
-    elseif abilityId == PORTAL_OPEN and result == ACTION_RESULT_BEGIN then
+    -- ── Portal ─────────────────────────────────────────────────────────────
+    [PORTAL_OPEN] = function(self, context, alerts, result, abilityId, ...)
+        if result ~= ACTION_RESULT_BEGIN then return end
         self.portalGroup  = self.portalGroup + 1
         self.portalActive = true
         self.portalTimer:reset(PORTAL_OPEN_DUR)
         self.portalNextTimer:clear()
         alerts:showHeader("Shadow Realm — Group " .. self.portalGroup)
+    end,
+    [PORTAL_CLOSE_1] = handlePortalClose,
+    [PORTAL_CLOSE_2] = handlePortalClose,
 
-    elseif (abilityId == PORTAL_CLOSE_1 or abilityId == PORTAL_CLOSE_2)
-           and result == ACTION_RESULT_BEGIN then
-        self.portalActive = false
-        self.portalTimer:clear()
-        self.portalNextTimer:reset(PORTAL_NEXT_CD)
-        self.coreAlert = nil
-
-    -- ── Z'MAJA ────────────────────────────────────────────────────────────
-    elseif abilityId == ZMAJA_JUMP and result == ACTION_RESULT_BEGIN then
+    -- ── Z'Maja ─────────────────────────────────────────────────────────────
+    [ZMAJA_JUMP] = function(self, context, alerts, result, abilityId, ...)
+        if result ~= ACTION_RESULT_BEGIN then return end
         alerts:showAction("Z'Maja jumping!")
-
-    elseif abilityId == ZMAJA_HIDE_JUMP and result == ACTION_RESULT_BEGIN then
+    end,
+    [ZMAJA_HIDE_JUMP] = function(self, context, alerts, result, abilityId, ...)
+        if result ~= ACTION_RESULT_BEGIN then return end
         alerts:showAction("Z'Maja retreating to shadow!")
-
-    elseif (abilityId == CRUSHING_DARK_1 or abilityId == CRUSHING_DARK_2
-            or abilityId == CRUSHING_DARK_3) and result == ACTION_RESULT_BEGIN then
-        alerts:showAction("Kite! Crushing Darkness")
-        local dur = select(1, GetAbilityCastInfo(abilityId)) or 0
-        if dur <= 0 then dur = 6000 end
-        CA.alertCast(abilityId, "KITE!", dur, COL_ZMAJA)
-
-    elseif abilityId == SHADOW_SPLASH and result == ACTION_RESULT_BEGIN then
+    end,
+    [CRUSHING_DARK_1] = handleCrushingDark,
+    [CRUSHING_DARK_2] = handleCrushingDark,
+    [CRUSHING_DARK_3] = handleCrushingDark,
+    [SHADOW_SPLASH] = function(self, context, alerts, result, abilityId, ...)
+        if result ~= ACTION_RESULT_BEGIN then return end
         alerts:showAction("Shadow Splash! Interrupt!")
         CA.alert(nil, "INTERRUPT!", 0xFF0000FF, SOUNDS.NONE, 2500)
-
-    elseif abilityId == BANEFUL_MARK and result == ACTION_RESULT_BEGIN then
+    end,
+    [BANEFUL_MARK] = function(self, context, alerts, result, abilityId, ...)
+        if result ~= ACTION_RESULT_BEGIN then return end
         self.executePhase = true
         alerts:showAction("Baneful Mark! (execute)")
         CA.alert(nil, "BANEFUL MARK", 0xFF4444FF, SOUNDS.NONE, 4000)
-
-    elseif abilityId == OLORIME_SPEAR
-           and (result == ACTION_RESULT_EFFECT_GAINED or result == ACTION_RESULT_BEGIN) then
+    end,
+    [OLORIME_SPEAR] = function(self, context, alerts, result, abilityId,
+                                unitTag, sourceUnitTag, sourceUnitId, unitId,
+                                sourceUnitName, unitName)
+        if result ~= ACTION_RESULT_EFFECT_GAINED and result ~= ACTION_RESULT_BEGIN then return end
         self.spearCount = self.spearCount + 1
         local target = (unitName and unitName ~= "") and unitName or "?"
         alerts:showAction("Spear → " .. target .. " (" .. self.spearCount .. ")")
+    end,
 
-    -- ── MALEVOLENT CORES ──────────────────────────────────────────────────
-    elseif abilityId == CORE_EXPOSED and result == ACTION_RESULT_BEGIN then
+    -- ── Malevolent Cores ────────────────────────────────────────────────────
+    [CORE_EXPOSED] = function(self, context, alerts, result, abilityId, ...)
+        if result ~= ACTION_RESULT_BEGIN then return end
         self.coreAlert = "Core out! Pick it up!"
         alerts:showAction("Core exposed!")
         CA.alert(nil, "CORE OUT!", 0xFFDD00FF, SOUNDS.NONE, 4000)
-
-    elseif abilityId == CORE_MISSED and result == ACTION_RESULT_BEGIN then
+    end,
+    [CORE_MISSED] = function(self, context, alerts, result, abilityId, ...)
+        if result ~= ACTION_RESULT_BEGIN then return end
         self.coreAlert = "Core MISSED!"
         alerts:showAction("Core missed!")
         CA.alert(nil, "CORE MISSED!", 0xFF4444FF, SOUNDS.NONE, 5000)
-
-    elseif abilityId == CORE_PICKED_UP and result == ACTION_RESULT_BEGIN then
+    end,
+    [CORE_PICKED_UP] = function(self, context, alerts, result, abilityId, ...)
+        if result ~= ACTION_RESULT_BEGIN then return end
         self.coreAlert = nil
         alerts:showAction("Core picked up.")
-    end
-end
-
--- ── Effect changed ────────────────────────────────────────────────────────
-function ZmajaEncounter:onEffectChanged(context, alerts,
-        changeType, abilityId, unitTag, unitId, unitName)
-    -- CR-3: portal world-state, mini shackle via effect path, execute phase
-end
+    end,
+}
+-- (effectRoutes: CR-3 TODO — portal world-state, mini shackle via effect path)
 
 -- ── 200 ms display update ─────────────────────────────────────────────────
 function ZmajaEncounter:onUpdate(context, alerts)

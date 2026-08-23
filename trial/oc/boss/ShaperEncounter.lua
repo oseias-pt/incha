@@ -24,46 +24,40 @@ function ShaperEncounter.new()
     }, ShaperEncounter)
 end
 
-function ShaperEncounter:onCombatEvent(context, alerts,
-        result, abilityId, unitTag, sourceUnitTag, sourceUnitId, unitId,
-        sourceUnitName, unitName)
+-- ── Routing tables (C3) ──────────────────────────────────────────────────
 
-    if result == ACTION_RESULT_BEGIN then
-        if abilityId == OGRIM_CHARGE then
-            local target = (unitName and unitName ~= "") and unitName or "?"
-            local dur = select(1, GetAbilityCastInfo(abilityId)) or 0
-            if dur <= 0 then dur = 2000 end
-            CA.alertCast(abilityId, "MOVE — Ogrim Charge!", dur, COL_CHARGE)
-            if IsUnitPlayer(unitTag) then
-                alerts:showAction("Ogrim Charge on YOU! Move!")
-            else
-                alerts:showAction("Ogrim Charge → " .. target)
-            end
+ShaperEncounter.combatRoutes = {
+    [OGRIM_CHARGE] = function(self, context, alerts, result, abilityId,
+                               unitTag, sourceUnitTag, sourceUnitId, unitId,
+                               sourceUnitName, unitName)
+        if result ~= ACTION_RESULT_BEGIN then return end
+        local target = (unitName and unitName ~= "") and unitName or "?"
+        local dur = select(1, GetAbilityCastInfo(abilityId)) or 0
+        if dur <= 0 then dur = 2000 end
+        CA.alertCast(abilityId, "MOVE — Ogrim Charge!", dur, COL_CHARGE)
+        if IsUnitPlayer(unitTag) then
+            alerts:showAction("Ogrim Charge on YOU! Move!")
+        else
+            alerts:showAction("Ogrim Charge → " .. target)
         end
-
-    elseif result == ACTION_RESULT_EFFECT_GAINED then
-        if abilityId == SHAPER_SHIELD then
+    end,
+    [SHAPER_SHIELD] = function(self, context, alerts, result, abilityId, ...)
+        if result == ACTION_RESULT_EFFECT_GAINED then
             self.shaperShielded = true
             CA.alert(nil, "Shaper shielded — kill channelers!", 0xAA44FFFF, SOUNDS.NONE, 4000)
             alerts:showAction("Shaper of Flesh shielded — kill channelers!")
-
-        elseif abilityId == CHANNELER_SHIELD then
-            self.shaperShielded = true
-            alerts:showAction("Channelers shielding Shaper — eliminate them!")
-        end
-
-    elseif result == ACTION_RESULT_EFFECT_FADED then
-        if abilityId == SHAPER_SHIELD then
+        elseif result == ACTION_RESULT_EFFECT_FADED then
             self.shaperShielded = false
             CA.alert(nil, "Shaper vulnerable!", 0x44FF88FF, SOUNDS.NONE, 3000)
             alerts:showAction("Shaper vulnerable — BURN!")
         end
-    end
-end
-
-function ShaperEncounter:onEffectChanged(context, alerts,
-        changeType, abilityId, unitTag, unitId, unitName)
-end
+    end,
+    [CHANNELER_SHIELD] = function(self, context, alerts, result, abilityId, ...)
+        if result ~= ACTION_RESULT_EFFECT_GAINED then return end
+        self.shaperShielded = true
+        alerts:showAction("Channelers shielding Shaper — eliminate them!")
+    end,
+}
 
 function ShaperEncounter:onUpdate(context, alerts)
     -- Line 1: Shaper shield status

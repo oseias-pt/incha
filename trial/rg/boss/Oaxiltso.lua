@@ -64,66 +64,58 @@ function Oaxiltso.new()
     }, Oaxiltso)
 end
 
--- ── Combat events ─────────────────────────────────────────────────────────
-function Oaxiltso:onCombatEvent(context, alerts, result, abilityId,
-                                 unitTag, sourceUnitTag, sourceUnitId, unitId,
-                                 sourceUnitName, unitName)
-    if RockgroveCommon.handle(alerts, result, abilityId, unitTag, sourceUnitName) then
-        return
-    end
+-- ── Routing tables (C3) ──────────────────────────────────────────────────
+-- Shared trash mechanic handler (interrupt, execute, HA, etc.).
+Oaxiltso.common = RockgroveCommon
 
-    -- ── Savage Blitz ──────────────────────────────────────────────────────
-    if (abilityId == SAVAGE_BLITZ or abilityId == SAVAGE_BLITZ_HM)
-       and result == ACTION_RESULT_BEGIN then
-        self.lastBlitz = GetGameTimeMilliseconds() / 1000
-        CA.castAlertsStart(abilityId, "Savage Blitz", 2750, 2750, COL_BLITZ)
-        return
-    end
+local function handleSavageBlitz(self, context, alerts, result, abilityId, ...)
+    if result ~= ACTION_RESULT_BEGIN then return end
+    self.lastBlitz = GetGameTimeMilliseconds() / 1000
+    CA.castAlertsStart(abilityId, "Savage Blitz", 2750, 2750, COL_BLITZ)
+end
 
-    -- ── Noxious Sludge ────────────────────────────────────────────────────
-    if abilityId == NOXIOUS_SLUDGE and result == ACTION_RESULT_BEGIN then
+Oaxiltso.combatRoutes = {
+    [SAVAGE_BLITZ]    = handleSavageBlitz,
+    [SAVAGE_BLITZ_HM] = handleSavageBlitz,
+    [NOXIOUS_SLUDGE] = function(self, context, alerts, result, abilityId, ...)
+        if result ~= ACTION_RESULT_BEGIN then return end
         self.lastSludge = GetGameTimeMilliseconds() / 1000
         CA.alert(nil, "Noxious Sludge", 0x00CC00D9, SOUNDS.CHAMPION_POINTS_COMMITTED, 2500)
-        return
-    end
-
-    -- ── Annihilator Sunburst → delayed Meteor Block alert ─────────────────
+    end,
     -- Sunburst casts, then ~2.5 s later a meteor hits; alert fires at impact.
-    if abilityId == SUNBURST and result == ACTION_RESULT_BEGIN then
+    [SUNBURST] = function(self, context, alerts, result, abilityId, ...)
+        if result ~= ACTION_RESULT_BEGIN then return end
         zo_callLater(function()
             CA.alert(nil, "Meteor. BLOCK!", 0xFF2020FF, SOUNDS.CHAMPION_POINTS_COMMITTED, 3000)
         end, 2500)
-        return
-    end
-
-    -- ── Annihilator CinderCleave (frontal cone, player-targeted) ──────────
+    end,
     -- QRH: hitValue returns ~4 s but actual dodge window is ~2 s; hardcode 2000.
-    if abilityId == CINDER_CLEAVE and result == ACTION_RESULT_BEGIN then
+    [CINDER_CLEAVE] = function(self, context, alerts, result, abilityId,
+                                unitTag, sourceUnitTag, sourceUnitId, unitId,
+                                sourceUnitName, unitName)
+        if result ~= ACTION_RESULT_BEGIN then return end
         if not IsUnitPlayer(unitTag) then return end
         alerts:showAction("Dodge! (Cone)")
         CA.alertCast(abilityId, sourceUnitName, 2000, COL_CONE)
-        return
-    end
-
-    -- ── Annihilator EmberChains (projectile chain, player-targeted) ────────
-    if abilityId == EMBER_CHAINS and result == ACTION_RESULT_BEGIN then
+    end,
+    [EMBER_CHAINS] = function(self, context, alerts, result, abilityId,
+                               unitTag, sourceUnitTag, sourceUnitId, unitId,
+                               sourceUnitName, unitName)
+        if result ~= ACTION_RESULT_BEGIN then return end
         if not IsUnitPlayer(unitTag) then return end
         CA.alertCast(abilityId, sourceUnitName, 750, COL_CHAINS)
-        return
-    end
-
-    -- ── MeteorCrash: Annihilator add spawning ─────────────────────────────
-    if abilityId == ADD_SPAWN and result == ACTION_RESULT_EFFECT_GAINED then
+    end,
+    [ADD_SPAWN] = function(self, context, alerts, result, abilityId, ...)
+        if result ~= ACTION_RESULT_EFFECT_GAINED then return end
         alerts:showAction("ADD SPAWNING!")
-        return
-    end
-end
+    end,
+}
 
--- ── Effect changes ────────────────────────────────────────────────────────
-function Oaxiltso:onEffectChanged(context, alerts, changeType, abilityId,
-                                   unitTag, unitId, unitName)
-    -- ── Sludge debuff: track two players and assign left/right sides ───────
-    if abilityId == SLUDGE_DEBUFF and changeType == EFFECT_RESULT_GAINED then
+Oaxiltso.effectRoutes = {
+    -- Sludge debuff: track two players and assign left/right sides.
+    [SLUDGE_DEBUFF] = function(self, context, alerts, changeType, abilityId,
+                                unitTag, unitId, unitName, stackCount)
+        if changeType ~= EFFECT_RESULT_GAINED then return end
         local now = GetGameTimeMilliseconds() / 1000
 
         if self.sludgeTracker1 == 0 then
@@ -167,21 +159,14 @@ function Oaxiltso:onEffectChanged(context, alerts, changeType, abilityId,
             self.sludgeTracker1Tag  = nil
             self.sludgeTracker1Name = nil
         end
-        return
-    end
-
-    -- ── Boss enrage ───────────────────────────────────────────────────────
-    if abilityId == BOSS_ENRAGE then
+    end,
+    [BOSS_ENRAGE] = function(self, context, alerts, changeType, abilityId, ...)
         self.bossEnraged = (changeType == EFFECT_RESULT_GAINED)
-        return
-    end
-
-    -- ── Add enrage ────────────────────────────────────────────────────────
-    if abilityId == MINI_ENRAGE then
+    end,
+    [MINI_ENRAGE] = function(self, context, alerts, changeType, abilityId, ...)
         self.miniEnraged = (changeType == EFFECT_RESULT_GAINED)
-        return
-    end
-end
+    end,
+}
 
 -- ── 200 ms display loop ───────────────────────────────────────────────────
 function Oaxiltso:onUpdate(context, alerts)

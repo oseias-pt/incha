@@ -165,23 +165,44 @@ function Lokke:onLeave(context)
     CA.castAlertsStop(self.laserBarId)
 end
 
--- ── Combat events ─────────────────────────────────────────────────────────
-function Lokke:onCombatEvent(context, alerts, result, abilityId,
-                              unitTag, sourceUnitTag, sourceUnitId, unitId,
-                              sourceUnitName, unitName)
-    -- cross-trial alerts (HA / Block / Leap / Charge / Breath / Spit)
-    if SunspireCommon.handle(alerts, result, abilityId, unitTag, sourceUnitName) then
-        return
-    end
+-- ── Routing tables (C3) ──────────────────────────────────────────────────
+-- Shared cross-trial mechanic handler.
+Lokke.common = SunspireCommon
 
-    -- alertList cleanup on death (atronarch dies → stop its GlacialFist bar)
-    if result == ACTION_RESULT_DIED then
-        if unitId then CA.castAlertsStop(self.alertList[unitId]); self.alertList[unitId] = nil end
-        return
-    end
+-- DIED: atronarch dies → stop its GlacialFist bar.
+function Lokke:onDied(context, alerts,
+                       unitTag, sourceUnitTag, sourceUnitId, unitId,
+                       sourceUnitName, unitName)
+    if unitId then CA.castAlertsStop(self.alertList[unitId]); self.alertList[unitId] = nil end
+end
 
-    -- ── GlacialFist ────────────────────────────────────────────────────
-    if abilityId == GLACIAL_FIST and result == ACTION_RESULT_BEGIN then
+-- Laser flight: closes over the per-flight timing constants.
+local function makeLaserHandler(laserDelay, landingAfterLaser)
+    return function(self, context, alerts, result, abilityId, ...)
+        if result ~= ACTION_RESULT_BEGIN then return end
+        local now = GetGameTimeMilliseconds() / 1000
+        CA.castAlertsStop(self.laserBarId)
+        self.laserTime   = now + laserDelay
+        self.landingTime = self.laserTime + landingAfterLaser
+        self.laserBarId  = CA.castAlertsStart(
+            abilityId, "Laser",
+            laserDelay * 1000, laserDelay * 1000,
+            { 1, 0.7, 0, 0.5 },
+            { laserDelay * 1000, "LASER!", 1, 0.5, 0, 0.9, SOUNDS.NONE })
+        -- Reset iceNumber once boss is airborne (~10 s in).
+        local s = self
+        zo_callLater(function()
+            s.iceNumber = 0
+            s.prevIce   = 0
+        end, 10000)
+    end
+end
+
+Lokke.combatRoutes = {
+    [GLACIAL_FIST] = function(self, context, alerts, result, abilityId,
+                               unitTag, sourceUnitTag, sourceUnitId, unitId,
+                               sourceUnitName, unitName)
+        if result ~= ACTION_RESULT_BEGIN then return end
         local show = false
         if IsUnitPlayer(unitTag) then
             if AreUnitsEqual("player", unitTag) then
@@ -204,11 +225,9 @@ function Lokke:onCombatEvent(context, alerts, result, abilityId,
                 { -2, 0, false, { 0.3, 0.7, 1.0, 0.4 }, { 0.3, 0.7, 1.0, 0.8 } })
             if cid and sourceUnitId then self.alertList[sourceUnitId] = cid end
         end
-        return
-    end
-
-    -- ── IceTomb BEGIN: start a new tomb cycle ─────────────────────────
-    if abilityId == ICE_TOMB and result == ACTION_RESULT_BEGIN then
+    end,
+    [ICE_TOMB] = function(self, context, alerts, result, abilityId, ...)
+        if result ~= ACTION_RESULT_BEGIN then return end
         local now = GetGameTimeMilliseconds() / 1000
         self.iceTime     = now + 13
         self.iceNext     = now + 23
@@ -217,69 +236,35 @@ function Lokke:onCombatEvent(context, alerts, result, abilityId,
         self.tombsClear  = false
         self.iceState    = 1
         self.checkDouble = true
-        return
-    end
-
-    -- ── InIce: player entered / exited a tomb ─────────────────────────
-    if abilityId == IN_ICE then
+    end,
+    -- InIce: player enters (EFFECT_GAINED) / exits (EFFECT_FADED) a tomb.
+    [IN_ICE] = function(self, context, alerts, result, abilityId,
+                         unitTag, sourceUnitTag, sourceUnitId, unitId, ...)
         if result == ACTION_RESULT_EFFECT_GAINED then
             iceGained(self, unitId)
         elseif result == ACTION_RESULT_EFFECT_FADED then
             iceFaded(self, unitId)
         end
-        return
-    end
+    end,
+    [LASER_1] = makeLaserHandler(40,   12.8),
+    [LASER_2] = makeLaserHandler(10,   54.6),
+    [LASER_3] = makeLaserHandler(32,   32.1),
+}
 
-    -- ── LokkeLaser: boss takes flight ─────────────────────────────────
-    if result == ACTION_RESULT_BEGIN then
-        local now       = GetGameTimeMilliseconds() / 1000
-        local laserDelay, landingAfterLaser
-
-        if     abilityId == LASER_1 then laserDelay = 40;   landingAfterLaser = 12.8
-        elseif abilityId == LASER_2 then laserDelay = 10;   landingAfterLaser = 54.6
-        elseif abilityId == LASER_3 then laserDelay = 32;   landingAfterLaser = 32.1
-        end
-
-        if laserDelay then
-            CA.castAlertsStop(self.laserBarId)
-            self.laserTime   = now + laserDelay
-            self.landingTime = self.laserTime + landingAfterLaser
-
-            -- CA bar counts down to laser fire
-            self.laserBarId = CA.castAlertsStart(
-                abilityId, "Laser",
-                laserDelay * 1000, laserDelay * 1000,
-                { 1, 0.7, 0, 0.5 },
-                { laserDelay * 1000, "LASER!", 1, 0.5, 0, 0.9, SOUNDS.NONE })
-
-            -- reset iceNumber once boss is airborne (10 s in)
-            local s = self
-            zo_callLater(function()
-                s.iceNumber = 0
-                s.prevIce   = 0
-            end, 10000)
-        end
-    end
-end
-
--- ── Effect changes ────────────────────────────────────────────────────────
-function Lokke:onEffectChanged(context, alerts, changeType, abilityId, unitTag, unitId, unitName)
-    -- effect 124687: cast signal (gained = tomb is being cast)
-    if abilityId == ICE_EFFECT_CAST then
+Lokke.effectRoutes = {
+    -- 124687: cast signal (GAINED = tomb is being cast)
+    [ICE_EFFECT_CAST] = function(self, context, alerts, changeType, abilityId, ...)
         if changeType == EFFECT_RESULT_GAINED then
             tombCast(self, GetGameTimeMilliseconds() / 1000)
         end
-        return
-    end
-
-    -- effect 119638: arm/disarm signal (gained = tomb ready to enter, faded = window closed)
-    if abilityId == ICE_EFFECT_ARM then
+    end,
+    -- 119638: arm/disarm signal (GAINED = tomb ready to enter, FADED = window closed)
+    [ICE_EFFECT_ARM] = function(self, context, alerts, changeType, abilityId, ...)
         if     changeType == EFFECT_RESULT_GAINED then tombArmed(self)
         elseif changeType == EFFECT_RESULT_FADED  then tombFaded(self)
         end
-        return
-    end
-end
+    end,
+}
 
 -- ── 200 ms display loop ───────────────────────────────────────────────────
 function Lokke:onUpdate(context, alerts)

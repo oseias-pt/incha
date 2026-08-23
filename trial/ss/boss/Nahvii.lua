@@ -85,66 +85,57 @@ function Nahvii:onLeave(context)
     CA.castAlertsStop(self.thrashBarId)
 end
 
--- ── Combat events ─────────────────────────────────────────────────────────
-function Nahvii:onCombatEvent(context, alerts, result, abilityId,
-                               unitTag, sourceUnitTag, sourceUnitId, unitId,
-                               sourceUnitName, unitName)
-    -- cross-trial alerts (HA, Block, Leap, Charge, Breath, Spit)
-    if SunspireCommon.handle(alerts, result, abilityId, unitTag, sourceUnitName) then
-        return
-    end
+-- ── Routing tables (C3) ──────────────────────────────────────────────────
+-- Shared cross-trial mechanic handler.
+Nahvii.common = SunspireCommon
 
-    -- alertList cleanup on unit death
-    if result == ACTION_RESULT_DIED then
-        if unitId then CA.castAlertsStop(self.alertList[unitId]); self.alertList[unitId] = nil end
-        return
-    end
+-- DIED: clean up tracked CA bars.
+function Nahvii:onDied(context, alerts,
+                        unitTag, sourceUnitTag, sourceUnitId, unitId,
+                        sourceUnitName, unitName)
+    if unitId then CA.castAlertsStop(self.alertList[unitId]); self.alertList[unitId] = nil end
+end
 
-    -- ── Meteor target tracking (117251/123067 EFFECT_GAINED_DURATION) ──
-    if (abilityId == NEXT_METEOR_A or abilityId == NEXT_METEOR_B)
-    and result == ACTION_RESULT_EFFECT_GAINED_DURATION then
-        -- NextMeteor timer: same IDs
+-- NextMeteor A+B share: EFFECT_GAINED_DURATION → timer + target tracking;
+-- EFFECT_FADED → remove target entry.
+local function handleNextMeteor(self, context, alerts, result, abilityId,
+                                  unitTag, sourceUnitTag, sourceUnitId, unitId,
+                                  sourceUnitName, unitName)
+    if result == ACTION_RESULT_EFFECT_GAINED_DURATION then
         self.nextMeteorTime = GetGameTimeMilliseconds() / 1000 + 14.5
-
-        -- track targeted player (DPS only, matching HTS behavior)
         if IsUnitPlayer(unitTag) and unitTag and unitTag ~= "" then
             local name
             if AreUnitsEqual("player", unitTag)
             then name = "|cff9900== YOU ==|r"
             else name = "|cff9900" .. (GetUnitDisplayName(unitTag) or unitName or "?") .. "|r"
             end
-            self.meteorTargets[unitTag]  = name
+            self.meteorTargets[unitTag] = name
             self.meteorDisplayEnd = GetGameTimeMilliseconds() + 4000
-
             if AreUnitsEqual("player", unitTag) then
                 alerts:showAction("YOU → Meteor!")
                 CA.alert(nil, "Meteor on YOU!", 0xFF2200FF, SOUNDS.NONE, 4000)
             end
         end
-        return
-    end
-
-    -- EFFECT_FADED: remove meteor target
-    if (abilityId == NEXT_METEOR_A or abilityId == NEXT_METEOR_B)
-    and result == ACTION_RESULT_EFFECT_FADED then
+    elseif result == ACTION_RESULT_EFFECT_FADED then
         if unitTag then self.meteorTargets[unitTag] = nil end
-        return
     end
+end
 
-    -- ── NextMeteor phase-4 entry (117308 BEGIN) ──────────────────────
-    if abilityId == NEXT_METEOR_C and result == ACTION_RESULT_BEGIN then
+Nahvii.combatRoutes = {
+    [NEXT_METEOR_A] = handleNextMeteor,
+    [NEXT_METEOR_B] = handleNextMeteor,
+    [NEXT_METEOR_C] = function(self, context, alerts, result, abilityId, ...)
+        if result ~= ACTION_RESULT_BEGIN then return end
         self.nextMeteorTime = GetGameTimeMilliseconds() / 1000 + 10.5
-        return
-    end
-
-    -- ── MarkForDeath: nudge NextMeteor forward ────────────────────────
-    if abilityId == MARK_FOR_DEATH and result == ACTION_RESULT_BEGIN then
+    end,
+    [MARK_FOR_DEATH] = function(self, context, alerts, result, abilityId, ...)
+        if result ~= ACTION_RESULT_BEGIN then return end
         self.nextMeteorTime = self.nextMeteorTime + 1.5
-        return
-    end
-
-    -- ── PowerfulSlam: player or nearby group member ───────────────────
-    if abilityId == POWERFUL_SLAM and result == ACTION_RESULT_BEGIN then
+    end,
+    [POWERFUL_SLAM] = function(self, context, alerts, result, abilityId,
+                                unitTag, sourceUnitTag, sourceUnitId, unitId,
+                                sourceUnitName, unitName)
+        if result ~= ACTION_RESULT_BEGIN then return end
         local show = false
         if IsUnitPlayer(unitTag) then
             if AreUnitsEqual("player", unitTag) then
@@ -165,31 +156,30 @@ function Nahvii:onCombatEvent(context, alerts, result, abilityId,
             local cid = CA.alertCast(abilityId, sourceUnitName, dur, COL_SLAM)
             if cid and sourceUnitId then self.alertList[sourceUnitId] = cid end
         end
-        return
-    end
-
-    -- ── Stonefist: player targeted ────────────────────────────────────
-    if abilityId == STONEFIST and result == ACTION_RESULT_BEGIN then
-        if IsUnitPlayer(unitTag) and AreUnitsEqual("player", unitTag) then
-            alerts:showAction("Block! (Stonefist)")
-            local dur = select(1, GetAbilityCastInfo(STONEFIST)) or 0
-            if dur <= 0 then dur = 2000 end
-            local cid = CA.alertCast(abilityId, sourceUnitName, dur, COL_STONE)
-            if cid and sourceUnitId then self.alertList[sourceUnitId] = cid end
-        end
-        return
-    end
-
-    -- ── Sweeping Breath: directional alert ───────────────────────────
-    if (abilityId == SWEEP_RIGHT or abilityId == SWEEP_LEFT) and result == ACTION_RESULT_BEGIN then
-        local dir = (abilityId == SWEEP_LEFT) and "<<< Sweep Breath <" or "> Sweep Breath >>>"
-        alerts:showAction(dir)
-        CA.alert(nil, dir, 0xFF8833FF, SOUNDS.NONE, 2000)
-        return
-    end
-
-    -- ── Thrash: CA duration bar + nudge NextMeteor ────────────────────
-    if abilityId == THRASH and result == ACTION_RESULT_BEGIN then
+    end,
+    [STONEFIST] = function(self, context, alerts, result, abilityId,
+                            unitTag, sourceUnitTag, sourceUnitId, unitId,
+                            sourceUnitName, unitName)
+        if result ~= ACTION_RESULT_BEGIN then return end
+        if not (IsUnitPlayer(unitTag) and AreUnitsEqual("player", unitTag)) then return end
+        alerts:showAction("Block! (Stonefist)")
+        local dur = select(1, GetAbilityCastInfo(STONEFIST)) or 0
+        if dur <= 0 then dur = 2000 end
+        local cid = CA.alertCast(abilityId, sourceUnitName, dur, COL_STONE)
+        if cid and sourceUnitId then self.alertList[sourceUnitId] = cid end
+    end,
+    [SWEEP_RIGHT] = function(self, context, alerts, result, abilityId, ...)
+        if result ~= ACTION_RESULT_BEGIN then return end
+        local dir = "> Sweep Breath >>>"
+        alerts:showAction(dir); CA.alert(nil, dir, 0xFF8833FF, SOUNDS.NONE, 2000)
+    end,
+    [SWEEP_LEFT] = function(self, context, alerts, result, abilityId, ...)
+        if result ~= ACTION_RESULT_BEGIN then return end
+        local dir = "<<< Sweep Breath <"
+        alerts:showAction(dir); CA.alert(nil, dir, 0xFF8833FF, SOUNDS.NONE, 2000)
+    end,
+    [THRASH] = function(self, context, alerts, result, abilityId, ...)
+        if result ~= ACTION_RESULT_BEGIN then return end
         local dur = select(1, GetAbilityCastInfo(THRASH)) or 0
         if dur <= 0 then dur = 2500 end
         CA.castAlertsStop(self.thrashBarId)
@@ -201,44 +191,36 @@ function Nahvii:onCombatEvent(context, alerts, result, abilityId,
         if self.nextMeteorTime > 0 then
             self.nextMeteorTime = self.nextMeteorTime - 1.5
         end
-        return
-    end
-
-    -- ── SoulTear: 2 s banner ──────────────────────────────────────────
-    if abilityId == SOUL_TEAR and result == ACTION_RESULT_BEGIN then
+    end,
+    [SOUL_TEAR] = function(self, context, alerts, result, abilityId, ...)
+        if result ~= ACTION_RESULT_BEGIN then return end
         alerts:showAction("SOUL TEAR!")
         CA.alert(nil, "SOUL TEAR!", 0x9966FFFF, SOUNDS.NONE, 2000)
-        return
-    end
-
-    -- ── FireStorm: skip first; set storm + landing timers ────────────
-    if abilityId == FIRE_STORM and result == ACTION_RESULT_BEGIN then
+    end,
+    [FIRE_STORM] = function(self, context, alerts, result, abilityId, ...)
+        if result ~= ACTION_RESULT_BEGIN then return end
         if not self.firstStormTrig then
             self.firstStormTrig = true
             return
         end
         self.firstStormTrig = false
-        local now            = GetGameTimeMilliseconds() / 1000
-        self.stormTime       = now + 13.7
-        self.landingTime     = self.stormTime + 6.6
-        return
-    end
-
-    -- ── Portal: window + wipe countdown ──────────────────────────────
-    if abilityId == PORTAL and result == ACTION_RESULT_BEGIN then
         local now        = GetGameTimeMilliseconds() / 1000
-        self.portalTime  = now + 14
-        self.wipeTime    = now + 98
-        self.cptPortal   = 0
-        return
-    end
-
-    -- ── Portal Enter: track inPortal state ───────────────────────────
-    if abilityId == PORTAL_ENTER and result == ACTION_RESULT_EFFECT_GAINED_DURATION then
+        self.stormTime   = now + 13.7
+        self.landingTime = self.stormTime + 6.6
+    end,
+    [PORTAL] = function(self, context, alerts, result, abilityId, ...)
+        if result ~= ACTION_RESULT_BEGIN then return end
+        local now       = GetGameTimeMilliseconds() / 1000
+        self.portalTime = now + 14
+        self.wipeTime   = now + 98
+        self.cptPortal  = 0
+    end,
+    [PORTAL_ENTER] = function(self, context, alerts, result, abilityId, unitTag, ...)
+        if result ~= ACTION_RESULT_EFFECT_GAINED_DURATION then return end
         if IsUnitPlayer(unitTag) then
             if AreUnitsEqual("player", unitTag) then
-                self.inPortal    = true
-                self.cptPortal   = 0
+                self.inPortal  = true
+                self.cptPortal = 0
             else
                 self.cptPortal = self.cptPortal + 1
                 if self.cptPortal >= 3 then
@@ -247,52 +229,46 @@ function Nahvii:onCombatEvent(context, alerts, result, abilityId,
                 end
             end
         end
-        return
-    end
-
-    -- ── Portal Exit: clear inPortal ───────────────────────────────────
-    if abilityId == PORTAL_EXIT and result == ACTION_RESULT_EFFECT_GAINED_DURATION then
+    end,
+    [PORTAL_EXIT] = function(self, context, alerts, result, abilityId, unitTag, ...)
+        if result ~= ACTION_RESULT_EFFECT_GAINED_DURATION then return end
         if IsUnitPlayer(unitTag) and AreUnitsEqual("player", unitTag) then
             self.inPortal        = false
             self.interruptTime   = 0
             self.interruptUnitId = nil
             self.pinsTime        = 0
         end
-        return
-    end
-
-    -- ── Portal Interrupt: eternal servant channels wipe ──────────────
-    if abilityId == PORTAL_INTERRUPT and result == ACTION_RESULT_EFFECT_GAINED_DURATION then
+    end,
+    [PORTAL_INTERRUPT] = function(self, context, alerts, result, abilityId,
+                                   unitTag, sourceUnitTag, sourceUnitId, unitId, ...)
+        if result ~= ACTION_RESULT_EFFECT_GAINED_DURATION then return end
         local dur = select(1, GetAbilityCastInfo(PORTAL_INTERRUPT)) or 0
         if dur <= 0 then dur = 6000 end
         self.interruptTime   = GetGameTimeMilliseconds() + dur
         self.interruptUnitId = unitId
         self.pinsTime        = 0
-        return
-    end
-
-    -- ── Bash detection: player interrupted the servant ───────────────
-    -- Fires when any unit is interrupted; match against tracked servant.
-    if result == ACTION_RESULT_INTERRUPT and unitId and unitId == self.interruptUnitId then
-        self.interruptTime   = 0
-        self.interruptUnitId = nil
-        self.pinsTime        = GetGameTimeMilliseconds() / 1000 + 20
-        return
-    end
-
-    -- ── Wipe mechanism cleared ────────────────────────────────────────
-    if abilityId == WIPE_FINISHED and result == ACTION_RESULT_EFFECT_FADED then
-        self.wipeTime = 0
-        return
-    end
-
-    -- ── NegateField: player targeted ─────────────────────────────────
-    if abilityId == NEGATE_FIELD and result == ACTION_RESULT_BEGIN then
+    end,
+    [WIPE_FINISHED] = function(self, context, alerts, result, abilityId, ...)
+        if result == ACTION_RESULT_EFFECT_FADED then self.wipeTime = 0 end
+    end,
+    [NEGATE_FIELD] = function(self, context, alerts, result, abilityId, unitTag, ...)
+        if result ~= ACTION_RESULT_BEGIN then return end
         if IsUnitPlayer(unitTag) and AreUnitsEqual("player", unitTag) then
             alerts:showAction("Dodge! (Negate)")
             CA.alert(nil, "Dodge Negate!", 0x9966FFFF, SOUNDS.NONE, 2500)
         end
-        return
+    end,
+}
+
+-- Catch-all fallback: bash detection has no abilityId filter and cannot be routed.
+-- CombatHandler invokes this ONLY when abilityId is not in combatRoutes.
+function Nahvii:onCombatEvent(context, alerts, result, abilityId,
+                               unitTag, sourceUnitTag, sourceUnitId, unitId,
+                               sourceUnitName, unitName)
+    if result == ACTION_RESULT_INTERRUPT and unitId and unitId == self.interruptUnitId then
+        self.interruptTime   = 0
+        self.interruptUnitId = nil
+        self.pinsTime        = GetGameTimeMilliseconds() / 1000 + 20
     end
 end
 
