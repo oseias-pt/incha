@@ -13,6 +13,7 @@ ZoneManager.registerTrial(1121, require("trial.ss.Dispatcher"))
 ZoneManager.registerTrial(1263, require("trial.rg.Dispatcher"))
 ZoneManager.registerTrial(1344, require("trial.dsr.Dispatcher"))
 ZoneManager.registerTrial(1000, require("trial.as.Dispatcher"))
+ZoneManager.registerTrial(1051, require("trial.cr.Dispatcher"))
 
 local function OnAddOnLoaded(event, addonName)
     if addonName ~= ADDON_NAME then

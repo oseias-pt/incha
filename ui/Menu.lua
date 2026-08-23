@@ -141,6 +141,19 @@ local OPTIONS = {
         getFunc = function() return Settings.get().trials.as.enabled end,
         setFunc = function(v) Settings.get().trials.as.enabled = v end,
     },
+
+    -- Section: Cloudrest
+    {
+        type = "header",
+        name = "Cloudrest",
+    },
+    {
+        type    = "checkbox",
+        name    = "Enable",
+        tooltip = "Track mini-boss timers (Siroria/Relequen/Galenwe), portal countdown, and Z'Maja mechanics.",
+        getFunc = function() return Settings.get().trials.cr.enabled end,
+        setFunc = function(v) Settings.get().trials.cr.enabled = v end,
+    },
 }
 
 -- ── Slash command fallback ────────────────────────────────────────────────
