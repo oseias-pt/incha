@@ -65,7 +65,6 @@ end
 
 -- Combat mechanic alerts and timer resets.
 -- Phase 4.2: text alerts (showAction) + CombatAlerts cast bars side-by-side.
--- NOT registered while KA Factory still uses LegacyUI (Phase 4.4 wires this in).
 function Yandir:onCombatEvent(context, alerts, result, abilityId,
                                unitTag, sourceUnitTag, sourceUnitId, unitId,
                                sourceUnitName, unitName)

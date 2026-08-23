@@ -14,8 +14,7 @@
 ---   clear()         — clears all text and hides the panel
 ---   progress(text)  — backward-compat alias for info(1, text)
 ---
---- Used by rg/dsr automatically.  KA keeps LegacyUI as its bridge until
---- Phase 4.4 completes the migration.
+--- Used by ka/rg/dsr.
 
 local Settings = require("core.Settings")
 

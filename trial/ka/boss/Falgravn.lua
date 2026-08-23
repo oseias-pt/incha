@@ -180,9 +180,6 @@ function Falgravn:onUpdate(context, alerts)
 end
 
 -- ── Combat event handler ──────────────────────────────────────────────────
--- Phase 4.2: text alerts + CombatAlerts cast bars.  Phase 4.3 adds OSI icons.
--- NOT registered while KA Factory uses LegacyUI (Phase 4.4 wires this in).
-
 function Falgravn:onCombatEvent(context, alerts, result, abilityId,
                                  unitTag, sourceUnitTag, sourceUnitId, unitId,
                                  sourceUnitName, unitName)

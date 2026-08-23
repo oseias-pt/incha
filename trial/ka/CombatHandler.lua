@@ -1,7 +1,6 @@
 --- KA combat event / effect delegation module.
 ---
---- Passed as options.onCombatEvent / options.onEffectChanged to Trial.create
---- in Phase 4.4, when the Factory switches from LegacyUI to Panel.
+--- Passed as options.onCombatEvent / options.onEffectChanged to Trial.create.
 ---
 --- Each function receives (trial, eventCode, <esо args...>), then delegates
 --- to the currently active boss's handler — if it has one.
@@ -27,8 +26,6 @@ function CombatHandler.onCombatEvent(trial, eventCode,
         sourceUnitId, unitId, abilityId)
     local boss = trial:getActiveBoss()
     if not boss or not boss.onCombatEvent then return end
-    -- Phase 4.2: pass sourceUnitName / unitName so boss handlers can build
-    -- CombatAlerts cast-bar captions without a separate GetUnitName() lookup.
     boss:onCombatEvent(trial.context, trial.alerts,
         result, abilityId, unitTag, sourceUnitTag, sourceUnitId, unitId,
         sourceUnitName, unitName)

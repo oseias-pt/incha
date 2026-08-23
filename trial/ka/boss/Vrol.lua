@@ -63,7 +63,6 @@ end
 
 -- Combat mechanic alerts and timer resets.
 -- Phase 4.2: text alerts + CombatAlerts cast bars.
--- NOT registered while KA Factory still uses LegacyUI (Phase 4.4 wires this in).
 function Vrol:onCombatEvent(context, alerts, result, abilityId,
                              unitTag, sourceUnitTag, sourceUnitId, unitId,
                              sourceUnitName, unitName)
