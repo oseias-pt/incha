@@ -86,8 +86,18 @@ function Trial:onBossesChanged(forceReset)
 
     -- Fallback: name-based detection for trials whose bosses carry a `name`
     -- field instead of (or in addition to) a location bounding box.
-    if not boss and DoesUnitExist("boss1") then
-        boss = self.registry:findByName(GetUnitName("boss1"))
+    -- Check boss1–boss4 so concurrent-boss encounters (e.g. Ryelaz+Zilyesset)
+    -- are detected correctly regardless of which slot the engine assigns first.
+    if not boss then
+        for _, slot in ipairs({"boss1", "boss2", "boss3", "boss4"}) do
+            if DoesUnitExist(slot) then
+                local candidate = self.registry:findByName(GetUnitName(slot))
+                if candidate then
+                    boss = candidate
+                    break
+                end
+            end
+        end
     end
 
     if boss then

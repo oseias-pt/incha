@@ -8,7 +8,7 @@
 ---
 --- Alert vocabulary:
 ---   header(text)    — boss name / HM status, small gold line at top
----   info(n, text)   — timer countdown lines 1–4 (grey, small)
+---   info(n, text)   — timer countdown lines 1–7 (grey, small)
 ---   action(text)    — prominent mid-fight call-out (orange, bold)
 ---   hideAction()    — clears action without hiding panel
 ---   clear()         — clears all text and hides the panel
@@ -28,7 +28,8 @@ local ctrl = nil
 local hudVisible = true
 
 -- Panel dimensions (points, scales with ctrl.panel:SetScale).
-local W, H = 320, 160
+-- H=200 accommodates 7 info lines (each 18 px) + header (26 px) + action (38 px bottom).
+local W, H = 320, 200
 
 -- Show or hide the panel based on two independent gates:
 --   ctrl.active   — trial/boss content should be on screen
@@ -87,10 +88,10 @@ local function build()
     header:SetDimensions(W - 16, 18)
     header:SetText("")
 
-    -- Info lines 1–4 — timer countdowns.  Small, grey.
+    -- Info lines 1–7 — timer countdowns.  Small, grey.
     -- Stacked below the header with 2px gaps.
     local info = {}
-    for i = 1, 4 do
+    for i = 1, 7 do
         local lbl = WINDOW_MANAGER:CreateControl(nil, panel, CT_LABEL)
         lbl:SetFont("ZoFontGameSmall")
         lbl:SetColor(0.75, 0.75, 0.75, 1)
@@ -138,7 +139,7 @@ Panel.alerts = {
         applyVisibility()
     end,
 
-    -- info(n, text) — timer countdown for slot n (1–4).
+    -- info(n, text) — timer countdown for slot n (1–7).
     info = function(n, text)
         if not ctrl then return end
         local lbl = ctrl.info[n]
@@ -174,7 +175,7 @@ Panel.alerts = {
         if not ctrl then return end
         ctrl.header:SetText("")
         ctrl.action:SetText("")
-        for i = 1, 4 do ctrl.info[i]:SetText("") end
+        for i = 1, 7 do ctrl.info[i]:SetText("") end
         ctrl.active = false
         applyVisibility()
     end,
@@ -191,7 +192,7 @@ Panel.bridge = {
         if not ctrl then return end
         ctrl.header:SetText("")
         ctrl.action:SetText("")
-        for i = 1, 4 do ctrl.info[i]:SetText("") end
+        for i = 1, 7 do ctrl.info[i]:SetText("") end
         ctrl.active = false
         applyVisibility()
     end,
@@ -207,7 +208,7 @@ Panel.bridge = {
         if not ctrl then return end
         ctrl.header:SetText("")
         ctrl.action:SetText("")
-        for i = 1, 4 do ctrl.info[i]:SetText("") end
+        for i = 1, 7 do ctrl.info[i]:SetText("") end
         ctrl.active = false
         applyVisibility()
     end,
