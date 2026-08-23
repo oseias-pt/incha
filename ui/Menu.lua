@@ -128,6 +128,19 @@ local OPTIONS = {
         getFunc = function() return Settings.get().trials.dsr.enabled end,
         setFunc = function(v) Settings.get().trials.dsr.enabled = v end,
     },
+
+    -- Section: Asylum Sanctorium
+    {
+        type = "header",
+        name = "Asylum Sanctorium",
+    },
+    {
+        type    = "checkbox",
+        name    = "Enable",
+        tooltip = "Track Olms timers, Llothis/Felms dormant state, and Protector shield.",
+        getFunc = function() return Settings.get().trials.as.enabled end,
+        setFunc = function(v) Settings.get().trials.as.enabled = v end,
+    },
 }
 
 -- ── Slash command fallback ────────────────────────────────────────────────

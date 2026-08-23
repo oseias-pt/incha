@@ -37,6 +37,7 @@ local DEFAULTS = {
         },
         rg  = { enabled = true },
         dsr = { enabled = true },
+        as  = { enabled = true },
     },
 
     -- Set true once we've attempted a one-time import from BSCHTKA.SV_ACC.
