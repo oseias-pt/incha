@@ -16,7 +16,7 @@ local OLMS_SCALDING_ROAR      = 98683  -- Steam breath, ~28 s repeat
 local OLMS_GUSTS_OF_STEAM     = 98868  -- Jumps at 90/75/50/25%
 local OLMS_EXHAUSTIVE_CHARGES = 95482  -- ~12 s repeat
 -- Protector
-local STATIC_SHIELD           = 96010  -- Protector gives Olms a shield
+local STATIC_SHIELD           = 96010  -- Protector's buff on Olms; FADED = shield down
 -- Llothis
 local LLOTHIS_DEFILING_BLAST   = 95545  -- Cone attack — target name alert
 local LLOTHIS_OPPRESSIVE_BOLTS = 95585  -- Interrupt!
@@ -67,7 +67,7 @@ OlmsEncounter.llothisActive    = false
 OlmsEncounter.llothisSpawnTime = nil    -- os.time() at BOSS_EVENT for Llothis
 OlmsEncounter.felmsActive      = false
 OlmsEncounter.felmsSpawnTime   = nil    -- os.time() at BOSS_EVENT for Felms
-OlmsEncounter.protectorUp      = false
+OlmsEncounter.protectorUp      = false  -- true while Protector's Static Shield is active
 OlmsEncounter.nextJumpThreshold = 1
 -- CA cast-bar tracking: [unitId] → cid
 OlmsEncounter.alertList = {}
@@ -92,8 +92,8 @@ end
 
 -- ── Timer seeding helper ──────────────────────────────────────────────────
 -- Seeds one timer accounting for the SPAWN_DELAY already elapsed since
--- BOSS_EVENT. If spawnTime is nil (no event seen) or seed <= 0, falls back
--- to the timer's own full duration so it fires at the next ordinary interval.
+-- BOSS_EVENT.  If spawnTime is nil or seed <= 0, falls back to the timer's
+-- own full duration so it fires at the next ordinary interval.
 local function seedTimer(t, spawnTime)
     local seed = 0
     if spawnTime then
@@ -169,8 +169,6 @@ function OlmsEncounter:onCombatEvent(context, alerts,
 
     -- ── Felms: combat abilities ───────────────────────────────────────────
     elseif abilityId == FELMS_TELEPORT_STRIKE and result == ACTION_RESULT_BEGIN then
-        -- Teleport Strike: Felms blinks to a specific player and heavy-attacks.
-        -- Alerting the target name lets the group know who to peel for.
         local target = (unitName and unitName ~= "") and unitName or "?"
         alerts:showAction("Strike! → " .. target)
         local dur = select(1, GetAbilityCastInfo(FELMS_TELEPORT_STRIKE)) or 0
@@ -179,9 +177,6 @@ function OlmsEncounter:onCombatEvent(context, alerts,
             { -3, 0, false, { 0, 0.6, 0.8, 0.4 }, { 0, 0.6, 0.8, 0.8 } })
         if cid and unitId then self.alertList[unitId] = cid end
         self.jumpTimer:reset()
-
-    -- ── AS-5: Protector / Static Shield ──────────────────────────────────
-    -- (implemented in AS-5)
     end
 end
 
@@ -189,30 +184,41 @@ end
 function OlmsEncounter:onEffectChanged(context, alerts,
         changeType, abilityId, unitTag, unitId, unitName)
 
-    if abilityId ~= DORMANT then return end
-
-    -- ── Llothis dormant state ─────────────────────────────────────────────
-    if unitName and unitName:find("Llothis") then
-        if changeType == EFFECT_RESULT_GAINED then
-            self.llothisActive = false
-            self.blastTimer:clear()
-            self.boltsTimer:clear()
-        elseif changeType == EFFECT_RESULT_FADED then
-            self.llothisActive = true
-            seedTimer(self.blastTimer, self.llothisSpawnTime)
-            seedTimer(self.boltsTimer, self.llothisSpawnTime)
+    -- ── DORMANT (mini-boss sleep/wake) ────────────────────────────────────
+    if abilityId == DORMANT then
+        if unitName and unitName:find("Llothis") then
+            if changeType == EFFECT_RESULT_GAINED then
+                self.llothisActive = false
+                self.blastTimer:clear()
+                self.boltsTimer:clear()
+            elseif changeType == EFFECT_RESULT_FADED then
+                self.llothisActive = true
+                seedTimer(self.blastTimer, self.llothisSpawnTime)
+                seedTimer(self.boltsTimer, self.llothisSpawnTime)
+            end
+        elseif unitName and unitName:find("Felms") then
+            if changeType == EFFECT_RESULT_GAINED then
+                self.felmsActive = false
+                self.jumpTimer:clear()
+            elseif changeType == EFFECT_RESULT_FADED then
+                self.felmsActive = true
+                seedTimer(self.jumpTimer, self.felmsSpawnTime)
+            end
         end
         return
     end
 
-    -- ── Felms dormant state ───────────────────────────────────────────────
-    if unitName and unitName:find("Felms") then
+    -- ── Static Shield (Protector alive → Olms shielded) ──────────────────
+    -- The Protector NPC channels this buff onto Olms.  When it's active,
+    -- dealing damage to Olms is largely wasted — kill the Protector first.
+    if abilityId == STATIC_SHIELD then
         if changeType == EFFECT_RESULT_GAINED then
-            self.felmsActive = false
-            self.jumpTimer:clear()
+            self.protectorUp = true
+            alerts:showAction("Kill the Protector!")
+            caAlert(nil, "PROTECTOR ACTIVE", 0xFFCC00FF, SOUNDS.NONE, 4000)
         elseif changeType == EFFECT_RESULT_FADED then
-            self.felmsActive = true
-            seedTimer(self.jumpTimer, self.felmsSpawnTime)
+            self.protectorUp = false
+            alerts:showAction("Shield down!")
         end
         return
     end
@@ -220,11 +226,18 @@ end
 
 -- ── 200 ms display update ─────────────────────────────────────────────────
 function OlmsEncounter:onUpdate(context, alerts)
-    -- Lines 1-4: Olms timers
-    local t1 = self.stormTimer:remaining()
+    -- Line 1: Storm timer — displaced by Protector warning when shield is up.
+    -- Killing the Protector is always the priority over Storm timing.
+    if self.protectorUp then
+        alerts:showInfo(1, "|cffcc00⚠ PROTECTOR ACTIVE|r")
+    else
+        local t1 = self.stormTimer:remaining()
+        alerts:showInfo(1, "Storm:   " .. (t1 > 0 and ZO_FormatCountdownTimer(t1) or "ready"))
+    end
+
+    -- Lines 2-4: Olms timers (always visible)
     local t2 = self.steamTimer:remaining()
     local t3 = self.chargesTimer:remaining()
-    alerts:showInfo(1, "Storm:   " .. (t1 > 0 and ZO_FormatCountdownTimer(t1) or "ready"))
     alerts:showInfo(2, "Steam:   " .. (t2 > 0 and ZO_FormatCountdownTimer(t2) or "ready"))
     alerts:showInfo(3, "Charges: " .. (t3 > 0 and ZO_FormatCountdownTimer(t3) or "ready"))
     local t4 = self.fireTimer:remaining()
