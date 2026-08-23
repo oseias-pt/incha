@@ -1,0 +1,19 @@
+local Trial            = require("core.Trial")
+local Panel            = require("ui.Panel")
+local CombatHandler    = require("trial.oc.CombatHandler")
+local JynorahEncounter = require("trial.oc.boss.JynorahEncounter")
+local KazpianEncounter = require("trial.oc.boss.KazpianEncounter")
+local ShaperEncounter  = require("trial.oc.boss.ShaperEncounter")
+
+local ocTrial = Trial.create({
+    id              = "oc",
+    zoneId          = 1548,
+    eventPrefix     = "Incha_OC",
+    bosses          = { JynorahEncounter, KazpianEncounter, ShaperEncounter },
+    bridge          = Panel.bridge,
+    alerts          = Panel.alerts,
+    onCombatEvent   = CombatHandler.onCombatEvent,
+    onEffectChanged = CombatHandler.onEffectChanged,
+})
+
+return ocTrial

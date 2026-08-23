@@ -180,6 +180,19 @@ local OPTIONS = {
         getFunc = function() return Settings.get().trials.lc.enabled end,
         setFunc = function(v) Settings.get().trials.lc.enabled = v end,
     },
+
+    -- Section: Ossein Cage
+    {
+        type = "header",
+        name = "Ossein Cage",
+    },
+    {
+        type    = "checkbox",
+        name    = "Enable",
+        tooltip = "Track Jynorah dragon leap/clash phases, Kazpian chain/portal/channeler alerts, and Shaper of Flesh shield status.",
+        getFunc = function() return Settings.get().trials.oc.enabled end,
+        setFunc = function(v) Settings.get().trials.oc.enabled = v end,
+    },
 }
 
 -- ── Slash command fallback ────────────────────────────────────────────────
