@@ -17,6 +17,9 @@ function Timer:reset(duration)
     self.expiresAt = GetGameTimeMilliseconds() / 1000 + (duration or self.duration)
 end
 
+--- Alias for reset() — preferred name in new boss code.
+Timer.start = Timer.reset
+
 --- Seconds remaining until the timer fires.  Returns 0 (not negative)
 --- once the timer has expired, so callers can safely display the value.
 --- Returns a float — ZO_FormatCountdownTimer and string.format("%.0f") both
@@ -27,8 +30,18 @@ function Timer:remaining()
 end
 
 --- True once the timer has fired (expiresAt has passed).
+--- Note: also returns true for unarmed timers (expiresAt == 0 is in the past).
+--- Use isActive() to distinguish "running" from "never started".
 function Timer:isExpired()
     return GetGameTimeMilliseconds() / 1000 >= self.expiresAt
+end
+
+--- True while the timer has been armed and has not yet fired.
+--- This is the primary display-loop predicate: show the countdown only
+--- when isActive() is true; hide it when idle (never started) or expired.
+function Timer:isActive()
+    local e = self.expiresAt
+    return e > 0 and GetGameTimeMilliseconds() / 1000 < e
 end
 
 --- Reset the timer to the expired/unarmed state (expiresAt = 0).

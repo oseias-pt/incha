@@ -78,30 +78,31 @@ local Falgravn = {
             id   = "conga_90",
             min  = 90, max = 93,
             text = "Connect Soon! (90% / {hp}%)",
-            when = function(ctx) return ctx.extras.showPercentUI end,
+            when = function(ctx, boss) return boss.showPercentUI end,
         },
         {
             id   = "conga_80",
             min  = 80, max = 83,
             text = "Connect Soon! (80% / {hp}%)",
-            when = function(ctx) return ctx.extras.showPercentUI end,
+            when = function(ctx, boss) return boss.showPercentUI end,
         },
         {
             id   = "floor_shatter",
             min  = 70, max = 73,
             text = "Dont Ult (Floor Shatter)! (70% / {hp}%)",
-            when = function(ctx) return ctx.extras.showPercentUI end,
+            when = function(ctx, boss) return boss.showPercentUI end,
         },
         {
             id   = "dont_ult",
             min  = 35, max = 38,
             text = "Dont Ult! (35% / {hp}%)",
-            when = function(ctx) return ctx.extras.showPercentUI and ctx.stage < 3 end,
+            when = function(ctx, boss) return boss.showPercentUI and ctx.stage < 3 end,
         },
     },
 }
 
 -- ── Stage / mechanic state ────────────────────────────────────────────────
+Falgravn.showPercentUI    = false  -- reflects Settings.trial("ka").showPercent; read by healthRules.when()
 Falgravn.CURRENT_STAGE    = 1
 Falgravn.bHM              = false
 -- Dedup flags for Njordal's recurring mechanics (reset each encounter).
@@ -171,13 +172,13 @@ function Falgravn:reset()
 end
 
 function Falgravn:onEnter(context, alerts)
-    context.extras.showPercentUI = Settings.trial("ka").showPercent
-    context.stage                = self.CURRENT_STAGE
+    self.showPercentUI = Settings.trial("ka").showPercent
+    context.stage      = self.CURRENT_STAGE
 end
 
 function Falgravn:onPowerUpdate(context)
-    context.stage                = self.CURRENT_STAGE
-    context.extras.showPercentUI = Settings.trial("ka").showPercent
+    context.stage      = self.CURRENT_STAGE
+    self.showPercentUI = Settings.trial("ka").showPercent
 end
 
 

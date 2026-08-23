@@ -13,6 +13,32 @@ local function getPlayerZoneId()
     return GetZoneId(GetUnitZoneIndex("player"))
 end
 
+--- Boss interface — all methods are optional unless marked REQUIRED.
+--- Each boss is a table with __index pointing at the class (prototype).
+--- Trial checks for each method before calling; missing methods are no-ops.
+---
+---   REQUIRED: key (string)          — unique identifier, matches BossRegistry key
+---   REQUIRED: name (string)         — display name returned by GetUnitName("bossN"),
+---                                     OR nameAliases table listing all unit names
+---   REQUIRED: new() → instance      — returns a fresh table, NO carried-over state
+---
+---   onLeave(context)                — cleanup: stop CA bars, unregister events
+---   onEnter(context, alerts)        — boss became active (called after context:setBoss)
+---   onCombatState(ctx, inCombat, alerts)
+---   onCombatEvent(ctx, alerts, result, abilityId,
+---                 unitTag, sourceUnitTag, sourceUnitId, unitId,
+---                 sourceUnitName, unitName)
+---   onEffectChanged(ctx, alerts, changeType, abilityId,
+---                   unitTag, unitId, unitName)
+---   onUpdate(ctx, alerts)           — 200 ms tick while boss is active
+---   onPowerUpdate(ctx, healthPct, alerts)
+---
+---   hmHealthThreshold (number)      — max HP above which difficulty = HARDMODE
+---   healthRules (table)             — HealthRules table for phase-change callouts
+---   hideActionWhenNoRule (boolean)  — clear action slot when no health rule fires
+---   location (Location)             — AABB for position-based boss detection
+---   stage (number)                  — initial context.stage value (default 1)
+---
 function Trial.create(options)
     local self = setmetatable({
         id = options.id,
@@ -148,7 +174,7 @@ function Trial:onPowerUpdate(powerValue, powerMax)
     -- (which can fire many times per second). This avoids re-running
     -- rule evaluation and re-touching the UI when nothing visible changed.
     if self.healthThrottle:shouldUpdate(healthPercent) then
-        local id, text = HealthRules.evaluate(boss.healthRules, healthPercent, self.context)
+        local id, text = HealthRules.evaluate(boss.healthRules, healthPercent, self.context, boss)
         if id then
             self.alerts:showAction(text)
         elseif boss.hideActionWhenNoRule then

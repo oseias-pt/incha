@@ -12,7 +12,6 @@ function TrialContext.new(trialId)
         stage = 1,
         inCombat = false,
         healthPercent = 0,
-        extras = {},
     }, TrialContext)
 end
 
