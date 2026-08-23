@@ -11,11 +11,8 @@
 ---   HTS used hitValue for cast-duration timers.  Modern API lacks it; we use
 ---   GetAbilityCastInfo(abilityId) with a per-ability fallback constant instead.
 
+local CA = require("lib.CA")
 local SunspireCommon = {}
-
--- ── CombatAlerts helpers ───────────────────────────────────────────────────
-local function caAlertCast(...) if CombatAlerts then return CombatAlerts.AlertCast(...) end end
-local function caAlert(...)     if CombatAlerts then return CombatAlerts.Alert(...)     end end
 
 -- ── Ability ID sets ────────────────────────────────────────────────────────
 -- Heavy Attacks: all bosses + shared adds (iron servant, 1H&Shield add, cone)
@@ -83,7 +80,7 @@ function SunspireCommon.handle(alerts, result, abilityId, unitTag, sourceUnitNam
         local dur = select(1, GetAbilityCastInfo(abilityId)) or 0
         if dur <= 0 then dur = HA_FALLBACK end
         alerts:showAction("Block! (Heavy Attack)")
-        caAlertCast(abilityId, sourceUnitName, dur, COL_HA)
+        CA.alertCast(abilityId, sourceUnitName, dur, COL_HA)
         return true
     end
 
@@ -94,7 +91,7 @@ function SunspireCommon.handle(alerts, result, abilityId, unitTag, sourceUnitNam
         local dur = select(1, GetAbilityCastInfo(abilityId)) or 0
         if dur <= 0 then dur = BLOCK_FALLBACK end
         alerts:showAction("Block! (Jump)")
-        caAlertCast(abilityId, sourceUnitName, dur, COL_BLOCK)
+        CA.alertCast(abilityId, sourceUnitName, dur, COL_BLOCK)
         return true
     end
 
@@ -103,7 +100,7 @@ function SunspireCommon.handle(alerts, result, abilityId, unitTag, sourceUnitNam
         local dur = select(1, GetAbilityCastInfo(LEAP)) or 0
         if dur <= 0 then dur = BLOCK_FALLBACK end
         alerts:showAction("Dodge! (Leap)")
-        caAlertCast(abilityId, sourceUnitName, dur, COL_BLOCK)
+        CA.alertCast(abilityId, sourceUnitName, dur, COL_BLOCK)
         return true
     end
 
@@ -113,7 +110,7 @@ function SunspireCommon.handle(alerts, result, abilityId, unitTag, sourceUnitNam
         local dur = select(1, GetAbilityCastInfo(SHIELD_CHARGE)) or 0
         if dur <= 0 then dur = CHARGE_FALLBACK end
         alerts:showAction("Block! (Shield Charge)")
-        caAlertCast(abilityId, sourceUnitName, dur, COL_CHARGE)
+        CA.alertCast(abilityId, sourceUnitName, dur, COL_CHARGE)
         return true
     end
 
@@ -123,7 +120,7 @@ function SunspireCommon.handle(alerts, result, abilityId, unitTag, sourceUnitNam
         local dur = select(1, GetAbilityCastInfo(abilityId)) or 0
         if dur <= 0 then dur = BREATH_FALLBACK end
         alerts:showAction("Dodge! (Breath)")
-        caAlertCast(abilityId, sourceUnitName, dur, COL_BREATH)
+        CA.alertCast(abilityId, sourceUnitName, dur, COL_BREATH)
         return true
     end
 
@@ -136,7 +133,7 @@ function SunspireCommon.handle(alerts, result, abilityId, unitTag, sourceUnitNam
         local dur = select(1, GetAbilityCastInfo(abilityId)) or 0
         if dur <= 0 then dur = SPIT_FALLBACK end
         alerts:showAction("Atro incoming! (Spit)")
-        caAlertCast(abilityId, sourceUnitName, dur + spitOffset, COL_SPIT)
+        CA.alertCast(abilityId, sourceUnitName, dur + spitOffset, COL_SPIT)
         return true
     end
 

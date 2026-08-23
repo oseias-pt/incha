@@ -26,16 +26,7 @@ local sInc  = "|c00ffffinc|r"
 
 local NEXT_TOMB = { [0]=1, [1]=2, [2]=3, [3]=1 }   -- iceNumber → next label
 
--- ── Local helpers ─────────────────────────────────────────────────────────
-local function caAlertCast(...)
-    if CombatAlerts then return CombatAlerts.AlertCast(...) end
-end
-local function caCastAlertsStart(...)
-    if CombatAlerts then return CombatAlerts.CastAlertsStart(...) end
-end
-local function caCastAlertsStop(id)
-    if CombatAlerts and id then CombatAlerts.CastAlertsStop(id) end
-end
+local CA = require("lib.CA")
 
 local function newTombSlots()
     return {
@@ -165,9 +156,9 @@ Lokke.laserBarId    = nil    -- CA bar ID for laser countdown
 
 -- ── Lifecycle ─────────────────────────────────────────────────────────────
 function Lokke:reset(forced)
-    for _, cid in pairs(self.alertList) do caCastAlertsStop(cid) end
+    for _, cid in pairs(self.alertList) do CA.castAlertsStop(cid) end
     self.alertList = {}
-    caCastAlertsStop(self.laserBarId)
+    CA.castAlertsStop(self.laserBarId)
     self.laserBarId  = nil
     self.laserTime   = 0
     self.landingTime = 0
@@ -189,7 +180,7 @@ function Lokke:onCombatEvent(context, alerts, result, abilityId,
 
     -- alertList cleanup on death (atronarch dies → stop its GlacialFist bar)
     if result == ACTION_RESULT_DIED then
-        if unitId then caCastAlertsStop(self.alertList[unitId]); self.alertList[unitId] = nil end
+        if unitId then CA.castAlertsStop(self.alertList[unitId]); self.alertList[unitId] = nil end
         return
     end
 
@@ -213,7 +204,7 @@ function Lokke:onCombatEvent(context, alerts, result, abilityId,
             alerts:showAction("Block! (Glacial Fist)")
             local dur = select(1, GetAbilityCastInfo(GLACIAL_FIST)) or 0
             if dur <= 0 then dur = 1500 end
-            local cid = caAlertCast(abilityId, sourceUnitName, dur,
+            local cid = CA.alertCast(abilityId, sourceUnitName, dur,
                 { -2, 0, false, { 0.3, 0.7, 1.0, 0.4 }, { 0.3, 0.7, 1.0, 0.8 } })
             if cid and sourceUnitId then self.alertList[sourceUnitId] = cid end
         end
@@ -254,12 +245,12 @@ function Lokke:onCombatEvent(context, alerts, result, abilityId,
         end
 
         if laserDelay then
-            caCastAlertsStop(self.laserBarId)
+            CA.castAlertsStop(self.laserBarId)
             self.laserTime   = now + laserDelay
             self.landingTime = self.laserTime + landingAfterLaser
 
             -- CA bar counts down to laser fire
-            self.laserBarId = caCastAlertsStart(
+            self.laserBarId = CA.castAlertsStart(
                 abilityId, "Laser",
                 laserDelay * 1000, laserDelay * 1000,
                 { 1, 0.7, 0, 0.5 },

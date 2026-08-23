@@ -1,12 +1,7 @@
 local Location = require("core.Location")
 local Timer    = require("lib.Timer")
 
--- ── CombatAlerts helpers ──────────────────────────────────────────────────
-local function caAlertCast(...) if CombatAlerts then return CombatAlerts.AlertCast(...) end end
-local function caAlert(...)     if CombatAlerts then return CombatAlerts.Alert(...)     end end
-local function caCastAlertsStop(id)
-    if CombatAlerts and id then CombatAlerts.CastAlertsStop(id) end
-end
+local CA = require("lib.CA")
 
 -- ── Ability ID sets for mini-boss detection ───────────────────────────────
 -- Any of these firing marks that mini as active (detects +1/+2/+3 variant).
@@ -184,7 +179,7 @@ function ZmajaEncounter:reset()
     self.executePhase  = false
     self.spearCount    = 0
     self.coreAlert     = nil
-    for _, cid in pairs(self.alertList) do caCastAlertsStop(cid) end
+    for _, cid in pairs(self.alertList) do CA.castAlertsStop(cid) end
     self.alertList = {}
 end
 
@@ -228,7 +223,7 @@ function ZmajaEncounter:onCombatEvent(context, alerts,
         alerts:showAction("Siroria HA! (" .. target .. ")")
         local dur = select(1, GetAbilityCastInfo(SIRO_HA)) or 0
         if dur <= 0 then dur = 1500 end
-        local cid = caAlertCast(abilityId, "Siro HA!", dur, COL_SIRO)
+        local cid = CA.alertCast(abilityId, "Siro HA!", dur, COL_SIRO)
         if cid and unitId then self.alertList[unitId] = cid end
 
     elseif abilityId == SIRO_JUMP and result == ACTION_RESULT_BEGIN then
@@ -246,7 +241,7 @@ function ZmajaEncounter:onCombatEvent(context, alerts,
         alerts:showAction("Flare → " .. target)
         local dur = select(1, GetAbilityCastInfo(abilityId)) or 0
         if dur <= 0 then dur = math.floor(FLARE_WINDOW * 1000) end
-        local cid = caAlertCast(abilityId, "Flare → " .. target, dur, COL_SIRO)
+        local cid = CA.alertCast(abilityId, "Flare → " .. target, dur, COL_SIRO)
         if cid and unitId then self.alertList[unitId] = cid end
 
     elseif abilityId == SIRO_DARK_TALONS and result == ACTION_RESULT_EFFECT_GAINED
@@ -259,7 +254,7 @@ function ZmajaEncounter:onCombatEvent(context, alerts,
         alerts:showAction("Relequen HA! (" .. target .. ")")
         local dur = select(1, GetAbilityCastInfo(RELE_HA)) or 0
         if dur <= 0 then dur = 1500 end
-        local cid = caAlertCast(abilityId, "Rele HA!", dur, COL_RELE)
+        local cid = CA.alertCast(abilityId, "Rele HA!", dur, COL_RELE)
         if cid and unitId then self.alertList[unitId] = cid end
 
     elseif abilityId == RELE_JUMP and result == ACTION_RESULT_BEGIN then
@@ -268,7 +263,7 @@ function ZmajaEncounter:onCombatEvent(context, alerts,
 
     elseif abilityId == RELE_DIRECT_CURR and result == ACTION_RESULT_BEGIN then
         alerts:showAction("Interrupt Relequen!")
-        caAlert(nil, "INTERRUPT!", 0xFF0000FF, SOUNDS.NONE, 2500)
+        CA.alert(nil, "INTERRUPT!", 0xFF0000FF, SOUNDS.NONE, 2500)
         self.releBashTimer:reset()
 
     elseif abilityId == RELE_JOLT and result == ACTION_RESULT_BEGIN then
@@ -282,7 +277,7 @@ function ZmajaEncounter:onCombatEvent(context, alerts,
             alerts:showAction("Overload incoming — bar swap!")
         else
             alerts:showAction("Overload on you — swap now!")
-            caAlert(nil, "BAR SWAP", 0x3399FFFF, SOUNDS.NONE, 3000)
+            CA.alert(nil, "BAR SWAP", 0x3399FFFF, SOUNDS.NONE, 3000)
         end
 
     -- ── GALENWE ───────────────────────────────────────────────────────────
@@ -291,7 +286,7 @@ function ZmajaEncounter:onCombatEvent(context, alerts,
         alerts:showAction("Galenwe HA! (" .. target .. ")")
         local dur = select(1, GetAbilityCastInfo(GALE_HA)) or 0
         if dur <= 0 then dur = 1500 end
-        local cid = caAlertCast(abilityId, "Gale HA!", dur, COL_GALE)
+        local cid = CA.alertCast(abilityId, "Gale HA!", dur, COL_GALE)
         if cid and unitId then self.alertList[unitId] = cid end
 
     elseif abilityId == GALE_JUMP and result == ACTION_RESULT_BEGIN then
@@ -300,7 +295,7 @@ function ZmajaEncounter:onCombatEvent(context, alerts,
 
     elseif abilityId == GALE_GLACIAL and result == ACTION_RESULT_BEGIN then
         alerts:showAction("Interrupt Galenwe!")
-        caAlert(nil, "INTERRUPT!", 0xFF0000FF, SOUNDS.NONE, 2500)
+        CA.alert(nil, "INTERRUPT!", 0xFF0000FF, SOUNDS.NONE, 2500)
         self.galeBashTimer:reset()
 
     elseif abilityId == GALE_DONUT and result == ACTION_RESULT_BEGIN then
@@ -313,7 +308,7 @@ function ZmajaEncounter:onCombatEvent(context, alerts,
         -- Player picked up hoarfrost — show name and 6 s drop countdown
         local carrier = GetUnitDisplayName("player") or "you"
         alerts:showAction("Frost! Drop in 6s (" .. carrier .. ")")
-        caAlert(nil, "FROST — drop in 6s", 0x00EEEEff, SOUNDS.NONE, 4000)
+        CA.alert(nil, "FROST — drop in 6s", 0x00EEEEff, SOUNDS.NONE, 4000)
 
     elseif (abilityId == GALE_HOARFROST or abilityId == GALE_HOARFROST_2)
            and result == ACTION_RESULT_EFFECT_GAINED
@@ -326,13 +321,13 @@ function ZmajaEncounter:onCombatEvent(context, alerts,
            and result == ACTION_RESULT_EFFECT_GAINED_DURATION
            and IsUnitPlayer(unitTag) then
         alerts:showAction("Drop frost now!")
-        caAlert(nil, "DROP FROST!", 0x00EEEEff, SOUNDS.NONE, 2000)
+        CA.alert(nil, "DROP FROST!", 0x00EEEEff, SOUNDS.NONE, 2000)
 
     elseif (abilityId == GALE_COMET or abilityId == GALE_COMET_2)
            and result == ACTION_RESULT_EFFECT_GAINED
            and IsUnitPlayer(unitTag) then
         alerts:showAction("Chilling Comet! Move!")
-        caAlert(nil, "COMET — move!", 0x00AAFFFF, SOUNDS.NONE, 2500)
+        CA.alert(nil, "COMET — move!", 0x00AAFFFF, SOUNDS.NONE, 2500)
 
     -- ── ENVIRONMENT ───────────────────────────────────────────────────────
     elseif abilityId == RAZOR_THORNS and result == ACTION_RESULT_EFFECT_GAINED
@@ -366,16 +361,16 @@ function ZmajaEncounter:onCombatEvent(context, alerts,
         alerts:showAction("Kite! Crushing Darkness")
         local dur = select(1, GetAbilityCastInfo(abilityId)) or 0
         if dur <= 0 then dur = 6000 end
-        caAlertCast(abilityId, "KITE!", dur, COL_ZMAJA)
+        CA.alertCast(abilityId, "KITE!", dur, COL_ZMAJA)
 
     elseif abilityId == SHADOW_SPLASH and result == ACTION_RESULT_BEGIN then
         alerts:showAction("Shadow Splash! Interrupt!")
-        caAlert(nil, "INTERRUPT!", 0xFF0000FF, SOUNDS.NONE, 2500)
+        CA.alert(nil, "INTERRUPT!", 0xFF0000FF, SOUNDS.NONE, 2500)
 
     elseif abilityId == BANEFUL_MARK and result == ACTION_RESULT_BEGIN then
         self.executePhase = true
         alerts:showAction("Baneful Mark! (execute)")
-        caAlert(nil, "BANEFUL MARK", 0xFF4444FF, SOUNDS.NONE, 4000)
+        CA.alert(nil, "BANEFUL MARK", 0xFF4444FF, SOUNDS.NONE, 4000)
 
     elseif abilityId == OLORIME_SPEAR
            and (result == ACTION_RESULT_EFFECT_GAINED or result == ACTION_RESULT_BEGIN) then
@@ -387,12 +382,12 @@ function ZmajaEncounter:onCombatEvent(context, alerts,
     elseif abilityId == CORE_EXPOSED and result == ACTION_RESULT_BEGIN then
         self.coreAlert = "Core out! Pick it up!"
         alerts:showAction("Core exposed!")
-        caAlert(nil, "CORE OUT!", 0xFFDD00FF, SOUNDS.NONE, 4000)
+        CA.alert(nil, "CORE OUT!", 0xFFDD00FF, SOUNDS.NONE, 4000)
 
     elseif abilityId == CORE_MISSED and result == ACTION_RESULT_BEGIN then
         self.coreAlert = "Core MISSED!"
         alerts:showAction("Core missed!")
-        caAlert(nil, "CORE MISSED!", 0xFF4444FF, SOUNDS.NONE, 5000)
+        CA.alert(nil, "CORE MISSED!", 0xFF4444FF, SOUNDS.NONE, 5000)
 
     elseif abilityId == CORE_PICKED_UP and result == ACTION_RESULT_BEGIN then
         self.coreAlert = nil

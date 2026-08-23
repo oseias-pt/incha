@@ -2,15 +2,7 @@ local Location = require("core.Location")
 local Settings = require("core.Settings")
 local Timer    = require("lib.Timer")
 
--- ── CombatAlerts helpers ──────────────────────────────────────────────────
-local function caAlertCast(...) if CombatAlerts then return CombatAlerts.AlertCast(...) end end
-local function caAlert(...)     if CombatAlerts then return CombatAlerts.Alert(...)     end end
-local function caCastAlertsStart(...)
-    if CombatAlerts then return CombatAlerts.CastAlertsStart(...) end
-end
-local function caCastAlertsStop(id)
-    if CombatAlerts and id then CombatAlerts.CastAlertsStop(id) end
-end
+local CA = require("lib.CA")
 
 -- ── OSI helpers (OdySupportIcons, optional) ───────────────────────────────
 -- Textures: pulled from the live ability data so they always match the
@@ -164,9 +156,9 @@ function Falgravn:reset(forced)
     resetPrisoners()
 
     -- Stop any lingering CA cast bars from the previous pull.
-    for _, cid in pairs(self.alertList) do caCastAlertsStop(cid) end
+    for _, cid in pairs(self.alertList) do CA.castAlertsStop(cid) end
     self.alertList   = {}
-    caCastAlertsStop(self.prisonBarId)
+    CA.castAlertsStop(self.prisonBarId)
     self.prisonBarId = nil
 
     -- Remove any OSI mechanic icons left over from the previous pull.
@@ -223,11 +215,11 @@ function Falgravn:onCombatEvent(context, alerts, result, abilityId,
     -- Phase 4.2: stop any tracked CA cast bars when the associated unit dies.
     if result == ACTION_RESULT_DIED then
         if unitId then
-            caCastAlertsStop(self.alertList[unitId])
+            CA.castAlertsStop(self.alertList[unitId])
             self.alertList[unitId] = nil
         end
         if sourceUnitId then
-            caCastAlertsStop(self.alertList[sourceUnitId])
+            CA.castAlertsStop(self.alertList[sourceUnitId])
             self.alertList[sourceUnitId] = nil
         end
         return
@@ -236,7 +228,7 @@ function Falgravn:onCombatEvent(context, alerts, result, abilityId,
     -- ── Infuser trash ──────────────────────────────────────────────────
     if abilityId == INFUSER_CASTS and result == ACTION_RESULT_BEGIN then
         alerts:showAction("Interrupt Infuser!")
-        local cid = caAlertCast(abilityId, sourceUnitName, 1000,
+        local cid = CA.alertCast(abilityId, sourceUnitName, 1000,
             { -3, 0, false, { 0.0, 0.0, 1, 0.4 }, { 0.1, 0.1, 1, 0.8 } })
         -- Key by sourceUnitId so the bar stops if the infuser dies.
         if cid and sourceUnitId then self.alertList[sourceUnitId] = cid end
@@ -244,7 +236,7 @@ function Falgravn:onCombatEvent(context, alerts, result, abilityId,
     end
     if abilityId == INFUSER_BUFF and result == ACTION_RESULT_EFFECT_GAINED then
         alerts:showAction("Infuser Buff passed!")
-        caAlert(nil, "Infuser Buff passed!", 0xFF8800FF, SOUNDS.DUEL_START, 3000)
+        CA.alert(nil, "Infuser Buff passed!", 0xFF8800FF, SOUNDS.DUEL_START, 3000)
         return
     end
 
@@ -268,7 +260,7 @@ function Falgravn:onCombatEvent(context, alerts, result, abilityId,
         if result == ACTION_RESULT_BEGIN and self.bMove then
             self.bMove = false
             alerts:showAction("Move!")
-            local cid = caCastAlertsStart(abilityId, GetAbilityName(abilityId),
+            local cid = CA.castAlertsStart(abilityId, GetAbilityName(abilityId),
                 12000, 12000,
                 { 1, 0.7, 0, 0.5 },
                 { 12000, "Move!", 0.8, 0, 0, 0.9, SOUNDS.NONE })
@@ -285,7 +277,7 @@ function Falgravn:onCombatEvent(context, alerts, result, abilityId,
         if result == ACTION_RESULT_BEGIN and self.bBlock then
             self.bBlock = false
             alerts:showAction("Block Cast!")
-            local cid = caCastAlertsStart(FALGRAVN_M_BLOCK_HEAVY, "Bloody Frenzy",
+            local cid = CA.castAlertsStart(FALGRAVN_M_BLOCK_HEAVY, "Bloody Frenzy",
                 6500, 6500,
                 { 1, 0.7, 0, 0.5 },
                 { 6500, "Block Cast!", 0.8, 0, 0, 0.9, SOUNDS.NONE })
@@ -300,7 +292,7 @@ function Falgravn:onCombatEvent(context, alerts, result, abilityId,
         alerts:showAction("DODGE!")
         local dur = select(1, GetAbilityCastInfo(FALGRAVN_M_CLEAVE)) or 0
         if dur <= 0 then dur = 2000 end
-        caCastAlertsStart(abilityId, sourceUnitName, dur, dur,
+        CA.castAlertsStart(abilityId, sourceUnitName, dur, dur,
             { 1, 0, 0.6, 0.4 },
             { 700, "DODGE!", 1, 0, 0.6, 0.8, SOUNDS.CHAMPION_POINTS_COMMITTED })
         return
@@ -308,7 +300,7 @@ function Falgravn:onCombatEvent(context, alerts, result, abilityId,
     -- Blood Fountain
     if abilityId == FALGRAVN_BLOOD_FOUNT and result == ACTION_RESULT_BEGIN then
         alerts:showAction("Block Blood Fountain!")
-        caAlertCast(FALGRAVN_BLOOD_FOUNT, sourceUnitName, 3033,
+        CA.alertCast(FALGRAVN_BLOOD_FOUNT, sourceUnitName, 3033,
             { -3, 0, false, { 1, 0.2, 0.9, 0.4 }, { 1, 0.2, 0.9, 0.8 } })
         return
     end
@@ -388,12 +380,12 @@ function Falgravn:onCombatEvent(context, alerts, result, abilityId,
         self.openGatesTimer:reset(NEXT_OPENGATE_TIME)
         self.torturerTimer:reset(NEXT_TORTURER_TP)
         alerts:showAction("Open the Gates!")
-        caAlert(nil, "Open the Gates!", 0x991111FF,
+        CA.alert(nil, "Open the Gates!", 0x991111FF,
             SOUNDS.CHAMPION_POINTS_COMMITTED, 2000)
         local capturedSrc = sourceUnitName or ""
         zo_callLater(function()
             if not IsUnitInCombat("player") then return end
-            caAlertCast(FALGRAVN_OPEN_DOOR, capturedSrc, 7500,
+            CA.alertCast(FALGRAVN_OPEN_DOOR, capturedSrc, 7500,
                 { -3, 0, false, { 0, 0, 0.7, 0.4 }, { 0, 0, 0.7, 0.8 } })
         end, 25000)
         return
@@ -404,7 +396,7 @@ function Falgravn:onCombatEvent(context, alerts, result, abilityId,
             if self.bStartTorturerCD then
                 self.bStartTorturerCD = false
                 alerts:showAction("KILL Torturer!")
-                local cid = caCastAlertsStart(abilityId, GetAbilityName(abilityId),
+                local cid = CA.castAlertsStart(abilityId, GetAbilityName(abilityId),
                     10000, 10000,
                     { 1, 0.7, 0, 0.5 },
                     { 10000, "KILL Torturer!", 0.8, 0, 0, 0.9, SOUNDS.NONE })
@@ -427,7 +419,7 @@ function Falgravn:onCombatEvent(context, alerts, result, abilityId,
     -- Torturer coming down
     if abilityId == FALGRAVN_TORTURER_ESC and result == ACTION_RESULT_BEGIN then
         alerts:showAction("Torturer Comes Down!")
-        caAlert(nil, "Torturer Comes Down!", 0xFF8800FF,
+        CA.alert(nil, "Torturer Comes Down!", 0xFF8800FF,
             SOUNDS.CHAMPION_POINTS_COMMITTED, 3000)
         return
     end
@@ -435,7 +427,7 @@ function Falgravn:onCombatEvent(context, alerts, result, abilityId,
     if abilityId == FALGRAVN_TORTURER_LA and result == ACTION_RESULT_BEGIN then
         if IsUnitPlayer(unitTag) and GetSelectedLFGRole() ~= LFG_ROLE_TANK then
             alerts:showAction("DODGE! (Torturer LA)")
-            caAlert("Torturer LA's", "DODGE!", 0xFF0000FF, SOUNDS.DUEL_START, 1000)
+            CA.alert("Torturer LA's", "DODGE!", 0xFF0000FF, SOUNDS.DUEL_START, 1000)
         end
         return
     end
@@ -449,7 +441,7 @@ function Falgravn:onEffectChanged(context, alerts, changeType, abilityId, unitTa
         if changeType == EFFECT_RESULT_GAINED then
             alerts:showAction("KILL PRISON!")
             local dur = 8000
-            self.prisonBarId = caCastAlertsStart(
+            self.prisonBarId = CA.castAlertsStart(
                 abilityId, GetAbilityName(abilityId),
                 dur, dur,
                 { 1, 0.7, 0, 0.5 },
@@ -458,7 +450,7 @@ function Falgravn:onEffectChanged(context, alerts, changeType, abilityId, unitTa
             osiSet(dn, ICON_PRISON, COL_PRISON)
             if dn and dn ~= "" then self.osiPrison[unitTag] = dn end
         elseif changeType == EFFECT_RESULT_FADED then
-            caCastAlertsStop(self.prisonBarId)
+            CA.castAlertsStop(self.prisonBarId)
             self.prisonBarId = nil
             osiRemove(self.osiPrison[unitTag])
             self.osiPrison[unitTag] = nil

@@ -31,10 +31,7 @@ local MINI_ENRAGE     = 152503
 -- Closer to this point → left cleanse; farther → right cleanse.
 local POOL_EX_LEFT = { 91973, 35751, 81764 }
 
--- ── CombatAlerts helpers ───────────────────────────────────────────────────
-local function caAlertCast(...)       if CombatAlerts then return CombatAlerts.AlertCast(...)       end end
-local function caAlert(...)           if CombatAlerts then return CombatAlerts.Alert(...)            end end
-local function caCastAlertsStart(...) if CombatAlerts then return CombatAlerts.CastAlertsStart(...) end end
+local CA = require("lib.CA")
 
 -- ── CA colour palettes ─────────────────────────────────────────────────────
 local COL_BLITZ  = { 0.8, 0.0, 0.0, 0.4 }   -- red fill, no action text (mirrors QRH)
@@ -100,14 +97,14 @@ function Oaxiltso:onCombatEvent(context, alerts, result, abilityId,
     if (abilityId == SAVAGE_BLITZ or abilityId == SAVAGE_BLITZ_HM)
        and result == ACTION_RESULT_BEGIN then
         self.lastBlitz = GetGameTimeMilliseconds() / 1000
-        caCastAlertsStart(abilityId, "Savage Blitz", 2750, 2750, COL_BLITZ)
+        CA.castAlertsStart(abilityId, "Savage Blitz", 2750, 2750, COL_BLITZ)
         return
     end
 
     -- ── Noxious Sludge ────────────────────────────────────────────────────
     if abilityId == NOXIOUS_SLUDGE and result == ACTION_RESULT_BEGIN then
         self.lastSludge = GetGameTimeMilliseconds() / 1000
-        caAlert(nil, "Noxious Sludge", 0x00CC00D9, SOUNDS.CHAMPION_POINTS_COMMITTED, 2500)
+        CA.alert(nil, "Noxious Sludge", 0x00CC00D9, SOUNDS.CHAMPION_POINTS_COMMITTED, 2500)
         return
     end
 
@@ -115,7 +112,7 @@ function Oaxiltso:onCombatEvent(context, alerts, result, abilityId,
     -- Sunburst casts, then ~2.5 s later a meteor hits; alert fires at impact.
     if abilityId == SUNBURST and result == ACTION_RESULT_BEGIN then
         zo_callLater(function()
-            caAlert(nil, "Meteor. BLOCK!", 0xFF2020FF, SOUNDS.CHAMPION_POINTS_COMMITTED, 3000)
+            CA.alert(nil, "Meteor. BLOCK!", 0xFF2020FF, SOUNDS.CHAMPION_POINTS_COMMITTED, 3000)
         end, 2500)
         return
     end
@@ -125,14 +122,14 @@ function Oaxiltso:onCombatEvent(context, alerts, result, abilityId,
     if abilityId == CINDER_CLEAVE and result == ACTION_RESULT_BEGIN then
         if not IsUnitPlayer(unitTag) then return end
         alerts:showAction("Dodge! (Cone)")
-        caAlertCast(abilityId, sourceUnitName, 2000, COL_CONE)
+        CA.alertCast(abilityId, sourceUnitName, 2000, COL_CONE)
         return
     end
 
     -- ── Annihilator EmberChains (projectile chain, player-targeted) ────────
     if abilityId == EMBER_CHAINS and result == ACTION_RESULT_BEGIN then
         if not IsUnitPlayer(unitTag) then return end
-        caAlertCast(abilityId, sourceUnitName, 750, COL_CHAINS)
+        CA.alertCast(abilityId, sourceUnitName, 750, COL_CHAINS)
         return
     end
 
@@ -182,7 +179,7 @@ function Oaxiltso:onEffectChanged(context, alerts, changeType, abilityId,
                 leftName, rightName = name2, name1
             end
 
-            caAlert(nil,
+            CA.alert(nil,
                 "<< " .. leftName .. " << || >> " .. rightName .. " >>",
                 0x00CC00D9, SOUNDS.CHAMPION_POINTS_COMMITTED, 5000)
 

@@ -1,12 +1,7 @@
 local Location = require("core.Location")
 local Timer    = require("lib.Timer")
 
--- ── CombatAlerts helpers ──────────────────────────────────────────────────
-local function caAlert(...)     if CombatAlerts then CombatAlerts.Alert(...)     end end
-local function caAlertCast(...) if CombatAlerts then return CombatAlerts.AlertCast(...) end end
-local function caAlertBorder(on, dur, col)
-    if CombatAlerts then CombatAlerts.AlertBorder(on, dur, col) end
-end
+local CA = require("lib.CA")
 
 -- ── Ability IDs (from OsseinCageHelper) ──────────────────────────────────
 -- Dragons (Valneer = fire/orange, Myrinax = lightning/blue)
@@ -83,7 +78,7 @@ function JynorahEncounter:onCombatEvent(context, alerts,
         if abilityId == TITANIC_CLASH then
             self.clashActive = true
             self.clashTimer:reset(37.5)
-            caAlertCast(abilityId, "TITANIC CLASH! DODGE!", 3500, COL_CLASH)
+            CA.alertCast(abilityId, "TITANIC CLASH! DODGE!", 3500, COL_CLASH)
             alerts:showAction("Titanic Clash — dodge the breath!")
 
         elseif LEAP_IDS[abilityId] then
@@ -97,46 +92,46 @@ function JynorahEncounter:onCombatEvent(context, alerts,
             alerts:showAction(label .. " Curse → " .. target)
 
         elseif abilityId == COLDFLAME_SURGE and IsUnitPlayer(unitTag) then
-            caAlert(nil, "Coldflame on YOU!", 0x44CCFFFF, SOUNDS.NONE, 3000)
+            CA.alert(nil, "Coldflame on YOU!", 0x44CCFFFF, SOUNDS.NONE, 3000)
             alerts:showAction("Coldflame Surge on you! MOVE!")
 
         elseif abilityId == BRIMSTONE_SURGE and IsUnitPlayer(unitTag) then
-            caAlert(nil, "Brimstone on YOU!", 0xFF6600FF, SOUNDS.NONE, 3000)
+            CA.alert(nil, "Brimstone on YOU!", 0xFF6600FF, SOUNDS.NONE, 3000)
             alerts:showAction("Brimstone Surge on you! MOVE!")
 
         elseif abilityId == COLDFLAME_STOMP then
-            caAlertCast(abilityId, "Coldflame Stomp!", 2000, COL_ICE)
+            CA.alertCast(abilityId, "Coldflame Stomp!", 2000, COL_ICE)
 
         elseif abilityId == BRIMSTONE_STOMP then
-            caAlertCast(abilityId, "Brimstone Stomp!", 2000, COL_FIRE)
+            CA.alertCast(abilityId, "Brimstone Stomp!", 2000, COL_FIRE)
 
         elseif abilityId == MYRINAX_BREATH and IsUnitPlayer(unitTag) then
-            caAlert(nil, "BREATH — MOVE!", 0x44CCFFFF, SOUNDS.NONE, 2500)
+            CA.alert(nil, "BREATH — MOVE!", 0x44CCFFFF, SOUNDS.NONE, 2500)
             alerts:showAction("Myrinax Breath on you! MOVE!")
 
         elseif abilityId == VALNEER_BREATH and IsUnitPlayer(unitTag) then
-            caAlert(nil, "BREATH — MOVE!", 0xFF8844FF, SOUNDS.NONE, 2500)
+            CA.alert(nil, "BREATH — MOVE!", 0xFF8844FF, SOUNDS.NONE, 2500)
             alerts:showAction("Valneer Breath on you! MOVE!")
         end
 
     elseif result == ACTION_RESULT_EFFECT_GAINED_DURATION and IsUnitPlayer(unitTag) then
         if abilityId == SPARKING_CURSE_DEBUF then
-            caAlert(nil, "Sparking Curse! Swap to fire!", 0x44CCFFFF, SOUNDS.NONE, 4000)
+            CA.alert(nil, "Sparking Curse! Swap to fire!", 0x44CCFFFF, SOUNDS.NONE, 4000)
             alerts:showAction("Sparking Curse — swap to Valneer side!")
         elseif abilityId == BLAZING_CURSE_DEBUF then
-            caAlert(nil, "Blazing Curse! Swap to ice!", 0xFF8844FF, SOUNDS.NONE, 4000)
+            CA.alert(nil, "Blazing Curse! Swap to ice!", 0xFF8844FF, SOUNDS.NONE, 4000)
             alerts:showAction("Blazing Curse — swap to Myrinax side!")
         end
 
     elseif result == ACTION_RESULT_EFFECT_GAINED then
         if (abilityId == REFLECTIVE_1 or abilityId == REFLECTIVE_2) and IsUnitPlayer(unitTag) then
-            caAlertBorder(true, 5000, "red")
+            CA.border(true, 5000, "red")
             alerts:showAction("Wrong side! Reflective Scales!")
         elseif abilityId == TAIL_SLAM_1 or abilityId == TAIL_SLAM_2 then
             local target = (unitName and unitName ~= "") and unitName or "?"
             local dur = select(1, GetAbilityCastInfo(abilityId)) or 0
             if dur <= 0 then dur = 2000 end
-            caAlertCast(abilityId, "Tail Slam → " .. target, dur, COL_CLASH)
+            CA.alertCast(abilityId, "Tail Slam → " .. target, dur, COL_CLASH)
         end
     end
 end

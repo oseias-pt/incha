@@ -64,12 +64,7 @@ local MAELSTROM_DODGE  = 1.5   -- s: dodge before maelstrom ends
 -- HP thresholds for bridge openings (vet percentages)
 local BRIDGE_HP = { 50.9, 35.9, 20.9 }
 
--- ── CombatAlerts helpers ──────────────────────────────────────────────────
-local function caAlertCast(...)        if CombatAlerts then return CombatAlerts.AlertCast(...)        end end
-local function caAlert(...)            if CombatAlerts then return CombatAlerts.Alert(...)             end end
-local function caAlertBorder(...)      if CombatAlerts then return CombatAlerts.AlertBorder(...)      end end
-local function caCastAlertsStart(...)  if CombatAlerts then return CombatAlerts.CastAlertsStart(...)  end end
-local function caCastAlertsStop(id)    if CombatAlerts and id then CombatAlerts.CastAlertsStop(id) end end
+local CA = require("lib.CA")
 
 -- ── CA colour palettes ────────────────────────────────────────────────────
 local COL_HEAVY  = { -2, 0, false, { 1.0, 0.35, 0.1, 0.4 }, { 1.0, 0.35, 0.1, 0.8 } }
@@ -113,7 +108,7 @@ function Taleria:reset(forced)
     self.bridgeWipeStart = { 0, 0, 0 }
     self.bridgeDone      = { false, false, false }
 
-    caCastAlertsStop(self.lureBarId)
+    CA.castAlertsStop(self.lureBarId)
     self.lureBarId = nil
 end
 
@@ -141,7 +136,7 @@ function Taleria:onCombatEvent(context, alerts, result, abilityId,
         if not IsUnitPlayer(unitTag) then return end
         local dur = select(1, GetAbilityCastInfo(abilityId)) or 0
         if dur <= 0 then dur = 2000 end
-        caAlertCast(abilityId, sourceUnitName, dur, COL_HEAVY)
+        CA.alertCast(abilityId, sourceUnitName, dur, COL_HEAVY)
         return
     end
 
@@ -150,7 +145,7 @@ function Taleria:onCombatEvent(context, alerts, result, abilityId,
         if not IsUnitPlayer(unitTag) then return end
         local dur = select(1, GetAbilityCastInfo(abilityId)) or 0
         if dur <= 0 then dur = 1500 end
-        caAlertCast(abilityId, sourceUnitName, dur, COL_HEAVY)
+        CA.alertCast(abilityId, sourceUnitName, dur, COL_HEAVY)
         return
     end
 
@@ -159,14 +154,14 @@ function Taleria:onCombatEvent(context, alerts, result, abilityId,
         if not IsUnitPlayer(unitTag) then return end
         local dur = select(1, GetAbilityCastInfo(abilityId)) or 0
         if dur <= 0 then dur = 1000 end
-        caAlertCast(abilityId, sourceUnitName, dur, COL_HEAVY)
+        CA.alertCast(abilityId, sourceUnitName, dur, COL_HEAVY)
         return
     end
 
     -- ── Maelstrom ─────────────────────────────────────────────────────────
     if abilityId == MAELSTROM_CAST then
         self.lastMaelstrom = GetGameTimeMilliseconds() / 1000
-        caAlert(nil, "|c66CC66Maelstrom — HEAL!|r (6 s)",
+        CA.alert(nil, "|c66CC66Maelstrom — HEAL!|r (6 s)",
             0x66CC66D9, SOUNDS.CHAMPION_POINTS_COMMITTED, 6000)
         return
     end
@@ -176,7 +171,7 @@ function Taleria:onCombatEvent(context, alerts, result, abilityId,
         local now = GetGameTimeMilliseconds() / 1000
         self.lastBehemothSumm = now
         self.behemothSlam     = now + 10   -- first slam ~10 s after summon
-        caAlert(nil, "Sea Behemoth summoned!",
+        CA.alert(nil, "Sea Behemoth summoned!",
             0xFF8800D9, SOUNDS.CHAMPION_POINTS_COMMITTED, 3000)
         return
     end
@@ -185,15 +180,15 @@ function Taleria:onCombatEvent(context, alerts, result, abilityId,
     if abilityId == ARCTIC_ANNIH then
         local now = GetGameTimeMilliseconds() / 1000
         self.behemothSlam = now + SLAM_CD
-        caAlert(nil, "|cFF8800Behemoth SLAM!|r",
+        CA.alert(nil, "|cFF8800Behemoth SLAM!|r",
             0xFF8800D9, SOUNDS.DUEL_START, 3000)
         return
     end
 
     -- ── Lure of the Sea (fear) ────────────────────────────────────────────
     if abilityId == LURE_OF_SEA then
-        caCastAlertsStop(self.lureBarId)
-        self.lureBarId = caCastAlertsStart(
+        CA.castAlertsStop(self.lureBarId)
+        self.lureBarId = CA.castAlertsStart(
             abilityId, "Lure of the Sea", 4000, 4000, COL_FEAR, ACT_BREAK)
         return
     end
@@ -203,7 +198,7 @@ function Taleria:onCombatEvent(context, alerts, result, abilityId,
         if not IsUnitPlayer(unitTag) then return end
         local dur = select(1, GetAbilityCastInfo(abilityId)) or 0
         if dur <= 0 then dur = 2000 end
-        caAlertCast(abilityId, sourceUnitName, dur, COL_FEAR)
+        CA.alertCast(abilityId, sourceUnitName, dur, COL_FEAR)
         return
     end
 
@@ -218,7 +213,7 @@ function Taleria:onCombatEvent(context, alerts, result, abilityId,
         local now = GetGameTimeMilliseconds() / 1000
         self.lastPlatformFall      = now
         self.bridgeWipeStart[bridgeIdx] = now
-        caAlert(nil,
+        CA.alert(nil,
             "Bridge " .. bridgeIdx .. " open — " .. BRIDGE_WIPE .. " s!",
             0xFF8800D9, SOUNDS.DUEL_START, 5000)
         PlaySound(SOUNDS.DUEL_START)
@@ -238,7 +233,7 @@ function Taleria:onEffectChanged(context, alerts, changeType, abilityId,
        or abilityId == RAPID_DELUGE_V
        or abilityId == RAPID_DELUGE_HM then
         if changeType == EFFECT_RESULT_GAINED and AreUnitsEqual("player", unitTag) then
-            caAlert(nil, "|c66AAffMove bubble!|r — don't stack",
+            CA.alert(nil, "|c66AAffMove bubble!|r — don't stack",
                 0x66AAffD9, SOUNDS.CHAMPION_POINTS_COMMITTED, 5000)
         end
         return
@@ -269,7 +264,7 @@ function Taleria:onEffectChanged(context, alerts, changeType, abilityId,
             self.bridgeOpen[1]      = true
             self.bridgeWipeStart[1] = now
             self.lastPlatformFall   = now
-            caAlert(nil, "|c22CC22Green portal open|r — 60 s!",
+            CA.alert(nil, "|c22CC22Green portal open|r — 60 s!",
                 0x22CC22D9, SOUNDS.DUEL_START, 4000)
         end
         return
@@ -282,7 +277,7 @@ function Taleria:onEffectChanged(context, alerts, changeType, abilityId,
             self.bridgeOpen[2]      = true
             self.bridgeWipeStart[2] = now
             self.lastPlatformFall   = now
-            caAlert(nil, "|cDDCC00Yellow portal open|r — 60 s!",
+            CA.alert(nil, "|cDDCC00Yellow portal open|r — 60 s!",
                 0xDDCC00D9, SOUNDS.DUEL_START, 4000)
         end
         return
@@ -295,7 +290,7 @@ function Taleria:onEffectChanged(context, alerts, changeType, abilityId,
             self.bridgeOpen[3]      = true
             self.bridgeWipeStart[3] = now
             self.lastPlatformFall   = now
-            caAlert(nil, "|c8822DDPurple portal open|r — 60 s!",
+            CA.alert(nil, "|c8822DDPurple portal open|r — 60 s!",
                 0x8822DDD9, SOUNDS.DUEL_START, 4000)
         end
         return
@@ -304,9 +299,9 @@ function Taleria:onEffectChanged(context, alerts, changeType, abilityId,
     -- ── Whirlpool (pool on player) ────────────────────────────────────────
     if abilityId == WHIRLPOOL then
         if changeType == EFFECT_RESULT_GAINED and AreUnitsEqual("player", unitTag) then
-            caAlertBorder(true, 8000, "green")
+            CA.border(true, 8000, "green")
         elseif changeType == EFFECT_RESULT_FADED and AreUnitsEqual("player", unitTag) then
-            caAlertBorder(false, 0, nil)
+            CA.border(false, 0, nil)
         end
         return
     end

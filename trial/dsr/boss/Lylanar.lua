@@ -87,10 +87,7 @@ local BRAND_DEDUP    = 1.0   -- s: MatchBrands dedup gate
 local BUBBLE_CD_NORM = 15    -- s: bubble drop cooldown (normal)
 local BUBBLE_CD_HM   = 20    -- s: bubble drop cooldown (HM)
 
--- ── CombatAlerts helpers ──────────────────────────────────────────────────
-local function caAlertCast(...)   if CombatAlerts then return CombatAlerts.AlertCast(...)   end end
-local function caAlert(...)       if CombatAlerts then return CombatAlerts.Alert(...)        end end
-local function caAlertBorder(...) if CombatAlerts then return CombatAlerts.AlertBorder(...) end end
+local CA = require("lib.CA")
 
 -- ── CA colour palettes ────────────────────────────────────────────────────
 local COL_FIRE_HEAVY = { -2, 0, false, { 1.0, 0.35, 0.1, 0.4 }, { 1.0, 0.35, 0.1, 0.8 } }
@@ -213,7 +210,7 @@ local function matchBrands(self)
         return  -- player not branded this round
     end
 
-    caAlert(nil,
+    CA.alert(nil,
         "STACK ON: " .. partner .. " (" .. distance .. ")",
         0xFF8800D9, SOUNDS.DUEL_START, 6000)
     PlaySound(SOUNDS.DUEL_START)
@@ -236,7 +233,7 @@ function Lylanar:onCombatEvent(context, alerts, result, abilityId,
         if not IsUnitPlayer(unitTag) then return end
         local dur = select(1, GetAbilityCastInfo(abilityId)) or 0
         if dur <= 0 then dur = 1500 end
-        caAlertCast(abilityId, sourceUnitName, dur, COL_FIRE_HEAVY)
+        CA.alertCast(abilityId, sourceUnitName, dur, COL_FIRE_HEAVY)
         return
     end
 
@@ -246,20 +243,20 @@ function Lylanar:onCombatEvent(context, alerts, result, abilityId,
         local dur = select(1, GetAbilityCastInfo(abilityId)) or 0
         if dur <= 0 then dur = 1500 end
         alerts:showAction("Dodge! (Cleave)")
-        caAlertCast(abilityId, sourceUnitName, dur, COL_FIRE_HEAVY)
+        CA.alertCast(abilityId, sourceUnitName, dur, COL_FIRE_HEAVY)
         return
     end
 
     -- ── Fire: ScaldingSwell (fire wave) ──────────────────────────────────
     if abilityId == SCALDING_SWELL then
-        caAlert(nil, "|cFF5733Fire wave|r — move!", 0xFF5733D9,
+        CA.alert(nil, "|cFF5733Fire wave|r — move!", 0xFF5733D9,
             SOUNDS.CHAMPION_POINTS_COMMITTED, 5500)
         return
     end
 
     -- ── Fire: CharredConstriction (fire jump, spike cage) ─────────────────
     if abilityId == CHARRED_CONSTRICTION then
-        caAlert(nil, "|cFF5733Fire jump!|r (spike — block)", 0xFF5733D9,
+        CA.alert(nil, "|cFF5733Fire jump!|r (spike — block)", 0xFF5733D9,
             SOUNDS.CHAMPION_POINTS_COMMITTED, 2500)
         return
     end
@@ -281,7 +278,7 @@ function Lylanar:onCombatEvent(context, alerts, result, abilityId,
         if not IsUnitPlayer(unitTag) then return end
         local dur = select(1, GetAbilityCastInfo(abilityId)) or 0
         if dur <= 0 then dur = 1500 end
-        caAlertCast(abilityId, sourceUnitName, dur, COL_ICE_HEAVY)
+        CA.alertCast(abilityId, sourceUnitName, dur, COL_ICE_HEAVY)
         return
     end
 
@@ -291,20 +288,20 @@ function Lylanar:onCombatEvent(context, alerts, result, abilityId,
         local dur = select(1, GetAbilityCastInfo(abilityId)) or 0
         if dur <= 0 then dur = 1500 end
         alerts:showAction("Dodge! (Cleave)")
-        caAlertCast(abilityId, sourceUnitName, dur, COL_ICE_HEAVY)
+        CA.alertCast(abilityId, sourceUnitName, dur, COL_ICE_HEAVY)
         return
     end
 
     -- ── Ice: BitingBillow (ice wave) ─────────────────────────────────────
     if abilityId == BITING_BILLOW then
-        caAlert(nil, "|c99CCffIce wave|r — move!", 0x99CCffD9,
+        CA.alert(nil, "|c99CCffIce wave|r — move!", 0x99CCffD9,
             SOUNDS.CHAMPION_POINTS_COMMITTED, 5500)
         return
     end
 
     -- ── Ice: Frigidarium (ice jump, spike cage) ───────────────────────────
     if abilityId == FRIGIDARIUM then
-        caAlert(nil, "|c99CCffIce jump!|r (spike — block)", 0x99CCffD9,
+        CA.alert(nil, "|c99CCffIce jump!|r (spike — block)", 0x99CCffD9,
             SOUNDS.CHAMPION_POINTS_COMMITTED, 2500)
         return
     end
@@ -337,7 +334,7 @@ function Lylanar:onEffectChanged(context, alerts, changeType, abilityId,
             self.cinderSurgeActive = true
             zo_callLater(function()
                 if self.cinderSurgeActive then
-                    caAlert(nil, "|cFF5733INTERRUPT!|r (Ice Dome)",
+                    CA.alert(nil, "|cFF5733INTERRUPT!|r (Ice Dome)",
                         0xFF2020D9, SOUNDS.DUEL_START, 15000)
                     PlaySound(SOUNDS.DUEL_START)
                 end
@@ -354,7 +351,7 @@ function Lylanar:onEffectChanged(context, alerts, changeType, abilityId,
             self.numbingShardsActive = true
             zo_callLater(function()
                 if self.numbingShardsActive then
-                    caAlert(nil, "|c99CCffINTERRUPT!|r (Fire Dome)",
+                    CA.alert(nil, "|c99CCffINTERRUPT!|r (Fire Dome)",
                         0x2020FFD9, SOUNDS.DUEL_START, 15000)
                     PlaySound(SOUNDS.DUEL_START)
                 end
@@ -493,7 +490,7 @@ function Lylanar:onEffectChanged(context, alerts, changeType, abilityId,
     -- ── Fire: Lylanar multiloc (teleport) ─────────────────────────────────
     if abilityId == LYLANAR_MULTILOC then
         if changeType == EFFECT_RESULT_GAINED then
-            caAlert(nil, "|cFF5733Lylanar teleports|r — reposition!",
+            CA.alert(nil, "|cFF5733Lylanar teleports|r — reposition!",
                 0xFF5733D9, SOUNDS.CHAMPION_POINTS_COMMITTED, 4000)
         end
         return
@@ -502,7 +499,7 @@ function Lylanar:onEffectChanged(context, alerts, changeType, abilityId,
     -- ── Ice: Turlassil multiloc (teleport) ────────────────────────────────
     if abilityId == TURLASSIL_MULTILOC then
         if changeType == EFFECT_RESULT_GAINED then
-            caAlert(nil, "|c99CCffTurlassil teleports|r — reposition!",
+            CA.alert(nil, "|c99CCffTurlassil teleports|r — reposition!",
                 0x99CCffD9, SOUNDS.CHAMPION_POINTS_COMMITTED, 4000)
         end
         return
@@ -531,7 +528,7 @@ function Lylanar:onEffectChanged(context, alerts, changeType, abilityId,
     -- ── Shared: Hindered (slow on player) ────────────────────────────────
     if abilityId == HINDERED then
         if changeType == EFFECT_RESULT_GAINED and AreUnitsEqual("player", unitTag) then
-            caAlertBorder(true, 12000, "yellow")
+            CA.border(true, 12000, "yellow")
         end
         return
     end

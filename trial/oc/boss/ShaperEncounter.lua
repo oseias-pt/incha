@@ -1,8 +1,6 @@
 local Location = require("core.Location")
 
--- ── CombatAlerts helpers ──────────────────────────────────────────────────
-local function caAlert(...)     if CombatAlerts then CombatAlerts.Alert(...)     end end
-local function caAlertCast(...) if CombatAlerts then return CombatAlerts.AlertCast(...) end end
+local CA = require("lib.CA")
 
 -- ── Ability IDs (from OsseinCageHelper) ──────────────────────────────────
 local OGRIM_CHARGE     = 236496   -- BEGIN on player → MOVE alert + caAlertCast
@@ -36,7 +34,7 @@ function ShaperEncounter:onCombatEvent(context, alerts,
             local target = (unitName and unitName ~= "") and unitName or "?"
             local dur = select(1, GetAbilityCastInfo(abilityId)) or 0
             if dur <= 0 then dur = 2000 end
-            caAlertCast(abilityId, "MOVE — Ogrim Charge!", dur, COL_CHARGE)
+            CA.alertCast(abilityId, "MOVE — Ogrim Charge!", dur, COL_CHARGE)
             if IsUnitPlayer(unitTag) then
                 alerts:showAction("Ogrim Charge on YOU! Move!")
             else
@@ -47,7 +45,7 @@ function ShaperEncounter:onCombatEvent(context, alerts,
     elseif result == ACTION_RESULT_EFFECT_GAINED then
         if abilityId == SHAPER_SHIELD then
             self.shaperShielded = true
-            caAlert(nil, "Shaper shielded — kill channelers!", 0xAA44FFFF, SOUNDS.NONE, 4000)
+            CA.alert(nil, "Shaper shielded — kill channelers!", 0xAA44FFFF, SOUNDS.NONE, 4000)
             alerts:showAction("Shaper of Flesh shielded — kill channelers!")
 
         elseif abilityId == CHANNELER_SHIELD then
@@ -58,7 +56,7 @@ function ShaperEncounter:onCombatEvent(context, alerts,
     elseif result == ACTION_RESULT_EFFECT_FADED then
         if abilityId == SHAPER_SHIELD then
             self.shaperShielded = false
-            caAlert(nil, "Shaper vulnerable!", 0x44FF88FF, SOUNDS.NONE, 3000)
+            CA.alert(nil, "Shaper vulnerable!", 0x44FF88FF, SOUNDS.NONE, 3000)
             alerts:showAction("Shaper vulnerable — BURN!")
         end
     end

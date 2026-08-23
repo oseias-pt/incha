@@ -1,8 +1,7 @@
 local Location = require("core.Location")
 local Timer    = require("lib.Timer")
 
--- ── CombatAlerts helpers ──────────────────────────────────────────────────
-local function caAlertCast(...) if CombatAlerts then return CombatAlerts.AlertCast(...) end end
+local CA = require("lib.CA")
 
 -- ── Ability IDs ───────────────────────────────────────────────────────────
 local PIERCING_BEAM = 219165   -- BEGIN → INTERRUPT; CD 14s first / 32s steady
@@ -51,7 +50,7 @@ function XynizataEncounter:onCombatEvent(context, alerts,
         self.piercingBeamTimer:reset(BEAM_CD)
         local dur = select(1, GetAbilityCastInfo(abilityId)) or 0
         if dur <= 0 then dur = 2500 end
-        caAlertCast(abilityId, "INTERRUPT — Beam!", dur, COL_INTERRUPT)
+        CA.alertCast(abilityId, "INTERRUPT — Beam!", dur, COL_INTERRUPT)
         alerts:showAction("INTERRUPT — Piercing Beam!")
 
     elseif abilityId == VITRIFY then
@@ -59,7 +58,7 @@ function XynizataEncounter:onCombatEvent(context, alerts,
         self.vitrifyTimer:reset(VITRIFY_CD)
         local dur = select(1, GetAbilityCastInfo(abilityId)) or 0
         if dur <= 0 then dur = 2000 end
-        caAlertCast(abilityId, "INTERRUPT — Vitrify!", dur, COL_INTERRUPT)
+        CA.alertCast(abilityId, "INTERRUPT — Vitrify!", dur, COL_INTERRUPT)
         alerts:showAction("INTERRUPT — Vitrify!")
     end
 end

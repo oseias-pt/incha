@@ -1,7 +1,6 @@
 local Location = require("core.Location")
 
--- ── CombatAlerts helpers ──────────────────────────────────────────────────
-local function caAlertCast(...) if CombatAlerts then return CombatAlerts.AlertCast(...) end end
+local CA = require("lib.CA")
 
 -- ── Ability IDs ───────────────────────────────────────────────────────────
 local POWERFUL_THROW = 218971   -- BEGIN → caAlertCast; on player → explicit alert
@@ -27,7 +26,7 @@ function DarielEncounter:onCombatEvent(context, alerts,
         local target = (unitName and unitName ~= "") and unitName or "?"
         local dur = select(1, GetAbilityCastInfo(abilityId)) or 0
         if dur <= 0 then dur = 2500 end
-        caAlertCast(abilityId, "Throw → " .. target, dur, COL_THROW)
+        CA.alertCast(abilityId, "Throw → " .. target, dur, COL_THROW)
         if IsUnitPlayer(unitTag) then
             alerts:showAction("Powerful Throw on YOU!")
         else

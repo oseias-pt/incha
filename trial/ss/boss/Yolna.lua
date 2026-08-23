@@ -17,19 +17,7 @@ local NEXT_FLARE_A  = 121722   -- BEGIN → +32 s to next flare
 local NEXT_FLARE_B  = 121459   -- EFFECT_FADED → +30 s to next flare
 local CATACLYSM     = 122598   -- fire channel while airborne
 
--- ── CombatAlerts helpers ───────────────────────────────────────────────────
-local function caAlert(...)
-    if CombatAlerts then return CombatAlerts.Alert(...) end
-end
-local function caAlertCast(...)
-    if CombatAlerts then return CombatAlerts.AlertCast(...) end
-end
-local function caCastAlertsStart(...)
-    if CombatAlerts then return CombatAlerts.CastAlertsStart(...) end
-end
-local function caCastAlertsStop(id)
-    if CombatAlerts and id then CombatAlerts.CastAlertsStop(id) end
-end
+local CA = require("lib.CA")
 
 -- ── CA colour palettes ─────────────────────────────────────────────────────
 local COL_GEYSER = { -2, 0, false, { 1.0, 0.4, 0.0, 0.4 }, { 1.0, 0.4, 0.0, 0.8 } }
@@ -49,9 +37,9 @@ Yolna.cataBarId     = nil     -- CA CastAlertsStart bar ID
 
 -- ── Lifecycle ─────────────────────────────────────────────────────────────
 function Yolna:reset(forced)
-    for _, cid in pairs(self.alertList) do caCastAlertsStop(cid) end
+    for _, cid in pairs(self.alertList) do CA.castAlertsStop(cid) end
     self.alertList   = {}
-    caCastAlertsStop(self.cataBarId)
+    CA.castAlertsStop(self.cataBarId)
     self.cataBarId     = nil
     self.nextFlareTime = 0
     self.cataEndTime   = 0
@@ -78,14 +66,14 @@ function Yolna:onCombatEvent(context, alerts, result, abilityId,
 
     -- alertList cleanup
     if result == ACTION_RESULT_DIED then
-        if unitId then caCastAlertsStop(self.alertList[unitId]); self.alertList[unitId] = nil end
+        if unitId then CA.castAlertsStop(self.alertList[unitId]); self.alertList[unitId] = nil end
         return
     end
 
     -- ── AtroSpawn: summon fire atronarchs ─────────────────────────────
     if abilityId == ATRO_SPAWN and result == ACTION_RESULT_BEGIN then
         alerts:showAction("Kill Atro!")
-        caAlert(nil, "Kill Atro!", 0xFF8000FF, SOUNDS.NONE, 4500)
+        CA.alert(nil, "Kill Atro!", 0xFF8000FF, SOUNDS.NONE, 4500)
         return
     end
 
@@ -109,7 +97,7 @@ function Yolna:onCombatEvent(context, alerts, result, abilityId,
             alerts:showAction("Dodge! (Geyser)")
             local dur = select(1, GetAbilityCastInfo(LAVA_GEYSER)) or 0
             if dur <= 0 then dur = 2500 end
-            caAlertCast(abilityId, sourceUnitName, dur, COL_GEYSER)
+            CA.alertCast(abilityId, sourceUnitName, dur, COL_GEYSER)
         end
         return
     end
@@ -134,8 +122,8 @@ function Yolna:onCombatEvent(context, alerts, result, abilityId,
         self.cataEndTime = now_ms + dur
         self.landingTime = (self.cataEndTime / 1000) + 6.8
 
-        caCastAlertsStop(self.cataBarId)
-        self.cataBarId = caCastAlertsStart(
+        CA.castAlertsStop(self.cataBarId)
+        self.cataBarId = CA.castAlertsStart(
             abilityId, "Cataclysm",
             dur, dur,
             { 0.9, 0.2, 0.1, 0.5 },

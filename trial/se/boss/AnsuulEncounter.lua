@@ -1,15 +1,7 @@
 local Location = require("core.Location")
 local Timer    = require("lib.Timer")
 
--- ── CombatAlerts helpers ──────────────────────────────────────────────────
-local function caAlertCast(...) if CombatAlerts then return CombatAlerts.AlertCast(...) end end
-local function caAlert(...)     if CombatAlerts then return CombatAlerts.Alert(...)     end end
-local function caAlertBorder(active, dur, color)
-    if CombatAlerts then CombatAlerts.AlertBorder(active, dur, color) end
-end
-local function caCastAlertsStop(id)
-    if CombatAlerts and id then CombatAlerts.CastAlertsStop(id) end
-end
+local CA = require("lib.CA")
 
 -- ── Ability IDs ───────────────────────────────────────────────────────────
 local SUNBURST         = 199344   -- BEGIN on player → alert
@@ -53,7 +45,7 @@ function AnsuulEncounter:reset()
     self.firstCalamity = true
     self.inMaze        = false
     self.inTriplet     = false
-    for _, cid in pairs(self.alertList) do caCastAlertsStop(cid) end
+    for _, cid in pairs(self.alertList) do CA.castAlertsStop(cid) end
     self.alertList = {}
 end
 
@@ -68,29 +60,29 @@ function AnsuulEncounter:onCombatEvent(context, alerts,
 
     elseif abilityId == WRACK and result == ACTION_RESULT_BEGIN then
         alerts:showAction("Kite! Wrack incoming!")
-        caAlert(nil, "KITE!", 0xFFD666FF, SOUNDS.NONE, 3000)
+        CA.alert(nil, "KITE!", 0xFFD666FF, SOUNDS.NONE, 3000)
 
     elseif abilityId == EXECUTE and result == ACTION_RESULT_BEGIN then
         alerts:showAction("INTERRUPT! Execute!")
-        caAlert(nil, "INTERRUPT!", 0xFF0033FF, SOUNDS.NONE, 2500)
+        CA.alert(nil, "INTERRUPT!", 0xFF0033FF, SOUNDS.NONE, 2500)
 
     elseif abilityId == SUNBURST and result == ACTION_RESULT_BEGIN
            and IsUnitPlayer(unitTag) then
         alerts:showAction("Sunburst on you! Dodge!")
         local dur = select(1, GetAbilityCastInfo(abilityId)) or 0
         if dur <= 0 then dur = 2000 end
-        caAlertCast(abilityId, "SUNBURST", dur, COL_VOID)
+        CA.alertCast(abilityId, "SUNBURST", dur, COL_VOID)
 
     elseif abilityId == WRATHSTORM and result == ACTION_RESULT_BEGIN then
         local dur = select(1, GetAbilityCastInfo(abilityId)) or 0
         if dur <= 0 then dur = 4000 end
-        caAlertCast(abilityId, "Wrathstorm!", dur, COL_VOID)
+        CA.alertCast(abilityId, "Wrathstorm!", dur, COL_VOID)
 
     elseif abilityId == POISONED_MIND
            and result == ACTION_RESULT_EFFECT_GAINED_DURATION
            and IsUnitPlayer(unitTag) then
         alerts:showAction("Poisoned Mind on you!")
-        caAlertBorder(true, 8000, "green")
+        CA.border(true, 8000, "green")
 
     elseif abilityId == THE_RITUAL then
         if result == ACTION_RESULT_EFFECT_GAINED_DURATION then

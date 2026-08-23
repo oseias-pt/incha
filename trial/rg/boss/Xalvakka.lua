@@ -61,10 +61,7 @@ local RUN1_BOT = 70
 local RUN2_TOP = 45    -- second transition: boss flees at 40%
 local RUN2_BOT = 40
 
--- ── CombatAlerts helpers ───────────────────────────────────────────────────
-local function caAlertCast(...)   if CombatAlerts then return CombatAlerts.AlertCast(...)   end end
-local function caAlert(...)       if CombatAlerts then return CombatAlerts.Alert(...)        end end
-local function caAlertBorder(...) if CombatAlerts then return CombatAlerts.AlertBorder(...) end end
+local CA = require("lib.CA")
 
 -- ── CA colour palettes ─────────────────────────────────────────────────────
 local COL_SCATHING = { -2, 0, false, { 0.9, 0.2, 0.9, 0.4 }, { 0.9, 0.2, 0.9, 0.8 } }
@@ -179,13 +176,13 @@ function Xalvakka:onCombatEvent(context, alerts, result, abilityId,
         if not IsUnitPlayer(unitTag) then return end
         local dur = select(1, GetAbilityCastInfo(abilityId)) or 0
         if dur <= 0 then dur = 1500 end
-        caAlertCast(abilityId, sourceUnitName, dur, COL_SCATHING)
+        CA.alertCast(abilityId, sourceUnitName, dur, COL_SCATHING)
         return
     end
 
     -- ── Deadstar (add explosion) ──────────────────────────────────────────
     if DEADSTAR_IDS[abilityId] then
-        caAlert(nil, "Deadstar!", 0xFFCC00D9, SOUNDS.CHAMPION_POINTS_COMMITTED, 2500)
+        CA.alert(nil, "Deadstar!", 0xFFCC00D9, SOUNDS.CHAMPION_POINTS_COMMITTED, 2500)
         return
     end
 
@@ -206,7 +203,7 @@ function Xalvakka:onEffectChanged(context, alerts, changeType, abilityId,
     if abilityId == SOUL_RESONANCE then
         if changeType == EFFECT_RESULT_GAINED and AreUnitsEqual("player", unitTag) then
             self.soulStart = GetGameTimeMilliseconds() / 1000
-            caAlert(nil, "Purge Soul Resonance!", 0xFF6600D9,
+            CA.alert(nil, "Purge Soul Resonance!", 0xFF6600D9,
                 SOUNDS.DUEL_START, 4000)
             PlaySound(SOUNDS.DUEL_START)
         elseif changeType == EFFECT_RESULT_FADED and AreUnitsEqual("player", unitTag) then
@@ -219,10 +216,10 @@ function Xalvakka:onEffectChanged(context, alerts, changeType, abilityId,
     if abilityId == UNSTABLE_CHARGE then
         if changeType == EFFECT_RESULT_GAINED and AreUnitsEqual("player", unitTag) then
             self.onBlob = true
-            caAlertBorder(true, 8000, "green")
+            CA.border(true, 8000, "green")
         elseif changeType == EFFECT_RESULT_FADED and AreUnitsEqual("player", unitTag) then
             self.onBlob = false
-            caAlertBorder(false, 0, nil)
+            CA.border(false, 0, nil)
         end
         return
     end
@@ -232,8 +229,8 @@ function Xalvakka:onEffectChanged(context, alerts, changeType, abilityId,
         if changeType == EFFECT_RESULT_GAINED then
             if AreUnitsEqual("player", unitTag) then
                 self.selfManifold = true
-                caAlertBorder(true, 20000, "purple")
-                caAlert(nil, "|cAA44ffManifold Curse|r on YOU — spread!",
+                CA.border(true, 20000, "purple")
+                CA.alert(nil, "|cAA44ffManifold Curse|r on YOU — spread!",
                     0xAA44FFD9, SOUNDS.DUEL_START, 5000)
                 PlaySound(SOUNDS.DUEL_START)
             elseif IsUnitPlayer(unitTag) then
@@ -243,7 +240,7 @@ function Xalvakka:onEffectChanged(context, alerts, changeType, abilityId,
         elseif changeType == EFFECT_RESULT_FADED then
             if AreUnitsEqual("player", unitTag) then
                 self.selfManifold = false
-                caAlertBorder(false, 0, nil)
+                CA.border(false, 0, nil)
             else
                 self.manifoldOthers[unitTag] = nil
             end

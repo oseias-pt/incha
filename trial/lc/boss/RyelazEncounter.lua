@@ -1,8 +1,6 @@
 local Location = require("core.Location")
 
--- ── CombatAlerts helpers ──────────────────────────────────────────────────
-local function caAlert(...)     if CombatAlerts then CombatAlerts.Alert(...)     end end
-local function caAlertCast(...) if CombatAlerts then return CombatAlerts.AlertCast(...) end end
+local CA = require("lib.CA")
 
 -- ── Ability IDs ───────────────────────────────────────────────────────────
 local BRILLIANT_ANNIHILATION = 214187   -- light side room wipe — BEGIN → STACK
@@ -39,13 +37,13 @@ function RyelazEncounter:onCombatEvent(context, alerts,
         if abilityId == BRILLIANT_ANNIHILATION then
             local dur = select(1, GetAbilityCastInfo(abilityId)) or 0
             if dur <= 0 then dur = 3000 end
-            caAlertCast(abilityId, "STACK — Annihilation!", dur, COL_ANNIHIL)
+            CA.alertCast(abilityId, "STACK — Annihilation!", dur, COL_ANNIHIL)
             alerts:showAction("Brilliant Annihilation! STACK!")
 
         elseif abilityId == BLEAK_ANNIHILATION then
             local dur = select(1, GetAbilityCastInfo(abilityId)) or 0
             if dur <= 0 then dur = 3000 end
-            caAlertCast(abilityId, "STACK — Annihilation!", dur, COL_ANNIHIL)
+            CA.alertCast(abilityId, "STACK — Annihilation!", dur, COL_ANNIHIL)
             alerts:showAction("Bleak Annihilation! STACK!")
         end
 

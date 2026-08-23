@@ -1,13 +1,7 @@
 local Location = require("core.Location")
 local Timer = require("lib.Timer")
 
--- ── Phase 4.2: CombatAlerts helpers ──────────────────────────────────────
--- All calls silently no-op when CombatAlerts is not loaded.
-local function caAlertCast(...) if CombatAlerts then return CombatAlerts.AlertCast(...) end end
-local function caAlert(...)     if CombatAlerts then return CombatAlerts.Alert(...)     end end
-local function caCastAlertsStop(id)
-    if CombatAlerts and id then CombatAlerts.CastAlertsStop(id) end
-end
+local CA = require("lib.CA")
 
 -- ── Ability IDs (from BSCHTKA_Yandir.lua) ─────────────────────────────────
 local TOTEM_POISION      = 133515  -- Chaurus Totem Spawn + cast  → resets timer + Dodge alert
@@ -49,7 +43,7 @@ function Yandir:reset(forced)
     self.BTotemCall    = false
 
     -- Phase 4.2: stop any lingering cast bars from the previous pull.
-    for _, cid in pairs(self.alertList) do caCastAlertsStop(cid) end
+    for _, cid in pairs(self.alertList) do CA.castAlertsStop(cid) end
     self.alertList = {}
 end
 
@@ -71,11 +65,11 @@ function Yandir:onCombatEvent(context, alerts, result, abilityId,
     -- Stop any tracked CA cast bars when the associated unit dies.
     if result == ACTION_RESULT_DIED then
         if unitId then
-            caCastAlertsStop(self.alertList[unitId])
+            CA.castAlertsStop(self.alertList[unitId])
             self.alertList[unitId] = nil
         end
         if sourceUnitId then
-            caCastAlertsStop(self.alertList[sourceUnitId])
+            CA.castAlertsStop(self.alertList[sourceUnitId])
             self.alertList[sourceUnitId] = nil
         end
         -- If the player targeted by the poison totem dies, cancel delayed bar.
@@ -97,7 +91,7 @@ function Yandir:onCombatEvent(context, alerts, result, abilityId,
     -- Per-ability alerts + CA cast bars.
     if abilityId == TOTEM_POISION and result == ACTION_RESULT_BEGIN then
         alerts:showAction("Dodge! (Poison Totem)")
-        local cid = caAlertCast(abilityId, sourceUnitName, 4300,
+        local cid = CA.alertCast(abilityId, sourceUnitName, 4300,
             { -3, 0, false, { 0, 0.8, 0, 0.4 }, { 0, 0.8, 0, 0.8 } })
         if cid and unitId then self.alertList[unitId] = cid end
         self.PosionTotemID = unitId  -- track for delayed second-poison bar
@@ -112,7 +106,7 @@ function Yandir:onCombatEvent(context, alerts, result, abilityId,
         zo_callLater(function()
             if capturedSelf.PosionTotemID ~= -1 and IsUnitInCombat("player") then
                 capturedSelf.BTotemCall = false
-                caAlertCast(TOTEM_POISION_CP, capturedSrc, 4300,
+                CA.alertCast(TOTEM_POISION_CP, capturedSrc, 4300,
                     { -3, 0, false, { 0, 0.8, 0, 0.4 }, { 0, 0.8, 0, 0.8 } })
             end
         end, 26800)
@@ -121,24 +115,24 @@ function Yandir:onCombatEvent(context, alerts, result, abilityId,
         alerts:showAction("Block! (Gargoyle Totem)")
         local dur = select(1, GetAbilityCastInfo(TOTEM_GARGYL)) or 0
         if dur <= 0 then dur = 5000 end
-        local cid = caAlertCast(abilityId, "Block!!", dur,
+        local cid = CA.alertCast(abilityId, "Block!!", dur,
             { -3, 0, false, { 0.7, 0.7, 0.7, 0.4 }, { 0.7, 0.7, 0.7, 0.8 } })
         if cid and unitId then self.alertList[unitId] = cid end
 
     elseif abilityId == YANDIR_HEALING and result == ACTION_RESULT_BEGIN then
         alerts:showAction("Casts Healing!")
-        caAlert(nil, "Casts Healing!", 0x991111FF, SOUNDS.NONE, 2000)
+        CA.alert(nil, "Casts Healing!", 0x991111FF, SOUNDS.NONE, 2000)
 
     elseif abilityId == YANDIR_JUMP and result == ACTION_RESULT_BEGIN then
         alerts:showAction("(Jump) Block!!")
-        local cid = caAlertCast(abilityId, "(Jump) Block!!", 3000,
+        local cid = CA.alertCast(abilityId, "(Jump) Block!!", 3000,
             { -3, 0, false, { 0.7, 0.7, 0.7, 0.4 }, { 0.7, 0.7, 0.7, 0.8 } })
         if cid and unitId then self.alertList[unitId] = cid end
 
     elseif abilityId == SEA_ADDER_BILE_SPRAY and result == ACTION_RESULT_BEGIN
            and IsUnitPlayer(unitTag) then
         alerts:showAction("Dodge! (Sea Adder)")
-        local cid = caAlertCast(abilityId, sourceUnitName, 1933,
+        local cid = CA.alertCast(abilityId, sourceUnitName, 1933,
             { -3, 0, false, { 0.7, 0.7, 0.7, 0.4 }, { 0.7, 0.7, 0.7, 0.8 } })
         if cid and unitId then self.alertList[unitId] = cid end
     end

@@ -44,12 +44,7 @@ local METEOR_SWARM     = 155357   -- Prime Meteor cast (HM, HP < ~31%)
 local EYE_CW           = 153517   -- portal rotation direction: clockwise
 local EYE_CCW          = 153518   -- portal rotation direction: counter-clockwise
 
--- ── CombatAlerts helpers ───────────────────────────────────────────────────
-local function caAlertCast(...)       if CombatAlerts then return CombatAlerts.AlertCast(...)        end end
-local function caAlert(...)           if CombatAlerts then return CombatAlerts.Alert(...)             end end
-local function caCastAlertsStart(...) if CombatAlerts then return CombatAlerts.CastAlertsStart(...)  end end
-local function caCastAlertsStop(id)   if CombatAlerts and id then CombatAlerts.CastAlertsStop(id)    end end
-local function caAlertBorder(...)     if CombatAlerts then return CombatAlerts.AlertBorder(...)      end end
+local CA = require("lib.CA")
 
 -- ── CA colour palettes ─────────────────────────────────────────────────────
 local COL_INTERRUPT = { -2, 0, true,  { 0.3, 0.6, 1.0, 0.4 }, { 0.3, 0.6, 1.0, 0.8 } }
@@ -82,7 +77,7 @@ Bahsei.lastPortalCW        = true   -- true=clockwise, false=CCW
 
 -- ── Lifecycle ─────────────────────────────────────────────────────────────
 function Bahsei:reset(forced)
-    caCastAlertsStop(self.sunBarId)
+    CA.castAlertsStop(self.sunBarId)
     self.sunBarId              = nil
     self.lastCursedGround      = 0
     self.nextPortal            = 0
@@ -100,7 +95,7 @@ end
 -- ── Combat state ──────────────────────────────────────────────────────────
 function Bahsei:onCombatState(context, inCombat, alerts)
     if inCombat then
-        caCastAlertsStop(self.sunBarId)
+        CA.castAlertsStop(self.sunBarId)
         self.sunBarId              = nil
         self.lastCursedGround      = 0
         self.portalNumber          = 1
@@ -145,7 +140,7 @@ function Bahsei:onCombatEvent(context, alerts, result, abilityId,
     -- ── Cursed Ground ─────────────────────────────────────────────────────
     if abilityId == CURSED_GROUND and result == ACTION_RESULT_BEGIN then
         self.lastCursedGround = GetGameTimeMilliseconds() / 1000
-        caAlert(nil, "Cursed Ground", 0xEE82EED9, SOUNDS.CHAMPION_POINTS_COMMITTED, 2000)
+        CA.alert(nil, "Cursed Ground", 0xEE82EED9, SOUNDS.CHAMPION_POINTS_COMMITTED, 2000)
         return
     end
 
@@ -155,8 +150,8 @@ function Bahsei:onCombatEvent(context, alerts, result, abilityId,
         if isTank then
             local dur = select(1, GetAbilityCastInfo(SALVO2)) or 0
             if dur <= 0 then dur = 2500 end
-            caAlertCast(abilityId, sourceUnitName, dur, COL_INTERRUPT)
-            caAlert(nil, "Interrupt!", 0xFF2020FF, SOUNDS.CHAMPION_POINTS_COMMITTED, 2000)
+            CA.alertCast(abilityId, sourceUnitName, dur, COL_INTERRUPT)
+            CA.alert(nil, "Interrupt!", 0xFF2020FF, SOUNDS.CHAMPION_POINTS_COMMITTED, 2000)
         end
         return
     end
@@ -167,7 +162,7 @@ function Bahsei:onCombatEvent(context, alerts, result, abilityId,
         if IsUnitPlayer(unitTag) then
             local dur = select(1, GetAbilityCastInfo(SICKLE)) or 0
             if dur <= 0 then dur = 1500 end
-            caAlertCast(abilityId, sourceUnitName, dur, COL_SICKLE)
+            CA.alertCast(abilityId, sourceUnitName, dur, COL_SICKLE)
         end
         return
     end
@@ -177,7 +172,7 @@ function Bahsei:onCombatEvent(context, alerts, result, abilityId,
         if not IsUnitPlayer(unitTag) then return end
         PlaySound(SOUNDS.DUEL_START)
         PlaySound(SOUNDS.DUEL_START)
-        caAlert(nil, "Bleeding", 0xCC0000D9, SOUNDS.DUEL_START, 9000)
+        CA.alert(nil, "Bleeding", 0xCC0000D9, SOUNDS.DUEL_START, 9000)
         return
     end
 
@@ -187,7 +182,7 @@ function Bahsei:onCombatEvent(context, alerts, result, abilityId,
         if isTank then
             local dur = select(1, GetAbilityCastInfo(RANCID_HAMMER)) or 0
             if dur <= 0 then dur = 2000 end
-            caAlertCast(abilityId, sourceUnitName, dur, COL_HAMMER)
+            CA.alertCast(abilityId, sourceUnitName, dur, COL_HAMMER)
         end
         return
     end
@@ -197,8 +192,8 @@ function Bahsei:onCombatEvent(context, alerts, result, abilityId,
        and result == ACTION_RESULT_EFFECT_GAINED_DURATION
        and context.difficulty == Difficulty.HARDMODE then
         self.nextSickle = 0   -- sickle irrelevant from here; free the slot
-        caCastAlertsStop(self.sunBarId)
-        self.sunBarId = caCastAlertsStart(
+        CA.castAlertsStop(self.sunBarId)
+        self.sunBarId = CA.castAlertsStart(
             abilityId, "Prime Meteor",
             13500, 13500, COL_METEOR, ACT_METEOR)
         PlaySound(SOUNDS.DUEL_START)
@@ -222,7 +217,7 @@ function Bahsei:onEffectChanged(context, alerts, changeType, abilityId,
         -- Personal border: player received the curse
         if AreUnitsEqual("player", unitTag) then
             self.lastDeathTouch = GetGameTimeMilliseconds() / 1000
-            caAlertBorder(true, 9000, "blue")
+            CA.border(true, 9000, "blue")
         end
         -- MT explosion: track whose curse will detonate first
         if unitId and unitId == self.mtUnitId then

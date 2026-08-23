@@ -20,11 +20,8 @@
 ---
 --- Returns true if the event was consumed (caller should return).
 
+local CA = require("lib.CA")
 local DreadsailCommon = {}
-
--- ── CombatAlerts helpers ──────────────────────────────────────────────────
-local function caAlertCast(...)        if CombatAlerts then return CombatAlerts.AlertCast(...)        end end
-local function caCastAlertsStart(...)  if CombatAlerts then return CombatAlerts.CastAlertsStart(...)  end end
 
 -- ── Ability IDs ───────────────────────────────────────────────────────────
 local SWASH_TARGETED  = 170523   -- Swashbuckler: chase target 6 s
@@ -63,7 +60,7 @@ function DreadsailCommon.handle(alerts, result, abilityId, unitTag, sourceUnitNa
         if not IsUnitPlayer(unitTag) then return false end
         local dur = select(1, GetAbilityCastInfo(abilityId)) or 0
         if dur <= 0 then dur = DUR_MELEE end
-        caAlertCast(abilityId, sourceUnitName, dur, COL_ICE)
+        CA.alertCast(abilityId, sourceUnitName, dur, COL_ICE)
         return true
     end
 
@@ -72,7 +69,7 @@ function DreadsailCommon.handle(alerts, result, abilityId, unitTag, sourceUnitNa
         if not IsUnitPlayer(unitTag) then return false end
         local dur = select(1, GetAbilityCastInfo(abilityId)) or 0
         if dur <= 0 then dur = DUR_MELEE end
-        caAlertCast(abilityId, sourceUnitName, dur, COL_MELEE, ACT_DONUT)
+        CA.alertCast(abilityId, sourceUnitName, dur, COL_MELEE, ACT_DONUT)
         return true
     end
 
@@ -81,7 +78,7 @@ function DreadsailCommon.handle(alerts, result, abilityId, unitTag, sourceUnitNa
         if not IsUnitPlayer(unitTag) then return false end
         local dur = select(1, GetAbilityCastInfo(abilityId)) or 0
         if dur <= 0 then dur = DUR_MELEE end
-        caAlertCast(abilityId, sourceUnitName, dur, COL_MELEE)
+        CA.alertCast(abilityId, sourceUnitName, dur, COL_MELEE)
         return true
     end
 
@@ -90,7 +87,7 @@ function DreadsailCommon.handle(alerts, result, abilityId, unitTag, sourceUnitNa
         if not IsUnitPlayer(unitTag) then return false end
         local dur = select(1, GetAbilityCastInfo(abilityId)) or 0
         if dur <= 0 then dur = DUR_MELEE end
-        caAlertCast(abilityId, sourceUnitName, dur, COL_MELEE)
+        CA.alertCast(abilityId, sourceUnitName, dur, COL_MELEE)
         return true
     end
 
@@ -99,7 +96,7 @@ function DreadsailCommon.handle(alerts, result, abilityId, unitTag, sourceUnitNa
         if not IsUnitPlayer(unitTag) then return false end
         local dur = select(1, GetAbilityCastInfo(abilityId)) or 0
         if dur <= 0 then dur = DUR_RANGED end
-        caAlertCast(abilityId, sourceUnitName, dur, COL_MELEE)
+        CA.alertCast(abilityId, sourceUnitName, dur, COL_MELEE)
         return true
     end
 
@@ -113,7 +110,7 @@ function DreadsailCommon.handleEffect(alerts, changeType, abilityId, unitTag)
     -- ── Swashbuckler: Targeted (chase for 6 s) ────────────────────────────
     if abilityId == SWASH_TARGETED then
         if changeType == EFFECT_RESULT_GAINED and AreUnitsEqual("player", unitTag) then
-            caCastAlertsStart(abilityId, "Swashbuckler targets you!",
+            CA.castAlertsStart(abilityId, "Swashbuckler targets you!",
                 6000, 6000, COL_SWASH, ACT_BLOCK)
             PlaySound(SOUNDS.DUEL_START)
         end
@@ -123,7 +120,7 @@ function DreadsailCommon.handleEffect(alerts, changeType, abilityId, unitTag)
     -- ── Swashbuckler: Aperture (kite daggers for 5 s) ─────────────────────
     if abilityId == SWASH_APERTURE then
         if changeType == EFFECT_RESULT_GAINED and AreUnitsEqual("player", unitTag) then
-            caCastAlertsStart(abilityId, "Swashbuckler daggers",
+            CA.castAlertsStart(abilityId, "Swashbuckler daggers",
                 5000, 5000, COL_SWASH, ACT_KITE)
             PlaySound(SOUNDS.DUEL_START)
         end

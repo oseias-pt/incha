@@ -6,12 +6,8 @@
 ---
 --- Returns true if the event was consumed (caller should return).
 
+local CA = require("lib.CA")
 local RockgroveCommon = {}
-
--- ── CombatAlerts helpers ───────────────────────────────────────────────────
-local function caAlertCast(...) if CombatAlerts then return CombatAlerts.AlertCast(...)       end end
-local function caAlert(...)     if CombatAlerts then return CombatAlerts.Alert(...)            end end
-local function caCastAlertsStart(...) if CombatAlerts then return CombatAlerts.CastAlertsStart(...) end end
 
 -- ── Ability IDs ────────────────────────────────────────────────────────────
 local EARTHQUAKE   = 149535   -- Reaver: AoE ground DoT on floor
@@ -51,7 +47,7 @@ function RockgroveCommon.handle(alerts, result, abilityId, unitTag, sourceUnitNa
 
     -- ── Reaver: Earthquake ────────────────────────────────────────────────
     if abilityId == EARTHQUAKE then
-        caAlert(nil, "Earthquake", 0x00CC00D9, SOUNDS.CHAMPION_POINTS_COMMITTED, 2000)
+        CA.alert(nil, "Earthquake", 0x00CC00D9, SOUNDS.CHAMPION_POINTS_COMMITTED, 2000)
         return true
     end
 
@@ -61,7 +57,7 @@ function RockgroveCommon.handle(alerts, result, abilityId, unitTag, sourceUnitNa
         local dur = select(1, GetAbilityCastInfo(SUNDERING)) or 0
         if dur <= 0 then dur = FALL_MELEE end
         alerts:showAction("Block! (Sundering)")
-        caAlertCast(abilityId, sourceUnitName, dur, COL_MELEE)
+        CA.alertCast(abilityId, sourceUnitName, dur, COL_MELEE)
         PlaySound(SOUNDS.DUEL_START)
         return true
     end
@@ -72,7 +68,7 @@ function RockgroveCommon.handle(alerts, result, abilityId, unitTag, sourceUnitNa
         if isTank then
             local dur = select(1, GetAbilityCastInfo(TAKING_AIM)) or 0
             if dur <= 0 then dur = FALL_MELEE end
-            caAlertCast(abilityId, sourceUnitName, dur, COL_TANK_INT)
+            CA.alertCast(abilityId, sourceUnitName, dur, COL_TANK_INT)
             PlaySound(SOUNDS.DUEL_START)
         end
         return true     -- consume for everyone; QRH notes it's too verbose for DDs
@@ -80,7 +76,7 @@ function RockgroveCommon.handle(alerts, result, abilityId, unitTag, sourceUnitNa
 
     -- ── Soulweaver: Astral Shield / Remnant ──────────────────────────────
     if ASTRAL_SHIELD_IDS[abilityId] then
-        caAlert(nil, "Astral Shield", 0x75E6DAD9, SOUNDS.CHAMPION_POINTS_COMMITTED, 2000)
+        CA.alert(nil, "Astral Shield", 0x75E6DAD9, SOUNDS.CHAMPION_POINTS_COMMITTED, 2000)
         return true
     end
 
@@ -89,7 +85,7 @@ function RockgroveCommon.handle(alerts, result, abilityId, unitTag, sourceUnitNa
         if not IsUnitPlayer(unitTag) then return false end
         local dur = select(1, GetAbilityCastInfo(QUICK_STRIKE)) or 0
         if dur <= 0 then dur = FALL_MELEE end
-        caAlertCast(abilityId, sourceUnitName, dur, COL_MELEE)
+        CA.alertCast(abilityId, sourceUnitName, dur, COL_MELEE)
         return true
     end
 
@@ -100,8 +96,8 @@ function RockgroveCommon.handle(alerts, result, abilityId, unitTag, sourceUnitNa
         local dur = select(1, GetAbilityCastInfo(SCALDING)) or 0
         if dur <= 0 then dur = FALL_MELEE end
         alerts:showAction("Dodge! (Scalding)")
-        caAlertCast(abilityId, sourceUnitName, dur, COL_DOT)
-        caAlert(nil, "Scalding", 0xCC0000D9, SOUNDS.DUEL_START, 9000)
+        CA.alertCast(abilityId, sourceUnitName, dur, COL_DOT)
+        CA.alert(nil, "Scalding", 0xCC0000D9, SOUNDS.DUEL_START, 9000)
         PlaySound(SOUNDS.DUEL_START)
         return true
     end
@@ -110,7 +106,7 @@ function RockgroveCommon.handle(alerts, result, abilityId, unitTag, sourceUnitNa
     if ASSAULT_IDS[abilityId] then
         local dur = select(1, GetAbilityCastInfo(abilityId)) or 0
         if dur <= 0 then dur = FALL_ASSAULT end
-        caCastAlertsStart(abilityId, "Hasted Assault (Barbarian)",
+        CA.castAlertsStart(abilityId, "Hasted Assault (Barbarian)",
             dur, 4000, COL_ASSAULT, ACT_ASSAULT)
         PlaySound(SOUNDS.DUEL_START)
         return true
@@ -118,7 +114,7 @@ function RockgroveCommon.handle(alerts, result, abilityId, unitTag, sourceUnitNa
 
     -- ── Torchcaster: Prime Meteor (10 s to kill or wipe) ─────────────────
     if abilityId == PRIME_METEOR then
-        caCastAlertsStart(abilityId, "Prime Meteor",
+        CA.castAlertsStart(abilityId, "Prime Meteor",
             13500, 13500, COL_ASSAULT, ACT_METEOR)
         PlaySound(SOUNDS.DUEL_START)
         return true
@@ -128,7 +124,7 @@ function RockgroveCommon.handle(alerts, result, abilityId, unitTag, sourceUnitNa
     if abilityId == MOLTEN_RAIN then
         local dur = select(1, GetAbilityCastInfo(MOLTEN_RAIN)) or 0
         if dur <= 0 then dur = FALL_MOLTEN end
-        caAlertCast(abilityId, sourceUnitName, dur, COL_FIRE)
+        CA.alertCast(abilityId, sourceUnitName, dur, COL_FIRE)
         return true
     end
 

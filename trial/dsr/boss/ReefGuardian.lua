@@ -40,11 +40,7 @@ local ACID_INTERVAL        = 1750     -- ms: acid pool spacing
 local ACID_COUNT           = 5        -- number of acid pools per Reflux
 local SHELTERED_WINDOW     = 3        -- s: keep "CLEANSED" label brief
 
--- ── CombatAlerts helpers ──────────────────────────────────────────────────
-local function caAlertCast(...)        if CombatAlerts then return CombatAlerts.AlertCast(...)        end end
-local function caAlert(...)            if CombatAlerts then return CombatAlerts.Alert(...)             end end
-local function caCastAlertsStart(...)  if CombatAlerts then return CombatAlerts.CastAlertsStart(...)  end end
-local function caCastAlertsStop(id)    if CombatAlerts and id then CombatAlerts.CastAlertsStop(id) end end
+local CA = require("lib.CA")
 
 -- ── CA colour palettes ────────────────────────────────────────────────────
 local COL_HEAVY   = { -2, 0, false, { 1.0, 0.35, 0.1, 0.4 }, { 1.0, 0.35, 0.1, 0.8 } }
@@ -86,7 +82,7 @@ function ReefGuardian:reset(forced)
     self.reefPortals            = {}
     self.reefNum                = 0
     self.acidicVulnLast         = 0
-    caCastAlertsStop(self.acidRefluxBarId)
+    CA.castAlertsStop(self.acidRefluxBarId)
     self.acidRefluxBarId        = nil
 end
 
@@ -112,7 +108,7 @@ function ReefGuardian:onCombatEvent(context, alerts, result, abilityId,
             local idx = self.reefNum
             self.reefPortals[idx] = { openTime = GetGameTimeMilliseconds() / 1000,
                                       wipeActive = false }
-            caAlert(nil, "Reef " .. idx .. ": OPEN — 60 s!",
+            CA.alert(nil, "Reef " .. idx .. ": OPEN — 60 s!",
                 0xFFD700D9, SOUNDS.DUEL_START, 5000)
             PlaySound(SOUNDS.DUEL_START)
             return
@@ -120,14 +116,14 @@ function ReefGuardian:onCombatEvent(context, alerts, result, abilityId,
 
         -- ── Acid Reflux channel ───────────────────────────────────────────
         if abilityId == ACID_REFLUX then
-            caCastAlertsStop(self.acidRefluxBarId)
-            self.acidRefluxBarId = caCastAlertsStart(
+            CA.castAlertsStop(self.acidRefluxBarId)
+            self.acidRefluxBarId = CA.castAlertsStart(
                 abilityId, "Acid Reflux", 10000, 10000, COL_ACID, ACT_ACID)
             -- Chain 5 × acid pool alerts, each 1750 ms apart
             for i = 1, ACID_COUNT do
                 local delay = i * ACID_INTERVAL
                 zo_callLater(function()
-                    caAlert(nil,
+                    CA.alert(nil,
                         "Acid pool " .. i .. "/" .. ACID_COUNT .. " — MOVE!",
                         0x44DD22D9, SOUNDS.CHAMPION_POINTS_COMMITTED, 1500)
                 end, delay)
@@ -137,7 +133,7 @@ function ReefGuardian:onCombatEvent(context, alerts, result, abilityId,
 
         -- ── Replication ───────────────────────────────────────────────────
         if abilityId == REPLICATION then
-            caAlert(nil, "Replication!", 0xFF8800D9,
+            CA.alert(nil, "Replication!", 0xFF8800D9,
                 SOUNDS.CHAMPION_POINTS_COMMITTED, 3000)
             return
         end
@@ -151,7 +147,7 @@ function ReefGuardian:onCombatEvent(context, alerts, result, abilityId,
             if not IsUnitPlayer(unitTag) then return end
             local dur = select(1, GetAbilityCastInfo(abilityId)) or 0
             if dur <= 0 then dur = 1500 end
-            caAlertCast(abilityId, sourceUnitName, dur, COL_HEAVY)
+            CA.alertCast(abilityId, sourceUnitName, dur, COL_HEAVY)
             return
         end
     end
@@ -231,7 +227,7 @@ function ReefGuardian:onEffectChanged(context, alerts, changeType, abilityId,
     if abilityId == KING_ORGNUM_FIRE_DBF then
         if changeType == EFFECT_RESULT_GAINED
            and AreUnitsEqual("player", unitTag) then
-            caAlert(nil, "|cFF5500King Orgnum fire — MOVE!|r",
+            CA.alert(nil, "|cFF5500King Orgnum fire — MOVE!|r",
                 0xFF5500D9, SOUNDS.DUEL_START, 5000)
         end
         return

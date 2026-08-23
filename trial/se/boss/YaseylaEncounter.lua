@@ -1,12 +1,7 @@
 local Location = require("core.Location")
 local Timer    = require("lib.Timer")
 
--- ── CombatAlerts helpers ──────────────────────────────────────────────────
-local function caAlertCast(...) if CombatAlerts then return CombatAlerts.AlertCast(...) end end
-local function caAlert(...)     if CombatAlerts then return CombatAlerts.Alert(...)     end end
-local function caCastAlertsStop(id)
-    if CombatAlerts and id then CombatAlerts.CastAlertsStop(id) end
-end
+local CA = require("lib.CA")
 
 -- ── Ability IDs (from SanitysEdgeHelper data) ────────────────────────────
 local DEFLECT         = 184823        -- Shrapnel — BEGIN + hitValue>1000 → STACK
@@ -59,7 +54,7 @@ function YaseylaEncounter:reset()
     self.firstFirebomb = true
     self.firstFrost    = true
     self.shrapnelCount = 0
-    for _, cid in pairs(self.alertList) do caCastAlertsStop(cid) end
+    for _, cid in pairs(self.alertList) do CA.castAlertsStop(cid) end
     self.alertList = {}
 end
 
@@ -75,7 +70,7 @@ function YaseylaEncounter:onCombatEvent(context, alerts,
         alerts:showAction("Fire Bombs → " .. target)
         local dur = select(1, GetAbilityCastInfo(abilityId)) or 0
         if dur <= 0 then dur = 2000 end
-        local cid = caAlertCast(abilityId, "Fire Bombs!", dur, COL_FIRE)
+        local cid = CA.alertCast(abilityId, "Fire Bombs!", dur, COL_FIRE)
         if cid and unitId then self.alertList[unitId] = cid end
 
     elseif abilityId == CHAIN_PULL and result == ACTION_RESULT_BEGIN then
@@ -88,7 +83,7 @@ function YaseylaEncounter:onCombatEvent(context, alerts,
         self.frostTimer:reset(FROST_CD)
         if IsUnitPlayer(unitTag) then
             alerts:showAction("Frost Bomb on you! Drop it!")
-            caAlert(nil, "FROST BOMB — drop!", 0x99CCFFFF, SOUNDS.NONE, 3000)
+            CA.alert(nil, "FROST BOMB — drop!", 0x99CCFFFF, SOUNDS.NONE, 3000)
         elseif unitName and unitName ~= "" then
             alerts:showAction("Frost Bomb → " .. unitName)
         end
@@ -101,13 +96,13 @@ function YaseylaEncounter:onCombatEvent(context, alerts,
         -- hitValue not available directly; Shrapnel fires at ACTION_RESULT_BEGIN
         self.shrapnelCount = self.shrapnelCount + 1
         alerts:showAction("SHRAPNEL! Stack! (" .. self.shrapnelCount .. ")")
-        caAlert(nil, "STACK!", 0xFF0033FF, SOUNDS.NONE, 3000)
+        CA.alert(nil, "STACK!", 0xFF0033FF, SOUNDS.NONE, 3000)
 
     elseif abilityId == WAMASU_CHARGE and result == ACTION_RESULT_BEGIN then
         local target = (unitName and unitName ~= "") and unitName or "?"
         local dur = select(1, GetAbilityCastInfo(abilityId)) or 0
         if dur <= 0 then dur = 2000 end
-        caAlertCast(abilityId, "Charge → " .. target, dur, COL_FIRE)
+        CA.alertCast(abilityId, "Charge → " .. target, dur, COL_FIRE)
     end
 end
 

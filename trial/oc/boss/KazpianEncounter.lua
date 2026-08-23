@@ -1,12 +1,7 @@
 local Location = require("core.Location")
 local Timer    = require("lib.Timer")
 
--- ── CombatAlerts helpers ──────────────────────────────────────────────────
-local function caAlert(...)     if CombatAlerts then CombatAlerts.Alert(...)     end end
-local function caAlertCast(...) if CombatAlerts then return CombatAlerts.AlertCast(...) end end
-local function caAlertBorder(on, dur, col)
-    if CombatAlerts then CombatAlerts.AlertBorder(on, dur, col) end
-end
+local CA = require("lib.CA")
 
 -- ── Ability IDs (from OsseinCageHelper) ──────────────────────────────────
 -- Chains
@@ -78,19 +73,19 @@ function KazpianEncounter:onCombatEvent(context, alerts,
         if abilityId == VILE_LEAP then
             local dur = select(1, GetAbilityCastInfo(abilityId)) or 0
             if dur <= 0 then dur = 2000 end
-            caAlertCast(abilityId, "Vile Leap!", dur, COL_LEAP)
+            CA.alertCast(abilityId, "Vile Leap!", dur, COL_LEAP)
             alerts:showAction("Vile Leap!")
 
         elseif abilityId == SEETHING_LEAP then
             local dur = select(1, GetAbilityCastInfo(abilityId)) or 0
             if dur <= 0 then dur = 2000 end
-            caAlertCast(abilityId, "VILE LEAP (enrage)!", dur, COL_LEAP_RED)
+            CA.alertCast(abilityId, "VILE LEAP (enrage)!", dur, COL_LEAP_RED)
             alerts:showAction("Seething Vile Leap!")
 
         elseif abilityId == AGONIZER_BOMBS then
             if self.bombDebounce:isExpired() then
                 self.bombDebounce:reset(5.0)
-                caAlert(nil, "Agonizer Bombs!", 0xFF8844FF, SOUNDS.NONE, 3000)
+                CA.alert(nil, "Agonizer Bombs!", 0xFF8844FF, SOUNDS.NONE, 3000)
                 alerts:showAction("Agonizer Bombs!")
             end
 
@@ -99,33 +94,33 @@ function KazpianEncounter:onCombatEvent(context, alerts,
             alerts:showAction("Biting Blaze → " .. target)
 
         elseif abilityId == GIANT_CONES then
-            caAlert(nil, "Dodge cones!", 0xFFFF44FF, SOUNDS.NONE, 2500)
+            CA.alert(nil, "Dodge cones!", 0xFFFF44FF, SOUNDS.NONE, 2500)
 
         elseif abilityId == GIANT_PULSE_1 or abilityId == GIANT_PULSE_2 then
             local dur = select(1, GetAbilityCastInfo(abilityId)) or 0
             if dur <= 0 then dur = 2000 end
-            caAlertCast(abilityId, "Giant Sword!", dur, COL_SLAM)
+            CA.alertCast(abilityId, "Giant Sword!", dur, COL_SLAM)
 
         elseif abilityId == SHOCK_SPEAR then
-            caAlert(nil, "Dodge spear!", 0x44CCFFFF, SOUNDS.NONE, 2500)
+            CA.alert(nil, "Dodge spear!", 0x44CCFFFF, SOUNDS.NONE, 2500)
 
         elseif abilityId == STORM_SLAM then
             local dur = select(1, GetAbilityCastInfo(abilityId)) or 0
             if dur <= 0 then dur = 2000 end
-            caAlertCast(abilityId, "DODGE — Storm Slam!", dur, COL_SLAM)
+            CA.alertCast(abilityId, "DODGE — Storm Slam!", dur, COL_SLAM)
             alerts:showAction("Molag Kena Storm Slam — DODGE!")
 
         elseif abilityId == STORM_SURGE then
             local dur = select(1, GetAbilityCastInfo(abilityId)) or 0
             if dur <= 0 then dur = 2000 end
-            caAlertCast(abilityId, "Storm Surge!", dur, COL_SURGE)
+            CA.alertCast(abilityId, "Storm Surge!", dur, COL_SURGE)
 
         elseif abilityId == HEAVY_SHOCK and IsUnitPlayer(unitTag) then
-            caAlert(nil, "Heavy Shock on YOU!", 0x44CCFFFF, SOUNDS.NONE, 2500)
+            CA.alert(nil, "Heavy Shock on YOU!", 0x44CCFFFF, SOUNDS.NONE, 2500)
             alerts:showAction("Molag Kena Heavy Shock on you!")
 
         elseif abilityId == IMMOLATING_SPHRE and IsUnitPlayer(unitTag) then
-            caAlert(nil, "Immolating Sphere!", 0xFF6600FF, SOUNDS.NONE, 3000)
+            CA.alert(nil, "Immolating Sphere!", 0xFF6600FF, SOUNDS.NONE, 3000)
             alerts:showAction("Immolating Sphere on you!")
 
         elseif abilityId == VILE_TELEPORT then
@@ -142,24 +137,24 @@ function KazpianEncounter:onCombatEvent(context, alerts,
                 self.chainedB = name
                 alerts:showAction("Chains: " .. self.chainedA .. " ↔ " .. self.chainedB)
                 if self.chainedA == "YOU" or self.chainedB == "YOU" then
-                    caAlert(nil, "CHAINED — pull apart!", 0xFF4444FF, SOUNDS.NONE, 4000)
+                    CA.alert(nil, "CHAINED — pull apart!", 0xFF4444FF, SOUNDS.NONE, 4000)
                 end
                 self.chainedA = nil
                 self.chainedB = nil
             end
 
         elseif abilityId == STRICKEN and IsUnitPlayer(unitTag) then
-            caAlert(nil, "Stricken on YOU!", 0xFF4444FF, SOUNDS.NONE, 4000)
+            CA.alert(nil, "Stricken on YOU!", 0xFF4444FF, SOUNDS.NONE, 4000)
             alerts:showAction("Stricken — tank mechanic!")
 
         elseif abilityId == FIREBOMB_DEBUF and IsUnitPlayer(unitTag) then
-            caAlert(nil, "Firebomb on YOU!", 0xFF6600FF, SOUNDS.NONE, 3000)
+            CA.alert(nil, "Firebomb on YOU!", 0xFF6600FF, SOUNDS.NONE, 3000)
             alerts:showAction("Firebomb — spread!")
         end
 
     elseif result == ACTION_RESULT_EFFECT_GAINED and IsUnitPlayer(unitTag) then
         if abilityId == TORTUOUS_CHAINS then
-            caAlertBorder(true, 5000, "red")
+            CA.border(true, 5000, "red")
             alerts:showAction("Tortuous Chains — run from Kazpian!")
         end
 

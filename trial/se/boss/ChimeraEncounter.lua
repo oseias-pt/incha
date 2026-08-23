@@ -1,12 +1,7 @@
 local Location = require("core.Location")
 local Timer    = require("lib.Timer")
 
--- ── CombatAlerts helpers ──────────────────────────────────────────────────
-local function caAlertCast(...) if CombatAlerts then return CombatAlerts.AlertCast(...) end end
-local function caAlert(...)     if CombatAlerts then return CombatAlerts.Alert(...)     end end
-local function caCastAlertsStop(id)
-    if CombatAlerts and id then CombatAlerts.CastAlertsStop(id) end
-end
+local CA = require("lib.CA")
 
 -- ── Ability IDs ───────────────────────────────────────────────────────────
 local VIVIFY           = 186000   -- Chimera spawns (EFFECT_FADED)
@@ -53,7 +48,7 @@ function ChimeraEncounter:reset()
     self.chainTimer:clear()
     self.chimeraActive = false
     self.firstChain    = true
-    for _, cid in pairs(self.alertList) do caCastAlertsStop(cid) end
+    for _, cid in pairs(self.alertList) do CA.castAlertsStop(cid) end
     self.alertList = {}
 end
 
@@ -80,35 +75,35 @@ function ChimeraEncounter:onCombatEvent(context, alerts,
         self.firstChain = false
         self.chainTimer:reset(CHAIN_CD)
         alerts:showAction("Chain Lightning!")
-        caAlert(nil, "CHAIN LIGHTNING", 0xFFD666FF, SOUNDS.NONE, 2500)
+        CA.alert(nil, "CHAIN LIGHTNING", 0xFFD666FF, SOUNDS.NONE, 2500)
 
     elseif abilityId == CHIMERA_BOLT and result == ACTION_RESULT_BEGIN then
         local target = (unitName and unitName ~= "") and unitName or "?"
         alerts:showAction("Lightning Bolt → " .. target)
         local dur = select(1, GetAbilityCastInfo(abilityId)) or 0
         if dur <= 0 then dur = 2000 end
-        local cid = caAlertCast(abilityId, "Bolt!", dur, COL_LIGHTNING)
+        local cid = CA.alertCast(abilityId, "Bolt!", dur, COL_LIGHTNING)
         if cid and unitId then self.alertList[unitId] = cid end
 
     elseif abilityId == GRYPHON_WIND_LANCE and result == ACTION_RESULT_BEGIN then
         alerts:showAction("Wind Lance! Move!")
-        caAlert(nil, "WIND LANCE", 0xD1F1F9FF, SOUNDS.NONE, 2000)
+        CA.alert(nil, "WIND LANCE", 0xD1F1F9FF, SOUNDS.NONE, 2000)
 
     -- ── Portal mantle buffs (player assigned to a portal) ─────────────────
     elseif abilityId == MANTLE_WAMASU and result == ACTION_RESULT_EFFECT_GAINED
            and IsUnitPlayer(unitTag) then
         alerts:showAction("Wamasu Portal (Green)!")
-        caAlert(nil, "WAMASU PORTAL", 0x02FF00FF, SOUNDS.NONE, 4000)
+        CA.alert(nil, "WAMASU PORTAL", 0x02FF00FF, SOUNDS.NONE, 4000)
 
     elseif abilityId == MANTLE_LION and result == ACTION_RESULT_EFFECT_GAINED
            and IsUnitPlayer(unitTag) then
         alerts:showAction("Lion Portal (Red)!")
-        caAlert(nil, "LION PORTAL", 0xFF0000FF, SOUNDS.NONE, 4000)
+        CA.alert(nil, "LION PORTAL", 0xFF0000FF, SOUNDS.NONE, 4000)
 
     elseif abilityId == MANTLE_GRYPHON and result == ACTION_RESULT_EFFECT_GAINED
            and IsUnitPlayer(unitTag) then
         alerts:showAction("Gryphon Portal (Blue)!")
-        caAlert(nil, "GRYPHON PORTAL", 0x0044FFFF, SOUNDS.NONE, 4000)
+        CA.alert(nil, "GRYPHON PORTAL", 0x0044FFFF, SOUNDS.NONE, 4000)
     end
 end
 

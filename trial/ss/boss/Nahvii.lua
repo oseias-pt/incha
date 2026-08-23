@@ -39,19 +39,7 @@ local PORTAL_INTERRUPT = 121436
 local WIPE_FINISHED    = 121216
 local NEGATE_FIELD     = 121411
 
--- ── CombatAlerts helpers ───────────────────────────────────────────────────
-local function caAlert(...)
-    if CombatAlerts then return CombatAlerts.Alert(...) end
-end
-local function caAlertCast(...)
-    if CombatAlerts then return CombatAlerts.AlertCast(...) end
-end
-local function caCastAlertsStart(...)
-    if CombatAlerts then return CombatAlerts.CastAlertsStart(...) end
-end
-local function caCastAlertsStop(id)
-    if CombatAlerts and id then CombatAlerts.CastAlertsStop(id) end
-end
+local CA = require("lib.CA")
 
 -- ── CA colour palettes ─────────────────────────────────────────────────────
 local COL_SLAM   = { -2, 0, false, { 1.0, 0.27, 0.0, 0.4 }, { 1.0, 0.27, 0.0, 0.8 } }
@@ -89,9 +77,9 @@ Nahvii.thrashBarId      = nil
 
 -- ── Lifecycle ─────────────────────────────────────────────────────────────
 function Nahvii:reset(forced)
-    for _, cid in pairs(self.alertList) do caCastAlertsStop(cid) end
+    for _, cid in pairs(self.alertList) do CA.castAlertsStop(cid) end
     self.alertList        = {}
-    caCastAlertsStop(self.thrashBarId)
+    CA.castAlertsStop(self.thrashBarId)
     self.thrashBarId      = nil
     self.meteorTargets    = {}
     self.meteorDisplayEnd = 0
@@ -119,7 +107,7 @@ function Nahvii:onCombatEvent(context, alerts, result, abilityId,
 
     -- alertList cleanup on unit death
     if result == ACTION_RESULT_DIED then
-        if unitId then caCastAlertsStop(self.alertList[unitId]); self.alertList[unitId] = nil end
+        if unitId then CA.castAlertsStop(self.alertList[unitId]); self.alertList[unitId] = nil end
         return
     end
 
@@ -141,7 +129,7 @@ function Nahvii:onCombatEvent(context, alerts, result, abilityId,
 
             if AreUnitsEqual("player", unitTag) then
                 alerts:showAction("YOU → Meteor!")
-                caAlert(nil, "Meteor on YOU!", 0xFF2200FF, SOUNDS.NONE, 4000)
+                CA.alert(nil, "Meteor on YOU!", 0xFF2200FF, SOUNDS.NONE, 4000)
             end
         end
         return
@@ -185,7 +173,7 @@ function Nahvii:onCombatEvent(context, alerts, result, abilityId,
             alerts:showAction("Block! (Slam)")
             local dur = select(1, GetAbilityCastInfo(POWERFUL_SLAM)) or 0
             if dur <= 0 then dur = 2000 end
-            local cid = caAlertCast(abilityId, sourceUnitName, dur, COL_SLAM)
+            local cid = CA.alertCast(abilityId, sourceUnitName, dur, COL_SLAM)
             if cid and sourceUnitId then self.alertList[sourceUnitId] = cid end
         end
         return
@@ -197,7 +185,7 @@ function Nahvii:onCombatEvent(context, alerts, result, abilityId,
             alerts:showAction("Block! (Stonefist)")
             local dur = select(1, GetAbilityCastInfo(STONEFIST)) or 0
             if dur <= 0 then dur = 2000 end
-            local cid = caAlertCast(abilityId, sourceUnitName, dur, COL_STONE)
+            local cid = CA.alertCast(abilityId, sourceUnitName, dur, COL_STONE)
             if cid and sourceUnitId then self.alertList[sourceUnitId] = cid end
         end
         return
@@ -207,7 +195,7 @@ function Nahvii:onCombatEvent(context, alerts, result, abilityId,
     if (abilityId == SWEEP_RIGHT or abilityId == SWEEP_LEFT) and result == ACTION_RESULT_BEGIN then
         local dir = (abilityId == SWEEP_LEFT) and "<<< Sweep Breath <" or "> Sweep Breath >>>"
         alerts:showAction(dir)
-        caAlert(nil, dir, 0xFF8833FF, SOUNDS.NONE, 2000)
+        CA.alert(nil, dir, 0xFF8833FF, SOUNDS.NONE, 2000)
         return
     end
 
@@ -215,8 +203,8 @@ function Nahvii:onCombatEvent(context, alerts, result, abilityId,
     if abilityId == THRASH and result == ACTION_RESULT_BEGIN then
         local dur = select(1, GetAbilityCastInfo(THRASH)) or 0
         if dur <= 0 then dur = 2500 end
-        caCastAlertsStop(self.thrashBarId)
-        self.thrashBarId = caCastAlertsStart(
+        CA.castAlertsStop(self.thrashBarId)
+        self.thrashBarId = CA.castAlertsStart(
             abilityId, "Thrash",
             dur, dur,
             { 0.9, 0.1, 0.1, 0.5 },
@@ -230,7 +218,7 @@ function Nahvii:onCombatEvent(context, alerts, result, abilityId,
     -- ── SoulTear: 2 s banner ──────────────────────────────────────────
     if abilityId == SOUL_TEAR and result == ACTION_RESULT_BEGIN then
         alerts:showAction("SOUL TEAR!")
-        caAlert(nil, "SOUL TEAR!", 0x9966FFFF, SOUNDS.NONE, 2000)
+        CA.alert(nil, "SOUL TEAR!", 0x9966FFFF, SOUNDS.NONE, 2000)
         return
     end
 
@@ -313,7 +301,7 @@ function Nahvii:onCombatEvent(context, alerts, result, abilityId,
     if abilityId == NEGATE_FIELD and result == ACTION_RESULT_BEGIN then
         if IsUnitPlayer(unitTag) and AreUnitsEqual("player", unitTag) then
             alerts:showAction("Dodge! (Negate)")
-            caAlert(nil, "Dodge Negate!", 0x9966FFFF, SOUNDS.NONE, 2500)
+            CA.alert(nil, "Dodge Negate!", 0x9966FFFF, SOUNDS.NONE, 2500)
         end
         return
     end

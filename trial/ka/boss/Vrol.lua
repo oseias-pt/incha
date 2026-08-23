@@ -1,15 +1,7 @@
 local Location = require("core.Location")
 local Timer    = require("lib.Timer")
 
--- ── CombatAlerts helpers ──────────────────────────────────────────────────
-local function caAlertCast(...) if CombatAlerts then return CombatAlerts.AlertCast(...) end end
-local function caAlert(...)     if CombatAlerts then return CombatAlerts.Alert(...)     end end
-local function caCastAlertsStart(...)
-    if CombatAlerts then return CombatAlerts.CastAlertsStart(...) end
-end
-local function caCastAlertsStop(id)
-    if CombatAlerts and id then CombatAlerts.CastAlertsStop(id) end
-end
+local CA = require("lib.CA")
 
 -- ── Ability IDs (from BSCHTKA_Vrol.lua) ───────────────────────────────────
 local VROL_PORTAL_CAST  = 133994  -- Portal cast BEGIN → reset portal timer + alert
@@ -63,9 +55,9 @@ function Vrol:reset(forced)
     self.fogHitCount = 0
 
     -- Stop any lingering cast bars from the previous pull.
-    for _, cid in pairs(self.alertList) do caCastAlertsStop(cid) end
+    for _, cid in pairs(self.alertList) do CA.castAlertsStop(cid) end
     self.alertList = {}
-    caCastAlertsStop(self.portalKillBarId)
+    CA.castAlertsStop(self.portalKillBarId)
     self.portalKillBarId   = nil
     self.portalKillExpires = 0
 end
@@ -79,11 +71,11 @@ function Vrol:onCombatEvent(context, alerts, result, abilityId,
     -- Stop any tracked CA cast bars when the associated unit dies.
     if result == ACTION_RESULT_DIED then
         if unitId then
-            caCastAlertsStop(self.alertList[unitId])
+            CA.castAlertsStop(self.alertList[unitId])
             self.alertList[unitId] = nil
         end
         if sourceUnitId then
-            caCastAlertsStop(self.alertList[sourceUnitId])
+            CA.castAlertsStop(self.alertList[sourceUnitId])
             self.alertList[sourceUnitId] = nil
         end
         return
@@ -93,7 +85,7 @@ function Vrol:onCombatEvent(context, alerts, result, abilityId,
         self.portalTimer:reset()
         alerts:showAction("KILL Conjurer!")
         -- Use portal kill-time ability ID for the icon (matches BSCHTKA).
-        caAlertCast(VROL_PORTAL_KTIME, sourceUnitName, 3000,
+        CA.alertCast(VROL_PORTAL_KTIME, sourceUnitName, 3000,
             { -3, 0, false, { 0.7, 0.2, 0.9, 0.4 }, { 0.7, 0.2, 0.9, 0.8 } })
 
     elseif abilityId == VROL_FOG_CAST and result == ACTION_RESULT_BEGIN then
@@ -101,7 +93,7 @@ function Vrol:onCombatEvent(context, alerts, result, abilityId,
         self.fogEndTime  = GetGameTimeMilliseconds() + FOG_DURATION * 1000
         self.fogHitCount = 0
         alerts:showAction("Dodge/Move! (Fog)")
-        local cid = caAlertCast(abilityId, sourceUnitName, 1000,
+        local cid = CA.alertCast(abilityId, sourceUnitName, 1000,
             { -3, 0, false, { 0.0, 0.0, 1, 0.4 }, { 0.1, 0.1, 1, 0.8 } })
         if cid and unitId then self.alertList[unitId] = cid end
 
@@ -118,7 +110,7 @@ function Vrol:onCombatEvent(context, alerts, result, abilityId,
     elseif abilityId == VROL_HARPOON and result == ACTION_RESULT_BEGIN then
         self.conduitTimer:reset()
         alerts:showAction("Kill Harpoon! (~16 s)")
-        local cid = caCastAlertsStart(abilityId, GetAbilityName(abilityId),
+        local cid = CA.castAlertsStart(abilityId, GetAbilityName(abilityId),
             16000, 16000,
             { 1, 0.7, 0, 0.5 },
             { 16000, "Harpoon!", 0.8, 0, 0, 0.9, SOUNDS.NONE })
@@ -126,7 +118,7 @@ function Vrol:onCombatEvent(context, alerts, result, abilityId,
 
     elseif abilityId == VROL_APOTHECARY and result == ACTION_RESULT_BEGIN then
         alerts:showAction("Interrupt Apothecary!")
-        caAlert(nil, "Interrupt Apothecary!", 0x0099FFFF,
+        CA.alert(nil, "Interrupt Apothecary!", 0x0099FFFF,
             SOUNDS.CHAMPION_POINTS_COMMITTED, 2000)
     end
 end
@@ -144,7 +136,7 @@ function Vrol:onEffectChanged(context, alerts, changeType, abilityId, unitTag, u
         self.portalKillExpires = GetGameTimeMilliseconds() + 20000
         alerts:showAction("KILL Conjurer! (20 s)")
         -- Phase 4.2: CA cast bar for the full 20 s portal window.
-        self.portalKillBarId = caCastAlertsStart(
+        self.portalKillBarId = CA.castAlertsStart(
             abilityId, GetAbilityName(abilityId),
             20000, 20000,
             { 1, 0.7, 0, 0.5 },
@@ -152,15 +144,15 @@ function Vrol:onEffectChanged(context, alerts, changeType, abilityId, unitTag, u
 
     elseif changeType == EFFECT_RESULT_FADED then
         -- Stop the cast bar, then show pass/fail result.
-        caCastAlertsStop(self.portalKillBarId)
+        CA.castAlertsStop(self.portalKillBarId)
         self.portalKillBarId = nil
 
         if GetGameTimeMilliseconds() < self.portalKillExpires then
             alerts:showAction("Portal OK!")
-            caAlert(nil, "Portal OK!", 0x119911FF, SOUNDS.DUEL_WON, 2000)
+            CA.alert(nil, "Portal OK!", 0x119911FF, SOUNDS.DUEL_WON, 2000)
         else
             alerts:showAction("Portal Failed!")
-            caAlert(nil, "Portal Failed!", 0x991111FF, SOUNDS.DUEL_FORFEIT, 2000)
+            CA.alert(nil, "Portal Failed!", 0x991111FF, SOUNDS.DUEL_FORFEIT, 2000)
         end
         self.portalKillExpires = 0
     end

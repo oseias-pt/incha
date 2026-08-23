@@ -1,12 +1,7 @@
 local Location = require("core.Location")
 local Timer    = require("lib.Timer")
 
--- ── CombatAlerts helpers ──────────────────────────────────────────────────
-local function caAlertCast(...) if CombatAlerts then return CombatAlerts.AlertCast(...) end end
-local function caAlert(...)     if CombatAlerts then return CombatAlerts.Alert(...)     end end
-local function caCastAlertsStop(id)
-    if CombatAlerts and id then CombatAlerts.CastAlertsStop(id) end
-end
+local CA = require("lib.CA")
 
 -- ── Ability IDs (from AsylumTracker / AsylumPriorityTarget) ───────────────
 -- Olms
@@ -86,7 +81,7 @@ function OlmsEncounter:reset()
     self.felmsSpawnTime     = nil
     self.protectorUp        = false
     self.nextJumpThreshold  = 1
-    for _, cid in pairs(self.alertList) do caCastAlertsStop(cid) end
+    for _, cid in pairs(self.alertList) do CA.castAlertsStop(cid) end
     self.alertList = {}
 end
 
@@ -110,14 +105,14 @@ function OlmsEncounter:onCombatEvent(context, alerts,
     -- ── Olms ──────────────────────────────────────────────────────────────
     if abilityId == OLMS_STORM_THE_HEAVENS and result == ACTION_RESULT_BEGIN then
         alerts:showAction("Kite! (Storm the Heavens)")
-        caAlert(nil, "KITE!", 0xFF4400FF, SOUNDS.NONE, 3000)
+        CA.alert(nil, "KITE!", 0xFF4400FF, SOUNDS.NONE, 3000)
         self.stormTimer:reset()
 
     elseif abilityId == OLMS_SCALDING_ROAR and result == ACTION_RESULT_BEGIN then
         alerts:showAction("Steam Breath! Move!")
         local dur = select(1, GetAbilityCastInfo(OLMS_SCALDING_ROAR)) or 0
         if dur <= 0 then dur = 2000 end
-        local cid = caAlertCast(abilityId, "Steam Breath!", dur,
+        local cid = CA.alertCast(abilityId, "Steam Breath!", dur,
             { -3, 0, false, { 0.8, 0.4, 0, 0.4 }, { 0.8, 0.4, 0, 0.8 } })
         if cid and unitId then self.alertList[unitId] = cid end
         self.steamTimer:reset()
@@ -150,14 +145,14 @@ function OlmsEncounter:onCombatEvent(context, alerts,
         alerts:showAction("Blast! → " .. target)
         local dur = select(1, GetAbilityCastInfo(LLOTHIS_DEFILING_BLAST)) or 0
         if dur <= 0 then dur = 1500 end
-        local cid = caAlertCast(abilityId, "Blast → " .. target, dur,
+        local cid = CA.alertCast(abilityId, "Blast → " .. target, dur,
             { -3, 0, false, { 0.6, 0, 0.8, 0.4 }, { 0.6, 0, 0.8, 0.8 } })
         if cid and unitId then self.alertList[unitId] = cid end
         self.blastTimer:reset()
 
     elseif abilityId == LLOTHIS_OPPRESSIVE_BOLTS and result == ACTION_RESULT_BEGIN then
         alerts:showAction("Interrupt Llothis!")
-        caAlert(nil, "Interrupt!", 0xFF0000FF, SOUNDS.NONE, 2000)
+        CA.alert(nil, "Interrupt!", 0xFF0000FF, SOUNDS.NONE, 2000)
         self.boltsTimer:reset()
 
     -- ── Felms: spawn detection ────────────────────────────────────────────
@@ -173,7 +168,7 @@ function OlmsEncounter:onCombatEvent(context, alerts,
         alerts:showAction("Strike! → " .. target)
         local dur = select(1, GetAbilityCastInfo(FELMS_TELEPORT_STRIKE)) or 0
         if dur <= 0 then dur = 1000 end
-        local cid = caAlertCast(abilityId, "Strike → " .. target, dur,
+        local cid = CA.alertCast(abilityId, "Strike → " .. target, dur,
             { -3, 0, false, { 0, 0.6, 0.8, 0.4 }, { 0, 0.6, 0.8, 0.8 } })
         if cid and unitId then self.alertList[unitId] = cid end
         self.jumpTimer:reset()
@@ -215,7 +210,7 @@ function OlmsEncounter:onEffectChanged(context, alerts,
         if changeType == EFFECT_RESULT_GAINED then
             self.protectorUp = true
             alerts:showAction("Kill the Protector!")
-            caAlert(nil, "PROTECTOR ACTIVE", 0xFFCC00FF, SOUNDS.NONE, 4000)
+            CA.alert(nil, "PROTECTOR ACTIVE", 0xFFCC00FF, SOUNDS.NONE, 4000)
         elseif changeType == EFFECT_RESULT_FADED then
             self.protectorUp = false
             alerts:showAction("Shield down!")
