@@ -1,7 +1,7 @@
 local Trial   = require("core.Trial")
 local Panel   = require("ui.Panel")
 
-local CombatHandler = require("trial.ka.CombatHandler")
+local CombatHandler = require("core.CombatHandler")
 local Yandir   = require("trial.ka.boss.Yandir")
 local Vrol     = require("trial.ka.boss.Vrol")
 local Falgravn = require("trial.ka.boss.Falgravn")

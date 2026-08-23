@@ -1,6 +1,9 @@
---- SS combat event / effect delegation module.
+--- Shared combat event / effect delegation module.
 ---
---- Passed as options.onCombatEvent / options.onEffectChanged to Trial.create.
+--- Passed as options.onCombatEvent / options.onEffectChanged to Trial.create
+--- by every trial Factory.  A single copy here replaces the nine identical
+--- per-trial copies that previously lived in trial/xx/CombatHandler.lua.
+---
 --- Each function receives (trial, eventCode, <eso args...>), then delegates
 --- to the currently active boss's handler — if it has one.
 ---
@@ -15,6 +18,9 @@
 ---   abilityType, statusEffectType, unitName, unitId, abilityId, sourceType
 
 local CombatHandler = {}
+
+-- Boss handlers receive a trimmed subset of the raw ESO args to keep their
+-- signatures readable.  Extend if a future boss needs additional fields.
 
 function CombatHandler.onCombatEvent(trial, eventCode,
         result, isError, abilityName, abilityGraphic, hitStatus,

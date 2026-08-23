@@ -1,6 +1,6 @@
 local Trial             = require("core.Trial")
 local Panel             = require("ui.Panel")
-local CombatHandler     = require("trial.lc.CombatHandler")
+local CombatHandler     = require("core.CombatHandler")
 local RyelazEncounter   = require("trial.lc.boss.RyelazEncounter")
 local DarielEncounter   = require("trial.lc.boss.DarielEncounter")
 local OrphicEncounter   = require("trial.lc.boss.OrphicEncounter")

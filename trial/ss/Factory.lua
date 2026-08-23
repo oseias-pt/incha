@@ -1,7 +1,7 @@
 local Trial   = require("core.Trial")
 local Panel   = require("ui.Panel")
 
-local CombatHandler = require("trial.ss.CombatHandler")
+local CombatHandler = require("core.CombatHandler")
 local Lokke  = require("trial.ss.boss.Lokke")
 local Yolna  = require("trial.ss.boss.Yolna")
 local Nahvii = require("trial.ss.boss.Nahvii")

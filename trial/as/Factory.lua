@@ -1,6 +1,6 @@
 local Trial          = require("core.Trial")
 local Panel          = require("ui.Panel")
-local CombatHandler  = require("trial.as.CombatHandler")
+local CombatHandler  = require("core.CombatHandler")
 local OlmsEncounter  = require("trial.as.boss.OlmsEncounter")
 
 local asTrial = Trial.create({

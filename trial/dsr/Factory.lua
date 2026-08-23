@@ -1,7 +1,7 @@
 local Trial  = require("core.Trial")
 local Panel  = require("ui.Panel")
 
-local CombatHandler  = require("trial.dsr.CombatHandler")
+local CombatHandler  = require("core.CombatHandler")
 local Lylanar        = require("trial.dsr.boss.Lylanar")
 local ReefGuardian   = require("trial.dsr.boss.ReefGuardian")
 local Taleria        = require("trial.dsr.boss.Taleria")
