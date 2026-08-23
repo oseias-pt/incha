@@ -119,9 +119,10 @@ local PORTAL_OPEN_DUR  = 75    -- portal stays open ~75 s
 local PORTAL_NEXT_CD   = 46    -- seconds until next portal after close
 
 -- ── CA colour palettes ────────────────────────────────────────────────────
-local COL_SIRO = { -3, 0, false, { 1, 0.27, 0, 0.4 }, { 1, 0.27, 0, 0.8 } }   -- orange (fire)
-local COL_RELE = { -3, 0, false, { 0.2, 0.6, 1, 0.4 }, { 0.2, 0.6, 1, 0.8 } } -- blue (lightning)
-local COL_GALE = { -3, 0, false, { 0, 0.87, 0.87, 0.4 }, { 0, 0.87, 0.87, 0.8 } } -- cyan (frost)
+local COL_SIRO  = { -3, 0, false, { 1, 0.27, 0, 0.4 },    { 1, 0.27, 0, 0.8 } }    -- orange (fire)
+local COL_RELE  = { -3, 0, false, { 0.2, 0.6, 1, 0.4 },   { 0.2, 0.6, 1, 0.8 } }  -- blue (lightning)
+local COL_GALE  = { -3, 0, false, { 0, 0.87, 0.87, 0.4 }, { 0, 0.87, 0.87, 0.8 } } -- cyan (frost)
+local COL_ZMAJA = { -3, 0, false, { 0.6, 0, 0.8, 0.4 },   { 0.6, 0, 0.8, 0.8 } }   -- purple (shadow)
 
 local ZmajaEncounter = {
     id           = 1,
@@ -145,17 +146,21 @@ ZmajaEncounter.releJoltTimer   = Timer.new(RELE_JOLT_CD)
 ZmajaEncounter.galeJumpTimer   = Timer.new(GALE_JUMP_CD)
 ZmajaEncounter.galeBashTimer   = Timer.new(GALE_BASH_CD)
 ZmajaEncounter.galeDonutTimer  = Timer.new(GALE_DONUT_CD)
+-- Portal
+ZmajaEncounter.portalTimer     = Timer.new(PORTAL_OPEN_DUR)  -- open → close countdown
+ZmajaEncounter.portalNextTimer = Timer.new(PORTAL_NEXT_CD)   -- close → next open countdown
 
 -- ── Mini-boss presence ────────────────────────────────────────────────────
 ZmajaEncounter.siroActive = false
 ZmajaEncounter.releActive = false
 ZmajaEncounter.galeActive = false
 
--- ── Portal state (CR-3) ───────────────────────────────────────────────────
-ZmajaEncounter.portalGroup  = 1
-ZmajaEncounter.portalActive = false
-ZmajaEncounter.executePhase = false
-ZmajaEncounter.spearCount   = 0
+-- ── Portal / Z'Maja state ─────────────────────────────────────────────────
+ZmajaEncounter.portalGroup   = 0      -- increments on each PORTAL_OPEN (1, 2, 3…)
+ZmajaEncounter.portalActive  = false
+ZmajaEncounter.executePhase  = false
+ZmajaEncounter.spearCount    = 0
+ZmajaEncounter.coreAlert     = nil    -- "Core out!" / "Core MISSED!" / nil
 
 -- ── CA cast-bar tracking ──────────────────────────────────────────────────
 ZmajaEncounter.alertList = {}
@@ -169,13 +174,16 @@ function ZmajaEncounter:reset()
     self.galeJumpTimer:clear()
     self.galeBashTimer:clear()
     self.galeDonutTimer:clear()
+    self.portalTimer:clear()
+    self.portalNextTimer:clear()
     self.siroActive    = false
     self.releActive    = false
     self.galeActive    = false
-    self.portalGroup   = 1
+    self.portalGroup   = 0
     self.portalActive  = false
     self.executePhase  = false
     self.spearCount    = 0
+    self.coreAlert     = nil
     for _, cid in pairs(self.alertList) do caCastAlertsStop(cid) end
     self.alertList = {}
 end
@@ -331,8 +339,64 @@ function ZmajaEncounter:onCombatEvent(context, alerts,
            and IsUnitPlayer(unitTag) then
         alerts:showAction("Rooted! (Creeper)")
 
-    -- ── CR-3: Z'Maja and portal mechanics (stubs) ─────────────────────────
-    -- (implemented in CR-3)
+    -- ── PORTAL ────────────────────────────────────────────────────────────
+    elseif abilityId == PORTAL_OPEN and result == ACTION_RESULT_BEGIN then
+        self.portalGroup  = self.portalGroup + 1
+        self.portalActive = true
+        self.portalTimer:reset(PORTAL_OPEN_DUR)
+        self.portalNextTimer:clear()
+        alerts:showHeader("Shadow Realm — Group " .. self.portalGroup)
+
+    elseif (abilityId == PORTAL_CLOSE_1 or abilityId == PORTAL_CLOSE_2)
+           and result == ACTION_RESULT_BEGIN then
+        self.portalActive = false
+        self.portalTimer:clear()
+        self.portalNextTimer:reset(PORTAL_NEXT_CD)
+        self.coreAlert = nil
+
+    -- ── Z'MAJA ────────────────────────────────────────────────────────────
+    elseif abilityId == ZMAJA_JUMP and result == ACTION_RESULT_BEGIN then
+        alerts:showAction("Z'Maja jumping!")
+
+    elseif abilityId == ZMAJA_HIDE_JUMP and result == ACTION_RESULT_BEGIN then
+        alerts:showAction("Z'Maja retreating to shadow!")
+
+    elseif (abilityId == CRUSHING_DARK_1 or abilityId == CRUSHING_DARK_2
+            or abilityId == CRUSHING_DARK_3) and result == ACTION_RESULT_BEGIN then
+        alerts:showAction("Kite! Crushing Darkness")
+        local dur = select(1, GetAbilityCastInfo(abilityId)) or 0
+        if dur <= 0 then dur = 6000 end
+        caAlertCast(abilityId, "KITE!", dur, COL_ZMAJA)
+
+    elseif abilityId == SHADOW_SPLASH and result == ACTION_RESULT_BEGIN then
+        alerts:showAction("Shadow Splash! Interrupt!")
+        caAlert(nil, "INTERRUPT!", 0xFF0000FF, SOUNDS.NONE, 2500)
+
+    elseif abilityId == BANEFUL_MARK and result == ACTION_RESULT_BEGIN then
+        self.executePhase = true
+        alerts:showAction("Baneful Mark! (execute)")
+        caAlert(nil, "BANEFUL MARK", 0xFF4444FF, SOUNDS.NONE, 4000)
+
+    elseif abilityId == OLORIME_SPEAR
+           and (result == ACTION_RESULT_EFFECT_GAINED or result == ACTION_RESULT_BEGIN) then
+        self.spearCount = self.spearCount + 1
+        local target = (unitName and unitName ~= "") and unitName or "?"
+        alerts:showAction("Spear → " .. target .. " (" .. self.spearCount .. ")")
+
+    -- ── MALEVOLENT CORES ──────────────────────────────────────────────────
+    elseif abilityId == CORE_EXPOSED and result == ACTION_RESULT_BEGIN then
+        self.coreAlert = "Core out! Pick it up!"
+        alerts:showAction("Core exposed!")
+        caAlert(nil, "CORE OUT!", 0xFFDD00FF, SOUNDS.NONE, 4000)
+
+    elseif abilityId == CORE_MISSED and result == ACTION_RESULT_BEGIN then
+        self.coreAlert = "Core MISSED!"
+        alerts:showAction("Core missed!")
+        caAlert(nil, "CORE MISSED!", 0xFF4444FF, SOUNDS.NONE, 5000)
+
+    elseif abilityId == CORE_PICKED_UP and result == ACTION_RESULT_BEGIN then
+        self.coreAlert = nil
+        alerts:showAction("Core picked up.")
     end
 end
 
@@ -344,13 +408,36 @@ end
 
 -- ── 200 ms display update ─────────────────────────────────────────────────
 function ZmajaEncounter:onUpdate(context, alerts)
-    -- Line 1: Portal countdown (CR-3)
-    alerts:showInfo(1, "")
+    -- Line 1: Portal status — open countdown or next-portal countdown
+    if self.portalActive then
+        local r = self.portalTimer:remaining()
+        local t = r > 0 and ZO_FormatCountdownTimer(r) or "closing"
+        alerts:showInfo(1, "Portal open: " .. t)
+    elseif not self.portalNextTimer:isExpired() then
+        local r = self.portalNextTimer:remaining()
+        alerts:showInfo(1, "Next portal: " .. ZO_FormatCountdownTimer(r))
+    else
+        alerts:showInfo(1, "")
+    end
 
-    -- Lines 2-4: Z'Maja mechanics (CR-3)
-    alerts:showInfo(2, "")
-    alerts:showInfo(3, "")
-    alerts:showInfo(4, "")
+    -- Line 2: Portal group label / execute phase
+    if self.executePhase then
+        alerts:showInfo(2, "!!! EXECUTE PHASE !!!")
+    elseif self.portalGroup > 0 then
+        alerts:showInfo(2, "Shadow Group " .. self.portalGroup)
+    else
+        alerts:showInfo(2, "")
+    end
+
+    -- Line 3: Core alert (persistent until resolved)
+    alerts:showInfo(3, self.coreAlert or "")
+
+    -- Line 4: Olorime Spear count
+    if self.spearCount > 0 then
+        alerts:showInfo(4, "Spears: " .. self.spearCount)
+    else
+        alerts:showInfo(4, "")
+    end
 
     -- Line 5: Siroria timers
     if self.siroActive then
