@@ -5,12 +5,13 @@ TrialContext.__index = TrialContext
 
 function TrialContext.new(trialId)
     return setmetatable({
-        trialId = trialId,
-        bossId = nil,
-        bossKey = nil,
-        difficulty = Difficulty.NONE,
-        stage = 1,
-        inCombat = false,
+        trialId       = trialId,
+        bossId        = nil,
+        bossKey       = nil,
+        difficulty    = Difficulty.NONE,
+        isHM          = false,   -- pre-computed; kept in sync with difficulty
+        stage         = 1,
+        inCombat      = false,
         healthPercent = 0,
     }, TrialContext)
 end
@@ -29,6 +30,7 @@ end
 
 function TrialContext:setDifficulty(difficulty)
     self.difficulty = difficulty or Difficulty.NONE
+    self.isHM       = (self.difficulty == Difficulty.HARDMODE)
 end
 
 return TrialContext

@@ -38,10 +38,9 @@
 ---     Hindered (165972): GAINED_DURATION + player → AlertBorder 12 s
 ---     Brand matching (HM): 2 fire + 2 ice brands → "STACK ON: partner (far/close)"
 ---
---- HM detection: context.difficulty == Difficulty.HARDMODE
+--- HM detection: context.isHM (pre-computed by TrialContext from hmHealthThreshold)
 ---   TODO: verify exact HM health pool in-game.
 
-local Difficulty       = require("core.Difficulty")
 local DreadsailCommon  = require("trial.dsr.DreadsailCommon")
 
 -- ── Ability IDs — Fire (Lylanar) ───────────────────────────────────────────
@@ -221,7 +220,7 @@ Lylanar.combatRoutes = {
     end,
     [INCENDIARY_AXE] = function(self, context, alerts, result, abilityId, ...)
         if result ~= ACTION_RESULT_BEGIN then return end
-        if context.difficulty == Difficulty.HARDMODE then
+        if context.isHM then
             self.lastIncendiaryAxe = GetGameTimeMilliseconds() / 1000
         end
     end,
@@ -261,7 +260,7 @@ Lylanar.combatRoutes = {
     end,
     [CALAMITOUS_SWORD] = function(self, context, alerts, result, abilityId, ...)
         if result ~= ACTION_RESULT_BEGIN then return end
-        if context.difficulty == Difficulty.HARDMODE then
+        if context.isHM then
             self.lastCalamitousSword = GetGameTimeMilliseconds() / 1000
         end
     end,
@@ -391,7 +390,7 @@ Lylanar.effectRoutes = {
     -- ── Fire: Firebrand (HM brand tracking) ──────────────────────────────
     [FIREBRAND] = function(self, context, alerts, changeType, abilityId,
                             unitTag, unitId, unitName, stackCount)
-        if context.difficulty ~= Difficulty.HARDMODE then return end
+        if not context.isHM then return end
         if changeType ~= EFFECT_RESULT_GAINED then return end
         local entry = { tag = unitTag, name = GetUnitDisplayName(unitTag) or unitName }
         table.insert(self.firebrandTracker, entry)
@@ -404,7 +403,7 @@ Lylanar.effectRoutes = {
     -- ── Ice: Frostbrand (HM brand tracking) ──────────────────────────────
     [FROSTBRAND] = function(self, context, alerts, changeType, abilityId,
                              unitTag, unitId, unitName, stackCount)
-        if context.difficulty ~= Difficulty.HARDMODE then return end
+        if not context.isHM then return end
         if changeType ~= EFFECT_RESULT_GAINED then return end
         local entry = { tag = unitTag, name = GetUnitDisplayName(unitTag) or unitName }
         table.insert(self.frostbrandTracker, entry)
@@ -570,7 +569,7 @@ end
 -- ── 200 ms display loop ───────────────────────────────────────────────────
 function Lylanar:onUpdate(context, alerts)
     local now  = GetGameTimeMilliseconds() / 1000
-    local isHM = (context.difficulty == Difficulty.HARDMODE)
+    local isHM = context.isHM
     showFireBubbleLine(self, alerts, now, isHM)
     showIceBubbleLine(self, alerts, now, isHM)
     showFragilityLine(self, alerts, now)

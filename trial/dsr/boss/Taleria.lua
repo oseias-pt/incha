@@ -18,7 +18,6 @@
 ---   Portal debuffs: nematocyst (174679/169938), sweltering (174689/169936),
 ---                   suffocating (174691/169935) → tracked per player
 
-local Difficulty      = require("core.Difficulty")
 local DreadsailCommon = require("trial.dsr.DreadsailCommon")
 
 -- ── Ability IDs ───────────────────────────────────────────────────────────
@@ -365,7 +364,7 @@ end
 -- ── 200 ms display loop ───────────────────────────────────────────────────
 function Taleria:onUpdate(context, alerts)
     local now  = GetGameTimeMilliseconds() / 1000
-    local isHM = (context.difficulty == Difficulty.HARDMODE)
+    local isHM = context.isHM
     showMaelstromLine(self, alerts, now)
     showBehemothLine(self, alerts, now, isHM)
     showStormWallLine(self, alerts, now)

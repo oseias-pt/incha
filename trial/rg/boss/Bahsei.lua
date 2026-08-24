@@ -23,11 +23,10 @@
 ---
 --- Note: Scalding (153175) on Fire Behemoth add is handled by RockgroveCommon.
 ---
---- HM detection: context.difficulty == Difficulty.HARDMODE
+--- HM detection: context.isHM (pre-computed by TrialContext from hmHealthThreshold)
 ---   (set by BossRegistry:detectDifficulty via hmHealthThreshold=100000001)
 ---   TODO: verify exact HM health pool in-game.
 
-local Difficulty      = require("core.Difficulty")
 local RockgroveCommon = require("trial.rg.RockgroveCommon")
 
 -- ── Ability IDs ────────────────────────────────────────────────────────────
@@ -168,7 +167,7 @@ Bahsei.combatRoutes = {
     -- Prime Meteor (HM, < ~31% HP): starts a 13.5 s cast bar.
     [METEOR_SWARM] = function(self, context, alerts, result, abilityId, ...)
         if result ~= ACTION_RESULT_EFFECT_GAINED_DURATION then return end
-        if context.difficulty ~= Difficulty.HARDMODE then return end
+        if not context.isHM then return end
         self.nextSickle = 0   -- sickle irrelevant from here; free the slot
         CA.castAlertsStop(self.sunBarId)
         self.sunBarId = CA.castAlertsStart(
@@ -312,7 +311,7 @@ end
 -- ── 200 ms display loop ───────────────────────────────────────────────────
 function Bahsei:onUpdate(context, alerts)
     local now  = GetGameTimeMilliseconds() / 1000
-    local isHM = (context.difficulty == Difficulty.HARDMODE)
+    local isHM = context.isHM
     showCursedGroundLine(self, alerts, now)
     showPortalLine(self, alerts, now, isHM)
     showDeathTouchLine(self, alerts, now, isHM)

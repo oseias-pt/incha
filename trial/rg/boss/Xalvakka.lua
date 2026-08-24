@@ -29,11 +29,10 @@
 ---   TODO: Verify ATTRIBUTE_VISUAL_POWER_SHIELDING constant and event parameter
 ---         order against the live ESO API before publishing.
 ---
---- HM detection: context.difficulty == Difficulty.HARDMODE
+--- HM detection: context.isHM (pre-computed by TrialContext from hmHealthThreshold)
 ---   (set by BossRegistry:detectDifficulty via hmHealthThreshold=100000001)
 ---   TODO: verify exact HM health pool in-game.
 
-local Difficulty      = require("core.Difficulty")
 local RockgroveCommon = require("trial.rg.RockgroveCommon")
 
 local SHIELD_EVENT_KEY = "Incha_RG_XalvakkaShield"
@@ -183,7 +182,7 @@ Xalvakka.combatRoutes = {
     -- Flaming Portal (repositioning jump, HM only)
     [FLAMING_PORTAL] = function(self, context, alerts, result, abilityId, ...)
         if result ~= ACTION_RESULT_BEGIN then return end
-        if context.difficulty ~= Difficulty.HARDMODE then return end
+        if not context.isHM then return end
         local now = GetGameTimeMilliseconds() / 1000
         self.numJumps = self.numJumps + 1
         self.nextJump = now + 35
@@ -310,7 +309,7 @@ end
 -- ── 200 ms display loop ───────────────────────────────────────────────────
 function Xalvakka:onUpdate(context, alerts)
     local now  = GetGameTimeMilliseconds() / 1000
-    local isHM = (context.difficulty == Difficulty.HARDMODE)
+    local isHM = context.isHM
     showJumpLine(self, alerts, now, isHM)
     showSoulLine(self, alerts, now)
     showManifoldLine(self, alerts)
