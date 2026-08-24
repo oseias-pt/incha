@@ -111,55 +111,54 @@ Oaxiltso.combatRoutes = {
     end,
 }
 
-Oaxiltso.effectRoutes = {
-    -- Sludge debuff: track two players and assign left/right sides.
-    [SLUDGE_DEBUFF] = function(self, context, alerts, changeType, abilityId,
-                                unitTag, unitId, unitName, stackCount)
-        if changeType ~= EFFECT_RESULT_GAINED then return end
-        local now = GetGameTimeMilliseconds() / 1000
+-- Track first poisoned player; alert with left/right side assignment when pair is complete.
+-- The EFFECT_RESULT_GAINED event fires up to 3× per cast when the local player is hit,
+-- so a 10 s dedup gate collapses those duplicates into a single slot-1 registration.
+local function handleSludgeDebuff(self, context, alerts, changeType, abilityId,
+                                   unitTag, unitId, unitName, stackCount)
+    if changeType ~= EFFECT_RESULT_GAINED then return end
+    local now = GetGameTimeMilliseconds() / 1000
 
-        if self.sludgeTracker1 == 0 then
-            -- Slot 1 empty — accept if outside the 10 s dedup window.
-            -- (The event fires 3× when the local player is poisoned; this
-            -- collapses all three into a single registration.)
-            if now - self.lastPoisonTracker > 10 then
-                self.lastPoisonTracker  = now
-                self.sludgeTracker1     = unitId
-                self.sludgeTracker1Tag  = unitTag
-                self.sludgeTracker1Name = GetUnitDisplayName(unitTag) or unitName or "?"
-            end
-
-        elseif unitId ~= self.sludgeTracker1 then
-            -- Slot 1 filled, different player arrived → compute sides.
-            local name1 = self.sludgeTracker1Name
-            local name2 = GetUnitDisplayName(unitTag) or unitName or "?"
-
-            local _, x1, y1, z1 = GetUnitWorldPosition(self.sludgeTracker1Tag)
-            local _, x2, y2, z2 = GetUnitWorldPosition(unitTag)
-
-            -- Whichever player is closer to the exit-left pool goes left.
-            local d1 = (x1 ~= nil) and distSq(x1, y1, z1,
-                POOL_EX_LEFT[1], POOL_EX_LEFT[2], POOL_EX_LEFT[3]) or math.huge
-            local d2 = (x2 ~= nil) and distSq(x2, y2, z2,
-                POOL_EX_LEFT[1], POOL_EX_LEFT[2], POOL_EX_LEFT[3]) or math.huge
-
-            local leftName, rightName
-            if d1 <= d2 then
-                leftName, rightName = name1, name2
-            else
-                leftName, rightName = name2, name1
-            end
-
-            CA.alert(nil,
-                "<< " .. leftName .. " << || >> " .. rightName .. " >>",
-                0x00CC00D9, SOUNDS.CHAMPION_POINTS_COMMITTED, 5000)
-
-            -- Clear slots for the next cast.
-            self.sludgeTracker1     = 0
-            self.sludgeTracker1Tag  = nil
-            self.sludgeTracker1Name = nil
+    if self.sludgeTracker1 == 0 then
+        if now - self.lastPoisonTracker > 10 then
+            self.lastPoisonTracker  = now
+            self.sludgeTracker1     = unitId
+            self.sludgeTracker1Tag  = unitTag
+            self.sludgeTracker1Name = GetUnitDisplayName(unitTag) or unitName or "?"
         end
-    end,
+
+    elseif unitId ~= self.sludgeTracker1 then
+        local name1 = self.sludgeTracker1Name
+        local name2 = GetUnitDisplayName(unitTag) or unitName or "?"
+
+        local _, x1, y1, z1 = GetUnitWorldPosition(self.sludgeTracker1Tag)
+        local _, x2, y2, z2 = GetUnitWorldPosition(unitTag)
+
+        -- Whichever player is closer to the exit-left pool goes left.
+        local d1 = (x1 ~= nil) and distSq(x1, y1, z1,
+            POOL_EX_LEFT[1], POOL_EX_LEFT[2], POOL_EX_LEFT[3]) or math.huge
+        local d2 = (x2 ~= nil) and distSq(x2, y2, z2,
+            POOL_EX_LEFT[1], POOL_EX_LEFT[2], POOL_EX_LEFT[3]) or math.huge
+
+        local leftName, rightName
+        if d1 <= d2 then
+            leftName, rightName = name1, name2
+        else
+            leftName, rightName = name2, name1
+        end
+
+        CA.alert(nil,
+            "<< " .. leftName .. " << || >> " .. rightName .. " >>",
+            0x00CC00D9, SOUNDS.CHAMPION_POINTS_COMMITTED, 5000)
+
+        self.sludgeTracker1     = 0
+        self.sludgeTracker1Tag  = nil
+        self.sludgeTracker1Name = nil
+    end
+end
+
+Oaxiltso.effectRoutes = {
+    [SLUDGE_DEBUFF] = handleSludgeDebuff,
     [BOSS_ENRAGE] = function(self, context, alerts, changeType, abilityId, ...)
         self.bossEnraged = (changeType == EFFECT_RESULT_GAINED)
     end,
@@ -168,11 +167,10 @@ Oaxiltso.effectRoutes = {
     end,
 }
 
--- ── 200 ms display loop ───────────────────────────────────────────────────
-function Oaxiltso:onUpdate(context, alerts)
-    local now = GetGameTimeMilliseconds() / 1000
+-- ── Info-line renderers ───────────────────────────────────────────────────
 
-    -- ── Info 1: Next Savage Blitz (36 s cycle) ─────────────────────────────
+-- Info 1: Next Savage Blitz (36 s cycle).
+local function showBlitzLine(self, alerts, now)
     if self.lastBlitz > 0 then
         local T = 36 - (now - self.lastBlitz)
         if T > 0 then
@@ -183,8 +181,10 @@ function Oaxiltso:onUpdate(context, alerts)
     else
         alerts:showInfo(1, "")
     end
+end
 
-    -- ── Info 2: Next Noxious Sludge (28 s cycle) ───────────────────────────
+-- Info 2: Next Noxious Sludge (28 s cycle).
+local function showSludgeLine(self, alerts, now)
     if self.lastSludge > 0 then
         local T = 28 - (now - self.lastSludge)
         if T > 0 then
@@ -195,8 +195,10 @@ function Oaxiltso:onUpdate(context, alerts)
     else
         alerts:showInfo(2, "")
     end
+end
 
-    -- ── Info 3: Enrage state ───────────────────────────────────────────────
+-- Info 3: Enrage state — boss enraged, add enraged, or both.
+local function showEnrageLine(self, alerts)
     if self.bossEnraged and self.miniEnraged then
         alerts:showInfo(3, "|cff2020BOSS + ADD ENRAGED|r")
     elseif self.bossEnraged then
@@ -206,7 +208,14 @@ function Oaxiltso:onUpdate(context, alerts)
     else
         alerts:showInfo(3, "")
     end
+end
 
+-- ── 200 ms display loop ───────────────────────────────────────────────────
+function Oaxiltso:onUpdate(context, alerts)
+    local now = GetGameTimeMilliseconds() / 1000
+    showBlitzLine(self, alerts, now)
+    showSludgeLine(self, alerts, now)
+    showEnrageLine(self, alerts)
     alerts:showInfo(4, "")
 end
 

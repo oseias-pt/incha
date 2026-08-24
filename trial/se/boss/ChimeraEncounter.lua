@@ -108,23 +108,23 @@ ChimeraEncounter.combatRoutes = {
     [MANTLE_GRYPHON] = makePortalHandler("blue",   "Gryphon Portal (Blue)", 0x0044FFFF),
 }
 
-function ChimeraEncounter:onUpdate(context, alerts)
-    -- Line 1: Despawn countdown (only when Chimera is active)
+-- ── Info-line renderers ───────────────────────────────────────────────────
+
+-- Lines 1-2: Chimera despawn countdown and Chain Lightning CD; cleared when inactive.
+local function showChimeraLines(self, alerts)
     if self.chimeraActive then
         local rd = self.despawnTimer:remaining()
-        alerts:showInfo(1, "Despawn: " .. (rd > 0 and ZO_FormatCountdownTimer(rd) or "imminent"))
-    else
-        alerts:showInfo(1, "")
-    end
-
-    -- Line 2: Chain Lightning CD
-    if self.chimeraActive then
         local rc = self.chainTimer:remaining()
+        alerts:showInfo(1, "Despawn: " .. (rd > 0 and ZO_FormatCountdownTimer(rd) or "imminent"))
         alerts:showInfo(2, "Chain Ltng: " .. (rc > 0 and ZO_FormatCountdownTimer(rc) or "ready"))
     else
+        alerts:showInfo(1, "")
         alerts:showInfo(2, "")
     end
+end
 
+function ChimeraEncounter:onUpdate(context, alerts)
+    showChimeraLines(self, alerts)
     alerts:showInfo(3, "")
     alerts:showInfo(4, "")
     alerts:showInfo(5, "")

@@ -46,6 +46,14 @@ local COL_SLAM   = { -2, 0, false, { 1.0, 0.27, 0.0, 0.4 }, { 1.0, 0.27, 0.0, 0.
 local COL_STONE  = { -2, 0, false, { 0.7, 0.52, 0.0, 0.4 }, { 0.7, 0.52, 0.0, 0.8 } }
 local COL_THRASH = { -2, 0, false, { 0.9, 0.1,  0.1, 0.4 }, { 0.9, 0.1,  0.1, 0.8 } }
 
+-- Returns true when `unitTag` is within `threshold` map units of the player.
+local function isGroupMemberNearby(unitTag, threshold)
+    SetMapToPlayerLocation()
+    local x1, y1 = GetMapPlayerPosition("player")
+    local x2, y2 = GetMapPlayerPosition(unitTag)
+    return x2 and y2 and math.sqrt((x1 - x2)^2 + (y1 - y2)^2) * 1000 <= threshold
+end
+
 -- ── Boss definition ───────────────────────────────────────────────────────
 local Nahvii = {}
 Nahvii.__index = Nahvii
@@ -141,12 +149,7 @@ Nahvii.combatRoutes = {
             if AreUnitsEqual("player", unitTag) then
                 show = true
             else
-                SetMapToPlayerLocation()
-                local x1, y1 = GetMapPlayerPosition("player")
-                local x2, y2 = GetMapPlayerPosition(unitTag)
-                if x2 and y2 and math.sqrt((x1-x2)^2 + (y1-y2)^2) * 1000 <= 7 then
-                    show = true
-                end
+                show = isGroupMemberNearby(unitTag, 7)
             end
         end
         if show then
@@ -272,12 +275,10 @@ function Nahvii:onCombatEvent(context, alerts, result, abilityId,
     end
 end
 
--- ── 200 ms display loop ───────────────────────────────────────────────────
-function Nahvii:onUpdate(context, alerts)
-    local now_ms = GetGameTimeMilliseconds()
-    local now    = now_ms / 1000
+-- ── Info-line renderers ───────────────────────────────────────────────────
 
-    -- ── Info 1: NextMeteor countdown ─────────────────────────────────
+-- Info 1: NextMeteor countdown.
+local function showNextMeteorLine(self, alerts, now)
     if self.nextMeteorTime > 0 then
         local T = self.nextMeteorTime - now
         if T > 0 then
@@ -288,22 +289,21 @@ function Nahvii:onUpdate(context, alerts)
     else
         alerts:showInfo(1, "")
     end
+end
 
-    -- ── Info 2: Portal window → Interrupt countdown → Pins countdown ──
+-- Info 2: Portal window → Interrupt countdown → Pins countdown.
+local function showPortalInterruptLine(self, alerts, now, now_ms)
     local portalLeft = self.portalTime - now
     local interLeft  = self.interruptTime - now_ms
     local pinsLeft   = self.pinsTime - now
 
     if interLeft > 0 then
-        -- interrupt is active in portal
         alerts:showInfo(2, "|c7fffd4Interrupt in|r: |cff0000" ..
             string.format("%.1f", interLeft / 1000) .. "s|r")
     elseif pinsLeft > 0 then
-        -- servant pinned, track next attack
         alerts:showInfo(2, "|c7fffd4Next Pins|r: |cffcc00" ..
             string.format("%.0f", pinsLeft) .. "s|r")
     elseif portalLeft > 0 then
-        -- portal window open
         if portalLeft >= 11 then
             alerts:showInfo(2, "|c7fffd4Portal|r: |cff0000" ..
                 string.format("%.0f", portalLeft) .. "s|r")
@@ -314,22 +314,18 @@ function Nahvii:onUpdate(context, alerts)
     else
         alerts:showInfo(2, "")
     end
+end
 
-    -- ── Info 3: Meteor targets → FireStorm begin/end ─────────────────
+-- Info 3: Meteor targets while display window is open; otherwise FireStorm countdown.
+local function showMeteorOrStormLine(self, alerts, now, now_ms)
     if now_ms < self.meteorDisplayEnd then
-        -- collect up to 3 target names
         local names = {}
         for _, name in pairs(self.meteorTargets) do
             names[#names + 1] = name
             if #names >= 3 then break end
         end
-        if #names > 0 then
-            alerts:showInfo(3, table.concat(names, "  "))
-        else
-            alerts:showInfo(3, "")
-        end
+        alerts:showInfo(3, #names > 0 and table.concat(names, "  ") or "")
     else
-        -- FireStorm display
         local storm = self.stormTime - now
         if storm >= 5.2 then
             alerts:showInfo(3, "|ce51919Fire Storm Begin|r: " ..
@@ -341,8 +337,10 @@ function Nahvii:onUpdate(context, alerts)
             alerts:showInfo(3, "")
         end
     end
+end
 
-    -- ── Info 4: Landing → Wipe → HP "can fly" ────────────────────────
+-- Info 4: Landing countdown → Portal Wipe → HP "can fly" threshold.
+local function showLandingWipeLine(self, alerts, now, context)
     local landing  = self.landingTime - now
     local wipeLeft = self.wipeTime    - now
 
@@ -370,6 +368,16 @@ function Nahvii:onUpdate(context, alerts)
     else
         alerts:showInfo(4, "")
     end
+end
+
+-- ── 200 ms display loop ───────────────────────────────────────────────────
+function Nahvii:onUpdate(context, alerts)
+    local now_ms = GetGameTimeMilliseconds()
+    local now    = now_ms / 1000
+    showNextMeteorLine(self, alerts, now)
+    showPortalInterruptLine(self, alerts, now, now_ms)
+    showMeteorOrStormLine(self, alerts, now, now_ms)
+    showLandingWipeLine(self, alerts, now, context)
 end
 
 return Nahvii

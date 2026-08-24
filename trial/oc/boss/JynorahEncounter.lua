@@ -185,8 +185,10 @@ JynorahEncounter.combatRoutes = {
     [TAIL_SLAM_2] = handleTailSlam,
 }
 
-function JynorahEncounter:onUpdate(context, alerts)
-    -- Line 1: Titanic Clash phase
+-- ── Info-line renderers ───────────────────────────────────────────────────
+
+-- Line 1: Titanic Clash active phase countdown; auto-clears when expired.
+local function showClashLine(self, alerts)
     if self.clashActive then
         local r = self.clashTimer:remaining()
         if r > 0 then
@@ -198,15 +200,21 @@ function JynorahEncounter:onUpdate(context, alerts)
     else
         alerts:showInfo(1, "")
     end
+end
 
-    -- Line 2: Titanic Leap CD
+-- Line 2: Titanic Leap cooldown; shows "first ~5s" before the first leap is seen.
+local function showLeapLine(self, alerts)
     if self.firstLeap then
         alerts:showInfo(2, "Leap: first ~5s")
     else
         local r = self.leapTimer:remaining()
         alerts:showInfo(2, "Leap: " .. (r > 0 and ZO_FormatCountdownTimer(r) or "NOW"))
     end
+end
 
+function JynorahEncounter:onUpdate(context, alerts)
+    showClashLine(self, alerts)
+    showLeapLine(self, alerts)
     alerts:showInfo(3, "")
     alerts:showInfo(4, "")
     alerts:showInfo(5, "")

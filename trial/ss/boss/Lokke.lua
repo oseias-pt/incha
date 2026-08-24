@@ -124,6 +124,14 @@ local function iceFaded(self, unitId)
     end
 end
 
+-- Returns true when `unitTag` is within `threshold` map units of the player.
+local function isGroupMemberNearby(unitTag, threshold)
+    SetMapToPlayerLocation()
+    local x1, y1 = GetMapPlayerPosition("player")
+    local x2, y2 = GetMapPlayerPosition(unitTag)
+    return x2 and y2 and math.sqrt((x1 - x2)^2 + (y1 - y2)^2) * 1000 <= threshold
+end
+
 -- ── Boss definition ───────────────────────────────────────────────────────
 local Lokke = {}
 Lokke.__index = Lokke
@@ -208,13 +216,7 @@ Lokke.combatRoutes = {
             if AreUnitsEqual("player", unitTag) then
                 show = true
             else
-                -- nearby group member — show within 4.5 map units
-                SetMapToPlayerLocation()
-                local x1, y1 = GetMapPlayerPosition("player")
-                local x2, y2 = GetMapPlayerPosition(unitTag)
-                if x2 and y2 and math.sqrt((x1-x2)^2 + (y1-y2)^2) * 1000 <= 4.5 then
-                    show = true
-                end
+                show = isGroupMemberNearby(unitTag, 4.5)
             end
         end
         if show then
@@ -266,11 +268,10 @@ Lokke.effectRoutes = {
     end,
 }
 
--- ── 200 ms display loop ───────────────────────────────────────────────────
-function Lokke:onUpdate(context, alerts)
-    local now = GetGameTimeMilliseconds() / 1000
+-- ── Info-line renderers ───────────────────────────────────────────────────
 
-    -- ── Info 4: laser → landing → HP "can fly" ─────────────────────────
+-- Info 4: Laser countdown → landing → HP "can fly" threshold.
+local function showLaserLandingLine(self, alerts, now, context)
     local laser   = self.laserTime   - now
     local landing = self.landingTime - now
     if laser > 0 then
@@ -295,9 +296,10 @@ function Lokke:onUpdate(context, alerts)
             alerts:showInfo(4, "")
         end
     end
+end
 
-    -- ── Info 1-3: IceTomb display ──────────────────────────────────────
-    -- Boss is considered flying when iceNumber==0 or timestamps say so.
+-- Info 1-3: IceTomb display — flying suppression, waiting-for-tomb header, or active slot labels.
+local function showIceTombLines(self, alerts, now)
     local isFlying = (self.iceNumber == 0)
         or (self.laserTime   > 0 and now < self.laserTime)
         or (self.landingTime > 0 and now < self.landingTime)
@@ -308,7 +310,6 @@ function Lokke:onUpdate(context, alerts)
             alerts:showInfo(2, "")
             alerts:showInfo(3, "")
         else
-            -- grounded, waiting for next tomb
             local T2 = self.iceNext - now
             local iN = NEXT_TOMB[self.iceNumber]
             local header
@@ -323,7 +324,6 @@ function Lokke:onUpdate(context, alerts)
             alerts:showInfo(3, "")
         end
     else
-        -- active tomb cycle: show per-slot status
         alerts:showInfo(1, "|c00ffffIce Tomb|r |cff0000" .. self.iceNumber .. "|r")
         alerts:showInfo(2, formatTombLabel(self.iceTomb[1], sA, now))
         if self.iceDouble then
@@ -332,6 +332,13 @@ function Lokke:onUpdate(context, alerts)
             alerts:showInfo(3, formatTombLabel(self.iceTomb[2], sB, now))
         end
     end
+end
+
+-- ── 200 ms display loop ───────────────────────────────────────────────────
+function Lokke:onUpdate(context, alerts)
+    local now = GetGameTimeMilliseconds() / 1000
+    showLaserLandingLine(self, alerts, now, context)
+    showIceTombLines(self, alerts, now)
 end
 
 return Lokke

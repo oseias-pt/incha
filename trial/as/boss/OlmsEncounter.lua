@@ -213,52 +213,69 @@ OlmsEncounter.effectRoutes = {
     end,
 }
 
--- ── 200 ms display update ─────────────────────────────────────────────────
-function OlmsEncounter:onUpdate(context, alerts)
-    -- Line 1: Storm timer — displaced by Protector warning when shield is up.
-    -- Killing the Protector is always the priority over Storm timing.
+-- ── Info-line renderers ───────────────────────────────────────────────────
+
+-- Line 1: Storm timer, displaced by Protector warning when the shield is active.
+local function showStormLine(self, alerts)
     if self.protectorUp then
         alerts:showInfo(1, "|cffcc00⚠ PROTECTOR ACTIVE|r")
     else
-        local t1 = self.stormTimer:remaining()
-        alerts:showInfo(1, "Storm:   " .. (t1 > 0 and ZO_FormatCountdownTimer(t1) or "ready"))
+        local t = self.stormTimer:remaining()
+        alerts:showInfo(1, "Storm:   " .. (t > 0 and ZO_FormatCountdownTimer(t) or "ready"))
     end
+end
 
-    -- Lines 2-4: Olms timers (always visible)
+-- Lines 2-4: Olms core timers (always visible).
+local function showOlmsLines(self, alerts)
     local t2 = self.steamTimer:remaining()
     local t3 = self.chargesTimer:remaining()
+    local t4 = self.fireTimer:remaining()
     alerts:showInfo(2, "Steam:   " .. (t2 > 0 and ZO_FormatCountdownTimer(t2) or "ready"))
     alerts:showInfo(3, "Charges: " .. (t3 > 0 and ZO_FormatCountdownTimer(t3) or "ready"))
-    local t4 = self.fireTimer:remaining()
     alerts:showInfo(4, t4 > 0 and ("Fire:    " .. ZO_FormatCountdownTimer(t4)) or "")
+end
 
-    -- Line 5: Llothis status
+-- Line 5: Llothis — not yet spawned, dormant, or blast timer.
+local function showLlothisLine(self, alerts)
     if self.llothisSpawnTime == nil then
         alerts:showInfo(5, "")
     elseif not self.llothisActive then
         alerts:showInfo(5, "Llothis: DORMANT")
     else
-        local t5 = self.blastTimer:remaining()
-        alerts:showInfo(5, "Blast:   " .. (t5 > 0 and ZO_FormatCountdownTimer(t5) or "ready"))
+        local t = self.blastTimer:remaining()
+        alerts:showInfo(5, "Blast:   " .. (t > 0 and ZO_FormatCountdownTimer(t) or "ready"))
     end
+end
 
-    -- Line 6: Llothis interrupt timer (hidden while dormant)
+-- Line 6: Llothis interrupt timer (hidden while dormant).
+local function showBoltsLine(self, alerts)
     if self.llothisActive then
-        local t6 = self.boltsTimer:remaining()
-        alerts:showInfo(6, "Bolts:   " .. (t6 > 0 and ZO_FormatCountdownTimer(t6) or "!INTERRUPT"))
+        local t = self.boltsTimer:remaining()
+        alerts:showInfo(6, "Bolts:   " .. (t > 0 and ZO_FormatCountdownTimer(t) or "!INTERRUPT"))
     else
         alerts:showInfo(6, "")
     end
+end
 
-    -- Line 7: Felms status
+-- Line 7: Felms — not yet spawned, dormant, or strike timer.
+local function showFelmsLine(self, alerts)
     if self.felmsSpawnTime == nil then
         alerts:showInfo(7, "")
     elseif not self.felmsActive then
         alerts:showInfo(7, "Felms:   DORMANT")
     else
-        local t7 = self.jumpTimer:remaining()
-        alerts:showInfo(7, "Strike:  " .. (t7 > 0 and ZO_FormatCountdownTimer(t7) or "ready"))
+        local t = self.jumpTimer:remaining()
+        alerts:showInfo(7, "Strike:  " .. (t > 0 and ZO_FormatCountdownTimer(t) or "ready"))
     end
+end
+
+-- ── 200 ms display update ─────────────────────────────────────────────────
+function OlmsEncounter:onUpdate(context, alerts)
+    showStormLine(self, alerts)
+    showOlmsLines(self, alerts)
+    showLlothisLine(self, alerts)
+    showBoltsLine(self, alerts)
+    showFelmsLine(self, alerts)
 end
 
 -- ── HP milestone pre-warning ──────────────────────────────────────────────

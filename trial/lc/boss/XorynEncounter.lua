@@ -112,8 +112,10 @@ XorynEncounter.combatRoutes = {
     end,
 }
 
-function XorynEncounter:onUpdate(context, alerts)
-    -- Line 1: Fluctuating Current countdown (drop before 15s expires)
+-- ── Info-line renderers ───────────────────────────────────────────────────
+
+-- Line 1: Fluctuating Current countdown; "DROP NOW!" when the 15 s window expires.
+local function showCurrentLine(self, alerts)
     if self.holdingCurrent then
         local r = self.currentTimer:remaining()
         if r > 0 then
@@ -124,14 +126,20 @@ function XorynEncounter:onUpdate(context, alerts)
     else
         alerts:showInfo(1, "")
     end
+end
 
-    -- Line 2: Arcane Knot status
+-- Line 2: Arcane Knot carrier indicator.
+local function showKnotLine(self, alerts)
     if self.holdingKnot then
         alerts:showInfo(2, "|cFFAA44Carrying Arcane Knot|r")
     else
         alerts:showInfo(2, "")
     end
+end
 
+function XorynEncounter:onUpdate(context, alerts)
+    showCurrentLine(self, alerts)
+    showKnotLine(self, alerts)
     alerts:showInfo(3, "")
     alerts:showInfo(4, "")
     alerts:showInfo(5, "")

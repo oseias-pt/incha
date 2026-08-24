@@ -22,6 +22,14 @@ local CA = require("lib.CA")
 -- ── CA colour palettes ─────────────────────────────────────────────────────
 local COL_GEYSER = { -2, 0, false, { 1.0, 0.4, 0.0, 0.4 }, { 1.0, 0.4, 0.0, 0.8 } }
 
+-- Returns true when `unitTag` is within `threshold` map units of the player.
+local function isGroupMemberNearby(unitTag, threshold)
+    SetMapToPlayerLocation()
+    local x1, y1 = GetMapPlayerPosition("player")
+    local x2, y2 = GetMapPlayerPosition(unitTag)
+    return x2 and y2 and math.sqrt((x1 - x2)^2 + (y1 - y2)^2) * 1000 <= threshold
+end
+
 -- ── Boss definition ───────────────────────────────────────────────────────
 local Yolna = {}
 Yolna.__index = Yolna
@@ -80,13 +88,7 @@ Yolna.combatRoutes = {
             if AreUnitsEqual("player", unitTag) then
                 show = true
             else
-                -- group member — show if within 2.8 map units
-                SetMapToPlayerLocation()
-                local x1, y1 = GetMapPlayerPosition("player")
-                local x2, y2 = GetMapPlayerPosition(unitTag)
-                if x2 and y2 and math.sqrt((x1-x2)^2 + (y1-y2)^2) * 1000 < 2.8 then
-                    show = true
-                end
+                show = isGroupMemberNearby(unitTag, 2.8)
             end
         end
         if show then
@@ -121,12 +123,10 @@ Yolna.combatRoutes = {
     end,
 }
 
--- ── 200 ms display loop ───────────────────────────────────────────────────
-function Yolna:onUpdate(context, alerts)
-    local now_ms = GetGameTimeMilliseconds()
-    local now    = now_ms / 1000
+-- ── Info-line renderers ───────────────────────────────────────────────────
 
-    -- ── Info 1: NextFlare countdown ─────────────────────────────────────
+-- Info 1: NextFlare countdown.
+local function showFlareLine(self, alerts, now)
     if self.nextFlareTime > 0 then
         local T = self.nextFlareTime - now
         if T > 0 then
@@ -137,8 +137,10 @@ function Yolna:onUpdate(context, alerts)
     else
         alerts:showInfo(1, "")
     end
+end
 
-    -- ── Info 2: Cataclysm channel countdown ─────────────────────────────
+-- Info 2: Cataclysm channel — time remaining until channel ends.
+local function showCataLine(self, alerts, now_ms)
     local cataLeft = self.cataEndTime - now_ms
     if cataLeft > 0 then
         alerts:showInfo(2, "|ce51919Cataclysm Ends|r: " ..
@@ -146,10 +148,10 @@ function Yolna:onUpdate(context, alerts)
     else
         alerts:showInfo(2, "")
     end
+end
 
-    alerts:showInfo(3, "")
-
-    -- ── Info 4: Landing → HP "can fly" ──────────────────────────────────
+-- Info 4: Landing countdown → HP "can fly" threshold.
+local function showLandingOrFlyLine(self, alerts, now, context)
     local landing = self.landingTime - now
     if landing > 0 then
         alerts:showInfo(4, "|c5cd65cLanding|r: " .. string.format("%.0f", landing) .. "s")
@@ -171,6 +173,16 @@ function Yolna:onUpdate(context, alerts)
             alerts:showInfo(4, "")
         end
     end
+end
+
+-- ── 200 ms display loop ───────────────────────────────────────────────────
+function Yolna:onUpdate(context, alerts)
+    local now_ms = GetGameTimeMilliseconds()
+    local now    = now_ms / 1000
+    showFlareLine(self, alerts, now)
+    showCataLine(self, alerts, now_ms)
+    alerts:showInfo(3, "")
+    showLandingOrFlyLine(self, alerts, now, context)
 end
 
 return Yolna

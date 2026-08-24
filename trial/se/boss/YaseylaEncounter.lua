@@ -113,28 +113,34 @@ YaseylaEncounter.combatRoutes = {
     end,
 }
 
-function YaseylaEncounter:onUpdate(context, alerts)
-    -- Line 1: Fire Bombs CD
+-- ── Info-line renderers ───────────────────────────────────────────────────
+
+-- Line 1: Fire Bombs CD; label switches to "Bombs (exec)" once execute phase begins.
+local function showFireBombLine(self, alerts)
     if self.firstFirebomb then
         alerts:showInfo(1, "Fire Bombs: first ~7s")
     else
-        local r = self.firebombTimer:remaining()
+        local r     = self.firebombTimer:remaining()
         local label = self.executePhase and "Bombs (exec)" or "Fire Bombs"
         alerts:showInfo(1, label .. ": " .. (r > 0 and ZO_FormatCountdownTimer(r) or "ready"))
     end
+end
 
-    -- Line 2: Chain Pull CD
-    local rc = self.chainTimer:remaining()
-    alerts:showInfo(2, "Chains: " .. (rc > 0 and ZO_FormatCountdownTimer(rc) or "ready"))
-
-    -- Line 3: Frost Bomb CD
+-- Line 3: Frost Bomb CD; shows estimated first-cast window before the ability is seen.
+local function showFrostBombLine(self, alerts)
     if self.firstFrost then
         alerts:showInfo(3, "Frost: first ~17s")
     else
-        local rf = self.frostTimer:remaining()
-        alerts:showInfo(3, "Frost Bomb: " .. (rf > 0 and ZO_FormatCountdownTimer(rf) or "ready"))
+        local r = self.frostTimer:remaining()
+        alerts:showInfo(3, "Frost Bomb: " .. (r > 0 and ZO_FormatCountdownTimer(r) or "ready"))
     end
+end
 
+function YaseylaEncounter:onUpdate(context, alerts)
+    showFireBombLine(self, alerts)
+    local rc = self.chainTimer:remaining()
+    alerts:showInfo(2, "Chains: " .. (rc > 0 and ZO_FormatCountdownTimer(rc) or "ready"))
+    showFrostBombLine(self, alerts)
     alerts:showInfo(4, "")
     alerts:showInfo(5, "")
     alerts:showInfo(6, "")

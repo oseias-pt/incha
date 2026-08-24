@@ -238,13 +238,10 @@ Xalvakka.effectRoutes = {
     end,
 }
 
--- ── 200 ms display loop ───────────────────────────────────────────────────
-function Xalvakka:onUpdate(context, alerts)
-    local now  = GetGameTimeMilliseconds() / 1000
-    local isHM = (context.difficulty == Difficulty.HARDMODE)
+-- ── Info-line renderers ───────────────────────────────────────────────────
 
-    -- ── Info 1 (HM): Next jump timer ──────────────────────────────────────
-    -- Hide once numJumps ≥ 4 (pattern is established / floor is done).
+-- Info 1 (HM): Next jump timer; hidden once numJumps ≥ 4 (pattern established).
+local function showJumpLine(self, alerts, now, isHM)
     if isHM and self.nextJump > 0 and self.numJumps < 4 then
         local T = self.nextJump - now
         if T > 0 then
@@ -256,24 +253,26 @@ function Xalvakka:onUpdate(context, alerts)
     else
         alerts:showInfo(1, "")
     end
+end
 
-    -- ── Info 2: Soul Resonance countdown (personal) ───────────────────────
+-- Info 2: Soul Resonance personal countdown; auto-clears when window expires.
+local function showSoulLine(self, alerts, now)
     if self.soulStart > 0 then
         local T = SOUL_WINDOW - (now - self.soulStart)
         if T > 0 then
             alerts:showInfo(2,
                 "|cff6600Soul Resonance|r: " .. string.format("%.1f", T) .. "s")
         else
+            self.soulStart = 0
             alerts:showInfo(2, "")
-            self.soulStart = 0   -- auto-clear after window expires
         end
     else
         alerts:showInfo(2, "")
     end
+end
 
-    -- ── Info 3: Manifold Curse (priority) > Volatile Shell shield ────────────
-    -- When any player holds the Manifold Curse, list them first.
-    -- The local player is shown as "YOU"; others by display name.
+-- Info 3: Manifold Curse holders (priority) > Volatile Shell shield value.
+local function showManifoldLine(self, alerts)
     local hasManifold = self.selfManifold or (next(self.manifoldOthers) ~= nil)
     if hasManifold then
         local parts = {}
@@ -285,23 +284,20 @@ function Xalvakka:onUpdate(context, alerts)
         end
         alerts:showInfo(3, "Manifold: " .. table.concat(parts, ", "))
     elseif self.shellShield > 0 then
-        alerts:showInfo(3,
-            "|c75E6DAShield|r: " .. fmtShield(self.shellShield))
+        alerts:showInfo(3, "|c75E6DAShield|r: " .. fmtShield(self.shellShield))
     else
         alerts:showInfo(3, "")
     end
+end
 
-    -- ── Info 4: Run timer (priority) > Blob indicator ────────────────────
-    -- Run timer uses info4 (not showAction) to avoid clobbering reactive
-    -- event alerts (Block!, Dodge!, etc.) which use the action slot.
-    -- context.healthPercent: 0–100, set by Trial:onPowerUpdate.
+-- Info 4: Run timer near floor-transition HP thresholds (priority) > Blob indicator.
+-- Uses info4, not showAction, to avoid clobbering reactive event alerts.
+local function showRunLine(self, alerts, context)
     local hp = context.healthPercent
     if hp and hp > RUN1_BOT and hp <= RUN1_TOP then
-        -- Floor 1 → Floor 2 transition approaching
         alerts:showInfo(4, "|cffdd00RUN IN|r: " ..
             string.format("%.1f%%", hp - RUN1_BOT))
     elseif hp and hp > RUN2_BOT and hp <= RUN2_TOP then
-        -- Floor 2 → Floor 3 transition approaching
         alerts:showInfo(4, "|cffdd00RUN IN|r: " ..
             string.format("%.1f%%", hp - RUN2_BOT))
     elseif self.onBlob then
@@ -309,6 +305,16 @@ function Xalvakka:onUpdate(context, alerts)
     else
         alerts:showInfo(4, "")
     end
+end
+
+-- ── 200 ms display loop ───────────────────────────────────────────────────
+function Xalvakka:onUpdate(context, alerts)
+    local now  = GetGameTimeMilliseconds() / 1000
+    local isHM = (context.difficulty == Difficulty.HARDMODE)
+    showJumpLine(self, alerts, now, isHM)
+    showSoulLine(self, alerts, now)
+    showManifoldLine(self, alerts)
+    showRunLine(self, alerts, context)
 end
 
 return Xalvakka

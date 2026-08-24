@@ -452,9 +452,10 @@ ZmajaEncounter.combatRoutes = {
 }
 -- (effectRoutes: CR-3 TODO — portal world-state, mini shackle via effect path)
 
--- ── 200 ms display update ─────────────────────────────────────────────────
-function ZmajaEncounter:onUpdate(context, alerts)
-    -- Line 1: Portal status — open countdown or next-portal countdown
+-- ── Info-line renderers ───────────────────────────────────────────────────
+
+-- Line 1: Portal open countdown, or time until next portal.
+local function showPortalStatusLine(self, alerts)
     if self.portalActive then
         local r = self.portalTimer:remaining()
         local t = r > 0 and ZO_FormatCountdownTimer(r) or "closing"
@@ -465,8 +466,10 @@ function ZmajaEncounter:onUpdate(context, alerts)
     else
         alerts:showInfo(1, "")
     end
+end
 
-    -- Line 2: Portal group label / execute phase
+-- Line 2: Current portal group assignment, or execute-phase banner.
+local function showPortalGroupLine(self, alerts)
     if self.executePhase then
         alerts:showInfo(2, "!!! EXECUTE PHASE !!!")
     elseif self.portalGroup > 0 then
@@ -474,49 +477,65 @@ function ZmajaEncounter:onUpdate(context, alerts)
     else
         alerts:showInfo(2, "")
     end
+end
 
-    -- Line 3: Core alert (persistent until resolved)
-    alerts:showInfo(3, self.coreAlert or "")
-
-    -- Line 4: Olorime Spear count
+-- Line 4: Olorime Spear count.
+local function showSpearLine(self, alerts)
     if self.spearCount > 0 then
         alerts:showInfo(4, "Spears: " .. self.spearCount)
     else
         alerts:showInfo(4, "")
     end
+end
 
-    -- Line 5: Siroria timers
+-- Line 5: Siroria jump + banner timers.
+local function showSiroLine(self, alerts)
     if self.siroActive then
-        local j = self.siroJumpTimer:remaining()
-        local b = self.siroBannerTimer:remaining()
+        local j  = self.siroJumpTimer:remaining()
+        local b  = self.siroBannerTimer:remaining()
         local jt = j > 0 and ZO_FormatCountdownTimer(j) or "ready"
         local bt = b > 0 and ZO_FormatCountdownTimer(b) or "ready"
         alerts:showInfo(5, "Siro: Jump " .. jt .. "  Bnr " .. bt)
     else
         alerts:showInfo(5, "")
     end
+end
 
-    -- Line 6: Relequen timers
+-- Line 6: Relequen jump + bash timers.
+local function showReleLine(self, alerts)
     if self.releActive then
-        local j = self.releJumpTimer:remaining()
-        local b = self.releBashTimer:remaining()
+        local j  = self.releJumpTimer:remaining()
+        local b  = self.releBashTimer:remaining()
         local jt = j > 0 and ZO_FormatCountdownTimer(j) or "ready"
         local bt = b > 0 and ZO_FormatCountdownTimer(b) or "INTERRUPT"
         alerts:showInfo(6, "Rele: Jump " .. jt .. "  Bash " .. bt)
     else
         alerts:showInfo(6, "")
     end
+end
 
-    -- Line 7: Galenwe timers
+-- Line 7: Galenwe jump + bash timers.
+local function showGaleLine(self, alerts)
     if self.galeActive then
-        local j = self.galeJumpTimer:remaining()
-        local b = self.galeBashTimer:remaining()
+        local j  = self.galeJumpTimer:remaining()
+        local b  = self.galeBashTimer:remaining()
         local jt = j > 0 and ZO_FormatCountdownTimer(j) or "ready"
         local bt = b > 0 and ZO_FormatCountdownTimer(b) or "INTERRUPT"
         alerts:showInfo(7, "Gale: Jump " .. jt .. "  Bash " .. bt)
     else
         alerts:showInfo(7, "")
     end
+end
+
+-- ── 200 ms display update ─────────────────────────────────────────────────
+function ZmajaEncounter:onUpdate(context, alerts)
+    showPortalStatusLine(self, alerts)
+    showPortalGroupLine(self, alerts)
+    alerts:showInfo(3, self.coreAlert or "")   -- core alert: persistent until resolved
+    showSpearLine(self, alerts)
+    showSiroLine(self, alerts)
+    showReleLine(self, alerts)
+    showGaleLine(self, alerts)
 end
 
 function ZmajaEncounter:onPowerUpdate(context, healthPercent, alerts)

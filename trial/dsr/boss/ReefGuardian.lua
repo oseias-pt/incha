@@ -213,11 +213,10 @@ ReefGuardian.effectRoutes = {
     end,
 }
 
--- ── 200 ms display loop ───────────────────────────────────────────────────
-function ReefGuardian:onUpdate(context, alerts)
-    local now = GetGameTimeMilliseconds() / 1000
+-- ── Info-line renderers ───────────────────────────────────────────────────
 
-    -- ── Info 1: Lightning stacks (Building Static) ────────────────────────
+-- Info 1: Building Static (lightning) stacks; shows CLEANSED during shelter window.
+local function showLightningStacksLine(self, alerts, now)
     local stacks = self.buildingStaticStacks
     if stacks > 0 then
         local warn = (stacks >= 7) and " |cff0000!|r" or ""
@@ -232,8 +231,10 @@ function ReefGuardian:onUpdate(context, alerts)
     else
         alerts:showInfo(1, "")
     end
+end
 
-    -- ── Info 2: Poison stacks (Volatile Residue) ──────────────────────────
+-- Info 2: Volatile Residue (poison) stacks; shows CLEANSED during shelter window.
+local function showPoisonStacksLine(self, alerts, now)
     local vstacks = self.volatileResidueStacks
     if vstacks > 0 then
         local warn = (vstacks >= 7) and " |cff0000!|r" or ""
@@ -248,9 +249,10 @@ function ReefGuardian:onUpdate(context, alerts)
     else
         alerts:showInfo(2, "")
     end
+end
 
-    -- ── Info 3 + 4: Open reef wipe timers ─────────────────────────────────
-    -- Collect active wipe timers in order.
+-- Info 3+4: Active reef wipe timers (red when ≤ 15 s); info4 falls back to Acidic Vuln window.
+local function showReefWipeLines(self, alerts, now)
     local timers = {}
     for i = 1, self.reefNum do
         local reef = self.reefPortals[i]
@@ -259,15 +261,14 @@ function ReefGuardian:onUpdate(context, alerts)
             if remaining > 0 then
                 table.insert(timers, { idx = i, t = remaining })
             else
-                -- Wipe expired — treat as failed (display briefly)
                 reef.wipeActive = false
             end
         end
     end
 
     if timers[1] then
-        local t1   = timers[1]
-        local col  = (t1.t <= 15) and "|cff0000" or "|cFFD700"
+        local t1  = timers[1]
+        local col = (t1.t <= 15) and "|cff0000" or "|cFFD700"
         alerts:showInfo(3,
             col .. "Reef " .. t1.idx .. ": " ..
             string.format("%.0f", t1.t) .. "s|r")
@@ -276,8 +277,8 @@ function ReefGuardian:onUpdate(context, alerts)
     end
 
     if timers[2] then
-        local t2   = timers[2]
-        local col  = (t2.t <= 15) and "|cff0000" or "|cFFD700"
+        local t2  = timers[2]
+        local col = (t2.t <= 15) and "|cff0000" or "|cFFD700"
         alerts:showInfo(4,
             col .. "Reef " .. t2.idx .. ": " ..
             string.format("%.0f", t2.t) .. "s|r")
@@ -293,6 +294,14 @@ function ReefGuardian:onUpdate(context, alerts)
     else
         alerts:showInfo(4, "")
     end
+end
+
+-- ── 200 ms display loop ───────────────────────────────────────────────────
+function ReefGuardian:onUpdate(context, alerts)
+    local now = GetGameTimeMilliseconds() / 1000
+    showLightningStacksLine(self, alerts, now)
+    showPoisonStacksLine(self, alerts, now)
+    showReefWipeLines(self, alerts, now)
 end
 
 return ReefGuardian

@@ -255,16 +255,13 @@ Taleria.effectRoutes = {
     end,
 }
 
--- ── 200 ms display loop ───────────────────────────────────────────────────
-function Taleria:onUpdate(context, alerts)
-    local now  = GetGameTimeMilliseconds() / 1000
-    local isHM = (context.difficulty == Difficulty.HARDMODE)
+-- ── Info-line renderers ───────────────────────────────────────────────────
 
-    -- ── Info 1: Maelstrom heal window / countdown ─────────────────────────
+-- Info 1: Maelstrom — active heal window (dodge cue near end) or countdown to next cast.
+local function showMaelstromLine(self, alerts, now)
     if self.lastMaelstrom > 0 then
         local elapsed = now - self.lastMaelstrom
         if elapsed < MAELSTROM_DUR then
-            -- Active: show heal window remaining (and dodge cue near end)
             local T = MAELSTROM_DUR - elapsed
             if T <= MAELSTROM_DODGE then
                 alerts:showInfo(1, "|cff0000DODGE!|r (Maelstrom ends)")
@@ -273,7 +270,6 @@ function Taleria:onUpdate(context, alerts)
                     "|c66CC66HEAL!|r (" .. string.format("%.0f", T) .. "s)")
             end
         else
-            -- Counting down to next
             local T = MAELSTROM_CD - elapsed
             if T > 0 then
                 alerts:showInfo(1,
@@ -285,8 +281,10 @@ function Taleria:onUpdate(context, alerts)
     else
         alerts:showInfo(1, "")
     end
+end
 
-    -- ── Info 2: Next Behemoth summon / slam ───────────────────────────────
+-- Info 2: Next Behemoth summon countdown, or imminent slam alert (≤ 3 s).
+local function showBehemothLine(self, alerts, now, isHM)
     local behCD = isHM and BEHEMOTH_CD_HM or BEHEMOTH_CD_NORM
     if self.lastBehemothSumm > 0 then
         local summonT = behCD - (now - self.lastBehemothSumm)
@@ -304,9 +302,10 @@ function Taleria:onUpdate(context, alerts)
     else
         alerts:showInfo(2, "")
     end
+end
 
-    -- ── Info 3: Winter Storm — countdown / direction during spin ──────────
-    -- Suppress during platform fall (portal active) for 60 s.
+-- Info 3: Storm Wall direction and spin countdown; suppressed during platform-fall window.
+local function showStormWallLine(self, alerts, now)
     local suppressStorm = (now - self.lastPlatformFall < BRIDGE_WIPE)
     if self.lastStormWall > 0 and not suppressStorm then
         local T = STORM_WALL_DUR - (now - self.lastStormWall)
@@ -321,9 +320,10 @@ function Taleria:onUpdate(context, alerts)
     else
         alerts:showInfo(3, "")
     end
+end
 
-    -- ── Info 4: Active bridge wipe timers ─────────────────────────────────
-    -- Collect all active bridges.
+-- Info 4: Active bridge wipe timers (red when ≤ 15 s); or next bridge HP threshold.
+local function showBridgeLine(self, alerts, now, context)
     local bridgeLabels = {}
     local names = { "|c22CC22G|r", "|cDDCC00Y|r", "|c8822DDPu|r" }
     for i = 1, 3 do
@@ -335,7 +335,6 @@ function Taleria:onUpdate(context, alerts)
                 table.insert(bridgeLabels,
                     names[i] .. " " .. col .. string.format("%.0f", T) .. "s" .. end_col)
             else
-                -- Wipe expired
                 self.bridgeWipeStart[i] = 0
             end
         end
@@ -344,7 +343,6 @@ function Taleria:onUpdate(context, alerts)
     if #bridgeLabels > 0 then
         alerts:showInfo(4, table.concat(bridgeLabels, "  "))
     else
-        -- Show next bridge HP threshold if not all done
         local hp = context.healthPercent
         local nextBridge = nil
         if hp then
@@ -362,6 +360,16 @@ function Taleria:onUpdate(context, alerts)
             alerts:showInfo(4, "")
         end
     end
+end
+
+-- ── 200 ms display loop ───────────────────────────────────────────────────
+function Taleria:onUpdate(context, alerts)
+    local now  = GetGameTimeMilliseconds() / 1000
+    local isHM = (context.difficulty == Difficulty.HARDMODE)
+    showMaelstromLine(self, alerts, now)
+    showBehemothLine(self, alerts, now, isHM)
+    showStormWallLine(self, alerts, now)
+    showBridgeLine(self, alerts, now, context)
 end
 
 return Taleria

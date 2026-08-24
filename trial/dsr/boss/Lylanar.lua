@@ -449,54 +449,52 @@ Lylanar.effectRoutes = {
     end,
 }
 
--- ── 200 ms display loop ───────────────────────────────────────────────────
-function Lylanar:onUpdate(context, alerts)
-    local now  = GetGameTimeMilliseconds() / 1000
-    local isHM = (context.difficulty == Difficulty.HARDMODE)
+-- ── Info-line renderers ───────────────────────────────────────────────────
 
-    -- ── Info 1: Fire bubble (Destructive Ember) ───────────────────────────
+-- Info 1: Fire bubble (Destructive Ember) — stack count and drop countdown.
+local function showFireBubbleLine(self, alerts, now, isHM)
     if self.lastDestructiveEmber > 0 then
-        local cd   = isHM and BUBBLE_CD_HM or BUBBLE_CD_NORM
-        local T    = cd - (now - self.lastDestructiveEmber)
-        local stks = self.destructiveEmberStacks
+        local cd     = isHM and BUBBLE_CD_HM or BUBBLE_CD_NORM
+        local T      = cd - (now - self.lastDestructiveEmber)
+        local stks   = self.destructiveEmberStacks
+        local name   = self.destructiveEmberName or "?"
+        local suffix = " — " .. stks .. " stack" .. (stks ~= 1 and "s" or "")
         if T > 0 then
             alerts:showInfo(1,
-                "|cFF5733🔥 " .. (self.destructiveEmberName or "?") .. "|r"
-                .. " — " .. stks .. " stack" .. (stks ~= 1 and "s" or "")
-                .. " (" .. string.format("%.0f", T) .. "s)")
+                "|cFF5733🔥 " .. name .. "|r" .. suffix ..
+                " (" .. string.format("%.0f", T) .. "s)")
         else
-            -- Bubble should have been dropped; dim display
             alerts:showInfo(1,
-                "|cFF5733🔥 " .. (self.destructiveEmberName or "?") .. "|r"
-                .. " — " .. stks .. " stack" .. (stks ~= 1 and "s" or "")
-                .. " |cff0000DROP!|r")
+                "|cFF5733🔥 " .. name .. "|r" .. suffix .. " |cff0000DROP!|r")
         end
     else
         alerts:showInfo(1, "")
     end
+end
 
-    -- ── Info 2: Ice bubble (Piercing Hailstone) ───────────────────────────
+-- Info 2: Ice bubble (Piercing Hailstone) — stack count and drop countdown.
+local function showIceBubbleLine(self, alerts, now, isHM)
     if self.lastPiercingHail > 0 then
-        local cd   = isHM and BUBBLE_CD_HM or BUBBLE_CD_NORM
-        local T    = cd - (now - self.lastPiercingHail)
-        local stks = self.piercingHailstacks
+        local cd     = isHM and BUBBLE_CD_HM or BUBBLE_CD_NORM
+        local T      = cd - (now - self.lastPiercingHail)
+        local stks   = self.piercingHailstacks
+        local name   = self.piercingHailName or "?"
+        local suffix = " — " .. stks .. " stack" .. (stks ~= 1 and "s" or "")
         if T > 0 then
             alerts:showInfo(2,
-                "|c99CCff❄ " .. (self.piercingHailName or "?") .. "|r"
-                .. " — " .. stks .. " stack" .. (stks ~= 1 and "s" or "")
-                .. " (" .. string.format("%.0f", T) .. "s)")
+                "|c99CCff❄ " .. name .. "|r" .. suffix ..
+                " (" .. string.format("%.0f", T) .. "s)")
         else
             alerts:showInfo(2,
-                "|c99CCff❄ " .. (self.piercingHailName or "?") .. "|r"
-                .. " — " .. stks .. " stack" .. (stks ~= 1 and "s" or "")
-                .. " |cff0000DROP!|r")
+                "|c99CCff❄ " .. name .. "|r" .. suffix .. " |cff0000DROP!|r")
         end
     else
         alerts:showInfo(2, "")
     end
+end
 
-    -- ── Info 3: Fragility countdowns ──────────────────────────────────────
-    -- Show whichever fragility is active on the local player (fire takes priority).
+-- Info 3: Fragility debuff countdown — fire takes priority over ice.
+local function showFragilityLine(self, alerts, now)
     if self.lastFireFragilityTime > 0 then
         local T = FRAGILITY_DUR - (now - self.lastFireFragilityTime)
         if T > 0 then
@@ -518,10 +516,11 @@ function Lylanar:onUpdate(context, alerts)
     else
         alerts:showInfo(3, "")
     end
+end
 
-    -- ── Info 4: Spike cage / weapon (HM) / imminent ───────────────────────
-    -- Priority: spike cage > HM weapon > imminent warning
-    local fireSpikeT = (self.lastMagmaSpike  > 0) and (SPIKE_DUR - (now - self.lastMagmaSpike))  or -1
+-- Info 4: Spike cage (priority) > HM weapon cooldowns > Imminent tank/heal warning.
+local function showSpikeLine(self, alerts, now, isHM)
+    local fireSpikeT = (self.lastMagmaSpike   > 0) and (SPIKE_DUR - (now - self.lastMagmaSpike))   or -1
     local iceSpikeT  = (self.lastGlacialSpike > 0) and (SPIKE_DUR - (now - self.lastGlacialSpike)) or -1
 
     if fireSpikeT > 0 then
@@ -566,6 +565,16 @@ function Lylanar:onUpdate(context, alerts)
     else
         alerts:showInfo(4, "")
     end
+end
+
+-- ── 200 ms display loop ───────────────────────────────────────────────────
+function Lylanar:onUpdate(context, alerts)
+    local now  = GetGameTimeMilliseconds() / 1000
+    local isHM = (context.difficulty == Difficulty.HARDMODE)
+    showFireBubbleLine(self, alerts, now, isHM)
+    showIceBubbleLine(self, alerts, now, isHM)
+    showFragilityLine(self, alerts, now)
+    showSpikeLine(self, alerts, now, isHM)
 end
 
 return Lylanar

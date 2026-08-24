@@ -233,12 +233,10 @@ Bahsei.effectRoutes = {
     end,
 }
 
--- ── 200 ms display loop ───────────────────────────────────────────────────
-function Bahsei:onUpdate(context, alerts)
-    local now = GetGameTimeMilliseconds() / 1000
-    local isHM = (context.difficulty == Difficulty.HARDMODE)
+-- ── Info-line renderers ───────────────────────────────────────────────────
 
-    -- ── Info 1: Next Cursed Ground (28 s cycle) ────────────────────────────
+-- Info 1: Next Cursed Ground (28 s cycle).
+local function showCursedGroundLine(self, alerts, now)
     if self.lastCursedGround > 0 then
         local T = 28 - (now - self.lastCursedGround)
         if T > 0 then
@@ -249,8 +247,10 @@ function Bahsei:onUpdate(context, alerts)
     else
         alerts:showInfo(1, "")
     end
+end
 
-    -- ── Info 2 (HM): Next Portal ───────────────────────────────────────────
+-- Info 2 (HM): Next Portal — countdown before opening, or direction + in-progress count.
+local function showPortalLine(self, alerts, now, isHM)
     if isHM then
         local delta = self.nextPortal - now
         if delta > 0 then
@@ -267,11 +267,11 @@ function Bahsei:onUpdate(context, alerts)
     else
         alerts:showInfo(2, "")
     end
+end
 
-    -- ── Info 3: Tank Exploding (3 s) > Death Touch personal (9 s) > No Portal ─
-    -- All three share one slot; priority runs top-to-bottom.
-    -- Using info3 (not showAction) keeps it out of the reactive action area,
-    -- which is reserved for event-driven alerts (Block!, Dodge!, etc.).
+-- Info 3: Tank Exploding (≤ 3 s) > Death Touch personal > No Portal cooldown.
+-- Kept on info3 (not showAction) so reactive event alerts (Block!, Dodge!) keep their slot.
+local function showDeathTouchLine(self, alerts, now, isHM)
     local explodeDelta = (self.nextMtExplosion > 0) and (self.nextMtExplosion - now) or -1
     local dtDelta      = (self.lastDeathTouch  > 0) and (9 - (now - self.lastDeathTouch)) or -1
     if explodeDelta >= 0 and explodeDelta <= 3 then
@@ -291,8 +291,10 @@ function Bahsei:onUpdate(context, alerts)
     else
         alerts:showInfo(3, "")
     end
+end
 
-    -- ── Info 4 (HM): Next Sickle (15 s window) ────────────────────────────
+-- Info 4 (HM): Next Sickle — displayed only within the 15 s window before the cast.
+local function showSickleLine(self, alerts, now, isHM)
     if isHM and self.nextSickle > 0 then
         local T = self.nextSickle - now
         if T > 0 and T <= 15 then
@@ -305,7 +307,16 @@ function Bahsei:onUpdate(context, alerts)
     else
         alerts:showInfo(4, "")
     end
+end
 
+-- ── 200 ms display loop ───────────────────────────────────────────────────
+function Bahsei:onUpdate(context, alerts)
+    local now  = GetGameTimeMilliseconds() / 1000
+    local isHM = (context.difficulty == Difficulty.HARDMODE)
+    showCursedGroundLine(self, alerts, now)
+    showPortalLine(self, alerts, now, isHM)
+    showDeathTouchLine(self, alerts, now, isHM)
+    showSickleLine(self, alerts, now, isHM)
 end
 
 return Bahsei

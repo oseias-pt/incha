@@ -114,8 +114,10 @@ AnsuulEncounter.combatRoutes = {
     [BREAKDOWN_GREEN] = handleBreakdown,
 }
 
-function AnsuulEncounter:onUpdate(context, alerts)
-    -- Line 1: Calamity countdown
+-- ── Info-line renderers ───────────────────────────────────────────────────
+
+-- Line 1: Calamity countdown — context-aware: maze suppression, triplet urgency, or normal CD.
+local function showCalamityLine(self, alerts)
     if self.inMaze then
         alerts:showInfo(1, "Maze phase (no Calamity)")
     elseif self.inTriplet then
@@ -127,8 +129,10 @@ function AnsuulEncounter:onUpdate(context, alerts)
         local r = self.calamityTimer:remaining()
         alerts:showInfo(1, "Calamity: " .. (r > 0 and ZO_FormatCountdownTimer(r) or "ready"))
     end
+end
 
-    -- Line 2: Phase label
+-- Line 2: Current phase label (triplet split or maze navigation).
+local function showPhaseLine(self, alerts)
     if self.inTriplet then
         alerts:showInfo(2, "Split phase — equalize HP!")
     elseif self.inMaze then
@@ -136,7 +140,11 @@ function AnsuulEncounter:onUpdate(context, alerts)
     else
         alerts:showInfo(2, "")
     end
+end
 
+function AnsuulEncounter:onUpdate(context, alerts)
+    showCalamityLine(self, alerts)
+    showPhaseLine(self, alerts)
     alerts:showInfo(3, "")
     alerts:showInfo(4, "")
     alerts:showInfo(5, "")
