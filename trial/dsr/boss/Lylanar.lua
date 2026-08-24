@@ -42,6 +42,7 @@
 ---   TODO: verify exact HM health pool in-game.
 
 local DreadsailCommon  = require("trial.dsr.DreadsailCommon")
+local DebuffTracker    = require("lib.DebuffTracker")
 
 -- ── Ability IDs — Fire (Lylanar) ───────────────────────────────────────────
 local CINDER_SURGE         = 166693   -- channel → interrupt for ice dome
@@ -108,10 +109,8 @@ function Lylanar.new()
     return setmetatable({
         -- State — Fire
         cinderSurgeActive      = false,
-        lastFireImminentTime   = 0,
-        lastFireImminentPlayer = nil,
-        lastFireFragilityTime  = 0,
-        lastFireFragilityPlyr  = nil,
+        fireImminent           = DebuffTracker.new(10),            -- ImminentBlister: 10 s window
+        fireFragility          = DebuffTracker.new(FRAGILITY_DUR), -- BlisteringFragility window
         lastMagmaSpike         = 0,
         lastIncendiaryAxe      = 0,
         destructiveEmberStacks = 0,
@@ -123,10 +122,8 @@ function Lylanar.new()
 
         -- State — Ice
         numbingShardsActive    = false,
-        lastIceImminentTime    = 0,
-        lastIceImminentPlayer  = nil,
-        lastIceFragilityTime   = 0,
-        lastIceFragilityPlyr   = nil,
+        iceImminent            = DebuffTracker.new(10),            -- ImminentChill: 10 s window
+        iceFragility           = DebuffTracker.new(FRAGILITY_DUR), -- ChillingFragility window
         lastGlacialSpike       = 0,
         lastCalamitousSword    = 0,
         piercingHailstacks     = 0,
@@ -308,11 +305,10 @@ Lylanar.effectRoutes = {
         if changeType == EFFECT_RESULT_GAINED then
             local _, isHeal, isTank = GetPlayerRoles()
             if isTank or isHeal then
-                self.lastFireImminentTime   = GetGameTimeMilliseconds() / 1000
-                self.lastFireImminentPlayer = GetUnitDisplayName(unitTag) or unitName
+                self.fireImminent:start(GetUnitDisplayName(unitTag) or unitName)
             end
         elseif changeType == EFFECT_RESULT_FADED then
-            self.lastFireImminentTime = 0
+            self.fireImminent:clear()
         end
     end,
     -- ── Ice: ImminentChill (tank/heal warning, 10 s) ───────────────────────
@@ -321,11 +317,10 @@ Lylanar.effectRoutes = {
         if changeType == EFFECT_RESULT_GAINED then
             local _, isHeal, isTank = GetPlayerRoles()
             if isTank or isHeal then
-                self.lastIceImminentTime   = GetGameTimeMilliseconds() / 1000
-                self.lastIceImminentPlayer = GetUnitDisplayName(unitTag) or unitName
+                self.iceImminent:start(GetUnitDisplayName(unitTag) or unitName)
             end
         elseif changeType == EFFECT_RESULT_FADED then
-            self.lastIceImminentTime = 0
+            self.iceImminent:clear()
         end
     end,
     -- ── Fire: BlisteringFragility (20 s debuff on local player) ───────────
@@ -333,12 +328,11 @@ Lylanar.effectRoutes = {
                                        unitTag, unitId, unitName, stackCount)
         if changeType == EFFECT_RESULT_GAINED then
             if AreUnitsEqual("player", unitTag) then
-                self.lastFireFragilityTime = GetGameTimeMilliseconds() / 1000
-                self.lastFireFragilityPlyr = GetUnitDisplayName(unitTag) or unitName
+                self.fireFragility:start(GetUnitDisplayName(unitTag) or unitName)
             end
         elseif changeType == EFFECT_RESULT_FADED then
             if AreUnitsEqual("player", unitTag) then
-                self.lastFireFragilityTime = 0
+                self.fireFragility:clear()
             end
         end
     end,
@@ -347,12 +341,11 @@ Lylanar.effectRoutes = {
                                      unitTag, unitId, unitName, stackCount)
         if changeType == EFFECT_RESULT_GAINED then
             if AreUnitsEqual("player", unitTag) then
-                self.lastIceFragilityTime = GetGameTimeMilliseconds() / 1000
-                self.lastIceFragilityPlyr = GetUnitDisplayName(unitTag) or unitName
+                self.iceFragility:start(GetUnitDisplayName(unitTag) or unitName)
             end
         elseif changeType == EFFECT_RESULT_FADED then
             if AreUnitsEqual("player", unitTag) then
-                self.lastIceFragilityTime = 0
+                self.iceFragility:clear()
             end
         end
     end,
@@ -496,25 +489,15 @@ local function showIceBubbleLine(self, alerts, now, isHM)
 end
 
 -- Info 3: Fragility debuff countdown — fire takes priority over ice.
-local function showFragilityLine(self, alerts, now)
-    if self.lastFireFragilityTime > 0 then
-        local T = FRAGILITY_DUR - (now - self.lastFireFragilityTime)
-        if T > 0 then
-            alerts:showInfo(3,
-                "|cFF5733Fire Fragility|r: " .. string.format("%.0f", T) .. "s")
-        else
-            self.lastFireFragilityTime = 0
-            alerts:showInfo(3, "")
-        end
-    elseif self.lastIceFragilityTime > 0 then
-        local T = FRAGILITY_DUR - (now - self.lastIceFragilityTime)
-        if T > 0 then
-            alerts:showInfo(3,
-                "|c99CCffIce Fragility|r: " .. string.format("%.0f", T) .. "s")
-        else
-            self.lastIceFragilityTime = 0
-            alerts:showInfo(3, "")
-        end
+local function showFragilityLine(self, alerts)
+    local fireT = self.fireFragility:remaining()
+    local iceT  = self.iceFragility:remaining()
+    if fireT > 0 then
+        alerts:showInfo(3,
+            "|cFF5733Fire Fragility|r: " .. string.format("%.0f", fireT) .. "s")
+    elseif iceT > 0 then
+        alerts:showInfo(3,
+            "|c99CCffIce Fragility|r: " .. string.format("%.0f", iceT) .. "s")
     else
         alerts:showInfo(3, "")
     end
@@ -542,30 +525,22 @@ local function showSpikeLine(self, alerts, now, isHM)
         else
             alerts:showInfo(4, "|cFF5733Axe|r: |cff0000INC|r")
         end
-    elseif self.lastFireImminentTime > 0 then
-        local T = 10 - (now - self.lastFireImminentTime)
-        if T > 0 then
+    else
+        local fireImminT = self.fireImminent:remaining()
+        local iceImminT  = self.iceImminent:remaining()
+        if fireImminT > 0 then
             alerts:showInfo(4,
                 "|cFF5733Imminent Blister|r (" ..
-                (self.lastFireImminentPlayer or "?") .. "): " ..
-                string.format("%.0f", T) .. "s")
-        else
-            self.lastFireImminentTime = 0
-            alerts:showInfo(4, "")
-        end
-    elseif self.lastIceImminentTime > 0 then
-        local T = 10 - (now - self.lastIceImminentTime)
-        if T > 0 then
+                (self.fireImminent:playerName() or "?") .. "): " ..
+                string.format("%.0f", fireImminT) .. "s")
+        elseif iceImminT > 0 then
             alerts:showInfo(4,
                 "|c99CCffImminent Chill|r (" ..
-                (self.lastIceImminentPlayer or "?") .. "): " ..
-                string.format("%.0f", T) .. "s")
+                (self.iceImminent:playerName() or "?") .. "): " ..
+                string.format("%.0f", iceImminT) .. "s")
         else
-            self.lastIceImminentTime = 0
             alerts:showInfo(4, "")
         end
-    else
-        alerts:showInfo(4, "")
     end
 end
 
@@ -575,7 +550,7 @@ function Lylanar:onUpdate(context, alerts)
     local isHM = context.isHM
     showFireBubbleLine(self, alerts, now, isHM)
     showIceBubbleLine(self, alerts, now, isHM)
-    showFragilityLine(self, alerts, now)
+    showFragilityLine(self, alerts)
     showSpikeLine(self, alerts, now, isHM)
 end
 
