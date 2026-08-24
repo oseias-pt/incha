@@ -126,6 +126,9 @@ local function iceFaded(self, unitId)
     end
 end
 
+-- ── Fallback durations (empirical; replace if GetAbilityCastInfo becomes reliable) ─
+local FALLBACK_FIST_DUR = 1500   -- GlacialFist: empirical
+
 -- ── Boss definition ───────────────────────────────────────────────────────
 local Lokke = {}
 Lokke.__index = Lokke
@@ -210,7 +213,7 @@ Lokke.combatRoutes = {
         if show then
             alerts:showAction("Block! (Glacial Fist)")
             local dur = select(1, GetAbilityCastInfo(GLACIAL_FIST)) or 0
-            if dur <= 0 then dur = 1500 end
+            if dur <= 0 then dur = FALLBACK_FIST_DUR end
             local cid = CA.alertCast(abilityId, sourceUnitName, dur,
                 { -2, 0, false, { 0.3, 0.7, 1.0, 0.4 }, { 0.3, 0.7, 1.0, 0.8 } })
             if cid and sourceUnitId then self.alertList[sourceUnitId] = cid end

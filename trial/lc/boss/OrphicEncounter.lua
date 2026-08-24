@@ -22,6 +22,9 @@ local FLOOD_CD        = 21.5   -- steady-state Flood CD
 local COL_LIGHTNING = { -3, 0, false, { 0.9, 0.9, 0.1, 0.4 }, { 0.9, 0.9, 0.1, 0.8 } }
 local COL_CRYSTAL   = { -3, 0, false, { 0.7, 0.3, 1.0, 0.4 }, { 0.7, 0.3, 1.0, 0.8 } }
 
+-- ── Fallback durations (empirical; replace if GetAbilityCastInfo becomes reliable) ─
+local FALLBACK_DUR = 2000   -- Shield Throw: empirical
+
 local OrphicEncounter = {}
 OrphicEncounter.__index = OrphicEncounter
 
@@ -86,7 +89,7 @@ OrphicEncounter.combatRoutes = {
         if result ~= ACTION_RESULT_BEGIN then return end
         local target = (unitName and unitName ~= "") and unitName or "?"
         local dur = select(1, GetAbilityCastInfo(abilityId)) or 0
-        if dur <= 0 then dur = 2000 end
+        if dur <= 0 then dur = FALLBACK_DUR end
         CA.alertCast(abilityId, "Shield Throw → " .. target, dur, COL_LIGHTNING)
     end,
     [COLOR_CHANGE] = function(self, context, alerts, result, abilityId, ...)

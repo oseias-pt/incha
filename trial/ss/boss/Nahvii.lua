@@ -48,6 +48,11 @@ local COL_SLAM   = { -2, 0, false, { 1.0, 0.27, 0.0, 0.4 }, { 1.0, 0.27, 0.0, 0.
 local COL_STONE  = { -2, 0, false, { 0.7, 0.52, 0.0, 0.4 }, { 0.7, 0.52, 0.0, 0.8 } }
 local COL_THRASH = { -2, 0, false, { 0.9, 0.1,  0.1, 0.4 }, { 0.9, 0.1,  0.1, 0.8 } }
 
+-- ── Fallback durations (empirical; replace if GetAbilityCastInfo becomes reliable) ─
+local FALLBACK_SLAM_DUR      = 2000   -- PowerfulSlam / Stonefist: empirical
+local FALLBACK_THRASH_DUR    = 2500   -- Thrash: empirical
+local FALLBACK_INTERRUPT_DUR = 6000   -- PortalInterrupt: empirical
+
 -- ── Boss definition ───────────────────────────────────────────────────────
 local Nahvii = {}
 Nahvii.__index = Nahvii
@@ -143,7 +148,7 @@ Nahvii.combatRoutes = {
         if show then
             alerts:showAction("Block! (Slam)")
             local dur = select(1, GetAbilityCastInfo(POWERFUL_SLAM)) or 0
-            if dur <= 0 then dur = 2000 end
+            if dur <= 0 then dur = FALLBACK_SLAM_DUR end
             local cid = CA.alertCast(abilityId, sourceUnitName, dur, COL_SLAM)
             if cid and sourceUnitId then self.alertList[sourceUnitId] = cid end
         end
@@ -155,7 +160,7 @@ Nahvii.combatRoutes = {
         if not (IsUnitPlayer(unitTag) and AreUnitsEqual("player", unitTag)) then return end
         alerts:showAction("Block! (Stonefist)")
         local dur = select(1, GetAbilityCastInfo(STONEFIST)) or 0
-        if dur <= 0 then dur = 2000 end
+        if dur <= 0 then dur = FALLBACK_SLAM_DUR end
         local cid = CA.alertCast(abilityId, sourceUnitName, dur, COL_STONE)
         if cid and sourceUnitId then self.alertList[sourceUnitId] = cid end
     end,
@@ -172,7 +177,7 @@ Nahvii.combatRoutes = {
     [THRASH] = function(self, context, alerts, result, abilityId, ...)
         if result ~= ACTION_RESULT_BEGIN then return end
         local dur = select(1, GetAbilityCastInfo(THRASH)) or 0
-        if dur <= 0 then dur = 2500 end
+        if dur <= 0 then dur = FALLBACK_THRASH_DUR end
         CA.castAlertsStop(self.thrashBarId)
         self.thrashBarId = CA.castAlertsStart(
             abilityId, "Thrash",
@@ -234,7 +239,7 @@ Nahvii.combatRoutes = {
                                    unitTag, sourceUnitTag, sourceUnitId, unitId, ...)
         if result ~= ACTION_RESULT_EFFECT_GAINED_DURATION then return end
         local dur = select(1, GetAbilityCastInfo(PORTAL_INTERRUPT)) or 0
-        if dur <= 0 then dur = 6000 end
+        if dur <= 0 then dur = FALLBACK_INTERRUPT_DUR end
         self.interruptTime   = GetGameTimeMilliseconds() + dur
         self.interruptUnitId = unitId
         self.pinsTime        = 0

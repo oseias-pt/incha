@@ -53,6 +53,11 @@ local COL_HAMMER    = { -2, 0, false, { 1.0, 0.5, 0.1, 0.4 }, { 1.0, 0.5, 0.1, 0
 local COL_METEOR    = { 1.0, 0.70, 0.0, 0.5 }
 local ACT_METEOR    = { 10000, "KILL SUN!", 0.8, 0.0, 0.0, 0.9, nil }
 
+-- ── Fallback durations (empirical; replace if GetAbilityCastInfo becomes reliable) ─
+local FALLBACK_SALVO_DUR  = 2500   -- Salvo2 (interrupt): empirical
+local FALLBACK_SICKLE_DUR = 1500   -- Sickle: empirical
+local FALLBACK_HAMMER_DUR = 2000   -- RancidHammer: empirical
+
 -- ── Boss definition ───────────────────────────────────────────────────────
 local Bahsei = {}
 Bahsei.__index = Bahsei
@@ -130,7 +135,7 @@ Bahsei.combatRoutes = {
         local _, _, isTank = GetPlayerRoles()
         if isTank then
             local dur = select(1, GetAbilityCastInfo(SALVO2)) or 0
-            if dur <= 0 then dur = 2500 end
+            if dur <= 0 then dur = FALLBACK_SALVO_DUR end
             CA.alertCast(abilityId, sourceUnitName, dur, COL_INTERRUPT)
             CA.alert(nil, "Interrupt!", 0xFF2020FF, SOUNDS.CHAMPION_POINTS_COMMITTED, 2000)
         end
@@ -142,7 +147,7 @@ Bahsei.combatRoutes = {
         self.nextSickle = GetGameTimeMilliseconds() / 1000 + 15
         if IsUnitPlayer(unitTag) then
             local dur = select(1, GetAbilityCastInfo(SICKLE)) or 0
-            if dur <= 0 then dur = 1500 end
+            if dur <= 0 then dur = FALLBACK_SICKLE_DUR end
             CA.alertCast(abilityId, sourceUnitName, dur, COL_SICKLE)
         end
     end,
@@ -160,7 +165,7 @@ Bahsei.combatRoutes = {
         local _, _, isTank = GetPlayerRoles()
         if isTank then
             local dur = select(1, GetAbilityCastInfo(RANCID_HAMMER)) or 0
-            if dur <= 0 then dur = 2000 end
+            if dur <= 0 then dur = FALLBACK_HAMMER_DUR end
             CA.alertCast(abilityId, sourceUnitName, dur, COL_HAMMER)
         end
     end,

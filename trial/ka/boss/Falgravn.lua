@@ -15,6 +15,9 @@ local COL_PRISON      = { 0.8, 0.3, 1.0 }   -- lavender
 local COL_INSTABILITY = { 1.0, 0.6, 0.0 }   -- amber
 local COL_SYNERGY     = { 0.9, 0.1, 0.2 }   -- crimson
 
+-- ── Fallback durations (empirical; replace if GetAbilityCastInfo becomes reliable) ─
+local FALLBACK_DUR = 2000   -- Cleave (FALGRAVN_M_CLEAVE): empirical
+
 local function osiSet(displayName, texture, color)
     if OSI and displayName and displayName ~= "" then
         OSI.SetMechanicIconForUnit(displayName, texture, nil, color, nil, nil)
@@ -276,7 +279,7 @@ Falgravn.combatRoutes = {
         if result ~= ACTION_RESULT_BEGIN then return end
         alerts:showAction("DODGE!")
         local dur = select(1, GetAbilityCastInfo(FALGRAVN_M_CLEAVE)) or 0
-        if dur <= 0 then dur = 2000 end
+        if dur <= 0 then dur = FALLBACK_DUR end
         CA.castAlertsStart(abilityId, sourceUnitName, dur, dur,
             { 1, 0, 0.6, 0.4 },
             { 700, "DODGE!", 1, 0, 0.6, 0.8, SOUNDS.CHAMPION_POINTS_COMMITTED })

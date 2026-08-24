@@ -18,6 +18,9 @@ local SEA_ADDER_BILE_SPRAY = 136591  -- Sea Adder spray (player-targeted) → Do
 local TOTEM_SPAWN_TIME  = 20
 local GRYPHON_SPAWN_TIME = 60
 
+-- ── Fallback durations (empirical; replace if GetAbilityCastInfo becomes reliable) ─
+local FALLBACK_DUR = 5000   -- TOTEM_GARGYL (Gargoyle Totem cast): empirical
+
 local Yandir = {}
 Yandir.__index = Yandir
 
@@ -118,7 +121,7 @@ Yandir.combatRoutes = {
         if result ~= ACTION_RESULT_BEGIN then return end
         alerts:showAction("Block! (Gargoyle Totem)")
         local dur = select(1, GetAbilityCastInfo(TOTEM_GARGYL)) or 0
-        if dur <= 0 then dur = 5000 end
+        if dur <= 0 then dur = FALLBACK_DUR end
         local cid = CA.alertCast(abilityId, "Block!!", dur,
             { -3, 0, false, { 0.7, 0.7, 0.7, 0.4 }, { 0.7, 0.7, 0.7, 0.8 } })
         if cid and unitId then self.alertList[unitId] = cid end

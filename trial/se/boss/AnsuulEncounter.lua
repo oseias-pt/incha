@@ -23,6 +23,10 @@ local CALAMITY_CD       = 25   -- subsequent calamity CD
 -- ── CA colour palettes ────────────────────────────────────────────────────
 local COL_VOID = { -3, 0, false, { 0.5, 0, 0.7, 0.4 }, { 0.5, 0, 0.7, 0.8 } }  -- purple
 
+-- ── Fallback durations (empirical; replace if GetAbilityCastInfo becomes reliable) ─
+local FALLBACK_SUNBURST_DUR   = 2000   -- Sunburst: empirical
+local FALLBACK_WRATHSTORM_DUR = 4000   -- Wrathstorm: empirical
+
 local AnsuulEncounter = {}
 AnsuulEncounter.__index = AnsuulEncounter
 
@@ -82,13 +86,13 @@ AnsuulEncounter.combatRoutes = {
         if not IsUnitPlayer(unitTag) then return end
         alerts:showAction("Sunburst on you! Dodge!")
         local dur = select(1, GetAbilityCastInfo(SUNBURST)) or 0
-        if dur <= 0 then dur = 2000 end
+        if dur <= 0 then dur = FALLBACK_SUNBURST_DUR end
         CA.alertCast(SUNBURST, "SUNBURST", dur, COL_VOID)
     end,
     [WRATHSTORM] = function(self, context, alerts, result, abilityId, ...)
         if result ~= ACTION_RESULT_BEGIN then return end
         local dur = select(1, GetAbilityCastInfo(WRATHSTORM)) or 0
-        if dur <= 0 then dur = 4000 end
+        if dur <= 0 then dur = FALLBACK_WRATHSTORM_DUR end
         CA.alertCast(WRATHSTORM, "Wrathstorm!", dur, COL_VOID)
     end,
     [POISONED_MIND] = function(self, context, alerts, result, abilityId,

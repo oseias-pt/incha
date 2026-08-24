@@ -92,6 +92,9 @@ local CA = require("lib.CA")
 local COL_FIRE_HEAVY = { -2, 0, false, { 1.0, 0.35, 0.1, 0.4 }, { 1.0, 0.35, 0.1, 0.8 } }
 local COL_ICE_HEAVY  = { -2, 0, false, { 0.3, 0.75, 1.0, 0.4 }, { 0.3, 0.75, 1.0, 0.8 } }
 
+-- ── Fallback durations (empirical; replace if GetAbilityCastInfo becomes reliable) ─
+local FALLBACK_HEAVY_DUR = 1500   -- BroilingHew / TorridCleave / StingingShear / BriskRip: empirical
+
 -- ── Boss definition ───────────────────────────────────────────────────────
 local Lylanar = {}
 Lylanar.__index = Lylanar
@@ -191,7 +194,7 @@ Lylanar.combatRoutes = {
         if result ~= ACTION_RESULT_BEGIN then return end
         if not IsUnitPlayer(unitTag) then return end
         local dur = select(1, GetAbilityCastInfo(abilityId)) or 0
-        if dur <= 0 then dur = 1500 end
+        if dur <= 0 then dur = FALLBACK_HEAVY_DUR end
         CA.alertCast(abilityId, sourceUnitName, dur, COL_FIRE_HEAVY)
     end,
     [TORRID_CLEAVE] = function(self, context, alerts, result, abilityId,
@@ -200,7 +203,7 @@ Lylanar.combatRoutes = {
         if result ~= ACTION_RESULT_BEGIN then return end
         if not IsUnitPlayer(unitTag) then return end
         local dur = select(1, GetAbilityCastInfo(abilityId)) or 0
-        if dur <= 0 then dur = 1500 end
+        if dur <= 0 then dur = FALLBACK_HEAVY_DUR end
         alerts:showAction("Dodge! (Cleave)")
         CA.alertCast(abilityId, sourceUnitName, dur, COL_FIRE_HEAVY)
     end,
@@ -231,7 +234,7 @@ Lylanar.combatRoutes = {
         if result ~= ACTION_RESULT_BEGIN then return end
         if not IsUnitPlayer(unitTag) then return end
         local dur = select(1, GetAbilityCastInfo(abilityId)) or 0
-        if dur <= 0 then dur = 1500 end
+        if dur <= 0 then dur = FALLBACK_HEAVY_DUR end
         CA.alertCast(abilityId, sourceUnitName, dur, COL_ICE_HEAVY)
     end,
     [BRISK_RIP] = function(self, context, alerts, result, abilityId,
@@ -240,7 +243,7 @@ Lylanar.combatRoutes = {
         if result ~= ACTION_RESULT_BEGIN then return end
         if not IsUnitPlayer(unitTag) then return end
         local dur = select(1, GetAbilityCastInfo(abilityId)) or 0
-        if dur <= 0 then dur = 1500 end
+        if dur <= 0 then dur = FALLBACK_HEAVY_DUR end
         alerts:showAction("Dodge! (Cleave)")
         CA.alertCast(abilityId, sourceUnitName, dur, COL_ICE_HEAVY)
     end,

@@ -35,6 +35,11 @@ local SPAWN_DELAY = 12   -- Seconds after BOSS_EVENT before first mini ability
 -- ── Jump milestone thresholds (%) ────────────────────────────────────────
 local JUMP_THRESHOLDS = { 90, 75, 50, 25 }
 
+-- ── Fallback durations (empirical; replace if GetAbilityCastInfo becomes reliable) ─
+local FALLBACK_ROAR_DUR   = 2000   -- OlmsScaldingRoar (Steam Breath): empirical
+local FALLBACK_BLAST_DUR  = 1500   -- LlothisDefilingBlast: empirical
+local FALLBACK_STRIKE_DUR = 1000   -- FelmsTeleportStrike: empirical
+
 local OlmsEncounter = {}
 OlmsEncounter.__index = OlmsEncounter
 
@@ -101,7 +106,7 @@ OlmsEncounter.combatRoutes = {
         if result ~= ACTION_RESULT_BEGIN then return end
         alerts:showAction("Steam Breath! Move!")
         local dur = select(1, GetAbilityCastInfo(OLMS_SCALDING_ROAR)) or 0
-        if dur <= 0 then dur = 2000 end
+        if dur <= 0 then dur = FALLBACK_ROAR_DUR end
         local cid = CA.alertCast(abilityId, "Steam Breath!", dur,
             { -3, 0, false, { 0.8, 0.4, 0, 0.4 }, { 0.8, 0.4, 0, 0.8 } })
         if cid and unitId then self.alertList[unitId] = cid end
@@ -148,7 +153,7 @@ OlmsEncounter.combatRoutes = {
         local target = (unitName and unitName ~= "") and unitName or "?"
         alerts:showAction("Blast! → " .. target)
         local dur = select(1, GetAbilityCastInfo(LLOTHIS_DEFILING_BLAST)) or 0
-        if dur <= 0 then dur = 1500 end
+        if dur <= 0 then dur = FALLBACK_BLAST_DUR end
         local cid = CA.alertCast(abilityId, "Blast → " .. target, dur,
             { -3, 0, false, { 0.6, 0, 0.8, 0.4 }, { 0.6, 0, 0.8, 0.8 } })
         if cid and unitId then self.alertList[unitId] = cid end
@@ -168,7 +173,7 @@ OlmsEncounter.combatRoutes = {
         local target = (unitName and unitName ~= "") and unitName or "?"
         alerts:showAction("Strike! → " .. target)
         local dur = select(1, GetAbilityCastInfo(FELMS_TELEPORT_STRIKE)) or 0
-        if dur <= 0 then dur = 1000 end
+        if dur <= 0 then dur = FALLBACK_STRIKE_DUR end
         local cid = CA.alertCast(abilityId, "Strike → " .. target, dur,
             { -3, 0, false, { 0, 0.6, 0.8, 0.4 }, { 0, 0.6, 0.8, 0.8 } })
         if cid and unitId then self.alertList[unitId] = cid end

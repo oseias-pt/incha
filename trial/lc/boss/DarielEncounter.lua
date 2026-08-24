@@ -8,6 +8,9 @@ local POWERFUL_THROW = 218971   -- BEGIN → caAlertCast; on player → explicit
 -- ── CA colour palettes ────────────────────────────────────────────────────
 local COL_THROW = { -3, 0, false, { 1, 0.5, 0, 0.4 }, { 1, 0.5, 0, 0.8 } }
 
+-- ── Fallback durations (empirical; replace if GetAbilityCastInfo becomes reliable) ─
+local FALLBACK_DUR = 2500   -- PowerfulThrow: empirical
+
 local DarielEncounter = {}
 DarielEncounter.__index = DarielEncounter
 
@@ -29,7 +32,7 @@ DarielEncounter.combatRoutes = {
         if result ~= ACTION_RESULT_BEGIN then return end
         local target = (unitName and unitName ~= "") and unitName or "?"
         local dur = select(1, GetAbilityCastInfo(abilityId)) or 0
-        if dur <= 0 then dur = 2500 end
+        if dur <= 0 then dur = FALLBACK_DUR end
         CA.alertCast(abilityId, "Throw → " .. target, dur, COL_THROW)
         if IsUnitPlayer(unitTag) then
             alerts:showAction("Powerful Throw on YOU!")

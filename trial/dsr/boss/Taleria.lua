@@ -70,6 +70,12 @@ local COL_HEAVY  = { -2, 0, false, { 1.0, 0.35, 0.1, 0.4 }, { 1.0, 0.35, 0.1, 0.
 local COL_FEAR   = { 0.6, 0.0, 0.9, 0.5 }
 local ACT_BREAK  = { 4000, "Break free!", 0.9, 0.1, 0.1, 0.9, nil }
 
+-- ── Fallback durations (empirical; replace if GetAbilityCastInfo becomes reliable) ─
+local FALLBACK_WAVE_DUR  = 2000   -- CrashingWave: empirical
+local FALLBACK_SLAM_DUR  = 1500   -- CoralSlam (heavy): empirical
+local FALLBACK_BLADE_DUR = 1000   -- BarnacleBlade: empirical
+local FALLBACK_FEAR_DUR  = 2000   -- AspectsOfTerror: empirical
+
 -- ── Boss definition ───────────────────────────────────────────────────────
 local Taleria = {}
 Taleria.__index = Taleria
@@ -113,7 +119,7 @@ local function handleCrashingWave(self, context, alerts, result, abilityId,
     if result ~= ACTION_RESULT_BEGIN then return end
     if not IsUnitPlayer(unitTag) then return end
     local dur = select(1, GetAbilityCastInfo(abilityId)) or 0
-    if dur <= 0 then dur = 2000 end
+    if dur <= 0 then dur = FALLBACK_WAVE_DUR end
     CA.alertCast(abilityId, sourceUnitName, dur, COL_HEAVY)
 end
 
@@ -140,7 +146,7 @@ Taleria.combatRoutes = {
         if result ~= ACTION_RESULT_BEGIN then return end
         if not IsUnitPlayer(unitTag) then return end
         local dur = select(1, GetAbilityCastInfo(abilityId)) or 0
-        if dur <= 0 then dur = 1500 end
+        if dur <= 0 then dur = FALLBACK_SLAM_DUR end
         CA.alertCast(abilityId, sourceUnitName, dur, COL_HEAVY)
     end,
     [BARNACLE_BLADE] = function(self, context, alerts, result, abilityId,
@@ -149,7 +155,7 @@ Taleria.combatRoutes = {
         if result ~= ACTION_RESULT_BEGIN then return end
         if not IsUnitPlayer(unitTag) then return end
         local dur = select(1, GetAbilityCastInfo(abilityId)) or 0
-        if dur <= 0 then dur = 1000 end
+        if dur <= 0 then dur = FALLBACK_BLADE_DUR end
         CA.alertCast(abilityId, sourceUnitName, dur, COL_HEAVY)
     end,
     [MAELSTROM_CAST] = function(self, context, alerts, result, abilityId, ...)
@@ -184,7 +190,7 @@ Taleria.combatRoutes = {
         if result ~= ACTION_RESULT_BEGIN then return end
         if not IsUnitPlayer(unitTag) then return end
         local dur = select(1, GetAbilityCastInfo(abilityId)) or 0
-        if dur <= 0 then dur = 2000 end
+        if dur <= 0 then dur = FALLBACK_FEAR_DUR end
         CA.alertCast(abilityId, sourceUnitName, dur, COL_FEAR)
     end,
     [BRIDGE_1] = makeBridgeHandler(1),

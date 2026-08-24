@@ -26,6 +26,9 @@ local CHAIN_CD             = 20   -- subsequent chain lightning CD
 -- ── CA colour palettes ────────────────────────────────────────────────────
 local COL_LIGHTNING = { -3, 0, false, { 1, 0.84, 0.4, 0.4 }, { 1, 0.84, 0.4, 0.8 } }  -- yellow
 
+-- ── Fallback durations (empirical; replace if GetAbilityCastInfo becomes reliable) ─
+local FALLBACK_DUR = 2000   -- Lightning Bolt: empirical
+
 local ChimeraEncounter = {}
 ChimeraEncounter.__index = ChimeraEncounter
 
@@ -93,7 +96,7 @@ ChimeraEncounter.combatRoutes = {
         local target = (unitName and unitName ~= "") and unitName or "?"
         alerts:showAction("Lightning Bolt → " .. target)
         local dur = select(1, GetAbilityCastInfo(abilityId)) or 0
-        if dur <= 0 then dur = 2000 end
+        if dur <= 0 then dur = FALLBACK_DUR end
         local cid = CA.alertCast(abilityId, "Bolt!", dur, COL_LIGHTNING)
         if cid and unitId then self.alertList[unitId] = cid end
     end,

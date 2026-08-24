@@ -24,6 +24,10 @@ local CA = require("lib.CA")
 -- ── CA colour palettes ─────────────────────────────────────────────────────
 local COL_GEYSER = { -2, 0, false, { 1.0, 0.4, 0.0, 0.4 }, { 1.0, 0.4, 0.0, 0.8 } }
 
+-- ── Fallback durations (empirical; replace if GetAbilityCastInfo becomes reliable) ─
+local FALLBACK_GEYSER_DUR = 2500   -- LavaGeyser: empirical
+local FALLBACK_CATA_DUR   = 4600   -- Cataclysm: empirical (~4.6 s)
+
 -- ── Boss definition ───────────────────────────────────────────────────────
 local Yolna = {}
 Yolna.__index = Yolna
@@ -82,7 +86,7 @@ Yolna.combatRoutes = {
         if show then
             alerts:showAction("Dodge! (Geyser)")
             local dur = select(1, GetAbilityCastInfo(LAVA_GEYSER)) or 0
-            if dur <= 0 then dur = 2500 end
+            if dur <= 0 then dur = FALLBACK_GEYSER_DUR end
             CA.alertCast(abilityId, sourceUnitName, dur, COL_GEYSER)
         end
     end,
@@ -99,7 +103,7 @@ Yolna.combatRoutes = {
         if result ~= ACTION_RESULT_BEGIN then return end
         local now_ms = GetGameTimeMilliseconds()
         local dur = select(1, GetAbilityCastInfo(CATACLYSM)) or 0
-        if dur <= 0 then dur = 4600 end   -- empirical fallback (~4.6 s)
+        if dur <= 0 then dur = FALLBACK_CATA_DUR end
         self.cataEndTime = now_ms + dur
         self.landingTime = (self.cataEndTime / 1000) + 6.8
         CA.castAlertsStop(self.cataBarId)

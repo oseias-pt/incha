@@ -119,6 +119,10 @@ local COL_RELE  = { -3, 0, false, { 0.2, 0.6, 1, 0.4 },   { 0.2, 0.6, 1, 0.8 } }
 local COL_GALE  = { -3, 0, false, { 0, 0.87, 0.87, 0.4 }, { 0, 0.87, 0.87, 0.8 } } -- cyan (frost)
 local COL_ZMAJA = { -3, 0, false, { 0.6, 0, 0.8, 0.4 },   { 0.6, 0, 0.8, 0.8 } }   -- purple (shadow)
 
+-- ── Fallback durations (empirical; replace if GetAbilityCastInfo becomes reliable) ─
+local FALLBACK_DARK_DUR = 6000   -- CrushingDarkness: empirical
+local FALLBACK_HA_DUR   = 1500   -- Siroria/Relequen/Galenwe HeavyAttack: empirical
+
 local ZmajaEncounter = {}
 ZmajaEncounter.__index = ZmajaEncounter
 
@@ -247,7 +251,7 @@ local function handleCrushingDark(self, context, alerts, result, abilityId, ...)
     if result ~= ACTION_RESULT_BEGIN then return end
     alerts:showAction("Kite! Crushing Darkness")
     local dur = select(1, GetAbilityCastInfo(abilityId)) or 0
-    if dur <= 0 then dur = 6000 end
+    if dur <= 0 then dur = FALLBACK_DARK_DUR end
     CA.alertCast(abilityId, "KITE!", dur, COL_ZMAJA)
 end
 
@@ -264,7 +268,7 @@ ZmajaEncounter.combatRoutes = {
         local target = (unitName and unitName ~= "") and unitName or "?"
         alerts:showAction("Siroria HA! (" .. target .. ")")
         local dur = select(1, GetAbilityCastInfo(SIRO_HA)) or 0
-        if dur <= 0 then dur = 1500 end
+        if dur <= 0 then dur = FALLBACK_HA_DUR end
         local cid = CA.alertCast(abilityId, "Siro HA!", dur, COL_SIRO)
         if cid and unitId then self.alertList[unitId] = cid end
     end,
@@ -299,7 +303,7 @@ ZmajaEncounter.combatRoutes = {
         local target = (unitName and unitName ~= "") and unitName or "?"
         alerts:showAction("Relequen HA! (" .. target .. ")")
         local dur = select(1, GetAbilityCastInfo(RELE_HA)) or 0
-        if dur <= 0 then dur = 1500 end
+        if dur <= 0 then dur = FALLBACK_HA_DUR end
         local cid = CA.alertCast(abilityId, "Rele HA!", dur, COL_RELE)
         if cid and unitId then self.alertList[unitId] = cid end
     end,
@@ -347,7 +351,7 @@ ZmajaEncounter.combatRoutes = {
         local target = (unitName and unitName ~= "") and unitName or "?"
         alerts:showAction("Galenwe HA! (" .. target .. ")")
         local dur = select(1, GetAbilityCastInfo(GALE_HA)) or 0
-        if dur <= 0 then dur = 1500 end
+        if dur <= 0 then dur = FALLBACK_HA_DUR end
         local cid = CA.alertCast(abilityId, "Gale HA!", dur, COL_GALE)
         if cid and unitId then self.alertList[unitId] = cid end
     end,

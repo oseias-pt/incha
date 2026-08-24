@@ -26,6 +26,9 @@ local FROST_CD           = 25     -- subsequent frost bomb CD
 local COL_FIRE  = { -3, 0, false, { 1, 0.34, 0, 0.4 }, { 1, 0.34, 0, 0.8 } }    -- orange-red
 local COL_ICE   = { -3, 0, false, { 0.6, 0.8, 1, 0.4 }, { 0.6, 0.8, 1, 0.8 } }  -- pale blue
 
+-- ── Fallback durations (empirical; replace if GetAbilityCastInfo becomes reliable) ─
+local FALLBACK_DUR = 2000   -- FireBombs / WamasuCharge: empirical
+
 local YaseylaEncounter = {}
 YaseylaEncounter.__index = YaseylaEncounter
 
@@ -80,7 +83,7 @@ YaseylaEncounter.combatRoutes = {
         local target = (unitName and unitName ~= "") and unitName or "?"
         alerts:showAction("Fire Bombs → " .. target)
         local dur = select(1, GetAbilityCastInfo(abilityId)) or 0
-        if dur <= 0 then dur = 2000 end
+        if dur <= 0 then dur = FALLBACK_DUR end
         local cid = CA.alertCast(abilityId, "Fire Bombs!", dur, COL_FIRE)
         if cid and unitId then self.alertList[unitId] = cid end
     end,
@@ -108,7 +111,7 @@ YaseylaEncounter.combatRoutes = {
         if result ~= ACTION_RESULT_BEGIN then return end
         local target = (unitName and unitName ~= "") and unitName or "?"
         local dur = select(1, GetAbilityCastInfo(abilityId)) or 0
-        if dur <= 0 then dur = 2000 end
+        if dur <= 0 then dur = FALLBACK_DUR end
         CA.alertCast(abilityId, "Charge → " .. target, dur, COL_FIRE)
     end,
 }

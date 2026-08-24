@@ -22,6 +22,10 @@ local COL_NECROTIC  = { -3, 0, false, { 0.5, 0,   0.9, 0.4 }, { 0.5, 0,   0.9, 0
 local COL_TEMPEST   = { -3, 0, false, { 0.2, 0.8, 1.0, 0.4 }, { 0.2, 0.8, 1.0, 0.8 } }
 local COL_ATRONACH  = { -3, 0, false, { 1,   0.4, 0,   0.4 }, { 1,   0.4, 0,   0.8 } }
 
+-- ── Fallback durations (empirical; replace if GetAbilityCastInfo becomes reliable) ─
+local FALLBACK_BARRAGE_DUR = 3000   -- NecroticBarrage: empirical
+local FALLBACK_DUR         = 2000   -- Tempest / GlassStomp: empirical
+
 local XorynEncounter = {}
 XorynEncounter.__index = XorynEncounter
 
@@ -43,7 +47,7 @@ XorynEncounter.combatRoutes = {
     [NECROTIC_BARRAGE] = function(self, context, alerts, result, abilityId, ...)
         if result ~= ACTION_RESULT_BEGIN then return end
         local dur = select(1, GetAbilityCastInfo(abilityId)) or 0
-        if dur <= 0 then dur = 3000 end
+        if dur <= 0 then dur = FALLBACK_BARRAGE_DUR end
         CA.alertCast(abilityId, "Necrotic Barrage!", dur, COL_NECROTIC)
     end,
     [ACCELERATING_CHARGE] = function(self, context, alerts, result, abilityId, ...)
@@ -54,7 +58,7 @@ XorynEncounter.combatRoutes = {
     [TEMPEST] = function(self, context, alerts, result, abilityId, ...)
         if result ~= ACTION_RESULT_BEGIN then return end
         local dur = select(1, GetAbilityCastInfo(abilityId)) or 0
-        if dur <= 0 then dur = 2000 end
+        if dur <= 0 then dur = FALLBACK_DUR end
         CA.alertCast(abilityId, "MOVE from line!", dur, COL_TEMPEST)
         alerts:showAction("Tempest! MOVE from mirror line!")
     end,
@@ -64,7 +68,7 @@ XorynEncounter.combatRoutes = {
         if result ~= ACTION_RESULT_BEGIN then return end
         local target = (unitName and unitName ~= "") and unitName or "?"
         local dur = select(1, GetAbilityCastInfo(abilityId)) or 0
-        if dur <= 0 then dur = 2000 end
+        if dur <= 0 then dur = FALLBACK_DUR end
         CA.alertCast(abilityId, "Atronach AOE → " .. target, dur, COL_ATRONACH)
         if IsUnitPlayer(unitTag) then
             alerts:showAction("Atronach AOE on YOU!")

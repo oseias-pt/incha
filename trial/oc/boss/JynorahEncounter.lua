@@ -47,6 +47,9 @@ local COL_FIRE      = { -3, 0, false, { 1, 0.4, 0,   0.4 }, { 1, 0.4, 0,   0.8 }
 local COL_ICE       = { -3, 0, false, { 0.3, 0.8, 1, 0.4 }, { 0.3, 0.8, 1, 0.8 } }
 local COL_CLASH     = { -3, 0, false, { 1, 0.1, 0.1, 0.4 }, { 1, 0.1, 0.1, 0.8 } }
 
+-- ── Fallback durations (empirical; replace if GetAbilityCastInfo becomes reliable) ─
+local FALLBACK_DUR = 2000   -- Tail Slam: empirical
+
 local JynorahEncounter = {}
 JynorahEncounter.__index = JynorahEncounter
 
@@ -90,7 +93,7 @@ local function handleTailSlam(self, context, alerts, result, abilityId,
     if result ~= ACTION_RESULT_EFFECT_GAINED then return end
     local target = (unitName and unitName ~= "") and unitName or "?"
     local dur = select(1, GetAbilityCastInfo(abilityId)) or 0
-    if dur <= 0 then dur = 2000 end
+    if dur <= 0 then dur = FALLBACK_DUR end
     CA.alertCast(abilityId, "Tail Slam → " .. target, dur, COL_CLASH)
 end
 

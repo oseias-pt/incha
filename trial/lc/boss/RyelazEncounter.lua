@@ -11,6 +11,9 @@ local PORCIN_DARK            = 219330   -- EFFECT_GAINED_DURATION → player on 
 -- ── CA colour palettes ────────────────────────────────────────────────────
 local COL_ANNIHIL = { -3, 0, false, { 1, 0.65, 0, 0.4 }, { 1, 0.65, 0, 0.8 } }
 
+-- ── Fallback durations (empirical; replace if GetAbilityCastInfo becomes reliable) ─
+local FALLBACK_DUR = 3000   -- Annihilation channel: empirical
+
 local RyelazEncounter = {}
 RyelazEncounter.__index = RyelazEncounter
 
@@ -36,7 +39,7 @@ local function makeAnnihilHandler(label)
     return function(self, context, alerts, result, abilityId, ...)
         if result ~= ACTION_RESULT_BEGIN then return end
         local dur = select(1, GetAbilityCastInfo(abilityId)) or 0
-        if dur <= 0 then dur = 3000 end
+        if dur <= 0 then dur = FALLBACK_DUR end
         CA.alertCast(abilityId, "STACK — Annihilation!", dur, COL_ANNIHIL)
         alerts:showAction(label .. " STACK!")
     end

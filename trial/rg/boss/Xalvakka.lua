@@ -65,6 +65,9 @@ local CA = require("lib.CA")
 -- ── CA colour palettes ─────────────────────────────────────────────────────
 local COL_SCATHING = { -2, 0, false, { 0.9, 0.2, 0.9, 0.4 }, { 0.9, 0.2, 0.9, 0.8 } }
 
+-- ── Fallback durations (empirical; replace if GetAbilityCastInfo becomes reliable) ─
+local FALLBACK_SCATHING_DUR = 1500   -- ScathingEvisceration: empirical
+
 -- ── Shield value formatter ─────────────────────────────────────────────────
 local function fmtShield(v)
     if v >= 1000000 then
@@ -161,7 +164,7 @@ local function handleScathing(self, context, alerts, result, abilityId,
     if result ~= ACTION_RESULT_BEGIN then return end
     if not IsUnitPlayer(unitTag) then return end
     local dur = select(1, GetAbilityCastInfo(abilityId)) or 0
-    if dur <= 0 then dur = 1500 end
+    if dur <= 0 then dur = FALLBACK_SCATHING_DUR end
     CA.alertCast(abilityId, sourceUnitName, dur, COL_SCATHING)
 end
 

@@ -40,6 +40,9 @@ local COL_LEAP_RED = { -3, 0, false, { 1,   0.1, 0.1, 0.4 }, { 1,   0.1, 0.1, 0.
 local COL_SLAM     = { -3, 0, false, { 1,   0.7, 0,   0.4 }, { 1,   0.7, 0,   0.8 } }
 local COL_SURGE    = { -3, 0, false, { 0.9, 0.9, 0.1, 0.4 }, { 0.9, 0.9, 0.1, 0.8 } }
 
+-- ── Fallback durations (empirical; replace if GetAbilityCastInfo becomes reliable) ─
+local FALLBACK_DUR = 2000   -- GiantPulse / VileLeap / SeethingLeap / StormSlam / StormSurge: empirical
+
 local KazpianEncounter = {}
 KazpianEncounter.__index = KazpianEncounter
 
@@ -92,7 +95,7 @@ end
 local function handleGiantPulse(self, context, alerts, result, abilityId, ...)
     if result ~= ACTION_RESULT_BEGIN then return end
     local dur = select(1, GetAbilityCastInfo(abilityId)) or 0
-    if dur <= 0 then dur = 2000 end
+    if dur <= 0 then dur = FALLBACK_DUR end
     CA.alertCast(abilityId, "Giant Sword!", dur, COL_SLAM)
 end
 
@@ -101,14 +104,14 @@ KazpianEncounter.combatRoutes = {
     [VILE_LEAP] = function(self, context, alerts, result, abilityId, ...)
         if result ~= ACTION_RESULT_BEGIN then return end
         local dur = select(1, GetAbilityCastInfo(abilityId)) or 0
-        if dur <= 0 then dur = 2000 end
+        if dur <= 0 then dur = FALLBACK_DUR end
         CA.alertCast(abilityId, "Vile Leap!", dur, COL_LEAP)
         alerts:showAction("Vile Leap!")
     end,
     [SEETHING_LEAP] = function(self, context, alerts, result, abilityId, ...)
         if result ~= ACTION_RESULT_BEGIN then return end
         local dur = select(1, GetAbilityCastInfo(abilityId)) or 0
-        if dur <= 0 then dur = 2000 end
+        if dur <= 0 then dur = FALLBACK_DUR end
         CA.alertCast(abilityId, "VILE LEAP (enrage)!", dur, COL_LEAP_RED)
         alerts:showAction("Seething Vile Leap!")
     end,
@@ -136,14 +139,14 @@ KazpianEncounter.combatRoutes = {
     [STORM_SLAM] = function(self, context, alerts, result, abilityId, ...)
         if result ~= ACTION_RESULT_BEGIN then return end
         local dur = select(1, GetAbilityCastInfo(abilityId)) or 0
-        if dur <= 0 then dur = 2000 end
+        if dur <= 0 then dur = FALLBACK_DUR end
         CA.alertCast(abilityId, "DODGE — Storm Slam!", dur, COL_SLAM)
         alerts:showAction("Molag Kena Storm Slam — DODGE!")
     end,
     [STORM_SURGE] = function(self, context, alerts, result, abilityId, ...)
         if result ~= ACTION_RESULT_BEGIN then return end
         local dur = select(1, GetAbilityCastInfo(abilityId)) or 0
-        if dur <= 0 then dur = 2000 end
+        if dur <= 0 then dur = FALLBACK_DUR end
         CA.alertCast(abilityId, "Storm Surge!", dur, COL_SURGE)
     end,
     [HEAVY_SHOCK] = function(self, context, alerts, result, abilityId,

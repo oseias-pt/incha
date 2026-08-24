@@ -10,6 +10,9 @@ local CHANNELER_SHIELD = 232510   -- EFFECT_GAINED → channelers shielding Shap
 -- ── CA colour palettes ────────────────────────────────────────────────────
 local COL_CHARGE = { -3, 0, false, { 1, 0.4, 0, 0.4 }, { 1, 0.4, 0, 0.8 } }
 
+-- ── Fallback durations (empirical; replace if GetAbilityCastInfo becomes reliable) ─
+local FALLBACK_DUR = 2000   -- Ogrim Charge: empirical
+
 local ShaperEncounter = {}
 ShaperEncounter.__index = ShaperEncounter
 
@@ -33,7 +36,7 @@ ShaperEncounter.combatRoutes = {
         if result ~= ACTION_RESULT_BEGIN then return end
         local target = (unitName and unitName ~= "") and unitName or "?"
         local dur = select(1, GetAbilityCastInfo(abilityId)) or 0
-        if dur <= 0 then dur = 2000 end
+        if dur <= 0 then dur = FALLBACK_DUR end
         CA.alertCast(abilityId, "MOVE — Ogrim Charge!", dur, COL_CHARGE)
         if IsUnitPlayer(unitTag) then
             alerts:showAction("Ogrim Charge on YOU! Move!")

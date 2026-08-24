@@ -16,6 +16,10 @@ local VITRIFY_CD       = 20.0
 -- ── CA colour palettes ────────────────────────────────────────────────────
 local COL_INTERRUPT = { -3, 0, false, { 1, 0.1, 0.1, 0.4 }, { 1, 0.1, 0.1, 0.8 } }
 
+-- ── Fallback durations (empirical; replace if GetAbilityCastInfo becomes reliable) ─
+local FALLBACK_BEAM_DUR    = 2500   -- PiercingBeam: empirical
+local FALLBACK_VITRIFY_DUR = 2000   -- Vitrify: empirical
+
 local XynizataEncounter = {}
 XynizataEncounter.__index = XynizataEncounter
 
@@ -41,7 +45,7 @@ XynizataEncounter.combatRoutes = {
         self.firstBeam = false
         self.piercingBeamTimer:reset(BEAM_CD)
         local dur = select(1, GetAbilityCastInfo(abilityId)) or 0
-        if dur <= 0 then dur = 2500 end
+        if dur <= 0 then dur = FALLBACK_BEAM_DUR end
         CA.alertCast(abilityId, "INTERRUPT — Beam!", dur, COL_INTERRUPT)
         alerts:showAction("INTERRUPT — Piercing Beam!")
     end,
@@ -50,7 +54,7 @@ XynizataEncounter.combatRoutes = {
         self.firstVitrify = false
         self.vitrifyTimer:reset(VITRIFY_CD)
         local dur = select(1, GetAbilityCastInfo(abilityId)) or 0
-        if dur <= 0 then dur = 2000 end
+        if dur <= 0 then dur = FALLBACK_VITRIFY_DUR end
         CA.alertCast(abilityId, "INTERRUPT — Vitrify!", dur, COL_INTERRUPT)
         alerts:showAction("INTERRUPT — Vitrify!")
     end,

@@ -47,6 +47,9 @@ local COL_HEAVY   = { -2, 0, false, { 1.0, 0.35, 0.1, 0.4 }, { 1.0, 0.35, 0.1, 0
 local COL_ACID    = { 0.4, 0.9, 0.2, 0.5 }
 local ACT_ACID    = { 8000, "MOVE OUT!", 0.3, 0.9, 0.1, 0.9, nil }
 
+-- ── Fallback durations (empirical; replace if GetAbilityCastInfo becomes reliable) ─
+local FALLBACK_DUR = 1500   -- heavy melee (Crush/Claw/Crackdown): empirical
+
 -- ── Boss definition ───────────────────────────────────────────────────────
 local ReefGuardian = {}
 ReefGuardian.__index = ReefGuardian
@@ -90,7 +93,7 @@ local function handleHeavy(self, context, alerts, result, abilityId,
     if result ~= ACTION_RESULT_BEGIN then return end
     if not IsUnitPlayer(unitTag) then return end
     local dur = select(1, GetAbilityCastInfo(abilityId)) or 0
-    if dur <= 0 then dur = 1500 end
+    if dur <= 0 then dur = FALLBACK_DUR end
     CA.alertCast(abilityId, sourceUnitName, dur, COL_HEAVY)
 end
 
