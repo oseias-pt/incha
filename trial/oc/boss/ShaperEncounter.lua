@@ -30,10 +30,10 @@ end
 -- ── Routing tables (C3) ──────────────────────────────────────────────────
 
 ShaperEncounter.combatRoutes = {
-    [OGRIM_CHARGE] = function(self, context, alerts, result, abilityId,
-                               unitTag, sourceUnitTag, sourceUnitId, unitId,
-                               sourceUnitName, unitName)
-        if result ~= ACTION_RESULT_BEGIN then return end
+    [OGRIM_CHARGE] = { result = ACTION_RESULT_BEGIN,
+        fn = function(self, context, alerts, abilityId,
+                      unitTag, sourceUnitTag, sourceUnitId, unitId,
+                      sourceUnitName, unitName)
         local target = (unitName and unitName ~= "") and unitName or "?"
         local dur = select(1, GetAbilityCastInfo(abilityId)) or 0
         if dur <= 0 then dur = FALLBACK_DUR end
@@ -43,7 +43,7 @@ ShaperEncounter.combatRoutes = {
         else
             alerts:showAction("Ogrim Charge → " .. target)
         end
-    end,
+    end },
     [SHAPER_SHIELD] = function(self, context, alerts, result, abilityId, ...)
         if result == ACTION_RESULT_EFFECT_GAINED then
             self.shaperShielded = true
@@ -55,11 +55,11 @@ ShaperEncounter.combatRoutes = {
             alerts:showAction("Shaper vulnerable — BURN!")
         end
     end,
-    [CHANNELER_SHIELD] = function(self, context, alerts, result, abilityId, ...)
-        if result ~= ACTION_RESULT_EFFECT_GAINED then return end
+    [CHANNELER_SHIELD] = { result = ACTION_RESULT_EFFECT_GAINED,
+        fn = function(self, context, alerts, abilityId, ...)
         self.shaperShielded = true
         alerts:showAction("Channelers shielding Shaper — eliminate them!")
-    end,
+    end },
 }
 
 function ShaperEncounter:onUpdate(context, alerts)

@@ -68,55 +68,53 @@ end
 -- Shared trash mechanic handler (interrupt, execute, HA, etc.).
 Oaxiltso.common = RockgroveCommon
 
-local function handleSavageBlitz(self, context, alerts, result, abilityId, ...)
-    if result ~= ACTION_RESULT_BEGIN then return end
+local function handleSavageBlitz(self, context, alerts, abilityId, ...)
     self.lastBlitz = GetGameTimeMilliseconds() / 1000
     CA.castAlertsStart(abilityId, "Savage Blitz", 2750, 2750, COL_BLITZ)
 end
 
 Oaxiltso.combatRoutes = {
-    [SAVAGE_BLITZ]    = handleSavageBlitz,
-    [SAVAGE_BLITZ_HM] = handleSavageBlitz,
-    [NOXIOUS_SLUDGE] = function(self, context, alerts, result, abilityId, ...)
-        if result ~= ACTION_RESULT_BEGIN then return end
+    [SAVAGE_BLITZ]    = { result = ACTION_RESULT_BEGIN, fn = handleSavageBlitz },
+    [SAVAGE_BLITZ_HM] = { result = ACTION_RESULT_BEGIN, fn = handleSavageBlitz },
+    [NOXIOUS_SLUDGE] = { result = ACTION_RESULT_BEGIN,
+        fn = function(self, context, alerts, abilityId, ...)
         self.lastSludge = GetGameTimeMilliseconds() / 1000
         CA.alert(nil, "Noxious Sludge", 0x00CC00D9, SOUNDS.CHAMPION_POINTS_COMMITTED, 2500)
-    end,
+    end },
     -- Sunburst casts, then ~2.5 s later a meteor hits; alert fires at impact.
-    [SUNBURST] = function(self, context, alerts, result, abilityId, ...)
-        if result ~= ACTION_RESULT_BEGIN then return end
+    [SUNBURST] = { result = ACTION_RESULT_BEGIN,
+        fn = function(self, context, alerts, abilityId, ...)
         zo_callLater(function()
             CA.alert(nil, "Meteor. BLOCK!", 0xFF2020FF, SOUNDS.CHAMPION_POINTS_COMMITTED, 3000)
         end, 2500)
-    end,
+    end },
     -- QRH: hitValue returns ~4 s but actual dodge window is ~2 s; hardcode 2000.
-    [CINDER_CLEAVE] = function(self, context, alerts, result, abilityId,
-                                unitTag, sourceUnitTag, sourceUnitId, unitId,
-                                sourceUnitName, unitName)
-        if result ~= ACTION_RESULT_BEGIN then return end
+    [CINDER_CLEAVE] = { result = ACTION_RESULT_BEGIN,
+        fn = function(self, context, alerts, abilityId,
+                      unitTag, sourceUnitTag, sourceUnitId, unitId,
+                      sourceUnitName, unitName)
         if not IsUnitPlayer(unitTag) then return end
         alerts:showAction("Dodge! (Cone)")
         CA.alertCast(abilityId, sourceUnitName, 2000, COL_CONE)
-    end,
-    [EMBER_CHAINS] = function(self, context, alerts, result, abilityId,
-                               unitTag, sourceUnitTag, sourceUnitId, unitId,
-                               sourceUnitName, unitName)
-        if result ~= ACTION_RESULT_BEGIN then return end
+    end },
+    [EMBER_CHAINS] = { result = ACTION_RESULT_BEGIN,
+        fn = function(self, context, alerts, abilityId,
+                      unitTag, sourceUnitTag, sourceUnitId, unitId,
+                      sourceUnitName, unitName)
         if not IsUnitPlayer(unitTag) then return end
         CA.alertCast(abilityId, sourceUnitName, 750, COL_CHAINS)
-    end,
-    [ADD_SPAWN] = function(self, context, alerts, result, abilityId, ...)
-        if result ~= ACTION_RESULT_EFFECT_GAINED then return end
+    end },
+    [ADD_SPAWN] = { result = ACTION_RESULT_EFFECT_GAINED,
+        fn = function(self, context, alerts, abilityId, ...)
         alerts:showAction("ADD SPAWNING!")
-    end,
+    end },
 }
 
 -- Track first poisoned player; alert with left/right side assignment when pair is complete.
 -- The EFFECT_RESULT_GAINED event fires up to 3× per cast when the local player is hit,
 -- so a 10 s dedup gate collapses those duplicates into a single slot-1 registration.
-local function handleSludgeDebuff(self, context, alerts, changeType, abilityId,
+local function handleSludgeDebuff(self, context, alerts, abilityId,
                                    unitTag, unitId, unitName, stackCount)
-    if changeType ~= EFFECT_RESULT_GAINED then return end
     local now = GetGameTimeMilliseconds() / 1000
 
     if self.sludgeTracker1 == 0 then
@@ -158,7 +156,7 @@ local function handleSludgeDebuff(self, context, alerts, changeType, abilityId,
 end
 
 Oaxiltso.effectRoutes = {
-    [SLUDGE_DEBUFF] = handleSludgeDebuff,
+    [SLUDGE_DEBUFF] = { changeType = EFFECT_RESULT_GAINED, fn = handleSludgeDebuff },
     [BOSS_ENRAGE] = function(self, context, alerts, changeType, abilityId, ...)
         self.bossEnraged = (changeType == EFFECT_RESULT_GAINED)
     end,

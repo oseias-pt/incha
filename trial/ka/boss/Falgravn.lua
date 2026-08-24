@@ -217,20 +217,20 @@ end
 
 Falgravn.combatRoutes = {
     -- ── Infuser trash ──────────────────────────────────────────────────────
-    [INFUSER_CASTS] = function(self, context, alerts, result, abilityId,
-                                unitTag, sourceUnitTag, sourceUnitId, unitId,
-                                sourceUnitName, unitName)
-        if result ~= ACTION_RESULT_BEGIN then return end
+    [INFUSER_CASTS] = { result = ACTION_RESULT_BEGIN,
+        fn = function(self, context, alerts, abilityId,
+                      unitTag, sourceUnitTag, sourceUnitId, unitId,
+                      sourceUnitName, unitName)
         alerts:showAction("Interrupt Infuser!")
         local cid = CA.alertCast(abilityId, sourceUnitName, 1000,
             { -3, 0, false, { 0.0, 0.0, 1, 0.4 }, { 0.1, 0.1, 1, 0.8 } })
         if cid and sourceUnitId then self.alertList[sourceUnitId] = cid end
-    end,
-    [INFUSER_BUFF] = function(self, context, alerts, result, abilityId, ...)
-        if result ~= ACTION_RESULT_EFFECT_GAINED then return end
+    end },
+    [INFUSER_BUFF] = { result = ACTION_RESULT_EFFECT_GAINED,
+        fn = function(self, context, alerts, abilityId, ...)
         alerts:showAction("Infuser Buff passed!")
         CA.alert(nil, "Infuser Buff passed!", 0xFF8800FF, SOUNDS.DUEL_START, 3000)
-    end,
+    end },
     -- ── HM confirmation ability ────────────────────────────────────────────
     [FALGRAVN_HM] = function(self, context, alerts, result, abilityId, ...)
         if result == ACTION_RESULT_EFFECT_GAINED then
@@ -273,26 +273,26 @@ Falgravn.combatRoutes = {
         end
     end,
     -- ── Njordal: Blood Cleave ──────────────────────────────────────────────
-    [FALGRAVN_M_CLEAVE] = function(self, context, alerts, result, abilityId,
-                                    unitTag, sourceUnitTag, sourceUnitId, unitId,
-                                    sourceUnitName, unitName)
-        if result ~= ACTION_RESULT_BEGIN then return end
+    [FALGRAVN_M_CLEAVE] = { result = ACTION_RESULT_BEGIN,
+        fn = function(self, context, alerts, abilityId,
+                      unitTag, sourceUnitTag, sourceUnitId, unitId,
+                      sourceUnitName, unitName)
         alerts:showAction("DODGE!")
         local dur = select(1, GetAbilityCastInfo(FALGRAVN_M_CLEAVE)) or 0
         if dur <= 0 then dur = FALLBACK_DUR end
         CA.castAlertsStart(abilityId, sourceUnitName, dur, dur,
             { 1, 0, 0.6, 0.4 },
             { 700, "DODGE!", 1, 0, 0.6, 0.8, SOUNDS.CHAMPION_POINTS_COMMITTED })
-    end,
+    end },
     -- ── Njordal: Blood Fountain ────────────────────────────────────────────
-    [FALGRAVN_BLOOD_FOUNT] = function(self, context, alerts, result, abilityId,
-                                       unitTag, sourceUnitTag, sourceUnitId, unitId,
-                                       sourceUnitName, unitName)
-        if result ~= ACTION_RESULT_BEGIN then return end
+    [FALGRAVN_BLOOD_FOUNT] = { result = ACTION_RESULT_BEGIN,
+        fn = function(self, context, alerts, abilityId,
+                      unitTag, sourceUnitTag, sourceUnitId, unitId,
+                      sourceUnitName, unitName)
         alerts:showAction("Block Blood Fountain!")
         CA.alertCast(FALGRAVN_BLOOD_FOUNT, sourceUnitName, 3033,
             { -3, 0, false, { 1, 0.2, 0.9, 0.4 }, { 1, 0.2, 0.9, 0.8 } })
-    end,
+    end },
     -- ── Lightning / connection (deduped) ───────────────────────────────────
     [FALGRAVN_LIGHTNING] = function(self, context, alerts, result, abilityId, ...)
         if result == ACTION_RESULT_BEGIN and self.bConnect then
@@ -314,11 +314,11 @@ Falgravn.combatRoutes = {
         end
     end,
     -- ── Stage 2: Unwavering Power fades (Falgravn lands) ──────────────────
-    [FALGRAVN_UNW_POWER] = function(self, context, alerts, result, abilityId, ...)
-        if result ~= ACTION_RESULT_EFFECT_FADED then return end
+    [FALGRAVN_UNW_POWER] = { result = ACTION_RESULT_EFFECT_FADED,
+        fn = function(self, context, alerts, abilityId, ...)
         self.bloodBallTimer:reset(INITIAL_BLOODBALL_DELAY)
         self.instabilityTimer:reset(INSTABILITY_INITIAL_DELAY)
-    end,
+    end },
     [FALGRAVN_BLOOTBALL] = function(self, context, alerts, result, abilityId, ...)
         if self.CURRENT_STAGE ~= 2 then self.CURRENT_STAGE = 2 end
         if result == ACTION_RESULT_EFFECT_GAINED_DURATION then
@@ -327,24 +327,24 @@ Falgravn.combatRoutes = {
             self.bloodBallTimer:reset(NEXT_BLOODBALL)
         end
     end,
-    [FALGRAVN_START_STAGE2] = function(self, context, alerts, result, abilityId, ...)
-        if result ~= ACTION_RESULT_BEGIN then return end
+    [FALGRAVN_START_STAGE2] = { result = ACTION_RESULT_BEGIN,
+        fn = function(self, context, alerts, abilityId, ...)
         if self.CURRENT_STAGE ~= 2 then self.CURRENT_STAGE = 2 end
-    end,
+    end },
     -- ── Stage 3: floor shatters ────────────────────────────────────────────
-    [FALGRAVN_SHATTER_MID] = function(self, context, alerts, result, abilityId, ...)
-        if result ~= ACTION_RESULT_BEGIN then return end
+    [FALGRAVN_SHATTER_MID] = { result = ACTION_RESULT_BEGIN,
+        fn = function(self, context, alerts, abilityId, ...)
         if self.CURRENT_STAGE ~= 3 then
             self.CURRENT_STAGE = 3
             self.openGatesTimer:reset(INITIAL_OPENGATE_TIME)
             alerts:showInfo(2, ""); alerts:showInfo(3, ""); alerts:showInfo(4, "")
         end
-    end,
+    end },
     -- Open Gates: recurring timer + 25 s delayed heavy-attack alert for tanks.
-    [FALGRAVN_OPEN_DOOR] = function(self, context, alerts, result, abilityId,
-                                     unitTag, sourceUnitTag, sourceUnitId, unitId,
-                                     sourceUnitName, unitName)
-        if result ~= ACTION_RESULT_BEGIN then return end
+    [FALGRAVN_OPEN_DOOR] = { result = ACTION_RESULT_BEGIN,
+        fn = function(self, context, alerts, abilityId,
+                      unitTag, sourceUnitTag, sourceUnitId, unitId,
+                      sourceUnitName, unitName)
         self.openGatesTimer:reset(NEXT_OPENGATE_TIME)
         self.torturerTimer:reset(NEXT_TORTURER_TP)
         alerts:showAction("Open the Gates!")
@@ -356,7 +356,7 @@ Falgravn.combatRoutes = {
             CA.alertCast(FALGRAVN_OPEN_DOOR, capturedSrc, 7500,
                 { -3, 0, false, { 0, 0, 0.7, 0.4 }, { 0, 0, 0.7, 0.8 } })
         end, 25000)
-    end,
+    end },
     -- Torturer feeding: kill countdown (deduped per feed cycle).
     [FALGRAVN_TUT_FEED] = function(self, context, alerts, result, abilityId,
                                     unitTag, sourceUnitTag, sourceUnitId, unitId, ...)
@@ -377,19 +377,19 @@ Falgravn.combatRoutes = {
     [FALGRAVN_SACRIFICE] = function(self, ...)
         self.torturerCount = self.torturerCount - 1
     end,
-    [FALGRAVN_TORTURER_ESC] = function(self, context, alerts, result, abilityId, ...)
-        if result ~= ACTION_RESULT_BEGIN then return end
+    [FALGRAVN_TORTURER_ESC] = { result = ACTION_RESULT_BEGIN,
+        fn = function(self, context, alerts, abilityId, ...)
         alerts:showAction("Torturer Comes Down!")
         CA.alert(nil, "Torturer Comes Down!", 0xFF8800FF,
             SOUNDS.CHAMPION_POINTS_COMMITTED, 3000)
-    end,
-    [FALGRAVN_TORTURER_LA] = function(self, context, alerts, result, abilityId, unitTag, ...)
-        if result ~= ACTION_RESULT_BEGIN then return end
+    end },
+    [FALGRAVN_TORTURER_LA] = { result = ACTION_RESULT_BEGIN,
+        fn = function(self, context, alerts, abilityId, unitTag, ...)
         if IsUnitPlayer(unitTag) and GetSelectedLFGRole() ~= LFG_ROLE_TANK then
             alerts:showAction("DODGE! (Torturer LA)")
             CA.alert("Torturer LA's", "DODGE!", 0xFF0000FF, SOUNDS.DUEL_START, 1000)
         end
-    end,
+    end },
 }
 
 -- ── Effect routing tables (C3) ───────────────────────────────────────────
@@ -431,9 +431,9 @@ Falgravn.effectRoutes = {
     end,
     [FALGRAVN_INSTABILITY]  = handleInstabilityEffect,
     [FALGRAVN_INSTABILITY2] = handleInstabilityEffect,
-    [FALGRAVN_PRISONER_F] = function(self, context, alerts, changeType, abilityId,
-                                      unitTag, unitId, unitName, stackCount)
-        if changeType ~= EFFECT_RESULT_GAINED then return end
+    [FALGRAVN_PRISONER_F] = { changeType = EFFECT_RESULT_GAINED,
+        fn = function(self, context, alerts, abilityId,
+                      unitTag, unitId, unitName, stackCount)
         local name = zo_strformat("<<1>>", unitName)
         if self.PRISONERS[name] ~= nil then
             self.PRISONERS[name] = self.PRISONERS[name] + 1
@@ -441,7 +441,7 @@ Falgravn.effectRoutes = {
                 self.torturerCount = self.torturerCount - 1
             end
         end
-    end,
+    end },
     [FALGRAVN_BLOPSYNERGIE] = function(self, context, alerts, changeType, abilityId,
                                         unitTag, unitId, unitName, stackCount)
         if not IsUnitPlayer(unitTag) then return end

@@ -70,27 +70,24 @@ end
 -- ── Routing tables (C3) ──────────────────────────────────────────────────
 
 -- Titanic Leap: shared handler for all 6 leap variant IDs.
-local function handleLeap(self, context, alerts, result, abilityId, ...)
-    if result ~= ACTION_RESULT_BEGIN then return end
+local function handleLeap(self, context, alerts, abilityId, ...)
     self.firstLeap = false
     self.leapTimer:reset(LEAP_CD)
     alerts:showAction("Titanic Leap!")
 end
 
 -- Reflective Scales: red border for player on wrong side.
-local function handleReflective(self, context, alerts, result, abilityId,
+local function handleReflective(self, context, alerts, abilityId,
                                   unitTag, ...)
-    if result ~= ACTION_RESULT_EFFECT_GAINED then return end
     if not IsUnitPlayer(unitTag) then return end
     CA.border(true, 5000, "red")
     alerts:showAction("Wrong side! Reflective Scales!")
 end
 
 -- Tail Slam: shared handler for both variants.
-local function handleTailSlam(self, context, alerts, result, abilityId,
+local function handleTailSlam(self, context, alerts, abilityId,
                                 unitTag, sourceUnitTag, sourceUnitId, unitId,
                                 sourceUnitName, unitName)
-    if result ~= ACTION_RESULT_EFFECT_GAINED then return end
     local target = (unitName and unitName ~= "") and unitName or "?"
     local dur = select(1, GetAbilityCastInfo(abilityId)) or 0
     if dur <= 0 then dur = FALLBACK_DUR end
@@ -98,94 +95,91 @@ local function handleTailSlam(self, context, alerts, result, abilityId,
 end
 
 JynorahEncounter.combatRoutes = {
-    [TITANIC_CLASH] = function(self, context, alerts, result, abilityId, ...)
-        if result ~= ACTION_RESULT_BEGIN then return end
+    [TITANIC_CLASH] = { result = ACTION_RESULT_BEGIN, fn = function(self, context, alerts, abilityId, ...)
         self.clashActive = true
         self.clashTimer:reset(37.5)
         CA.alertCast(abilityId, "TITANIC CLASH! DODGE!", 3500, COL_CLASH)
         alerts:showAction("Titanic Clash — dodge the breath!")
-    end,
+    end },
     -- Titanic Leap (6 variants)
-    [TITANIC_LEAP_1] = handleLeap,
-    [TITANIC_LEAP_2] = handleLeap,
-    [TITANIC_LEAP_3] = handleLeap,
-    [TITANIC_LEAP_4] = handleLeap,
-    [TITANIC_LEAP_5] = handleLeap,
-    [TITANIC_LEAP_6] = handleLeap,
+    [TITANIC_LEAP_1] = { result = ACTION_RESULT_BEGIN, fn = handleLeap },
+    [TITANIC_LEAP_2] = { result = ACTION_RESULT_BEGIN, fn = handleLeap },
+    [TITANIC_LEAP_3] = { result = ACTION_RESULT_BEGIN, fn = handleLeap },
+    [TITANIC_LEAP_4] = { result = ACTION_RESULT_BEGIN, fn = handleLeap },
+    [TITANIC_LEAP_5] = { result = ACTION_RESULT_BEGIN, fn = handleLeap },
+    [TITANIC_LEAP_6] = { result = ACTION_RESULT_BEGIN, fn = handleLeap },
     -- Curse casts (announcement)
-    [SPARKING_CURSE_CAST] = function(self, context, alerts, result, abilityId,
-                                      unitTag, sourceUnitTag, sourceUnitId, unitId,
-                                      sourceUnitName, unitName)
-        if result ~= ACTION_RESULT_BEGIN then return end
+    [SPARKING_CURSE_CAST] = { result = ACTION_RESULT_BEGIN,
+        fn = function(self, context, alerts, abilityId,
+                      unitTag, sourceUnitTag, sourceUnitId, unitId,
+                      sourceUnitName, unitName)
         local target = (unitName and unitName ~= "") and unitName or "?"
         alerts:showAction("Sparking Curse → " .. target)
-    end,
-    [BLAZING_CURSE_CAST] = function(self, context, alerts, result, abilityId,
-                                     unitTag, sourceUnitTag, sourceUnitId, unitId,
-                                     sourceUnitName, unitName)
-        if result ~= ACTION_RESULT_BEGIN then return end
+    end },
+    [BLAZING_CURSE_CAST] = { result = ACTION_RESULT_BEGIN,
+        fn = function(self, context, alerts, abilityId,
+                      unitTag, sourceUnitTag, sourceUnitId, unitId,
+                      sourceUnitName, unitName)
         local target = (unitName and unitName ~= "") and unitName or "?"
         alerts:showAction("Blazing Curse → " .. target)
-    end,
+    end },
     -- Curse debuffs on player (swap sides)
-    [SPARKING_CURSE_DEBUF] = function(self, context, alerts, result, abilityId,
-                                       unitTag, ...)
-        if result ~= ACTION_RESULT_EFFECT_GAINED_DURATION then return end
+    [SPARKING_CURSE_DEBUF] = { result = ACTION_RESULT_EFFECT_GAINED_DURATION,
+        fn = function(self, context, alerts, abilityId,
+                      unitTag, ...)
         if not IsUnitPlayer(unitTag) then return end
         CA.alert(nil, "Sparking Curse! Swap to fire!", 0x44CCFFFF, SOUNDS.NONE, 4000)
         alerts:showAction("Sparking Curse — swap to Valneer side!")
-    end,
-    [BLAZING_CURSE_DEBUF] = function(self, context, alerts, result, abilityId,
-                                      unitTag, ...)
-        if result ~= ACTION_RESULT_EFFECT_GAINED_DURATION then return end
+    end },
+    [BLAZING_CURSE_DEBUF] = { result = ACTION_RESULT_EFFECT_GAINED_DURATION,
+        fn = function(self, context, alerts, abilityId,
+                      unitTag, ...)
         if not IsUnitPlayer(unitTag) then return end
         CA.alert(nil, "Blazing Curse! Swap to ice!", 0xFF8844FF, SOUNDS.NONE, 4000)
         alerts:showAction("Blazing Curse — swap to Myrinax side!")
-    end,
+    end },
     -- AoE surges (player targeted)
-    [COLDFLAME_SURGE] = function(self, context, alerts, result, abilityId,
-                                  unitTag, ...)
-        if result ~= ACTION_RESULT_BEGIN then return end
+    [COLDFLAME_SURGE] = { result = ACTION_RESULT_BEGIN,
+        fn = function(self, context, alerts, abilityId,
+                      unitTag, ...)
         if not IsUnitPlayer(unitTag) then return end
         CA.alert(nil, "Coldflame on YOU!", 0x44CCFFFF, SOUNDS.NONE, 3000)
         alerts:showAction("Coldflame Surge on you! MOVE!")
-    end,
-    [BRIMSTONE_SURGE] = function(self, context, alerts, result, abilityId,
-                                  unitTag, ...)
-        if result ~= ACTION_RESULT_BEGIN then return end
+    end },
+    [BRIMSTONE_SURGE] = { result = ACTION_RESULT_BEGIN,
+        fn = function(self, context, alerts, abilityId,
+                      unitTag, ...)
         if not IsUnitPlayer(unitTag) then return end
         CA.alert(nil, "Brimstone on YOU!", 0xFF6600FF, SOUNDS.NONE, 3000)
         alerts:showAction("Brimstone Surge on you! MOVE!")
-    end,
-    [COLDFLAME_STOMP] = function(self, context, alerts, result, abilityId, ...)
-        if result ~= ACTION_RESULT_BEGIN then return end
+    end },
+    [COLDFLAME_STOMP] = { result = ACTION_RESULT_BEGIN, fn = function(self, context, alerts, abilityId, ...)
         CA.alertCast(abilityId, "Coldflame Stomp!", 2000, COL_ICE)
-    end,
-    [BRIMSTONE_STOMP] = function(self, context, alerts, result, abilityId, ...)
-        if result ~= ACTION_RESULT_BEGIN then return end
+    end },
+    [BRIMSTONE_STOMP] = { result = ACTION_RESULT_BEGIN, fn = function(self, context, alerts, abilityId, ...)
         CA.alertCast(abilityId, "Brimstone Stomp!", 2000, COL_FIRE)
-    end,
+    end },
     -- Dragon breaths (player targeted)
-    [MYRINAX_BREATH] = function(self, context, alerts, result, abilityId,
-                                 unitTag, ...)
-        if result ~= ACTION_RESULT_BEGIN then return end
+    [MYRINAX_BREATH] = { result = ACTION_RESULT_BEGIN,
+        fn = function(self, context, alerts, abilityId,
+                      unitTag, ...)
         if not IsUnitPlayer(unitTag) then return end
         CA.alert(nil, "BREATH — MOVE!", 0x44CCFFFF, SOUNDS.NONE, 2500)
         alerts:showAction("Myrinax Breath on you! MOVE!")
-    end,
-    [VALNEER_BREATH] = function(self, context, alerts, result, abilityId,
-                                 unitTag, ...)
-        if result ~= ACTION_RESULT_BEGIN then return end
+    end },
+    [VALNEER_BREATH] = { result = ACTION_RESULT_BEGIN,
+        fn = function(self, context, alerts, abilityId,
+                      unitTag, ...)
         if not IsUnitPlayer(unitTag) then return end
         CA.alert(nil, "BREATH — MOVE!", 0xFF8844FF, SOUNDS.NONE, 2500)
         alerts:showAction("Valneer Breath on you! MOVE!")
-    end,
+    end },
     -- Reflective Scales (wrong side)
-    [REFLECTIVE_1] = handleReflective,
-    [REFLECTIVE_2] = handleReflective,
+    [REFLECTIVE_1] = { result = ACTION_RESULT_EFFECT_GAINED, fn = handleReflective },
+    [REFLECTIVE_2] = { result = ACTION_RESULT_EFFECT_GAINED, fn = handleReflective },
     -- Tail Slam (caAlertCast)
-    [TAIL_SLAM_1] = handleTailSlam,
-    [TAIL_SLAM_2] = handleTailSlam,
+    [TAIL_SLAM_1] = { result = ACTION_RESULT_EFFECT_GAINED, fn = handleTailSlam },
+    [TAIL_SLAM_2] = { result = ACTION_RESULT_EFFECT_GAINED, fn = handleTailSlam },
 }
 
 -- ── Info-line renderers ───────────────────────────────────────────────────

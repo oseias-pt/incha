@@ -40,24 +40,24 @@ end
 -- ── Routing tables (C3) ──────────────────────────────────────────────────
 
 XynizataEncounter.combatRoutes = {
-    [PIERCING_BEAM] = function(self, context, alerts, result, abilityId, ...)
-        if result ~= ACTION_RESULT_BEGIN then return end
+    [PIERCING_BEAM] = { result = ACTION_RESULT_BEGIN,
+        fn = function(self, context, alerts, abilityId, ...)
         self.firstBeam = false
         self.piercingBeamTimer:reset(BEAM_CD)
         local dur = select(1, GetAbilityCastInfo(abilityId)) or 0
         if dur <= 0 then dur = FALLBACK_BEAM_DUR end
         CA.alertCast(abilityId, "INTERRUPT — Beam!", dur, COL_INTERRUPT)
         alerts:showAction("INTERRUPT — Piercing Beam!")
-    end,
-    [VITRIFY] = function(self, context, alerts, result, abilityId, ...)
-        if result ~= ACTION_RESULT_BEGIN then return end
+    end },
+    [VITRIFY] = { result = ACTION_RESULT_BEGIN,
+        fn = function(self, context, alerts, abilityId, ...)
         self.firstVitrify = false
         self.vitrifyTimer:reset(VITRIFY_CD)
         local dur = select(1, GetAbilityCastInfo(abilityId)) or 0
         if dur <= 0 then dur = FALLBACK_VITRIFY_DUR end
         CA.alertCast(abilityId, "INTERRUPT — Vitrify!", dur, COL_INTERRUPT)
         alerts:showAction("INTERRUPT — Vitrify!")
-    end,
+    end },
 }
 
 function XynizataEncounter:onUpdate(context, alerts)

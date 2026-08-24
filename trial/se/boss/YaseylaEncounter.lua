@@ -58,10 +58,9 @@ end
 -- ── Routing tables (C3) ──────────────────────────────────────────────────
 
 -- Frost Bomb: shared handler for both ability IDs.
-local function handleFrostBomb(self, context, alerts, result, abilityId,
+local function handleFrostBomb(self, context, alerts, abilityId,
                                 unitTag, sourceUnitTag, sourceUnitId, unitId,
                                 sourceUnitName, unitName)
-    if result ~= ACTION_RESULT_EFFECT_GAINED_DURATION then return end
     self.firstFrost = false
     self.frostTimer:reset(FROST_CD)
     if IsUnitPlayer(unitTag) then
@@ -73,10 +72,10 @@ local function handleFrostBomb(self, context, alerts, result, abilityId,
 end
 
 YaseylaEncounter.combatRoutes = {
-    [FIRE_BOMBS] = function(self, context, alerts, result, abilityId,
-                             unitTag, sourceUnitTag, sourceUnitId, unitId,
-                             sourceUnitName, unitName)
-        if result ~= ACTION_RESULT_BEGIN then return end
+    [FIRE_BOMBS] = { result = ACTION_RESULT_BEGIN,
+        fn = function(self, context, alerts, abilityId,
+                      unitTag, sourceUnitTag, sourceUnitId, unitId,
+                      sourceUnitName, unitName)
         self.firstFirebomb = false
         local cd = self.executePhase and FIREBOMB_EXEC_CD or FIREBOMB_CD
         self.firebombTimer:reset(cd)
@@ -86,34 +85,32 @@ YaseylaEncounter.combatRoutes = {
         if dur <= 0 then dur = FALLBACK_DUR end
         local cid = CA.alertCast(abilityId, "Fire Bombs!", dur, COL_FIRE)
         if cid and unitId then self.alertList[unitId] = cid end
-    end,
-    [CHAIN_PULL] = function(self, context, alerts, result, abilityId, ...)
-        if result ~= ACTION_RESULT_BEGIN then return end
+    end },
+    [CHAIN_PULL] = { result = ACTION_RESULT_BEGIN, fn = function(self, context, alerts, abilityId, ...)
         self.chainTimer:reset(CHAIN_CD)
         alerts:showAction("Chains!")
-    end,
-    [FROST_BOMB_1] = handleFrostBomb,
-    [FROST_BOMB_2] = handleFrostBomb,
-    [IGNITE] = function(self, context, alerts, result, abilityId, unitTag, ...)
-        if result ~= ACTION_RESULT_EFFECT_GAINED_DURATION then return end
+    end },
+    [FROST_BOMB_1] = { result = ACTION_RESULT_EFFECT_GAINED_DURATION, fn = handleFrostBomb },
+    [FROST_BOMB_2] = { result = ACTION_RESULT_EFFECT_GAINED_DURATION, fn = handleFrostBomb },
+    [IGNITE] = { result = ACTION_RESULT_EFFECT_GAINED_DURATION,
+        fn = function(self, context, alerts, abilityId, unitTag, ...)
         if not IsUnitPlayer(unitTag) then return end
         alerts:showAction("Ignite on you! Move!")
-    end,
-    [DEFLECT] = function(self, context, alerts, result, abilityId, ...)
-        if result ~= ACTION_RESULT_BEGIN then return end
+    end },
+    [DEFLECT] = { result = ACTION_RESULT_BEGIN, fn = function(self, context, alerts, abilityId, ...)
         self.shrapnelCount = self.shrapnelCount + 1
         alerts:showAction("SHRAPNEL! Stack! (" .. self.shrapnelCount .. ")")
         CA.alert(nil, "STACK!", 0xFF0033FF, SOUNDS.NONE, 3000)
-    end,
-    [WAMASU_CHARGE] = function(self, context, alerts, result, abilityId,
-                                unitTag, sourceUnitTag, sourceUnitId, unitId,
-                                sourceUnitName, unitName)
-        if result ~= ACTION_RESULT_BEGIN then return end
+    end },
+    [WAMASU_CHARGE] = { result = ACTION_RESULT_BEGIN,
+        fn = function(self, context, alerts, abilityId,
+                      unitTag, sourceUnitTag, sourceUnitId, unitId,
+                      sourceUnitName, unitName)
         local target = (unitName and unitName ~= "") and unitName or "?"
         local dur = select(1, GetAbilityCastInfo(abilityId)) or 0
         if dur <= 0 then dur = FALLBACK_DUR end
         CA.alertCast(abilityId, "Charge → " .. target, dur, COL_FIRE)
-    end,
+    end },
 }
 
 -- ── Info-line renderers ───────────────────────────────────────────────────

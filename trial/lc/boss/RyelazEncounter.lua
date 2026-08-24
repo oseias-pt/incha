@@ -36,13 +36,13 @@ end
 
 -- Annihilation: shared alertCast, different showAction label.
 local function makeAnnihilHandler(label)
-    return function(self, context, alerts, result, abilityId, ...)
-        if result ~= ACTION_RESULT_BEGIN then return end
+    return { result = ACTION_RESULT_BEGIN,
+        fn = function(self, context, alerts, abilityId, ...)
         local dur = select(1, GetAbilityCastInfo(abilityId)) or 0
         if dur <= 0 then dur = FALLBACK_DUR end
         CA.alertCast(abilityId, "STACK — Annihilation!", dur, COL_ANNIHIL)
         alerts:showAction(label .. " STACK!")
-    end
+    end }
 end
 
 -- Porcin FADED: shared for both light/dark — clear playerSide.

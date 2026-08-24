@@ -87,10 +87,9 @@ end
 -- (No onDied needed — ReefGuardian has no alertList.)
 
 -- Heavy / player-targeted attacks: shared handler for 5 ability IDs.
-local function handleHeavy(self, context, alerts, result, abilityId,
+local function handleHeavy(self, context, alerts, abilityId,
                             unitTag, sourceUnitTag, sourceUnitId, unitId,
                             sourceUnitName, unitName)
-    if result ~= ACTION_RESULT_BEGIN then return end
     if not IsUnitPlayer(unitTag) then return end
     local dur = select(1, GetAbilityCastInfo(abilityId)) or 0
     if dur <= 0 then dur = FALLBACK_DUR end
@@ -99,8 +98,8 @@ end
 
 ReefGuardian.combatRoutes = {
     -- Reef portal opening
-    [HEARTBURN] = function(self, context, alerts, result, abilityId, ...)
-        if result ~= ACTION_RESULT_BEGIN then return end
+    [HEARTBURN] = { result = ACTION_RESULT_BEGIN,
+        fn = function(self, context, alerts, abilityId, ...)
         self.reefNum = self.reefNum + 1
         local idx = self.reefNum
         self.reefPortals[idx] = { openTime = GetGameTimeMilliseconds() / 1000,
@@ -108,10 +107,10 @@ ReefGuardian.combatRoutes = {
         CA.alert(nil, "Reef " .. idx .. ": OPEN — 60 s!",
             0xFFD700D9, SOUNDS.DUEL_START, 5000)
         PlaySound(SOUNDS.DUEL_START)
-    end,
+    end },
     -- Acid Reflux channel + 5 pool alerts
-    [ACID_REFLUX] = function(self, context, alerts, result, abilityId, ...)
-        if result ~= ACTION_RESULT_BEGIN then return end
+    [ACID_REFLUX] = { result = ACTION_RESULT_BEGIN,
+        fn = function(self, context, alerts, abilityId, ...)
         CA.castAlertsStop(self.acidRefluxBarId)
         self.acidRefluxBarId = CA.castAlertsStart(
             abilityId, "Acid Reflux", 10000, 10000, COL_ACID, ACT_ACID)
@@ -123,19 +122,19 @@ ReefGuardian.combatRoutes = {
                     0x44DD22D9, SOUNDS.CHAMPION_POINTS_COMMITTED, 1500)
             end, delay)
         end
-    end,
+    end },
     -- Boss replication
-    [REPLICATION] = function(self, context, alerts, result, abilityId, ...)
-        if result ~= ACTION_RESULT_BEGIN then return end
+    [REPLICATION] = { result = ACTION_RESULT_BEGIN,
+        fn = function(self, context, alerts, abilityId, ...)
         CA.alert(nil, "Replication!", 0xFF8800D9,
             SOUNDS.CHAMPION_POINTS_COMMITTED, 3000)
-    end,
+    end },
     -- Heavy / targeted attacks (5 IDs, shared handler)
-    [CRAB_MONSTROUS_CLAW] = handleHeavy,
-    [CRAB_SWIPE]          = handleHeavy,
-    [CRUSH]               = handleHeavy,
-    [CLAW_ATTACK]         = handleHeavy,
-    [CRACKDOWN]           = handleHeavy,
+    [CRAB_MONSTROUS_CLAW] = { result = ACTION_RESULT_BEGIN, fn = handleHeavy },
+    [CRAB_SWIPE]          = { result = ACTION_RESULT_BEGIN, fn = handleHeavy },
+    [CRUSH]               = { result = ACTION_RESULT_BEGIN, fn = handleHeavy },
+    [CLAW_ATTACK]         = { result = ACTION_RESULT_BEGIN, fn = handleHeavy },
+    [CRACKDOWN]           = { result = ACTION_RESULT_BEGIN, fn = handleHeavy },
 }
 
 -- Building Static: shared handler for both lightning stack IDs.
@@ -187,8 +186,8 @@ ReefGuardian.effectRoutes = {
         end
     end,
     -- Heartburn effect: reef portal wipe timer start.
-    [HEARTBURN_EFFECT] = function(self, context, alerts, changeType, abilityId, ...)
-        if changeType ~= EFFECT_RESULT_GAINED then return end
+    [HEARTBURN_EFFECT] = { changeType = EFFECT_RESULT_GAINED,
+        fn = function(self, context, alerts, abilityId, ...)
         local now = GetGameTimeMilliseconds() / 1000
         for i = self.reefNum, 1, -1 do
             local reef = self.reefPortals[i]
@@ -198,7 +197,7 @@ ReefGuardian.effectRoutes = {
                 break
             end
         end
-    end,
+    end },
     [KING_ORGNUM_FIRE_DBF] = function(self, context, alerts, changeType, abilityId,
                                        unitTag, unitId, unitName, stackCount)
         if changeType == EFFECT_RESULT_GAINED and AreUnitsEqual("player", unitTag) then

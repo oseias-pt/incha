@@ -158,10 +158,9 @@ end
 -- (No onDied needed — Xalvakka has no alertList.)
 
 -- ScathingEvisceration: player-targeted frontal heavy (3 IDs, shared handler).
-local function handleScathing(self, context, alerts, result, abilityId,
+local function handleScathing(self, context, alerts, abilityId,
                                unitTag, sourceUnitTag, sourceUnitId, unitId,
                                sourceUnitName, unitName)
-    if result ~= ACTION_RESULT_BEGIN then return end
     if not IsUnitPlayer(unitTag) then return end
     local dur = select(1, GetAbilityCastInfo(abilityId)) or 0
     if dur <= 0 then dur = FALLBACK_SCATHING_DUR end
@@ -169,27 +168,26 @@ local function handleScathing(self, context, alerts, result, abilityId,
 end
 
 -- Deadstar add explosion (2 IDs, shared handler).
-local function handleDeadstar(self, context, alerts, result, abilityId, ...)
-    if result ~= ACTION_RESULT_BEGIN then return end
+local function handleDeadstar(self, context, alerts, abilityId, ...)
     CA.alert(nil, "Deadstar!", 0xFFCC00D9, SOUNDS.CHAMPION_POINTS_COMMITTED, 2500)
 end
 
 Xalvakka.combatRoutes = {
     -- ScathingEvisceration (base + two HM variants)
-    [SCATHING1] = handleScathing,
-    [SCATHING2] = handleScathing,
-    [SCATHING3] = handleScathing,
+    [SCATHING1] = { result = ACTION_RESULT_BEGIN, fn = handleScathing },
+    [SCATHING2] = { result = ACTION_RESULT_BEGIN, fn = handleScathing },
+    [SCATHING3] = { result = ACTION_RESULT_BEGIN, fn = handleScathing },
     -- Deadstar add-explosion (two variants)
-    [DEADSTAR1] = handleDeadstar,
-    [DEADSTAR2] = handleDeadstar,
+    [DEADSTAR1] = { result = ACTION_RESULT_BEGIN, fn = handleDeadstar },
+    [DEADSTAR2] = { result = ACTION_RESULT_BEGIN, fn = handleDeadstar },
     -- Flaming Portal (repositioning jump, HM only)
-    [FLAMING_PORTAL] = function(self, context, alerts, result, abilityId, ...)
-        if result ~= ACTION_RESULT_BEGIN then return end
+    [FLAMING_PORTAL] = { result = ACTION_RESULT_BEGIN,
+        fn = function(self, context, alerts, abilityId, ...)
         if not context.isHM then return end
         local now = GetGameTimeMilliseconds() / 1000
         self.numJumps = self.numJumps + 1
         self.nextJump = now + 35
-    end,
+    end },
 }
 
 Xalvakka.effectRoutes = {

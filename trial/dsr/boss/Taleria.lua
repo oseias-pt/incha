@@ -113,10 +113,9 @@ end
 Taleria.common = DreadsailCommon
 
 -- Crashing Wave: two IDs, same handler.
-local function handleCrashingWave(self, context, alerts, result, abilityId,
+local function handleCrashingWave(self, context, alerts, abilityId,
                                    unitTag, sourceUnitTag, sourceUnitId, unitId,
                                    sourceUnitName, unitName)
-    if result ~= ACTION_RESULT_BEGIN then return end
     if not IsUnitPlayer(unitTag) then return end
     local dur = select(1, GetAbilityCastInfo(abilityId)) or 0
     if dur <= 0 then dur = FALLBACK_WAVE_DUR end
@@ -125,8 +124,8 @@ end
 
 -- Bridge open: closes over the bridge index.
 local function makeBridgeHandler(bridgeIdx)
-    return function(self, context, alerts, result, abilityId, ...)
-        if result ~= ACTION_RESULT_BEGIN then return end
+    return { result = ACTION_RESULT_BEGIN,
+        fn = function(self, context, alerts, abilityId, ...)
         local now = GetGameTimeMilliseconds() / 1000
         self.lastPlatformFall           = now
         self.bridgeWipeStart[bridgeIdx] = now
@@ -134,65 +133,65 @@ local function makeBridgeHandler(bridgeIdx)
             "Bridge " .. bridgeIdx .. " open — " .. BRIDGE_WIPE .. " s!",
             0xFF8800D9, SOUNDS.DUEL_START, 5000)
         PlaySound(SOUNDS.DUEL_START)
-    end
+    end }
 end
 
 Taleria.combatRoutes = {
-    [CRASHING_WAVE_1] = handleCrashingWave,
-    [CRASHING_WAVE_2] = handleCrashingWave,
-    [CORAL_SLAM] = function(self, context, alerts, result, abilityId,
-                             unitTag, sourceUnitTag, sourceUnitId, unitId,
-                             sourceUnitName, unitName)
-        if result ~= ACTION_RESULT_BEGIN then return end
+    [CRASHING_WAVE_1] = { result = ACTION_RESULT_BEGIN, fn = handleCrashingWave },
+    [CRASHING_WAVE_2] = { result = ACTION_RESULT_BEGIN, fn = handleCrashingWave },
+    [CORAL_SLAM] = { result = ACTION_RESULT_BEGIN,
+        fn = function(self, context, alerts, abilityId,
+                      unitTag, sourceUnitTag, sourceUnitId, unitId,
+                      sourceUnitName, unitName)
         if not IsUnitPlayer(unitTag) then return end
         local dur = select(1, GetAbilityCastInfo(abilityId)) or 0
         if dur <= 0 then dur = FALLBACK_SLAM_DUR end
         CA.alertCast(abilityId, sourceUnitName, dur, COL_HEAVY)
-    end,
-    [BARNACLE_BLADE] = function(self, context, alerts, result, abilityId,
-                                 unitTag, sourceUnitTag, sourceUnitId, unitId,
-                                 sourceUnitName, unitName)
-        if result ~= ACTION_RESULT_BEGIN then return end
+    end },
+    [BARNACLE_BLADE] = { result = ACTION_RESULT_BEGIN,
+        fn = function(self, context, alerts, abilityId,
+                      unitTag, sourceUnitTag, sourceUnitId, unitId,
+                      sourceUnitName, unitName)
         if not IsUnitPlayer(unitTag) then return end
         local dur = select(1, GetAbilityCastInfo(abilityId)) or 0
         if dur <= 0 then dur = FALLBACK_BLADE_DUR end
         CA.alertCast(abilityId, sourceUnitName, dur, COL_HEAVY)
-    end,
-    [MAELSTROM_CAST] = function(self, context, alerts, result, abilityId, ...)
-        if result ~= ACTION_RESULT_BEGIN then return end
+    end },
+    [MAELSTROM_CAST] = { result = ACTION_RESULT_BEGIN,
+        fn = function(self, context, alerts, abilityId, ...)
         self.lastMaelstrom = GetGameTimeMilliseconds() / 1000
         CA.alert(nil, "|c66CC66Maelstrom — HEAL!|r (6 s)",
             0x66CC66D9, SOUNDS.CHAMPION_POINTS_COMMITTED, 6000)
-    end,
-    [BEHEMOTH_SUMMON] = function(self, context, alerts, result, abilityId, ...)
-        if result ~= ACTION_RESULT_BEGIN then return end
+    end },
+    [BEHEMOTH_SUMMON] = { result = ACTION_RESULT_BEGIN,
+        fn = function(self, context, alerts, abilityId, ...)
         local now = GetGameTimeMilliseconds() / 1000
         self.lastBehemothSumm = now
         self.behemothSlam     = now + 10   -- first slam ~10 s after summon
         CA.alert(nil, "Sea Behemoth summoned!",
             0xFF8800D9, SOUNDS.CHAMPION_POINTS_COMMITTED, 3000)
-    end,
-    [ARCTIC_ANNIH] = function(self, context, alerts, result, abilityId, ...)
-        if result ~= ACTION_RESULT_BEGIN then return end
+    end },
+    [ARCTIC_ANNIH] = { result = ACTION_RESULT_BEGIN,
+        fn = function(self, context, alerts, abilityId, ...)
         self.behemothSlam = GetGameTimeMilliseconds() / 1000 + SLAM_CD
         CA.alert(nil, "|cFF8800Behemoth SLAM!|r",
             0xFF8800D9, SOUNDS.DUEL_START, 3000)
-    end,
-    [LURE_OF_SEA] = function(self, context, alerts, result, abilityId, ...)
-        if result ~= ACTION_RESULT_BEGIN then return end
+    end },
+    [LURE_OF_SEA] = { result = ACTION_RESULT_BEGIN,
+        fn = function(self, context, alerts, abilityId, ...)
         CA.castAlertsStop(self.lureBarId)
         self.lureBarId = CA.castAlertsStart(
             abilityId, "Lure of the Sea", 4000, 4000, COL_FEAR, ACT_BREAK)
-    end,
-    [ASPECT_TERROR] = function(self, context, alerts, result, abilityId,
-                                unitTag, sourceUnitTag, sourceUnitId, unitId,
-                                sourceUnitName, unitName)
-        if result ~= ACTION_RESULT_BEGIN then return end
+    end },
+    [ASPECT_TERROR] = { result = ACTION_RESULT_BEGIN,
+        fn = function(self, context, alerts, abilityId,
+                      unitTag, sourceUnitTag, sourceUnitId, unitId,
+                      sourceUnitName, unitName)
         if not IsUnitPlayer(unitTag) then return end
         local dur = select(1, GetAbilityCastInfo(abilityId)) or 0
         if dur <= 0 then dur = FALLBACK_FEAR_DUR end
         CA.alertCast(abilityId, sourceUnitName, dur, COL_FEAR)
-    end,
+    end },
     [BRIDGE_1] = makeBridgeHandler(1),
     [BRIDGE_2] = makeBridgeHandler(2),
     [BRIDGE_3] = makeBridgeHandler(3),
@@ -223,33 +222,33 @@ Taleria.effectRoutes = {
             self.stormWallCW   = false
         end
     end,
-    [VENOM_EVOKER_P] = function(self, context, alerts, changeType, abilityId, ...)
-        if changeType ~= EFFECT_RESULT_GAINED then return end
+    [VENOM_EVOKER_P] = { changeType = EFFECT_RESULT_GAINED,
+        fn = function(self, context, alerts, abilityId, ...)
         local now = GetGameTimeMilliseconds() / 1000
         self.bridgeOpen[1]      = true
         self.bridgeWipeStart[1] = now
         self.lastPlatformFall   = now
         CA.alert(nil, "|c22CC22Green portal open|r — 60 s!",
             0x22CC22D9, SOUNDS.DUEL_START, 4000)
-    end,
-    [SEA_BOILER_P] = function(self, context, alerts, changeType, abilityId, ...)
-        if changeType ~= EFFECT_RESULT_GAINED then return end
+    end },
+    [SEA_BOILER_P] = { changeType = EFFECT_RESULT_GAINED,
+        fn = function(self, context, alerts, abilityId, ...)
         local now = GetGameTimeMilliseconds() / 1000
         self.bridgeOpen[2]      = true
         self.bridgeWipeStart[2] = now
         self.lastPlatformFall   = now
         CA.alert(nil, "|cDDCC00Yellow portal open|r — 60 s!",
             0xDDCC00D9, SOUNDS.DUEL_START, 4000)
-    end,
-    [TIDAL_MAGE_P] = function(self, context, alerts, changeType, abilityId, ...)
-        if changeType ~= EFFECT_RESULT_GAINED then return end
+    end },
+    [TIDAL_MAGE_P] = { changeType = EFFECT_RESULT_GAINED,
+        fn = function(self, context, alerts, abilityId, ...)
         local now = GetGameTimeMilliseconds() / 1000
         self.bridgeOpen[3]      = true
         self.bridgeWipeStart[3] = now
         self.lastPlatformFall   = now
         CA.alert(nil, "|c8822DDPurple portal open|r — 60 s!",
             0x8822DDD9, SOUNDS.DUEL_START, 4000)
-    end,
+    end },
     [WHIRLPOOL] = function(self, context, alerts, changeType, abilityId,
                             unitTag, unitId, unitName, stackCount)
         if changeType == EFFECT_RESULT_GAINED and AreUnitsEqual("player", unitTag) then

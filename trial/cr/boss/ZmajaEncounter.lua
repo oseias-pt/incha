@@ -172,10 +172,9 @@ end
 -- (Z'Maja has no shared common module; no per-unit DIED cleanup needed.)
 
 -- Mini-boss shackle: Z'Maja removes a mini from the fight.
-local function handleShackle(self, context, alerts, result, abilityId,
+local function handleShackle(self, context, alerts, abilityId,
                                unitTag, sourceUnitTag, sourceUnitId, unitId,
                                sourceUnitName, unitName)
-    if result ~= ACTION_RESULT_EFFECT_GAINED then return end
     if unitName and unitName:find("Siroria") then
         self.siroActive = false
         self.siroJumpTimer:clear(); self.siroBannerTimer:clear()
@@ -238,8 +237,7 @@ local function handleGaleComet(self, context, alerts, result, abilityId,
 end
 
 -- Portal close: shared handler for normal close and PC win.
-local function handlePortalClose(self, context, alerts, result, abilityId, ...)
-    if result ~= ACTION_RESULT_BEGIN then return end
+local function handlePortalClose(self, context, alerts, abilityId, ...)
     self.portalActive = false
     self.portalTimer:clear()
     self.portalNextTimer:reset(PORTAL_NEXT_CD)
@@ -247,8 +245,7 @@ local function handlePortalClose(self, context, alerts, result, abilityId, ...)
 end
 
 -- Crushing Darkness: shared handler for 3 variants.
-local function handleCrushingDark(self, context, alerts, result, abilityId, ...)
-    if result ~= ACTION_RESULT_BEGIN then return end
+local function handleCrushingDark(self, context, alerts, abilityId, ...)
     alerts:showAction("Kite! Crushing Darkness")
     local dur = select(1, GetAbilityCastInfo(abilityId)) or 0
     if dur <= 0 then dur = FALLBACK_DARK_DUR end
@@ -257,7 +254,7 @@ end
 
 ZmajaEncounter.combatRoutes = {
     -- Mini shackle (fires before specific-ability handlers in original)
-    [ZMAJA_SHACKLE] = handleShackle,
+    [ZMAJA_SHACKLE] = { result = ACTION_RESULT_EFFECT_GAINED, fn = handleShackle },
 
     -- ── SIRORIA ────────────────────────────────────────────────────────────
     [SIRO_HA] = function(self, context, alerts, result, abilityId,
@@ -384,48 +381,47 @@ ZmajaEncounter.combatRoutes = {
     [GALE_COMET_2]       = handleGaleComet,
 
     -- ── Environment ────────────────────────────────────────────────────────
-    [RAZOR_THORNS] = function(self, context, alerts, result, abilityId,
-                               unitTag, ...)
-        if result ~= ACTION_RESULT_EFFECT_GAINED then return end
+    [RAZOR_THORNS] = { result = ACTION_RESULT_EFFECT_GAINED,
+        fn = function(self, context, alerts, abilityId, unitTag, ...)
         if not IsUnitPlayer(unitTag) then return end
         alerts:showAction("Rooted! (Creeper)")
-    end,
+    end },
 
     -- ── Portal ─────────────────────────────────────────────────────────────
-    [PORTAL_OPEN] = function(self, context, alerts, result, abilityId, ...)
-        if result ~= ACTION_RESULT_BEGIN then return end
+    [PORTAL_OPEN] = { result = ACTION_RESULT_BEGIN,
+        fn = function(self, context, alerts, abilityId, ...)
         self.portalGroup  = self.portalGroup + 1
         self.portalActive = true
         self.portalTimer:reset(PORTAL_OPEN_DUR)
         self.portalNextTimer:clear()
         alerts:showHeader("Shadow Realm — Group " .. self.portalGroup)
-    end,
-    [PORTAL_CLOSE_1] = handlePortalClose,
-    [PORTAL_CLOSE_2] = handlePortalClose,
+    end },
+    [PORTAL_CLOSE_1] = { result = ACTION_RESULT_BEGIN, fn = handlePortalClose },
+    [PORTAL_CLOSE_2] = { result = ACTION_RESULT_BEGIN, fn = handlePortalClose },
 
     -- ── Z'Maja ─────────────────────────────────────────────────────────────
-    [ZMAJA_JUMP] = function(self, context, alerts, result, abilityId, ...)
-        if result ~= ACTION_RESULT_BEGIN then return end
+    [ZMAJA_JUMP] = { result = ACTION_RESULT_BEGIN,
+        fn = function(self, context, alerts, abilityId, ...)
         alerts:showAction("Z'Maja jumping!")
-    end,
-    [ZMAJA_HIDE_JUMP] = function(self, context, alerts, result, abilityId, ...)
-        if result ~= ACTION_RESULT_BEGIN then return end
+    end },
+    [ZMAJA_HIDE_JUMP] = { result = ACTION_RESULT_BEGIN,
+        fn = function(self, context, alerts, abilityId, ...)
         alerts:showAction("Z'Maja retreating to shadow!")
-    end,
-    [CRUSHING_DARK_1] = handleCrushingDark,
-    [CRUSHING_DARK_2] = handleCrushingDark,
-    [CRUSHING_DARK_3] = handleCrushingDark,
-    [SHADOW_SPLASH] = function(self, context, alerts, result, abilityId, ...)
-        if result ~= ACTION_RESULT_BEGIN then return end
+    end },
+    [CRUSHING_DARK_1] = { result = ACTION_RESULT_BEGIN, fn = handleCrushingDark },
+    [CRUSHING_DARK_2] = { result = ACTION_RESULT_BEGIN, fn = handleCrushingDark },
+    [CRUSHING_DARK_3] = { result = ACTION_RESULT_BEGIN, fn = handleCrushingDark },
+    [SHADOW_SPLASH] = { result = ACTION_RESULT_BEGIN,
+        fn = function(self, context, alerts, abilityId, ...)
         alerts:showAction("Shadow Splash! Interrupt!")
         CA.alert(nil, "INTERRUPT!", 0xFF0000FF, SOUNDS.NONE, 2500)
-    end,
-    [BANEFUL_MARK] = function(self, context, alerts, result, abilityId, ...)
-        if result ~= ACTION_RESULT_BEGIN then return end
+    end },
+    [BANEFUL_MARK] = { result = ACTION_RESULT_BEGIN,
+        fn = function(self, context, alerts, abilityId, ...)
         self.executePhase = true
         alerts:showAction("Baneful Mark! (execute)")
         CA.alert(nil, "BANEFUL MARK", 0xFF4444FF, SOUNDS.NONE, 4000)
-    end,
+    end },
     [OLORIME_SPEAR] = function(self, context, alerts, result, abilityId,
                                 unitTag, sourceUnitTag, sourceUnitId, unitId,
                                 sourceUnitName, unitName)
@@ -436,23 +432,23 @@ ZmajaEncounter.combatRoutes = {
     end,
 
     -- ── Malevolent Cores ────────────────────────────────────────────────────
-    [CORE_EXPOSED] = function(self, context, alerts, result, abilityId, ...)
-        if result ~= ACTION_RESULT_BEGIN then return end
+    [CORE_EXPOSED] = { result = ACTION_RESULT_BEGIN,
+        fn = function(self, context, alerts, abilityId, ...)
         self.coreAlert = "Core out! Pick it up!"
         alerts:showAction("Core exposed!")
         CA.alert(nil, "CORE OUT!", 0xFFDD00FF, SOUNDS.NONE, 4000)
-    end,
-    [CORE_MISSED] = function(self, context, alerts, result, abilityId, ...)
-        if result ~= ACTION_RESULT_BEGIN then return end
+    end },
+    [CORE_MISSED] = { result = ACTION_RESULT_BEGIN,
+        fn = function(self, context, alerts, abilityId, ...)
         self.coreAlert = "Core MISSED!"
         alerts:showAction("Core missed!")
         CA.alert(nil, "CORE MISSED!", 0xFF4444FF, SOUNDS.NONE, 5000)
-    end,
-    [CORE_PICKED_UP] = function(self, context, alerts, result, abilityId, ...)
-        if result ~= ACTION_RESULT_BEGIN then return end
+    end },
+    [CORE_PICKED_UP] = { result = ACTION_RESULT_BEGIN,
+        fn = function(self, context, alerts, abilityId, ...)
         self.coreAlert = nil
         alerts:showAction("Core picked up.")
-    end,
+    end },
 }
 -- (effectRoutes: CR-3 TODO — portal world-state, mini shackle via effect path)
 

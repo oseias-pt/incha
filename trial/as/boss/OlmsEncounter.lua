@@ -95,15 +95,14 @@ end
 
 OlmsEncounter.combatRoutes = {
     -- ── Olms ──────────────────────────────────────────────────────────────
-    [OLMS_STORM_THE_HEAVENS] = function(self, context, alerts, result, abilityId, ...)
-        if result ~= ACTION_RESULT_BEGIN then return end
+    [OLMS_STORM_THE_HEAVENS] = { result = ACTION_RESULT_BEGIN, fn = function(self, context, alerts, abilityId, ...)
         alerts:showAction("Kite! (Storm the Heavens)")
         CA.alert(nil, "KITE!", 0xFF4400FF, SOUNDS.NONE, 3000)
         self.stormTimer:reset()
-    end,
-    [OLMS_SCALDING_ROAR] = function(self, context, alerts, result, abilityId,
-                                     unitTag, sourceUnitTag, sourceUnitId, unitId, ...)
-        if result ~= ACTION_RESULT_BEGIN then return end
+    end },
+    [OLMS_SCALDING_ROAR] = { result = ACTION_RESULT_BEGIN,
+        fn = function(self, context, alerts, abilityId,
+                      unitTag, sourceUnitTag, sourceUnitId, unitId, ...)
         alerts:showAction("Steam Breath! Move!")
         local dur = select(1, GetAbilityCastInfo(OLMS_SCALDING_ROAR)) or 0
         if dur <= 0 then dur = FALLBACK_ROAR_DUR end
@@ -111,29 +110,26 @@ OlmsEncounter.combatRoutes = {
             { -3, 0, false, { 0.8, 0.4, 0, 0.4 }, { 0.8, 0.4, 0, 0.8 } })
         if cid and unitId then self.alertList[unitId] = cid end
         self.steamTimer:reset()
-    end,
-    [OLMS_EXHAUSTIVE_CHARGES] = function(self, context, alerts, result, abilityId, ...)
-        if result ~= ACTION_RESULT_BEGIN then return end
+    end },
+    [OLMS_EXHAUSTIVE_CHARGES] = { result = ACTION_RESULT_BEGIN, fn = function(self, context, alerts, abilityId, ...)
         alerts:showAction("Charges!")
         self.chargesTimer:reset()
-    end,
-    [OLMS_TRIAL_BY_FIRE] = function(self, context, alerts, result, abilityId, ...)
-        if result ~= ACTION_RESULT_BEGIN then return end
+    end },
+    [OLMS_TRIAL_BY_FIRE] = { result = ACTION_RESULT_BEGIN, fn = function(self, context, alerts, abilityId, ...)
         alerts:showAction("Trial by Fire!")
         self.fireTimer:reset()
-    end,
-    [OLMS_GUSTS_OF_STEAM] = function(self, context, alerts, result, abilityId, ...)
-        if result ~= ACTION_RESULT_BEGIN then return end
+    end },
+    [OLMS_GUSTS_OF_STEAM] = { result = ACTION_RESULT_BEGIN, fn = function(self, context, alerts, abilityId, ...)
         alerts:showAction("Jump! Dodge!")
         if self.nextJumpThreshold <= #JUMP_THRESHOLDS then
             self.nextJumpThreshold = self.nextJumpThreshold + 1
         end
-    end,
+    end },
     -- ── Mini-boss spawn detection (Llothis and Felms share BOSS_EVENT ID) ─
-    [BOSS_EVENT] = function(self, context, alerts, result, abilityId,
-                             unitTag, sourceUnitTag, sourceUnitId, unitId,
-                             sourceUnitName, unitName)
-        if result ~= ACTION_RESULT_EFFECT_GAINED then return end
+    [BOSS_EVENT] = { result = ACTION_RESULT_EFFECT_GAINED,
+        fn = function(self, context, alerts, abilityId,
+                      unitTag, sourceUnitTag, sourceUnitId, unitId,
+                      sourceUnitName, unitName)
         if unitName and unitName:find("Llothis") then
             self.llothisSpawnTime = os.time()
             self.llothisActive    = true
@@ -144,12 +140,12 @@ OlmsEncounter.combatRoutes = {
             self.felmsActive    = true
             seedTimer(self.jumpTimer, self.felmsSpawnTime)
         end
-    end,
+    end },
     -- ── Llothis: combat abilities ──────────────────────────────────────────
-    [LLOTHIS_DEFILING_BLAST] = function(self, context, alerts, result, abilityId,
-                                         unitTag, sourceUnitTag, sourceUnitId, unitId,
-                                         sourceUnitName, unitName)
-        if result ~= ACTION_RESULT_BEGIN then return end
+    [LLOTHIS_DEFILING_BLAST] = { result = ACTION_RESULT_BEGIN,
+        fn = function(self, context, alerts, abilityId,
+                      unitTag, sourceUnitTag, sourceUnitId, unitId,
+                      sourceUnitName, unitName)
         local target = (unitName and unitName ~= "") and unitName or "?"
         alerts:showAction("Blast! → " .. target)
         local dur = select(1, GetAbilityCastInfo(LLOTHIS_DEFILING_BLAST)) or 0
@@ -158,18 +154,17 @@ OlmsEncounter.combatRoutes = {
             { -3, 0, false, { 0.6, 0, 0.8, 0.4 }, { 0.6, 0, 0.8, 0.8 } })
         if cid and unitId then self.alertList[unitId] = cid end
         self.blastTimer:reset()
-    end,
-    [LLOTHIS_OPPRESSIVE_BOLTS] = function(self, context, alerts, result, abilityId, ...)
-        if result ~= ACTION_RESULT_BEGIN then return end
+    end },
+    [LLOTHIS_OPPRESSIVE_BOLTS] = { result = ACTION_RESULT_BEGIN, fn = function(self, context, alerts, abilityId, ...)
         alerts:showAction("Interrupt Llothis!")
         CA.alert(nil, "Interrupt!", 0xFF0000FF, SOUNDS.NONE, 2000)
         self.boltsTimer:reset()
-    end,
+    end },
     -- ── Felms: combat abilities ────────────────────────────────────────────
-    [FELMS_TELEPORT_STRIKE] = function(self, context, alerts, result, abilityId,
-                                        unitTag, sourceUnitTag, sourceUnitId, unitId,
-                                        sourceUnitName, unitName)
-        if result ~= ACTION_RESULT_BEGIN then return end
+    [FELMS_TELEPORT_STRIKE] = { result = ACTION_RESULT_BEGIN,
+        fn = function(self, context, alerts, abilityId,
+                      unitTag, sourceUnitTag, sourceUnitId, unitId,
+                      sourceUnitName, unitName)
         local target = (unitName and unitName ~= "") and unitName or "?"
         alerts:showAction("Strike! → " .. target)
         local dur = select(1, GetAbilityCastInfo(FELMS_TELEPORT_STRIKE)) or 0
@@ -178,7 +173,7 @@ OlmsEncounter.combatRoutes = {
             { -3, 0, false, { 0, 0.6, 0.8, 0.4 }, { 0, 0.6, 0.8, 0.8 } })
         if cid and unitId then self.alertList[unitId] = cid end
         self.jumpTimer:reset()
-    end,
+    end },
 }
 
 OlmsEncounter.effectRoutes = {

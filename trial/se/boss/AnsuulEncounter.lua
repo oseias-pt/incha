@@ -65,43 +65,38 @@ local function handleBreakdown(self, context, alerts, result, abilityId, ...)
 end
 
 AnsuulEncounter.combatRoutes = {
-    [CALAMITY] = function(self, context, alerts, result, abilityId, ...)
-        if result ~= ACTION_RESULT_BEGIN then return end
+    [CALAMITY] = { result = ACTION_RESULT_BEGIN, fn = function(self, context, alerts, abilityId, ...)
         self.firstCalamity = false
         self.calamityTimer:reset(CALAMITY_CD)
         alerts:showAction("Calamity! Stack!")
-    end,
-    [WRACK] = function(self, context, alerts, result, abilityId, ...)
-        if result ~= ACTION_RESULT_BEGIN then return end
+    end },
+    [WRACK] = { result = ACTION_RESULT_BEGIN, fn = function(self, context, alerts, abilityId, ...)
         alerts:showAction("Kite! Wrack incoming!")
         CA.alert(nil, "KITE!", 0xFFD666FF, SOUNDS.NONE, 3000)
-    end,
-    [EXECUTE] = function(self, context, alerts, result, abilityId, ...)
-        if result ~= ACTION_RESULT_BEGIN then return end
+    end },
+    [EXECUTE] = { result = ACTION_RESULT_BEGIN, fn = function(self, context, alerts, abilityId, ...)
         alerts:showAction("INTERRUPT! Execute!")
         CA.alert(nil, "INTERRUPT!", 0xFF0033FF, SOUNDS.NONE, 2500)
-    end,
-    [SUNBURST] = function(self, context, alerts, result, abilityId, unitTag, ...)
-        if result ~= ACTION_RESULT_BEGIN then return end
+    end },
+    [SUNBURST] = { result = ACTION_RESULT_BEGIN, fn = function(self, context, alerts, abilityId, unitTag, ...)
         if not IsUnitPlayer(unitTag) then return end
         alerts:showAction("Sunburst on you! Dodge!")
         local dur = select(1, GetAbilityCastInfo(SUNBURST)) or 0
         if dur <= 0 then dur = FALLBACK_SUNBURST_DUR end
         CA.alertCast(SUNBURST, "SUNBURST", dur, COL_VOID)
-    end,
-    [WRATHSTORM] = function(self, context, alerts, result, abilityId, ...)
-        if result ~= ACTION_RESULT_BEGIN then return end
+    end },
+    [WRATHSTORM] = { result = ACTION_RESULT_BEGIN, fn = function(self, context, alerts, abilityId, ...)
         local dur = select(1, GetAbilityCastInfo(WRATHSTORM)) or 0
         if dur <= 0 then dur = FALLBACK_WRATHSTORM_DUR end
         CA.alertCast(WRATHSTORM, "Wrathstorm!", dur, COL_VOID)
-    end,
-    [POISONED_MIND] = function(self, context, alerts, result, abilityId,
-                                unitTag, ...)
-        if result ~= ACTION_RESULT_EFFECT_GAINED_DURATION then return end
+    end },
+    [POISONED_MIND] = { result = ACTION_RESULT_EFFECT_GAINED_DURATION,
+        fn = function(self, context, alerts, abilityId,
+                      unitTag, ...)
         if not IsUnitPlayer(unitTag) then return end
         alerts:showAction("Poisoned Mind on you!")
         CA.border(true, 8000, "green")
-    end,
+    end },
     [THE_RITUAL] = function(self, context, alerts, result, abilityId, ...)
         if result == ACTION_RESULT_EFFECT_GAINED_DURATION then
             self.inMaze = true

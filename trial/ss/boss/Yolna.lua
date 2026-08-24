@@ -67,15 +67,15 @@ end
 Yolna.common = SunspireCommon
 
 Yolna.combatRoutes = {
-    [ATRO_SPAWN] = function(self, context, alerts, result, abilityId, ...)
-        if result ~= ACTION_RESULT_BEGIN then return end
+    [ATRO_SPAWN] = { result = ACTION_RESULT_BEGIN,
+        fn = function(self, context, alerts, abilityId, ...)
         alerts:showAction("Kill Atro!")
         CA.alert(nil, "Kill Atro!", 0xFF8000FF, SOUNDS.NONE, 4500)
-    end,
-    [LAVA_GEYSER] = function(self, context, alerts, result, abilityId,
-                              unitTag, sourceUnitTag, sourceUnitId, unitId,
-                              sourceUnitName, unitName)
-        if result ~= ACTION_RESULT_BEGIN then return end
+    end },
+    [LAVA_GEYSER] = { result = ACTION_RESULT_BEGIN,
+        fn = function(self, context, alerts, abilityId,
+                      unitTag, sourceUnitTag, sourceUnitId, unitId,
+                      sourceUnitName, unitName)
         local show = false
         if IsUnitPlayer(unitTag) then
             if AreUnitsEqual("player", unitTag) then
@@ -90,18 +90,18 @@ Yolna.combatRoutes = {
             if dur <= 0 then dur = FALLBACK_GEYSER_DUR end
             CA.alertCast(abilityId, sourceUnitName, dur, COL_GEYSER)
         end
-    end,
+    end },
     -- NextFlare: BEGIN → +32 s; EFFECT_FADED → +30 s.
-    [NEXT_FLARE_A] = function(self, context, alerts, result, abilityId, ...)
-        if result ~= ACTION_RESULT_BEGIN then return end
+    [NEXT_FLARE_A] = { result = ACTION_RESULT_BEGIN,
+        fn = function(self, context, alerts, abilityId, ...)
         self.nextFlareTime = GetGameTimeMilliseconds() / 1000 + 32
-    end,
-    [NEXT_FLARE_B] = function(self, context, alerts, result, abilityId, ...)
-        if result ~= ACTION_RESULT_EFFECT_FADED then return end
+    end },
+    [NEXT_FLARE_B] = { result = ACTION_RESULT_EFFECT_FADED,
+        fn = function(self, context, alerts, abilityId, ...)
         self.nextFlareTime = GetGameTimeMilliseconds() / 1000 + 30
-    end,
-    [CATACLYSM] = function(self, context, alerts, result, abilityId, ...)
-        if result ~= ACTION_RESULT_BEGIN then return end
+    end },
+    [CATACLYSM] = { result = ACTION_RESULT_BEGIN,
+        fn = function(self, context, alerts, abilityId, ...)
         local dur = select(1, GetAbilityCastInfo(CATACLYSM)) or 0
         if dur <= 0 then dur = FALLBACK_CATA_DUR end
         self.cataTimer:reset(dur / 1000)
@@ -112,7 +112,7 @@ Yolna.combatRoutes = {
             dur, dur,
             { 0.9, 0.2, 0.1, 0.5 },
             { dur, "Cata Ends!", 0.9, 0.2, 0.1, 0.9, SOUNDS.NONE })
-    end,
+    end },
 }
 
 -- ── Info-line renderers ───────────────────────────────────────────────────

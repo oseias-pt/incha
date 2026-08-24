@@ -26,10 +26,10 @@ end
 -- ── Routing tables (C3) ──────────────────────────────────────────────────
 
 DarielEncounter.combatRoutes = {
-    [POWERFUL_THROW] = function(self, context, alerts, result, abilityId,
-                                 unitTag, sourceUnitTag, sourceUnitId, unitId,
-                                 sourceUnitName, unitName)
-        if result ~= ACTION_RESULT_BEGIN then return end
+    [POWERFUL_THROW] = { result = ACTION_RESULT_BEGIN,
+        fn = function(self, context, alerts, abilityId,
+                      unitTag, sourceUnitTag, sourceUnitId, unitId,
+                      sourceUnitName, unitName)
         local target = (unitName and unitName ~= "") and unitName or "?"
         local dur = select(1, GetAbilityCastInfo(abilityId)) or 0
         if dur <= 0 then dur = FALLBACK_DUR end
@@ -39,7 +39,7 @@ DarielEncounter.combatRoutes = {
         else
             alerts:showAction("Powerful Throw → " .. target)
         end
-    end,
+    end },
 }
 
 function DarielEncounter:onUpdate(context, alerts)

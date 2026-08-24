@@ -56,55 +56,51 @@ end
 
 -- Portal mantle: personal alert when assigned to a portal.
 local function makePortalHandler(color, label, colorHex)
-    return function(self, context, alerts, result, abilityId, unitTag, ...)
-        if result ~= ACTION_RESULT_EFFECT_GAINED then return end
+    return { result = ACTION_RESULT_EFFECT_GAINED,
+        fn = function(self, context, alerts, abilityId, unitTag, ...)
         if not IsUnitPlayer(unitTag) then return end
         alerts:showAction(label .. "!")
         CA.alert(nil, label, colorHex, SOUNDS.NONE, 4000)
-    end
+    end }
 end
 
 ChimeraEncounter.combatRoutes = {
     -- Spawn / despawn
-    [VIVIFY] = function(self, context, alerts, result, abilityId, ...)
-        if result ~= ACTION_RESULT_EFFECT_FADED then return end
+    [VIVIFY] = { result = ACTION_RESULT_EFFECT_FADED, fn = function(self, context, alerts, abilityId, ...)
         self.chimeraActive = true
         self.firstChain    = true
         self.despawnTimer:reset(DESPAWN_CD)
         self.chainTimer:reset(CHAIN_FIRST_CD)
         alerts:showHeader("Chimera spawned!")
-    end,
-    [PETRIFY] = function(self, context, alerts, result, abilityId, ...)
-        if result ~= ACTION_RESULT_EFFECT_GAINED_DURATION then return end
+    end },
+    [PETRIFY] = { result = ACTION_RESULT_EFFECT_GAINED_DURATION, fn = function(self, context, alerts, abilityId, ...)
         self.chimeraActive = false
         self.despawnTimer:clear()
         self.chainTimer:clear()
         alerts:showAction("Chimera despawning…")
-    end,
+    end },
     -- Chimera abilities
-    [CHAIN_LIGHTNING] = function(self, context, alerts, result, abilityId, ...)
-        if result ~= ACTION_RESULT_BEGIN then return end
+    [CHAIN_LIGHTNING] = { result = ACTION_RESULT_BEGIN, fn = function(self, context, alerts, abilityId, ...)
         self.firstChain = false
         self.chainTimer:reset(CHAIN_CD)
         alerts:showAction("Chain Lightning!")
         CA.alert(nil, "CHAIN LIGHTNING", 0xFFD666FF, SOUNDS.NONE, 2500)
-    end,
-    [CHIMERA_BOLT] = function(self, context, alerts, result, abilityId,
-                               unitTag, sourceUnitTag, sourceUnitId, unitId,
-                               sourceUnitName, unitName)
-        if result ~= ACTION_RESULT_BEGIN then return end
+    end },
+    [CHIMERA_BOLT] = { result = ACTION_RESULT_BEGIN,
+        fn = function(self, context, alerts, abilityId,
+                      unitTag, sourceUnitTag, sourceUnitId, unitId,
+                      sourceUnitName, unitName)
         local target = (unitName and unitName ~= "") and unitName or "?"
         alerts:showAction("Lightning Bolt → " .. target)
         local dur = select(1, GetAbilityCastInfo(abilityId)) or 0
         if dur <= 0 then dur = FALLBACK_DUR end
         local cid = CA.alertCast(abilityId, "Bolt!", dur, COL_LIGHTNING)
         if cid and unitId then self.alertList[unitId] = cid end
-    end,
-    [GRYPHON_WIND_LANCE] = function(self, context, alerts, result, abilityId, ...)
-        if result ~= ACTION_RESULT_BEGIN then return end
+    end },
+    [GRYPHON_WIND_LANCE] = { result = ACTION_RESULT_BEGIN, fn = function(self, context, alerts, abilityId, ...)
         alerts:showAction("Wind Lance! Move!")
         CA.alert(nil, "WIND LANCE", 0xD1F1F9FF, SOUNDS.NONE, 2000)
-    end,
+    end },
     -- Portal mantle buffs
     [MANTLE_WAMASU]  = makePortalHandler("green",  "Wamasu Portal (Green)", 0x02FF00FF),
     [MANTLE_LION]    = makePortalHandler("red",    "Lion Portal (Red)",     0xFF0000FF),

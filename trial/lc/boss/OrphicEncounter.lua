@@ -59,44 +59,44 @@ local function handleXorynImmune(self, context, alerts, result, abilityId, ...)
 end
 
 OrphicEncounter.combatRoutes = {
-    [THUNDER_THRALL] = function(self, context, alerts, result, abilityId, ...)
-        if result ~= ACTION_RESULT_BEGIN then return end
+    [THUNDER_THRALL] = { result = ACTION_RESULT_BEGIN,
+        fn = function(self, context, alerts, abilityId, ...)
         self.xorynActive = true
         self.firstThrall = false
         self.thunderThrallTimer:reset(THRALL_CD)
         alerts:showAction("Thunder Thrall (Xoryn jump)")
-    end,
-    [LIGHTNING_FLOOD] = function(self, context, alerts, result, abilityId,
-                                  unitTag, sourceUnitTag, sourceUnitId, unitId,
-                                  sourceUnitName, unitName)
-        if result ~= ACTION_RESULT_BEGIN then return end
+    end },
+    [LIGHTNING_FLOOD] = { result = ACTION_RESULT_BEGIN,
+        fn = function(self, context, alerts, abilityId,
+                      unitTag, sourceUnitTag, sourceUnitId, unitId,
+                      sourceUnitName, unitName)
         self.xorynActive = true
         self.firstFlood  = false
         self.lightningFloodTimer:reset(FLOOD_CD)
         local target = (unitName and unitName ~= "") and unitName or "?"
         alerts:showAction("Lightning Flood → " .. target)
-    end,
-    [BREAKOUT] = function(self, context, alerts, result, abilityId,
-                           unitTag, ...)
-        if result ~= ACTION_RESULT_BEGIN then return end
+    end },
+    [BREAKOUT] = { result = ACTION_RESULT_BEGIN,
+        fn = function(self, context, alerts, abilityId,
+                      unitTag, ...)
         if not IsUnitPlayer(unitTag) then return end
         CA.alertCast(abilityId, "BREAK OUT!", 3000, COL_CRYSTAL)
         alerts:showAction("Break out of the crystal!")
-    end,
-    [SHIELD_THROW] = function(self, context, alerts, result, abilityId,
-                               unitTag, sourceUnitTag, sourceUnitId, unitId,
-                               sourceUnitName, unitName)
-        if result ~= ACTION_RESULT_BEGIN then return end
+    end },
+    [SHIELD_THROW] = { result = ACTION_RESULT_BEGIN,
+        fn = function(self, context, alerts, abilityId,
+                      unitTag, sourceUnitTag, sourceUnitId, unitId,
+                      sourceUnitName, unitName)
         local target = (unitName and unitName ~= "") and unitName or "?"
         local dur = select(1, GetAbilityCastInfo(abilityId)) or 0
         if dur <= 0 then dur = FALLBACK_DUR end
         CA.alertCast(abilityId, "Shield Throw → " .. target, dur, COL_LIGHTNING)
-    end,
-    [COLOR_CHANGE] = function(self, context, alerts, result, abilityId, ...)
-        if result ~= ACTION_RESULT_EFFECT_GAINED then return end
+    end },
+    [COLOR_CHANGE] = { result = ACTION_RESULT_EFFECT_GAINED,
+        fn = function(self, context, alerts, abilityId, ...)
         CA.alert(nil, "Color Change!", 0xFFFF44FF, SOUNDS.NONE, 3000)
         alerts:showAction("Color change! Switch mirror!")
-    end,
+    end },
     [XORYN_IMMUNE_1] = handleXorynImmune,
     [XORYN_IMMUNE_2] = handleXorynImmune,
 }

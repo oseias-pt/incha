@@ -123,15 +123,15 @@ Bahsei.combatRoutes = {
     [150047] = handleMtDetect,   -- carve
     [150048] = handleMtDetect,   -- slice
     [150065] = handleMtDetect,   -- rendflesh
-    [CURSED_GROUND] = function(self, context, alerts, result, abilityId, ...)
-        if result ~= ACTION_RESULT_BEGIN then return end
+    [CURSED_GROUND] = { result = ACTION_RESULT_BEGIN,
+        fn = function(self, context, alerts, abilityId, ...)
         self.lastCursedGround = GetGameTimeMilliseconds() / 1000
         CA.alert(nil, "Cursed Ground", 0xEE82EED9, SOUNDS.CHAMPION_POINTS_COMMITTED, 2000)
-    end,
-    [SALVO2] = function(self, context, alerts, result, abilityId,
-                         unitTag, sourceUnitTag, sourceUnitId, unitId,
-                         sourceUnitName, unitName)
-        if result ~= ACTION_RESULT_BEGIN then return end
+    end },
+    [SALVO2] = { result = ACTION_RESULT_BEGIN,
+        fn = function(self, context, alerts, abilityId,
+                      unitTag, sourceUnitTag, sourceUnitId, unitId,
+                      sourceUnitName, unitName)
         local _, _, isTank = GetPlayerRoles()
         if isTank then
             local dur = select(1, GetAbilityCastInfo(SALVO2)) or 0
@@ -139,39 +139,39 @@ Bahsei.combatRoutes = {
             CA.alertCast(abilityId, sourceUnitName, dur, COL_INTERRUPT)
             CA.alert(nil, "Interrupt!", 0xFF2020FF, SOUNDS.CHAMPION_POINTS_COMMITTED, 2000)
         end
-    end,
-    [SICKLE] = function(self, context, alerts, result, abilityId,
-                         unitTag, sourceUnitTag, sourceUnitId, unitId,
-                         sourceUnitName, unitName)
-        if result ~= ACTION_RESULT_BEGIN then return end
+    end },
+    [SICKLE] = { result = ACTION_RESULT_BEGIN,
+        fn = function(self, context, alerts, abilityId,
+                      unitTag, sourceUnitTag, sourceUnitId, unitId,
+                      sourceUnitName, unitName)
         self.nextSickle = GetGameTimeMilliseconds() / 1000 + 15
         if IsUnitPlayer(unitTag) then
             local dur = select(1, GetAbilityCastInfo(SICKLE)) or 0
             if dur <= 0 then dur = FALLBACK_SICKLE_DUR end
             CA.alertCast(abilityId, sourceUnitName, dur, COL_SICKLE)
         end
-    end,
-    [HEMORRHAGE] = function(self, context, alerts, result, abilityId, unitTag, ...)
-        if result ~= ACTION_RESULT_BEGIN then return end
+    end },
+    [HEMORRHAGE] = { result = ACTION_RESULT_BEGIN,
+        fn = function(self, context, alerts, abilityId, unitTag, ...)
         if not IsUnitPlayer(unitTag) then return end
         PlaySound(SOUNDS.DUEL_START)
         PlaySound(SOUNDS.DUEL_START)
         CA.alert(nil, "Bleeding", 0xCC0000D9, SOUNDS.DUEL_START, 9000)
-    end,
-    [RANCID_HAMMER] = function(self, context, alerts, result, abilityId,
-                                unitTag, sourceUnitTag, sourceUnitId, unitId,
-                                sourceUnitName, unitName)
-        if result ~= ACTION_RESULT_BEGIN then return end
+    end },
+    [RANCID_HAMMER] = { result = ACTION_RESULT_BEGIN,
+        fn = function(self, context, alerts, abilityId,
+                      unitTag, sourceUnitTag, sourceUnitId, unitId,
+                      sourceUnitName, unitName)
         local _, _, isTank = GetPlayerRoles()
         if isTank then
             local dur = select(1, GetAbilityCastInfo(RANCID_HAMMER)) or 0
             if dur <= 0 then dur = FALLBACK_HAMMER_DUR end
             CA.alertCast(abilityId, sourceUnitName, dur, COL_HAMMER)
         end
-    end,
+    end },
     -- Prime Meteor (HM, < ~31% HP): starts a 13.5 s cast bar.
-    [METEOR_SWARM] = function(self, context, alerts, result, abilityId, ...)
-        if result ~= ACTION_RESULT_EFFECT_GAINED_DURATION then return end
+    [METEOR_SWARM] = { result = ACTION_RESULT_EFFECT_GAINED_DURATION,
+        fn = function(self, context, alerts, abilityId, ...)
         if not context.isHM then return end
         self.nextSickle = 0   -- sickle irrelevant from here; free the slot
         CA.castAlertsStop(self.sunBarId)
@@ -179,7 +179,7 @@ Bahsei.combatRoutes = {
             abilityId, "Prime Meteor",
             13500, 13500, COL_METEOR, ACT_METEOR)
         PlaySound(SOUNDS.DUEL_START)
-    end,
+    end },
     [EYE_CW]  = function(self, context, alerts, result, abilityId, ...)
         if result == ACTION_RESULT_EFFECT_GAINED then self.lastPortalCW = true  end
     end,
@@ -189,9 +189,9 @@ Bahsei.combatRoutes = {
 }
 
 Bahsei.effectRoutes = {
-    [DEATH_TOUCH] = function(self, context, alerts, changeType, abilityId,
-                              unitTag, unitId, unitName, stackCount)
-        if changeType ~= EFFECT_RESULT_GAINED then return end
+    [DEATH_TOUCH] = { changeType = EFFECT_RESULT_GAINED,
+        fn = function(self, context, alerts, abilityId,
+                      unitTag, unitId, unitName, stackCount)
         -- Personal border: player received the curse
         if AreUnitsEqual("player", unitTag) then
             self.lastDeathTouch = GetGameTimeMilliseconds() / 1000
@@ -201,7 +201,7 @@ Bahsei.effectRoutes = {
         if unitId and unitId == self.mtUnitId then
             self.nextMtExplosion = GetGameTimeMilliseconds() / 1000 + 9
         end
-    end,
+    end },
     [MALIGNANT_MARROW] = function(self, context, alerts, changeType, abilityId,
                                    unitTag, unitId, unitName, stackCount)
         if changeType == EFFECT_RESULT_GAINED then

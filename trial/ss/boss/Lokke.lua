@@ -177,8 +177,8 @@ Lokke.common = SunspireCommon
 
 -- Laser flight: closes over the per-flight timing constants.
 local function makeLaserHandler(laserDelay, landingAfterLaser)
-    return function(self, context, alerts, result, abilityId, ...)
-        if result ~= ACTION_RESULT_BEGIN then return end
+    return { result = ACTION_RESULT_BEGIN,
+        fn = function(self, context, alerts, abilityId, ...)
         local now = GetGameTimeMilliseconds() / 1000
         CA.castAlertsStop(self.laserBarId)
         self.laserTime   = now + laserDelay
@@ -194,14 +194,14 @@ local function makeLaserHandler(laserDelay, landingAfterLaser)
             s.iceNumber = 0
             s.prevIce   = 0
         end, 10000)
-    end
+    end }
 end
 
 Lokke.combatRoutes = {
-    [GLACIAL_FIST] = function(self, context, alerts, result, abilityId,
-                               unitTag, sourceUnitTag, sourceUnitId, unitId,
-                               sourceUnitName, unitName)
-        if result ~= ACTION_RESULT_BEGIN then return end
+    [GLACIAL_FIST] = { result = ACTION_RESULT_BEGIN,
+        fn = function(self, context, alerts, abilityId,
+                      unitTag, sourceUnitTag, sourceUnitId, unitId,
+                      sourceUnitName, unitName)
         local show = false
         if IsUnitPlayer(unitTag) then
             if AreUnitsEqual("player", unitTag) then
@@ -218,9 +218,9 @@ Lokke.combatRoutes = {
                 { -2, 0, false, { 0.3, 0.7, 1.0, 0.4 }, { 0.3, 0.7, 1.0, 0.8 } })
             if cid and sourceUnitId then self.alertList[sourceUnitId] = cid end
         end
-    end,
-    [ICE_TOMB] = function(self, context, alerts, result, abilityId, ...)
-        if result ~= ACTION_RESULT_BEGIN then return end
+    end },
+    [ICE_TOMB] = { result = ACTION_RESULT_BEGIN,
+        fn = function(self, context, alerts, abilityId, ...)
         local now = GetGameTimeMilliseconds() / 1000
         self.iceTime     = now + 13
         self.iceNext     = now + 23
@@ -229,7 +229,7 @@ Lokke.combatRoutes = {
         self.tombsClear  = false
         self.iceState    = 1
         self.checkDouble = true
-    end,
+    end },
     -- InIce: player enters (EFFECT_GAINED) / exits (EFFECT_FADED) a tomb.
     [IN_ICE] = function(self, context, alerts, result, abilityId,
                          unitTag, sourceUnitTag, sourceUnitId, unitId, ...)

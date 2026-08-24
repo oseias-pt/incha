@@ -185,85 +185,85 @@ Lylanar.common = DreadsailCommon
 
 Lylanar.combatRoutes = {
     -- ── Fire ───────────────────────────────────────────────────────────────
-    [BROILING_HEW] = function(self, context, alerts, result, abilityId,
-                               unitTag, sourceUnitTag, sourceUnitId, unitId,
-                               sourceUnitName, unitName)
-        if result ~= ACTION_RESULT_BEGIN then return end
+    [BROILING_HEW] = { result = ACTION_RESULT_BEGIN,
+        fn = function(self, context, alerts, abilityId,
+                      unitTag, sourceUnitTag, sourceUnitId, unitId,
+                      sourceUnitName, unitName)
         if not IsUnitPlayer(unitTag) then return end
         local dur = select(1, GetAbilityCastInfo(abilityId)) or 0
         if dur <= 0 then dur = FALLBACK_HEAVY_DUR end
         CA.alertCast(abilityId, sourceUnitName, dur, COL_FIRE_HEAVY)
-    end,
-    [TORRID_CLEAVE] = function(self, context, alerts, result, abilityId,
-                                unitTag, sourceUnitTag, sourceUnitId, unitId,
-                                sourceUnitName, unitName)
-        if result ~= ACTION_RESULT_BEGIN then return end
+    end },
+    [TORRID_CLEAVE] = { result = ACTION_RESULT_BEGIN,
+        fn = function(self, context, alerts, abilityId,
+                      unitTag, sourceUnitTag, sourceUnitId, unitId,
+                      sourceUnitName, unitName)
         if not IsUnitPlayer(unitTag) then return end
         local dur = select(1, GetAbilityCastInfo(abilityId)) or 0
         if dur <= 0 then dur = FALLBACK_HEAVY_DUR end
         alerts:showAction("Dodge! (Cleave)")
         CA.alertCast(abilityId, sourceUnitName, dur, COL_FIRE_HEAVY)
-    end,
-    [SCALDING_SWELL] = function(self, context, alerts, result, abilityId, ...)
-        if result ~= ACTION_RESULT_BEGIN then return end
+    end },
+    [SCALDING_SWELL] = { result = ACTION_RESULT_BEGIN,
+        fn = function(self, context, alerts, abilityId, ...)
         CA.alert(nil, "|cFF5733Fire wave|r — move!", 0xFF5733D9,
             SOUNDS.CHAMPION_POINTS_COMMITTED, 5500)
-    end,
-    [CHARRED_CONSTRICTION] = function(self, context, alerts, result, abilityId, ...)
-        if result ~= ACTION_RESULT_BEGIN then return end
+    end },
+    [CHARRED_CONSTRICTION] = { result = ACTION_RESULT_BEGIN,
+        fn = function(self, context, alerts, abilityId, ...)
         CA.alert(nil, "|cFF5733Fire jump!|r (spike — block)", 0xFF5733D9,
             SOUNDS.CHAMPION_POINTS_COMMITTED, 2500)
-    end,
-    [MAGMA_SPIKE] = function(self, context, alerts, result, abilityId, ...)
-        if result ~= ACTION_RESULT_BEGIN then return end
+    end },
+    [MAGMA_SPIKE] = { result = ACTION_RESULT_BEGIN,
+        fn = function(self, context, alerts, abilityId, ...)
         self.lastMagmaSpike = GetGameTimeMilliseconds() / 1000
-    end,
-    [INCENDIARY_AXE] = function(self, context, alerts, result, abilityId, ...)
-        if result ~= ACTION_RESULT_BEGIN then return end
+    end },
+    [INCENDIARY_AXE] = { result = ACTION_RESULT_BEGIN,
+        fn = function(self, context, alerts, abilityId, ...)
         if context.isHM then
             self.lastIncendiaryAxe = GetGameTimeMilliseconds() / 1000
         end
-    end,
+    end },
     -- ── Ice ────────────────────────────────────────────────────────────────
-    [STINGING_SHEAR] = function(self, context, alerts, result, abilityId,
-                                 unitTag, sourceUnitTag, sourceUnitId, unitId,
-                                 sourceUnitName, unitName)
-        if result ~= ACTION_RESULT_BEGIN then return end
+    [STINGING_SHEAR] = { result = ACTION_RESULT_BEGIN,
+        fn = function(self, context, alerts, abilityId,
+                      unitTag, sourceUnitTag, sourceUnitId, unitId,
+                      sourceUnitName, unitName)
         if not IsUnitPlayer(unitTag) then return end
         local dur = select(1, GetAbilityCastInfo(abilityId)) or 0
         if dur <= 0 then dur = FALLBACK_HEAVY_DUR end
         CA.alertCast(abilityId, sourceUnitName, dur, COL_ICE_HEAVY)
-    end,
-    [BRISK_RIP] = function(self, context, alerts, result, abilityId,
-                            unitTag, sourceUnitTag, sourceUnitId, unitId,
-                            sourceUnitName, unitName)
-        if result ~= ACTION_RESULT_BEGIN then return end
+    end },
+    [BRISK_RIP] = { result = ACTION_RESULT_BEGIN,
+        fn = function(self, context, alerts, abilityId,
+                      unitTag, sourceUnitTag, sourceUnitId, unitId,
+                      sourceUnitName, unitName)
         if not IsUnitPlayer(unitTag) then return end
         local dur = select(1, GetAbilityCastInfo(abilityId)) or 0
         if dur <= 0 then dur = FALLBACK_HEAVY_DUR end
         alerts:showAction("Dodge! (Cleave)")
         CA.alertCast(abilityId, sourceUnitName, dur, COL_ICE_HEAVY)
-    end,
-    [BITING_BILLOW] = function(self, context, alerts, result, abilityId, ...)
-        if result ~= ACTION_RESULT_BEGIN then return end
+    end },
+    [BITING_BILLOW] = { result = ACTION_RESULT_BEGIN,
+        fn = function(self, context, alerts, abilityId, ...)
         CA.alert(nil, "|c99CCffIce wave|r — move!", 0x99CCffD9,
             SOUNDS.CHAMPION_POINTS_COMMITTED, 5500)
-    end,
-    [FRIGIDARIUM] = function(self, context, alerts, result, abilityId, ...)
-        if result ~= ACTION_RESULT_BEGIN then return end
+    end },
+    [FRIGIDARIUM] = { result = ACTION_RESULT_BEGIN,
+        fn = function(self, context, alerts, abilityId, ...)
         CA.alert(nil, "|c99CCffIce jump!|r (spike — block)", 0x99CCffD9,
             SOUNDS.CHAMPION_POINTS_COMMITTED, 2500)
-    end,
-    [GLACIAL_SPIKE] = function(self, context, alerts, result, abilityId, ...)
-        if result ~= ACTION_RESULT_BEGIN then return end
+    end },
+    [GLACIAL_SPIKE] = { result = ACTION_RESULT_BEGIN,
+        fn = function(self, context, alerts, abilityId, ...)
         self.lastGlacialSpike = GetGameTimeMilliseconds() / 1000
-    end,
-    [CALAMITOUS_SWORD] = function(self, context, alerts, result, abilityId, ...)
-        if result ~= ACTION_RESULT_BEGIN then return end
+    end },
+    [CALAMITOUS_SWORD] = { result = ACTION_RESULT_BEGIN,
+        fn = function(self, context, alerts, abilityId, ...)
         if context.isHM then
             self.lastCalamitousSword = GetGameTimeMilliseconds() / 1000
         end
-    end,
+    end },
 }
 
 Lylanar.effectRoutes = {
