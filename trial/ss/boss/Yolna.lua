@@ -9,6 +9,8 @@
 ---   Boss HP thresholds: 76% / 51% / 26% → "Can Fly In X%"
 
 local SunspireCommon = require("trial.ss.SunspireCommon")
+local BossBase       = require("lib.BossBase")
+local MapUtils       = require("lib.MapUtils")
 
 -- ── Ability IDs ────────────────────────────────────────────────────────────
 local ATRO_SPAWN    = 119549   -- Yolna summons fire atronarchs
@@ -22,17 +24,10 @@ local CA = require("lib.CA")
 -- ── CA colour palettes ─────────────────────────────────────────────────────
 local COL_GEYSER = { -2, 0, false, { 1.0, 0.4, 0.0, 0.4 }, { 1.0, 0.4, 0.0, 0.8 } }
 
--- Returns true when `unitTag` is within `threshold` map units of the player.
-local function isGroupMemberNearby(unitTag, threshold)
-    SetMapToPlayerLocation()
-    local x1, y1 = GetMapPlayerPosition("player")
-    local x2, y2 = GetMapPlayerPosition(unitTag)
-    return x2 and y2 and math.sqrt((x1 - x2)^2 + (y1 - y2)^2) * 1000 <= threshold
-end
-
 -- ── Boss definition ───────────────────────────────────────────────────────
 local Yolna = {}
 Yolna.__index = Yolna
+setmetatable(Yolna, {__index = BossBase})
 
 Yolna.key  = "yolna"
 Yolna.name = "Yolnahkriin"
@@ -49,7 +44,7 @@ end
 
 -- ── Lifecycle ─────────────────────────────────────────────────────────────
 function Yolna:onLeave(context)
-    for _, cid in pairs(self.alertList) do CA.castAlertsStop(cid) end
+    self:cleanupAlertList()
     CA.castAlertsStop(self.cataBarId)
 end
 
@@ -66,13 +61,6 @@ end
 -- Shared cross-trial mechanic handler.
 Yolna.common = SunspireCommon
 
--- DIED: clean up any tracked CA bars.
-function Yolna:onDied(context, alerts,
-                       unitTag, sourceUnitTag, sourceUnitId, unitId,
-                       sourceUnitName, unitName)
-    if unitId then CA.castAlertsStop(self.alertList[unitId]); self.alertList[unitId] = nil end
-end
-
 Yolna.combatRoutes = {
     [ATRO_SPAWN] = function(self, context, alerts, result, abilityId, ...)
         if result ~= ACTION_RESULT_BEGIN then return end
@@ -88,7 +76,7 @@ Yolna.combatRoutes = {
             if AreUnitsEqual("player", unitTag) then
                 show = true
             else
-                show = isGroupMemberNearby(unitTag, 2.8)
+                show = MapUtils.isGroupMemberNearby(unitTag, 2.8)
             end
         end
         if show then

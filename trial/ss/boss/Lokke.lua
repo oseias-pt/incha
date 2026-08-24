@@ -5,6 +5,8 @@
 ---   GlacialFist · IceTomb state machine · LokkeLaser / landing · HP fly thresholds
 
 local SunspireCommon = require("trial.ss.SunspireCommon")
+local BossBase       = require("lib.BossBase")
+local MapUtils       = require("lib.MapUtils")
 
 -- ── Ability IDs ────────────────────────────────────────────────────────────
 local GLACIAL_FIST    = 120838   -- ice atronarch cast (player or nearby)
@@ -124,17 +126,10 @@ local function iceFaded(self, unitId)
     end
 end
 
--- Returns true when `unitTag` is within `threshold` map units of the player.
-local function isGroupMemberNearby(unitTag, threshold)
-    SetMapToPlayerLocation()
-    local x1, y1 = GetMapPlayerPosition("player")
-    local x2, y2 = GetMapPlayerPosition(unitTag)
-    return x2 and y2 and math.sqrt((x1 - x2)^2 + (y1 - y2)^2) * 1000 <= threshold
-end
-
 -- ── Boss definition ───────────────────────────────────────────────────────
 local Lokke = {}
 Lokke.__index = Lokke
+setmetatable(Lokke, {__index = BossBase})
 
 Lokke.key  = "lokke"
 Lokke.name = "Lokkestiiz"
@@ -169,20 +164,13 @@ end
 
 -- ── Lifecycle ─────────────────────────────────────────────────────────────
 function Lokke:onLeave(context)
-    for _, cid in pairs(self.alertList) do CA.castAlertsStop(cid) end
+    self:cleanupAlertList()
     CA.castAlertsStop(self.laserBarId)
 end
 
 -- ── Routing tables (C3) ──────────────────────────────────────────────────
 -- Shared cross-trial mechanic handler.
 Lokke.common = SunspireCommon
-
--- DIED: atronarch dies → stop its GlacialFist bar.
-function Lokke:onDied(context, alerts,
-                       unitTag, sourceUnitTag, sourceUnitId, unitId,
-                       sourceUnitName, unitName)
-    if unitId then CA.castAlertsStop(self.alertList[unitId]); self.alertList[unitId] = nil end
-end
 
 -- Laser flight: closes over the per-flight timing constants.
 local function makeLaserHandler(laserDelay, landingAfterLaser)
@@ -216,7 +204,7 @@ Lokke.combatRoutes = {
             if AreUnitsEqual("player", unitTag) then
                 show = true
             else
-                show = isGroupMemberNearby(unitTag, 4.5)
+                show = MapUtils.isGroupMemberNearby(unitTag, 4.5)
             end
         end
         if show then

@@ -19,6 +19,8 @@
 ---   Boss HP thresholds: 80% / 60% / 40% → "Can Fly In X%" (suppressed in portal)
 
 local SunspireCommon = require("trial.ss.SunspireCommon")
+local BossBase       = require("lib.BossBase")
+local MapUtils       = require("lib.MapUtils")
 
 -- ── Ability IDs ────────────────────────────────────────────────────────────
 local POWERFUL_SLAM    = 120542
@@ -46,17 +48,10 @@ local COL_SLAM   = { -2, 0, false, { 1.0, 0.27, 0.0, 0.4 }, { 1.0, 0.27, 0.0, 0.
 local COL_STONE  = { -2, 0, false, { 0.7, 0.52, 0.0, 0.4 }, { 0.7, 0.52, 0.0, 0.8 } }
 local COL_THRASH = { -2, 0, false, { 0.9, 0.1,  0.1, 0.4 }, { 0.9, 0.1,  0.1, 0.8 } }
 
--- Returns true when `unitTag` is within `threshold` map units of the player.
-local function isGroupMemberNearby(unitTag, threshold)
-    SetMapToPlayerLocation()
-    local x1, y1 = GetMapPlayerPosition("player")
-    local x2, y2 = GetMapPlayerPosition(unitTag)
-    return x2 and y2 and math.sqrt((x1 - x2)^2 + (y1 - y2)^2) * 1000 <= threshold
-end
-
 -- ── Boss definition ───────────────────────────────────────────────────────
 local Nahvii = {}
 Nahvii.__index = Nahvii
+setmetatable(Nahvii, {__index = BossBase})
 
 Nahvii.key  = "nahvii"
 Nahvii.name = "Nahviintaas"
@@ -89,20 +84,13 @@ end
 
 -- ── Lifecycle ─────────────────────────────────────────────────────────────
 function Nahvii:onLeave(context)
-    for _, cid in pairs(self.alertList) do CA.castAlertsStop(cid) end
+    self:cleanupAlertList()
     CA.castAlertsStop(self.thrashBarId)
 end
 
 -- ── Routing tables (C3) ──────────────────────────────────────────────────
 -- Shared cross-trial mechanic handler.
 Nahvii.common = SunspireCommon
-
--- DIED: clean up tracked CA bars.
-function Nahvii:onDied(context, alerts,
-                        unitTag, sourceUnitTag, sourceUnitId, unitId,
-                        sourceUnitName, unitName)
-    if unitId then CA.castAlertsStop(self.alertList[unitId]); self.alertList[unitId] = nil end
-end
 
 -- NextMeteor A+B share: EFFECT_GAINED_DURATION → timer + target tracking;
 -- EFFECT_FADED → remove target entry.
@@ -149,7 +137,7 @@ Nahvii.combatRoutes = {
             if AreUnitsEqual("player", unitTag) then
                 show = true
             else
-                show = isGroupMemberNearby(unitTag, 7)
+                show = MapUtils.isGroupMemberNearby(unitTag, 7)
             end
         end
         if show then
