@@ -21,6 +21,7 @@
 local SunspireCommon = require("trial.ss.SunspireCommon")
 local BossBase       = require("lib.BossBase")
 local MapUtils       = require("lib.MapUtils")
+local Timer          = require("lib.Timer")
 
 -- ── Ability IDs ────────────────────────────────────────────────────────────
 local POWERFUL_SLAM    = 120542
@@ -65,8 +66,8 @@ function Nahvii.new()
     return setmetatable({
         alertList        = {},    -- [sourceUnitId] → CA bar (Slam/Stonefist)
         -- Meteor
-        meteorTargets    = {},    -- [unitTag] → displayName
-        meteorDisplayEnd = 0,     -- ms: when to stop showing meteor targets
+        meteorTargets       = {},  -- [unitTag] → displayName
+        meteorDisplayEnd_ms = 0,   -- ms: when to stop showing meteor targets
         -- NextMeteor / Thrash
         nextMeteorTime   = 0,     -- s: when next meteor is due
         -- FireStorm / landing
@@ -79,7 +80,7 @@ function Nahvii.new()
         cptPortal        = 0,     -- group members who entered portal this cycle
         inPortal         = false,
         -- Portal interrupt
-        interruptTime    = 0,     -- ms: interrupt window expires
+        interruptTimer   = Timer.new(FALLBACK_INTERRUPT_DUR / 1000), -- interrupt window countdown
         interruptUnitId  = nil,   -- unitId of eternal servant being interrupted
         pinsTime         = 0,     -- s: next pins attack (after bash + 20)
         -- Misc CA bars
@@ -111,7 +112,7 @@ local function handleNextMeteor(self, context, alerts, result, abilityId,
             else name = "|cff9900" .. (GetUnitDisplayName(unitTag) or unitName or "?") .. "|r"
             end
             self.meteorTargets[unitTag] = name
-            self.meteorDisplayEnd = GetGameTimeMilliseconds() + 4000
+            self.meteorDisplayEnd_ms = GetGameTimeMilliseconds() + 4000
             if AreUnitsEqual("player", unitTag) then
                 alerts:showAction("YOU → Meteor!")
                 CA.alert(nil, "Meteor on YOU!", 0xFF2200FF, SOUNDS.NONE, 4000)
@@ -230,7 +231,7 @@ Nahvii.combatRoutes = {
         if result ~= ACTION_RESULT_EFFECT_GAINED_DURATION then return end
         if IsUnitPlayer(unitTag) and AreUnitsEqual("player", unitTag) then
             self.inPortal        = false
-            self.interruptTime   = 0
+            self.interruptTimer:clear()
             self.interruptUnitId = nil
             self.pinsTime        = 0
         end
@@ -240,7 +241,7 @@ Nahvii.combatRoutes = {
         if result ~= ACTION_RESULT_EFFECT_GAINED_DURATION then return end
         local dur = select(1, GetAbilityCastInfo(PORTAL_INTERRUPT)) or 0
         if dur <= 0 then dur = FALLBACK_INTERRUPT_DUR end
-        self.interruptTime   = GetGameTimeMilliseconds() + dur
+        self.interruptTimer:reset(dur / 1000)
         self.interruptUnitId = unitId
         self.pinsTime        = 0
     end,
@@ -262,7 +263,7 @@ function Nahvii:onCombatEvent(context, alerts, result, abilityId,
                                unitTag, sourceUnitTag, sourceUnitId, unitId,
                                sourceUnitName, unitName)
     if result == ACTION_RESULT_INTERRUPT and unitId and unitId == self.interruptUnitId then
-        self.interruptTime   = 0
+        self.interruptTimer:clear()
         self.interruptUnitId = nil
         self.pinsTime        = GetGameTimeMilliseconds() / 1000 + 20
     end
@@ -285,14 +286,14 @@ local function showNextMeteorLine(self, alerts, now)
 end
 
 -- Info 2: Portal window → Interrupt countdown → Pins countdown.
-local function showPortalInterruptLine(self, alerts, now, now_ms)
+local function showPortalInterruptLine(self, alerts, now)
     local portalLeft = self.portalTime - now
-    local interLeft  = self.interruptTime - now_ms
+    local interLeft  = self.interruptTimer:remaining()
     local pinsLeft   = self.pinsTime - now
 
     if interLeft > 0 then
         alerts:showInfo(2, "|c7fffd4Interrupt in|r: |cff0000" ..
-            string.format("%.1f", interLeft / 1000) .. "s|r")
+            string.format("%.1f", interLeft) .. "s|r")
     elseif pinsLeft > 0 then
         alerts:showInfo(2, "|c7fffd4Next Pins|r: |cffcc00" ..
             string.format("%.0f", pinsLeft) .. "s|r")
@@ -311,7 +312,7 @@ end
 
 -- Info 3: Meteor targets while display window is open; otherwise FireStorm countdown.
 local function showMeteorOrStormLine(self, alerts, now, now_ms)
-    if now_ms < self.meteorDisplayEnd then
+    if now_ms < self.meteorDisplayEnd_ms then
         local names = {}
         for _, name in pairs(self.meteorTargets) do
             names[#names + 1] = name
@@ -368,7 +369,7 @@ function Nahvii:onUpdate(context, alerts)
     local now_ms = GetGameTimeMilliseconds()
     local now    = now_ms / 1000
     showNextMeteorLine(self, alerts, now)
-    showPortalInterruptLine(self, alerts, now, now_ms)
+    showPortalInterruptLine(self, alerts, now)
     showMeteorOrStormLine(self, alerts, now, now_ms)
     showLandingWipeLine(self, alerts, now, context)
 end

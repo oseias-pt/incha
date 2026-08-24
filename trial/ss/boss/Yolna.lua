@@ -11,6 +11,7 @@
 local SunspireCommon = require("trial.ss.SunspireCommon")
 local BossBase       = require("lib.BossBase")
 local MapUtils       = require("lib.MapUtils")
+local Timer          = require("lib.Timer")
 
 -- ── Ability IDs ────────────────────────────────────────────────────────────
 local ATRO_SPAWN    = 119549   -- Yolna summons fire atronarchs
@@ -40,8 +41,8 @@ function Yolna.new()
     return setmetatable({
         alertList     = {},   -- [sourceUnitId] → CA bar ID (currently unused; kept for consistency)
         nextFlareTime = 0,    -- s: absolute time when next flare is due
-        cataEndTime   = 0,    -- ms: absolute time when cataclysm channel ends
-        landingTime   = 0,    -- s: absolute time when boss lands
+        cataTimer     = Timer.new(FALLBACK_CATA_DUR / 1000),         -- Cataclysm cast countdown
+        landingTimer  = Timer.new(FALLBACK_CATA_DUR / 1000 + 6.8),   -- landing (cast + 6.8 s)
         cataBarId     = nil,  -- CA CastAlertsStart bar ID
     }, Yolna)
 end
@@ -101,11 +102,10 @@ Yolna.combatRoutes = {
     end,
     [CATACLYSM] = function(self, context, alerts, result, abilityId, ...)
         if result ~= ACTION_RESULT_BEGIN then return end
-        local now_ms = GetGameTimeMilliseconds()
         local dur = select(1, GetAbilityCastInfo(CATACLYSM)) or 0
         if dur <= 0 then dur = FALLBACK_CATA_DUR end
-        self.cataEndTime = now_ms + dur
-        self.landingTime = (self.cataEndTime / 1000) + 6.8
+        self.cataTimer:reset(dur / 1000)
+        self.landingTimer:reset(dur / 1000 + 6.8)
         CA.castAlertsStop(self.cataBarId)
         self.cataBarId = CA.castAlertsStart(
             abilityId, "Cataclysm",
@@ -132,19 +132,19 @@ local function showFlareLine(self, alerts, now)
 end
 
 -- Info 2: Cataclysm channel — time remaining until channel ends.
-local function showCataLine(self, alerts, now_ms)
-    local cataLeft = self.cataEndTime - now_ms
+local function showCataLine(self, alerts)
+    local cataLeft = self.cataTimer:remaining()
     if cataLeft > 0 then
         alerts:showInfo(2, "|ce51919Cataclysm Ends|r: " ..
-            string.format("%.1f", cataLeft / 1000) .. "s")
+            string.format("%.1f", cataLeft) .. "s")
     else
         alerts:showInfo(2, "")
     end
 end
 
 -- Info 4: Landing countdown → HP "can fly" threshold.
-local function showLandingOrFlyLine(self, alerts, now, context)
-    local landing = self.landingTime - now
+local function showLandingOrFlyLine(self, alerts, context)
+    local landing = self.landingTimer:remaining()
     if landing > 0 then
         alerts:showInfo(4, "|c5cd65cLanding|r: " .. string.format("%.0f", landing) .. "s")
     else
@@ -169,12 +169,11 @@ end
 
 -- ── 200 ms display loop ───────────────────────────────────────────────────
 function Yolna:onUpdate(context, alerts)
-    local now_ms = GetGameTimeMilliseconds()
-    local now    = now_ms / 1000
+    local now = GetGameTimeMilliseconds() / 1000
     showFlareLine(self, alerts, now)
-    showCataLine(self, alerts, now_ms)
+    showCataLine(self, alerts)
     alerts:showInfo(3, "")
-    showLandingOrFlyLine(self, alerts, now, context)
+    showLandingOrFlyLine(self, alerts, context)
 end
 
 return Yolna
