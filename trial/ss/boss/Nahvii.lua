@@ -24,23 +24,23 @@ local MapUtils       = require("lib.MapUtils")
 local Timer          = require("lib.Timer")
 
 -- ── Ability IDs ────────────────────────────────────────────────────────────
-local POWERFUL_SLAM    = 120542
-local STONEFIST        = 120567
-local SWEEP_RIGHT      = 120188   -- >>> (right-to-left run)
-local SWEEP_LEFT       = 118743   -- <<< (left-to-right run)
-local THRASH           = 118562
-local SOUL_TEAR        = 117526
-local FIRE_STORM       = 118884
-local NEXT_METEOR_A    = 117251   -- EFFECT_GAINED_DURATION → +14.5 s
-local NEXT_METEOR_B    = 123067   -- EFFECT_GAINED_DURATION → +14.5 s
-local NEXT_METEOR_C    = 117308   -- BEGIN → +10.5 s
-local MARK_FOR_DEATH   = 117938
-local PORTAL           = 121676
-local PORTAL_ENTER     = 121213
-local PORTAL_EXIT      = 121254
-local PORTAL_INTERRUPT = 121436
-local WIPE_FINISHED    = 121216
-local NEGATE_FIELD     = 121411
+local POWERFUL_SLAM    = 120542   -- combatRoute: ACTION_RESULT_BEGIN → Block alert (player/nearby 7m)
+local STONEFIST        = 120567   -- combatRoute: ACTION_RESULT_BEGIN → Block alert (player only)
+local SWEEP_RIGHT      = 120188   -- combatRoute: ACTION_RESULT_BEGIN → >>> Sweep Breath alert
+local SWEEP_LEFT       = 118743   -- combatRoute: ACTION_RESULT_BEGIN → <<< Sweep Breath alert
+local THRASH           = 118562   -- combatRoute: ACTION_RESULT_BEGIN → caAlertCast; nextMeteor −1.5s
+local SOUL_TEAR        = 117526   -- combatRoute: ACTION_RESULT_BEGIN → SOUL TEAR alert
+local FIRE_STORM       = 118884   -- combatRoute: ACTION_RESULT_BEGIN → stormTime + 13.7s
+local NEXT_METEOR_A    = 117251   -- combatRoute: ACTION_RESULT_EFFECT_GAINED_DURATION → +14.5s
+local NEXT_METEOR_B    = 123067   -- combatRoute: ACTION_RESULT_EFFECT_GAINED_DURATION → +14.5s
+local NEXT_METEOR_C    = 117308   -- combatRoute: ACTION_RESULT_BEGIN → nextMeteor +10.5s
+local MARK_FOR_DEATH   = 117938   -- combatRoute: ACTION_RESULT_BEGIN → nextMeteor +1.5s
+local PORTAL           = 121676   -- combatRoute: ACTION_RESULT_BEGIN → portal 14s + wipe 98s
+local PORTAL_ENTER     = 121213   -- combatRoute: ACTION_RESULT_EFFECT_GAINED_DURATION → inPortal
+local PORTAL_EXIT      = 121254   -- combatRoute: ACTION_RESULT_EFFECT_GAINED_DURATION → exit portal
+local PORTAL_INTERRUPT = 121436   -- combatRoute: ACTION_RESULT_EFFECT_GAINED_DURATION → interrupt timer
+local WIPE_FINISHED    = 121216   -- combatRoute: ACTION_RESULT_EFFECT_FADED → clear wipeTime
+local NEGATE_FIELD     = 121411   -- combatRoute: ACTION_RESULT_BEGIN → Dodge alert (player only)
 
 local CA = require("lib.CA")
 
@@ -123,129 +123,154 @@ local function handleNextMeteor(self, context, alerts, result, abilityId,
     end
 end
 
-Nahvii.combatRoutes = {
-    [NEXT_METEOR_A] = handleNextMeteor,
-    [NEXT_METEOR_B] = handleNextMeteor,
-    [NEXT_METEOR_C] = { result = ACTION_RESULT_BEGIN, fn = function(self, context, alerts, abilityId, ...)
-        self.nextMeteorTime = GetGameTimeMilliseconds() / 1000 + 10.5
-    end },
-    [MARK_FOR_DEATH] = { result = ACTION_RESULT_BEGIN, fn = function(self, context, alerts, abilityId, ...)
-        self.nextMeteorTime = self.nextMeteorTime + 1.5
-    end },
-    [POWERFUL_SLAM] = { result = ACTION_RESULT_BEGIN,
-        fn = function(self, context, alerts, abilityId,
-                      unitTag, sourceUnitTag, sourceUnitId, unitId,
-                      sourceUnitName, unitName)
-        local show = false
-        if IsUnitPlayer(unitTag) then
-            if AreUnitsEqual("player", unitTag) then
-                show = true
-            else
-                show = MapUtils.isGroupMemberNearby(unitTag, 7)
-            end
+local function handleNextMeteorC(self, context, alerts, abilityId, ...)
+    self.nextMeteorTime = GetGameTimeMilliseconds() / 1000 + 10.5
+end
+
+local function handleMarkForDeath(self, context, alerts, abilityId, ...)
+    self.nextMeteorTime = self.nextMeteorTime + 1.5
+end
+
+local function handlePowerfulSlam(self, context, alerts, abilityId,
+                                   unitTag, sourceUnitTag, sourceUnitId, unitId,
+                                   sourceUnitName, unitName)
+    local show = false
+    if IsUnitPlayer(unitTag) then
+        if AreUnitsEqual("player", unitTag) then
+            show = true
+        else
+            show = MapUtils.isGroupMemberNearby(unitTag, 7)
         end
-        if show then
-            alerts:showAction("Block! (Slam)")
-            local dur = select(1, GetAbilityCastInfo(POWERFUL_SLAM)) or 0
-            if dur <= 0 then dur = FALLBACK_SLAM_DUR end
-            local cid = CA.alertCast(abilityId, sourceUnitName, dur, COL_SLAM)
-            if cid and sourceUnitId then self.alertList[sourceUnitId] = cid end
-        end
-    end },
-    [STONEFIST] = { result = ACTION_RESULT_BEGIN,
-        fn = function(self, context, alerts, abilityId,
-                      unitTag, sourceUnitTag, sourceUnitId, unitId,
-                      sourceUnitName, unitName)
-        if not (IsUnitPlayer(unitTag) and AreUnitsEqual("player", unitTag)) then return end
-        alerts:showAction("Block! (Stonefist)")
-        local dur = select(1, GetAbilityCastInfo(STONEFIST)) or 0
+    end
+    if show then
+        alerts:showAction("Block! (Slam)")
+        local dur = select(1, GetAbilityCastInfo(POWERFUL_SLAM)) or 0
         if dur <= 0 then dur = FALLBACK_SLAM_DUR end
-        local cid = CA.alertCast(abilityId, sourceUnitName, dur, COL_STONE)
+        local cid = CA.alertCast(abilityId, sourceUnitName, dur, COL_SLAM)
         if cid and sourceUnitId then self.alertList[sourceUnitId] = cid end
-    end },
-    [SWEEP_RIGHT] = { result = ACTION_RESULT_BEGIN, fn = function(self, context, alerts, abilityId, ...)
-        local dir = "> Sweep Breath >>>"
-        alerts:showAction(dir); CA.alert(nil, dir, 0xFF8833FF, SOUNDS.NONE, 2000)
-    end },
-    [SWEEP_LEFT] = { result = ACTION_RESULT_BEGIN, fn = function(self, context, alerts, abilityId, ...)
-        local dir = "<<< Sweep Breath <"
-        alerts:showAction(dir); CA.alert(nil, dir, 0xFF8833FF, SOUNDS.NONE, 2000)
-    end },
-    [THRASH] = { result = ACTION_RESULT_BEGIN, fn = function(self, context, alerts, abilityId, ...)
-        local dur = select(1, GetAbilityCastInfo(THRASH)) or 0
-        if dur <= 0 then dur = FALLBACK_THRASH_DUR end
-        CA.castAlertsStop(self.thrashBarId)
-        self.thrashBarId = CA.castAlertsStart(
-            abilityId, "Thrash",
-            dur, dur,
-            { 0.9, 0.1, 0.1, 0.5 },
-            { dur, "THRASH!", 0.9, 0.1, 0.1, 0.9, SOUNDS.NONE })
-        if self.nextMeteorTime > 0 then
-            self.nextMeteorTime = self.nextMeteorTime - 1.5
-        end
-    end },
-    [SOUL_TEAR] = { result = ACTION_RESULT_BEGIN, fn = function(self, context, alerts, abilityId, ...)
-        alerts:showAction("SOUL TEAR!")
-        CA.alert(nil, "SOUL TEAR!", 0x9966FFFF, SOUNDS.NONE, 2000)
-    end },
-    [FIRE_STORM] = { result = ACTION_RESULT_BEGIN, fn = function(self, context, alerts, abilityId, ...)
-        if not self.firstStormTrig then
-            self.firstStormTrig = true
-            return
-        end
-        self.firstStormTrig = false
-        local now        = GetGameTimeMilliseconds() / 1000
-        self.stormTime   = now + 13.7
-        self.landingTime = self.stormTime + 6.6
-    end },
-    [PORTAL] = { result = ACTION_RESULT_BEGIN, fn = function(self, context, alerts, abilityId, ...)
-        local now       = GetGameTimeMilliseconds() / 1000
-        self.portalTime = now + 14
-        self.wipeTime   = now + 98
-        self.cptPortal  = 0
-    end },
-    [PORTAL_ENTER] = { result = ACTION_RESULT_EFFECT_GAINED_DURATION,
-        fn = function(self, context, alerts, abilityId, unitTag, ...)
-        if IsUnitPlayer(unitTag) then
-            if AreUnitsEqual("player", unitTag) then
+    end
+end
+
+local function handleStonefist(self, context, alerts, abilityId,
+                                unitTag, sourceUnitTag, sourceUnitId, unitId,
+                                sourceUnitName, unitName)
+    if not (IsUnitPlayer(unitTag) and AreUnitsEqual("player", unitTag)) then return end
+    alerts:showAction("Block! (Stonefist)")
+    local dur = select(1, GetAbilityCastInfo(STONEFIST)) or 0
+    if dur <= 0 then dur = FALLBACK_SLAM_DUR end
+    local cid = CA.alertCast(abilityId, sourceUnitName, dur, COL_STONE)
+    if cid and sourceUnitId then self.alertList[sourceUnitId] = cid end
+end
+
+local function handleSweepRight(self, context, alerts, abilityId, ...)
+    local dir = "> Sweep Breath >>>"
+    alerts:showAction(dir); CA.alert(nil, dir, 0xFF8833FF, SOUNDS.NONE, 2000)
+end
+
+local function handleSweepLeft(self, context, alerts, abilityId, ...)
+    local dir = "<<< Sweep Breath <"
+    alerts:showAction(dir); CA.alert(nil, dir, 0xFF8833FF, SOUNDS.NONE, 2000)
+end
+
+local function handleThrash(self, context, alerts, abilityId, ...)
+    local dur = select(1, GetAbilityCastInfo(THRASH)) or 0
+    if dur <= 0 then dur = FALLBACK_THRASH_DUR end
+    CA.castAlertsStop(self.thrashBarId)
+    self.thrashBarId = CA.castAlertsStart(
+        abilityId, "Thrash",
+        dur, dur,
+        { 0.9, 0.1, 0.1, 0.5 },
+        { dur, "THRASH!", 0.9, 0.1, 0.1, 0.9, SOUNDS.NONE })
+    if self.nextMeteorTime > 0 then
+        self.nextMeteorTime = self.nextMeteorTime - 1.5
+    end
+end
+
+local function handleSoulTear(self, context, alerts, abilityId, ...)
+    alerts:showAction("SOUL TEAR!")
+    CA.alert(nil, "SOUL TEAR!", 0x9966FFFF, SOUNDS.NONE, 2000)
+end
+
+local function handleFireStorm(self, context, alerts, abilityId, ...)
+    if not self.firstStormTrig then
+        self.firstStormTrig = true
+        return
+    end
+    self.firstStormTrig = false
+    local now        = GetGameTimeMilliseconds() / 1000
+    self.stormTime   = now + 13.7
+    self.landingTime = self.stormTime + 6.6
+end
+
+local function handlePortal(self, context, alerts, abilityId, ...)
+    local now       = GetGameTimeMilliseconds() / 1000
+    self.portalTime = now + 14
+    self.wipeTime   = now + 98
+    self.cptPortal  = 0
+end
+
+local function handlePortalEnter(self, context, alerts, abilityId, unitTag, ...)
+    if IsUnitPlayer(unitTag) then
+        if AreUnitsEqual("player", unitTag) then
+            self.inPortal  = true
+            self.cptPortal = 0
+        else
+            self.cptPortal = self.cptPortal + 1
+            if self.cptPortal >= 3 then
                 self.inPortal  = true
                 self.cptPortal = 0
-            else
-                self.cptPortal = self.cptPortal + 1
-                if self.cptPortal >= 3 then
-                    self.inPortal  = true
-                    self.cptPortal = 0
-                end
             end
         end
-    end },
-    [PORTAL_EXIT] = { result = ACTION_RESULT_EFFECT_GAINED_DURATION,
-        fn = function(self, context, alerts, abilityId, unitTag, ...)
-        if IsUnitPlayer(unitTag) and AreUnitsEqual("player", unitTag) then
-            self.inPortal        = false
-            self.interruptTimer:clear()
-            self.interruptUnitId = nil
-            self.pinsTime        = 0
-        end
-    end },
-    [PORTAL_INTERRUPT] = { result = ACTION_RESULT_EFFECT_GAINED_DURATION,
-        fn = function(self, context, alerts, abilityId,
-                      unitTag, sourceUnitTag, sourceUnitId, unitId, ...)
-        local dur = select(1, GetAbilityCastInfo(PORTAL_INTERRUPT)) or 0
-        if dur <= 0 then dur = FALLBACK_INTERRUPT_DUR end
-        self.interruptTimer:reset(dur / 1000)
-        self.interruptUnitId = unitId
+    end
+end
+
+local function handlePortalExit(self, context, alerts, abilityId, unitTag, ...)
+    if IsUnitPlayer(unitTag) and AreUnitsEqual("player", unitTag) then
+        self.inPortal        = false
+        self.interruptTimer:clear()
+        self.interruptUnitId = nil
         self.pinsTime        = 0
-    end },
-    [WIPE_FINISHED] = function(self, context, alerts, result, abilityId, ...)
-        if result == ACTION_RESULT_EFFECT_FADED then self.wipeTime = 0 end
-    end,
-    [NEGATE_FIELD] = { result = ACTION_RESULT_BEGIN, fn = function(self, context, alerts, abilityId, unitTag, ...)
-        if IsUnitPlayer(unitTag) and AreUnitsEqual("player", unitTag) then
-            alerts:showAction("Dodge! (Negate)")
-            CA.alert(nil, "Dodge Negate!", 0x9966FFFF, SOUNDS.NONE, 2500)
-        end
-    end },
+    end
+end
+
+local function handlePortalInterrupt(self, context, alerts, abilityId,
+                                     unitTag, sourceUnitTag, sourceUnitId, unitId, ...)
+    local dur = select(1, GetAbilityCastInfo(PORTAL_INTERRUPT)) or 0
+    if dur <= 0 then dur = FALLBACK_INTERRUPT_DUR end
+    self.interruptTimer:reset(dur / 1000)
+    self.interruptUnitId = unitId
+    self.pinsTime        = 0
+end
+
+local function handleWipeFinished(self, context, alerts, result, abilityId, ...)
+    if result == ACTION_RESULT_EFFECT_FADED then self.wipeTime = 0 end
+end
+
+local function handleNegateField(self, context, alerts, abilityId, unitTag, ...)
+    if IsUnitPlayer(unitTag) and AreUnitsEqual("player", unitTag) then
+        alerts:showAction("Dodge! (Negate)")
+        CA.alert(nil, "Dodge Negate!", 0x9966FFFF, SOUNDS.NONE, 2500)
+    end
+end
+
+Nahvii.combatRoutes = {
+    [NEXT_METEOR_A]    = handleNextMeteor,
+    [NEXT_METEOR_B]    = handleNextMeteor,
+    [NEXT_METEOR_C]    = { result = ACTION_RESULT_BEGIN,                  fn = handleNextMeteorC },
+    [MARK_FOR_DEATH]   = { result = ACTION_RESULT_BEGIN,                  fn = handleMarkForDeath },
+    [POWERFUL_SLAM]    = { result = ACTION_RESULT_BEGIN,                  fn = handlePowerfulSlam },
+    [STONEFIST]        = { result = ACTION_RESULT_BEGIN,                  fn = handleStonefist },
+    [SWEEP_RIGHT]      = { result = ACTION_RESULT_BEGIN,                  fn = handleSweepRight },
+    [SWEEP_LEFT]       = { result = ACTION_RESULT_BEGIN,                  fn = handleSweepLeft },
+    [THRASH]           = { result = ACTION_RESULT_BEGIN,                  fn = handleThrash },
+    [SOUL_TEAR]        = { result = ACTION_RESULT_BEGIN,                  fn = handleSoulTear },
+    [FIRE_STORM]       = { result = ACTION_RESULT_BEGIN,                  fn = handleFireStorm },
+    [PORTAL]           = { result = ACTION_RESULT_BEGIN,                  fn = handlePortal },
+    [PORTAL_ENTER]     = { result = ACTION_RESULT_EFFECT_GAINED_DURATION, fn = handlePortalEnter },
+    [PORTAL_EXIT]      = { result = ACTION_RESULT_EFFECT_GAINED_DURATION, fn = handlePortalExit },
+    [PORTAL_INTERRUPT] = { result = ACTION_RESULT_EFFECT_GAINED_DURATION, fn = handlePortalInterrupt },
+    [WIPE_FINISHED]    = handleWipeFinished,
+    [NEGATE_FIELD]     = { result = ACTION_RESULT_BEGIN,                  fn = handleNegateField },
 }
 
 -- Catch-all fallback: bash detection has no abilityId filter and cannot be routed.

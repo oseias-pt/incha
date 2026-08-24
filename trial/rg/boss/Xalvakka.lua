@@ -38,15 +38,15 @@ local RockgroveCommon = require("trial.rg.RockgroveCommon")
 local SHIELD_EVENT_KEY = "Incha_RG_XalvakkaShield"
 
 -- ── Ability IDs ────────────────────────────────────────────────────────────
-local SCATHING1       = 149180   -- ScathingEvisceration (base)
-local SCATHING2       = 153448   -- ScathingEvisceration HM variant 1
-local SCATHING3       = 153450   -- ScathingEvisceration HM variant 2
-local DEADSTAR1       = 149386   -- Deadstar add-explosion
-local DEADSTAR2       = 149075   -- Deadstar variant
-local FLAMING_PORTAL  = 157390   -- Boss repositioning jump (HM)
-local SOUL_RESONANCE  = 152993   -- Player debuff: purge required
-local UNSTABLE_CHARGE = 153164   -- Blob player debuff (Unstable Charge orb)
-local MANIFOLD_DEBUFF = 157290   -- Curse: spread from cursed player, AlertBorder + tracker
+local SCATHING1       = 149180   -- combatRoute: ACTION_RESULT_BEGIN → player-targeted alert
+local SCATHING2       = 153448   -- combatRoute: ACTION_RESULT_BEGIN → player-targeted alert (HM)
+local SCATHING3       = 153450   -- combatRoute: ACTION_RESULT_BEGIN → player-targeted alert (HM)
+local DEADSTAR1       = 149386   -- combatRoute: ACTION_RESULT_BEGIN → Deadstar alert
+local DEADSTAR2       = 149075   -- combatRoute: ACTION_RESULT_BEGIN → Deadstar alert
+local FLAMING_PORTAL  = 157390   -- combatRoute: ACTION_RESULT_BEGIN → nextJump +35s (HM)
+local SOUL_RESONANCE  = 152993   -- effectRoute: EFFECT_RESULT_GAINED / FADED → purge alert
+local UNSTABLE_CHARGE = 153164   -- effectRoute: EFFECT_RESULT_GAINED / FADED → green border (blob)
+local MANIFOLD_DEBUFF = 157290   -- effectRoute: EFFECT_RESULT_GAINED / FADED → purple border + tracker
 
 local SCATHING_IDS = { [149180]=true, [153448]=true, [153450]=true }
 local DEADSTAR_IDS = { [149386]=true, [149075]=true }
@@ -172,6 +172,13 @@ local function handleDeadstar(self, context, alerts, abilityId, ...)
     CA.alert(nil, "Deadstar!", 0xFFCC00D9, SOUNDS.CHAMPION_POINTS_COMMITTED, 2500)
 end
 
+local function handleFlamingPortal(self, context, alerts, abilityId, ...)
+    if not context.isHM then return end
+    local now = GetGameTimeMilliseconds() / 1000
+    self.numJumps = self.numJumps + 1
+    self.nextJump = now + 35
+end
+
 Xalvakka.combatRoutes = {
     -- ScathingEvisceration (base + two HM variants)
     [SCATHING1] = { result = ACTION_RESULT_BEGIN, fn = handleScathing },
@@ -181,61 +188,61 @@ Xalvakka.combatRoutes = {
     [DEADSTAR1] = { result = ACTION_RESULT_BEGIN, fn = handleDeadstar },
     [DEADSTAR2] = { result = ACTION_RESULT_BEGIN, fn = handleDeadstar },
     -- Flaming Portal (repositioning jump, HM only)
-    [FLAMING_PORTAL] = { result = ACTION_RESULT_BEGIN,
-        fn = function(self, context, alerts, abilityId, ...)
-        if not context.isHM then return end
-        local now = GetGameTimeMilliseconds() / 1000
-        self.numJumps = self.numJumps + 1
-        self.nextJump = now + 35
-    end },
+    [FLAMING_PORTAL] = { result = ACTION_RESULT_BEGIN, fn = handleFlamingPortal },
 }
 
-Xalvakka.effectRoutes = {
-    -- Soul Resonance: personal purge alert.
-    [SOUL_RESONANCE] = function(self, context, alerts, changeType, abilityId,
-                                 unitTag, unitId, unitName, stackCount)
-        if changeType == EFFECT_RESULT_GAINED and AreUnitsEqual("player", unitTag) then
-            self.soulStart = GetGameTimeMilliseconds() / 1000
-            CA.alert(nil, "Purge Soul Resonance!", 0xFF6600D9, SOUNDS.DUEL_START, 4000)
+-- Soul Resonance: personal purge alert.
+local function handleSoulResonance(self, context, alerts, changeType, abilityId,
+                                    unitTag, unitId, unitName, stackCount)
+    if changeType == EFFECT_RESULT_GAINED and AreUnitsEqual("player", unitTag) then
+        self.soulStart = GetGameTimeMilliseconds() / 1000
+        CA.alert(nil, "Purge Soul Resonance!", 0xFF6600D9, SOUNDS.DUEL_START, 4000)
+        PlaySound(SOUNDS.DUEL_START)
+    elseif changeType == EFFECT_RESULT_FADED and AreUnitsEqual("player", unitTag) then
+        self.soulStart = 0
+    end
+end
+
+-- Unstable Charge / Blob: green border while standing on orb.
+local function handleUnstableCharge(self, context, alerts, changeType, abilityId,
+                                     unitTag, unitId, unitName, stackCount)
+    if changeType == EFFECT_RESULT_GAINED and AreUnitsEqual("player", unitTag) then
+        self.onBlob = true
+        CA.border(true, 8000, "green")
+    elseif changeType == EFFECT_RESULT_FADED and AreUnitsEqual("player", unitTag) then
+        self.onBlob = false
+        CA.border(false, 0, nil)
+    end
+end
+
+-- Manifold Curse: purple border for self, name tracker for others.
+local function handleManifoldDebuff(self, context, alerts, changeType, abilityId,
+                                     unitTag, unitId, unitName, stackCount)
+    if changeType == EFFECT_RESULT_GAINED then
+        if AreUnitsEqual("player", unitTag) then
+            self.selfManifold = true
+            CA.border(true, 20000, "purple")
+            CA.alert(nil, "|cAA44ffManifold Curse|r on YOU — spread!",
+                0xAA44FFD9, SOUNDS.DUEL_START, 5000)
             PlaySound(SOUNDS.DUEL_START)
-        elseif changeType == EFFECT_RESULT_FADED and AreUnitsEqual("player", unitTag) then
-            self.soulStart = 0
+        elseif IsUnitPlayer(unitTag) then
+            self.manifoldOthers[unitTag] =
+                GetUnitDisplayName(unitTag) or unitName or "?"
         end
-    end,
-    -- Unstable Charge / Blob: green border while standing on orb.
-    [UNSTABLE_CHARGE] = function(self, context, alerts, changeType, abilityId,
-                                  unitTag, unitId, unitName, stackCount)
-        if changeType == EFFECT_RESULT_GAINED and AreUnitsEqual("player", unitTag) then
-            self.onBlob = true
-            CA.border(true, 8000, "green")
-        elseif changeType == EFFECT_RESULT_FADED and AreUnitsEqual("player", unitTag) then
-            self.onBlob = false
+    elseif changeType == EFFECT_RESULT_FADED then
+        if AreUnitsEqual("player", unitTag) then
+            self.selfManifold = false
             CA.border(false, 0, nil)
+        else
+            self.manifoldOthers[unitTag] = nil
         end
-    end,
-    -- Manifold Curse: purple border for self, name tracker for others.
-    [MANIFOLD_DEBUFF] = function(self, context, alerts, changeType, abilityId,
-                                  unitTag, unitId, unitName, stackCount)
-        if changeType == EFFECT_RESULT_GAINED then
-            if AreUnitsEqual("player", unitTag) then
-                self.selfManifold = true
-                CA.border(true, 20000, "purple")
-                CA.alert(nil, "|cAA44ffManifold Curse|r on YOU — spread!",
-                    0xAA44FFD9, SOUNDS.DUEL_START, 5000)
-                PlaySound(SOUNDS.DUEL_START)
-            elseif IsUnitPlayer(unitTag) then
-                self.manifoldOthers[unitTag] =
-                    GetUnitDisplayName(unitTag) or unitName or "?"
-            end
-        elseif changeType == EFFECT_RESULT_FADED then
-            if AreUnitsEqual("player", unitTag) then
-                self.selfManifold = false
-                CA.border(false, 0, nil)
-            else
-                self.manifoldOthers[unitTag] = nil
-            end
-        end
-    end,
+    end
+end
+
+Xalvakka.effectRoutes = {
+    [SOUL_RESONANCE]  = handleSoulResonance,
+    [UNSTABLE_CHARGE] = handleUnstableCharge,
+    [MANIFOLD_DEBUFF] = handleManifoldDebuff,
 }
 
 -- ── Info-line renderers ───────────────────────────────────────────────────

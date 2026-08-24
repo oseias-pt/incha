@@ -14,11 +14,11 @@ local MapUtils       = require("lib.MapUtils")
 local Timer          = require("lib.Timer")
 
 -- ── Ability IDs ────────────────────────────────────────────────────────────
-local ATRO_SPAWN    = 119549   -- Yolna summons fire atronarchs
-local LAVA_GEYSER   = 124546   -- ground-targeted + player proximity
-local NEXT_FLARE_A  = 121722   -- BEGIN → +32 s to next flare
-local NEXT_FLARE_B  = 121459   -- EFFECT_FADED → +30 s to next flare
-local CATACLYSM     = 122598   -- fire channel while airborne
+local ATRO_SPAWN    = 119549   -- combatRoute: ACTION_RESULT_BEGIN → Kill Atro alert
+local LAVA_GEYSER   = 124546   -- combatRoute: ACTION_RESULT_BEGIN → Dodge alert (player/nearby)
+local NEXT_FLARE_A  = 121722   -- combatRoute: ACTION_RESULT_BEGIN → nextFlareTime +32s
+local NEXT_FLARE_B  = 121459   -- combatRoute: ACTION_RESULT_EFFECT_FADED → nextFlareTime +30s
+local CATACLYSM     = 122598   -- combatRoute: ACTION_RESULT_BEGIN → caAlertCast + landing timer
 
 local CA = require("lib.CA")
 
@@ -66,53 +66,60 @@ end
 -- Shared cross-trial mechanic handler.
 Yolna.common = SunspireCommon
 
+-- ── Handlers ────────────────────────────────────────────────────────────
+
+local function handleAtroSpawn(self, context, alerts, abilityId, ...)
+    alerts:showAction("Kill Atro!")
+    CA.alert(nil, "Kill Atro!", 0xFF8000FF, SOUNDS.NONE, 4500)
+end
+
+local function handleLavaGeyser(self, context, alerts, abilityId,
+                                 unitTag, sourceUnitTag, sourceUnitId, unitId,
+                                 sourceUnitName, unitName)
+    local show = false
+    if IsUnitPlayer(unitTag) then
+        if AreUnitsEqual("player", unitTag) then
+            show = true
+        else
+            show = MapUtils.isGroupMemberNearby(unitTag, 2.8)
+        end
+    end
+    if show then
+        alerts:showAction("Dodge! (Geyser)")
+        local dur = select(1, GetAbilityCastInfo(LAVA_GEYSER)) or 0
+        if dur <= 0 then dur = FALLBACK_GEYSER_DUR end
+        CA.alertCast(abilityId, sourceUnitName, dur, COL_GEYSER)
+    end
+end
+
+-- NextFlare: BEGIN → +32 s; EFFECT_FADED → +30 s.
+local function handleNextFlareA(self, context, alerts, abilityId, ...)
+    self.nextFlareTime = GetGameTimeMilliseconds() / 1000 + 32
+end
+
+local function handleNextFlareB(self, context, alerts, abilityId, ...)
+    self.nextFlareTime = GetGameTimeMilliseconds() / 1000 + 30
+end
+
+local function handleCataclysm(self, context, alerts, abilityId, ...)
+    local dur = select(1, GetAbilityCastInfo(CATACLYSM)) or 0
+    if dur <= 0 then dur = FALLBACK_CATA_DUR end
+    self.cataTimer:reset(dur / 1000)
+    self.landingTimer:reset(dur / 1000 + 6.8)
+    CA.castAlertsStop(self.cataBarId)
+    self.cataBarId = CA.castAlertsStart(
+        abilityId, "Cataclysm",
+        dur, dur,
+        { 0.9, 0.2, 0.1, 0.5 },
+        { dur, "Cata Ends!", 0.9, 0.2, 0.1, 0.9, SOUNDS.NONE })
+end
+
 Yolna.combatRoutes = {
-    [ATRO_SPAWN] = { result = ACTION_RESULT_BEGIN,
-        fn = function(self, context, alerts, abilityId, ...)
-        alerts:showAction("Kill Atro!")
-        CA.alert(nil, "Kill Atro!", 0xFF8000FF, SOUNDS.NONE, 4500)
-    end },
-    [LAVA_GEYSER] = { result = ACTION_RESULT_BEGIN,
-        fn = function(self, context, alerts, abilityId,
-                      unitTag, sourceUnitTag, sourceUnitId, unitId,
-                      sourceUnitName, unitName)
-        local show = false
-        if IsUnitPlayer(unitTag) then
-            if AreUnitsEqual("player", unitTag) then
-                show = true
-            else
-                show = MapUtils.isGroupMemberNearby(unitTag, 2.8)
-            end
-        end
-        if show then
-            alerts:showAction("Dodge! (Geyser)")
-            local dur = select(1, GetAbilityCastInfo(LAVA_GEYSER)) or 0
-            if dur <= 0 then dur = FALLBACK_GEYSER_DUR end
-            CA.alertCast(abilityId, sourceUnitName, dur, COL_GEYSER)
-        end
-    end },
-    -- NextFlare: BEGIN → +32 s; EFFECT_FADED → +30 s.
-    [NEXT_FLARE_A] = { result = ACTION_RESULT_BEGIN,
-        fn = function(self, context, alerts, abilityId, ...)
-        self.nextFlareTime = GetGameTimeMilliseconds() / 1000 + 32
-    end },
-    [NEXT_FLARE_B] = { result = ACTION_RESULT_EFFECT_FADED,
-        fn = function(self, context, alerts, abilityId, ...)
-        self.nextFlareTime = GetGameTimeMilliseconds() / 1000 + 30
-    end },
-    [CATACLYSM] = { result = ACTION_RESULT_BEGIN,
-        fn = function(self, context, alerts, abilityId, ...)
-        local dur = select(1, GetAbilityCastInfo(CATACLYSM)) or 0
-        if dur <= 0 then dur = FALLBACK_CATA_DUR end
-        self.cataTimer:reset(dur / 1000)
-        self.landingTimer:reset(dur / 1000 + 6.8)
-        CA.castAlertsStop(self.cataBarId)
-        self.cataBarId = CA.castAlertsStart(
-            abilityId, "Cataclysm",
-            dur, dur,
-            { 0.9, 0.2, 0.1, 0.5 },
-            { dur, "Cata Ends!", 0.9, 0.2, 0.1, 0.9, SOUNDS.NONE })
-    end },
+    [ATRO_SPAWN]   = { result = ACTION_RESULT_BEGIN,          fn = handleAtroSpawn },
+    [LAVA_GEYSER]  = { result = ACTION_RESULT_BEGIN,          fn = handleLavaGeyser },
+    [NEXT_FLARE_A] = { result = ACTION_RESULT_BEGIN,          fn = handleNextFlareA },
+    [NEXT_FLARE_B] = { result = ACTION_RESULT_EFFECT_FADED,   fn = handleNextFlareB },
+    [CATACLYSM]    = { result = ACTION_RESULT_BEGIN,          fn = handleCataclysm },
 }
 
 -- ── Info-line renderers ───────────────────────────────────────────────────

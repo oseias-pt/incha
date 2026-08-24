@@ -5,21 +5,21 @@ local CA = require("lib.CA")
 
 -- ── Ability IDs (from AsylumTracker / AsylumPriorityTarget) ───────────────
 -- Olms
-local OLMS_STORM_THE_HEAVENS  = 98535  -- Kite! ~41 s repeat
-local OLMS_TRIAL_BY_FIRE      = 98582  -- Below 25% HP, ~27 s repeat
-local OLMS_SCALDING_ROAR      = 98683  -- Steam breath, ~28 s repeat
-local OLMS_GUSTS_OF_STEAM     = 98868  -- Jumps at 90/75/50/25%
-local OLMS_EXHAUSTIVE_CHARGES = 95482  -- ~12 s repeat
+local OLMS_STORM_THE_HEAVENS  = 98535  -- combatRoute: ACTION_RESULT_BEGIN → Kite alert, reset stormTimer
+local OLMS_TRIAL_BY_FIRE      = 98582  -- combatRoute: ACTION_RESULT_BEGIN → Trial by Fire alert, reset fireTimer
+local OLMS_SCALDING_ROAR      = 98683  -- combatRoute: ACTION_RESULT_BEGIN → Steam Breath caAlertCast, reset steamTimer
+local OLMS_GUSTS_OF_STEAM     = 98868  -- combatRoute: ACTION_RESULT_BEGIN → Jump! alert, advance jump threshold
+local OLMS_EXHAUSTIVE_CHARGES = 95482  -- combatRoute: ACTION_RESULT_BEGIN → Charges! alert, reset chargesTimer
 -- Protector
-local STATIC_SHIELD           = 96010  -- Protector's buff on Olms; FADED = shield down
+local STATIC_SHIELD           = 96010  -- effectRoute: (plain) EFFECT_RESULT_GAINED/FADED → protectorUp state + alert
 -- Llothis
-local LLOTHIS_DEFILING_BLAST   = 95545  -- Cone attack — target name alert
-local LLOTHIS_OPPRESSIVE_BOLTS = 95585  -- Interrupt!
+local LLOTHIS_DEFILING_BLAST   = 95545  -- combatRoute: ACTION_RESULT_BEGIN → Blast caAlertCast (targeted), reset blastTimer
+local LLOTHIS_OPPRESSIVE_BOLTS = 95585  -- combatRoute: ACTION_RESULT_BEGIN → Interrupt! alert, reset boltsTimer
 -- Felms
-local FELMS_TELEPORT_STRIKE   = 99138  -- Jump — target name alert
+local FELMS_TELEPORT_STRIKE   = 99138  -- combatRoute: ACTION_RESULT_BEGIN → Strike caAlertCast (targeted), reset jumpTimer
 -- Mini-boss state
-local DORMANT                 = 99990  -- GAINED = mini sleeps; FADED = mini wakes
-local BOSS_EVENT              = 10298  -- EFFECT_GAINED marks exact mini-boss spawn time
+local DORMANT                 = 99990  -- effectRoute: (plain) EFFECT_RESULT_GAINED/FADED → mini-boss dormancy + reseed timers
+local BOSS_EVENT              = 10298  -- combatRoute: ACTION_RESULT_EFFECT_GAINED → mini-boss spawn detection + timer seeding
 
 -- ── Timer durations (seconds) ─────────────────────────────────────────────
 local STORM_CD    = 41
@@ -90,127 +90,148 @@ local function seedTimer(t, spawnTime)
     t:reset(seed > 0 and seed or t.duration)
 end
 
--- ── Routing tables (C3) ──────────────────────────────────────────────────
+-- ── Handlers ────────────────────────────────────────────────────────────
 -- (Olms has no shared common module; no per-unit DIED cleanup needed.)
+
+local function handleStormTheHeavens(self, context, alerts, abilityId, ...)
+    alerts:showAction("Kite! (Storm the Heavens)")
+    CA.alert(nil, "KITE!", 0xFF4400FF, SOUNDS.NONE, 3000)
+    self.stormTimer:reset()
+end
+
+local function handleScaldingRoar(self, context, alerts, abilityId,
+                                   unitTag, sourceUnitTag, sourceUnitId, unitId, ...)
+    alerts:showAction("Steam Breath! Move!")
+    local dur = select(1, GetAbilityCastInfo(OLMS_SCALDING_ROAR)) or 0
+    if dur <= 0 then dur = FALLBACK_ROAR_DUR end
+    local cid = CA.alertCast(abilityId, "Steam Breath!", dur,
+        { -3, 0, false, { 0.8, 0.4, 0, 0.4 }, { 0.8, 0.4, 0, 0.8 } })
+    if cid and unitId then self.alertList[unitId] = cid end
+    self.steamTimer:reset()
+end
+
+local function handleExhaustiveCharges(self, context, alerts, abilityId, ...)
+    alerts:showAction("Charges!")
+    self.chargesTimer:reset()
+end
+
+local function handleTrialByFire(self, context, alerts, abilityId, ...)
+    alerts:showAction("Trial by Fire!")
+    self.fireTimer:reset()
+end
+
+local function handleGustsOfSteam(self, context, alerts, abilityId, ...)
+    alerts:showAction("Jump! Dodge!")
+    if self.nextJumpThreshold <= #JUMP_THRESHOLDS then
+        self.nextJumpThreshold = self.nextJumpThreshold + 1
+    end
+end
+
+-- Mini-boss spawn detection (Llothis and Felms share BOSS_EVENT ID)
+local function handleBossEvent(self, context, alerts, abilityId,
+                                unitTag, sourceUnitTag, sourceUnitId, unitId,
+                                sourceUnitName, unitName)
+    if unitName and unitName:find("Llothis") then
+        self.llothisSpawnTime = os.time()
+        self.llothisActive    = true
+        seedTimer(self.blastTimer, self.llothisSpawnTime)
+        seedTimer(self.boltsTimer, self.llothisSpawnTime)
+    elseif unitName and unitName:find("Felms") then
+        self.felmsSpawnTime = os.time()
+        self.felmsActive    = true
+        seedTimer(self.jumpTimer, self.felmsSpawnTime)
+    end
+end
+
+local function handleDefilingBlast(self, context, alerts, abilityId,
+                                    unitTag, sourceUnitTag, sourceUnitId, unitId,
+                                    sourceUnitName, unitName)
+    local target = (unitName and unitName ~= "") and unitName or "?"
+    alerts:showAction("Blast! → " .. target)
+    local dur = select(1, GetAbilityCastInfo(LLOTHIS_DEFILING_BLAST)) or 0
+    if dur <= 0 then dur = FALLBACK_BLAST_DUR end
+    local cid = CA.alertCast(abilityId, "Blast → " .. target, dur,
+        { -3, 0, false, { 0.6, 0, 0.8, 0.4 }, { 0.6, 0, 0.8, 0.8 } })
+    if cid and unitId then self.alertList[unitId] = cid end
+    self.blastTimer:reset()
+end
+
+local function handleOppressiveBolts(self, context, alerts, abilityId, ...)
+    alerts:showAction("Interrupt Llothis!")
+    CA.alert(nil, "Interrupt!", 0xFF0000FF, SOUNDS.NONE, 2000)
+    self.boltsTimer:reset()
+end
+
+local function handleTeleportStrike(self, context, alerts, abilityId,
+                                     unitTag, sourceUnitTag, sourceUnitId, unitId,
+                                     sourceUnitName, unitName)
+    local target = (unitName and unitName ~= "") and unitName or "?"
+    alerts:showAction("Strike! → " .. target)
+    local dur = select(1, GetAbilityCastInfo(FELMS_TELEPORT_STRIKE)) or 0
+    if dur <= 0 then dur = FALLBACK_STRIKE_DUR end
+    local cid = CA.alertCast(abilityId, "Strike → " .. target, dur,
+        { -3, 0, false, { 0, 0.6, 0.8, 0.4 }, { 0, 0.6, 0.8, 0.8 } })
+    if cid and unitId then self.alertList[unitId] = cid end
+    self.jumpTimer:reset()
+end
+
+-- DORMANT: mini-boss sleep/wake cycle (Llothis and Felms share this ID).
+local function handleDormant(self, context, alerts, changeType, abilityId,
+                              unitTag, unitId, unitName, stackCount)
+    if unitName and unitName:find("Llothis") then
+        if changeType == EFFECT_RESULT_GAINED then
+            self.llothisActive = false
+            self.blastTimer:clear()
+            self.boltsTimer:clear()
+        elseif changeType == EFFECT_RESULT_FADED then
+            self.llothisActive = true
+            seedTimer(self.blastTimer, self.llothisSpawnTime)
+            seedTimer(self.boltsTimer, self.llothisSpawnTime)
+        end
+    elseif unitName and unitName:find("Felms") then
+        if changeType == EFFECT_RESULT_GAINED then
+            self.felmsActive = false
+            self.jumpTimer:clear()
+        elseif changeType == EFFECT_RESULT_FADED then
+            self.felmsActive = true
+            seedTimer(self.jumpTimer, self.felmsSpawnTime)
+        end
+    end
+end
+
+-- Static Shield: Protector NPC channels this onto Olms; kill Protector first.
+local function handleStaticShield(self, context, alerts, changeType, abilityId, ...)
+    if changeType == EFFECT_RESULT_GAINED then
+        self.protectorUp = true
+        alerts:showAction("Kill the Protector!")
+        CA.alert(nil, "PROTECTOR ACTIVE", 0xFFCC00FF, SOUNDS.NONE, 4000)
+    elseif changeType == EFFECT_RESULT_FADED then
+        self.protectorUp = false
+        alerts:showAction("Shield down!")
+    end
+end
+
+-- ── Routing tables (C3) ──────────────────────────────────────────────────
 
 OlmsEncounter.combatRoutes = {
     -- ── Olms ──────────────────────────────────────────────────────────────
-    [OLMS_STORM_THE_HEAVENS] = { result = ACTION_RESULT_BEGIN, fn = function(self, context, alerts, abilityId, ...)
-        alerts:showAction("Kite! (Storm the Heavens)")
-        CA.alert(nil, "KITE!", 0xFF4400FF, SOUNDS.NONE, 3000)
-        self.stormTimer:reset()
-    end },
-    [OLMS_SCALDING_ROAR] = { result = ACTION_RESULT_BEGIN,
-        fn = function(self, context, alerts, abilityId,
-                      unitTag, sourceUnitTag, sourceUnitId, unitId, ...)
-        alerts:showAction("Steam Breath! Move!")
-        local dur = select(1, GetAbilityCastInfo(OLMS_SCALDING_ROAR)) or 0
-        if dur <= 0 then dur = FALLBACK_ROAR_DUR end
-        local cid = CA.alertCast(abilityId, "Steam Breath!", dur,
-            { -3, 0, false, { 0.8, 0.4, 0, 0.4 }, { 0.8, 0.4, 0, 0.8 } })
-        if cid and unitId then self.alertList[unitId] = cid end
-        self.steamTimer:reset()
-    end },
-    [OLMS_EXHAUSTIVE_CHARGES] = { result = ACTION_RESULT_BEGIN, fn = function(self, context, alerts, abilityId, ...)
-        alerts:showAction("Charges!")
-        self.chargesTimer:reset()
-    end },
-    [OLMS_TRIAL_BY_FIRE] = { result = ACTION_RESULT_BEGIN, fn = function(self, context, alerts, abilityId, ...)
-        alerts:showAction("Trial by Fire!")
-        self.fireTimer:reset()
-    end },
-    [OLMS_GUSTS_OF_STEAM] = { result = ACTION_RESULT_BEGIN, fn = function(self, context, alerts, abilityId, ...)
-        alerts:showAction("Jump! Dodge!")
-        if self.nextJumpThreshold <= #JUMP_THRESHOLDS then
-            self.nextJumpThreshold = self.nextJumpThreshold + 1
-        end
-    end },
+    [OLMS_STORM_THE_HEAVENS]  = { result = ACTION_RESULT_BEGIN,         fn = handleStormTheHeavens },
+    [OLMS_SCALDING_ROAR]      = { result = ACTION_RESULT_BEGIN,         fn = handleScaldingRoar },
+    [OLMS_EXHAUSTIVE_CHARGES] = { result = ACTION_RESULT_BEGIN,         fn = handleExhaustiveCharges },
+    [OLMS_TRIAL_BY_FIRE]      = { result = ACTION_RESULT_BEGIN,         fn = handleTrialByFire },
+    [OLMS_GUSTS_OF_STEAM]     = { result = ACTION_RESULT_BEGIN,         fn = handleGustsOfSteam },
     -- ── Mini-boss spawn detection (Llothis and Felms share BOSS_EVENT ID) ─
-    [BOSS_EVENT] = { result = ACTION_RESULT_EFFECT_GAINED,
-        fn = function(self, context, alerts, abilityId,
-                      unitTag, sourceUnitTag, sourceUnitId, unitId,
-                      sourceUnitName, unitName)
-        if unitName and unitName:find("Llothis") then
-            self.llothisSpawnTime = os.time()
-            self.llothisActive    = true
-            seedTimer(self.blastTimer, self.llothisSpawnTime)
-            seedTimer(self.boltsTimer, self.llothisSpawnTime)
-        elseif unitName and unitName:find("Felms") then
-            self.felmsSpawnTime = os.time()
-            self.felmsActive    = true
-            seedTimer(self.jumpTimer, self.felmsSpawnTime)
-        end
-    end },
+    [BOSS_EVENT]              = { result = ACTION_RESULT_EFFECT_GAINED,  fn = handleBossEvent },
     -- ── Llothis: combat abilities ──────────────────────────────────────────
-    [LLOTHIS_DEFILING_BLAST] = { result = ACTION_RESULT_BEGIN,
-        fn = function(self, context, alerts, abilityId,
-                      unitTag, sourceUnitTag, sourceUnitId, unitId,
-                      sourceUnitName, unitName)
-        local target = (unitName and unitName ~= "") and unitName or "?"
-        alerts:showAction("Blast! → " .. target)
-        local dur = select(1, GetAbilityCastInfo(LLOTHIS_DEFILING_BLAST)) or 0
-        if dur <= 0 then dur = FALLBACK_BLAST_DUR end
-        local cid = CA.alertCast(abilityId, "Blast → " .. target, dur,
-            { -3, 0, false, { 0.6, 0, 0.8, 0.4 }, { 0.6, 0, 0.8, 0.8 } })
-        if cid and unitId then self.alertList[unitId] = cid end
-        self.blastTimer:reset()
-    end },
-    [LLOTHIS_OPPRESSIVE_BOLTS] = { result = ACTION_RESULT_BEGIN, fn = function(self, context, alerts, abilityId, ...)
-        alerts:showAction("Interrupt Llothis!")
-        CA.alert(nil, "Interrupt!", 0xFF0000FF, SOUNDS.NONE, 2000)
-        self.boltsTimer:reset()
-    end },
+    [LLOTHIS_DEFILING_BLAST]   = { result = ACTION_RESULT_BEGIN,         fn = handleDefilingBlast },
+    [LLOTHIS_OPPRESSIVE_BOLTS] = { result = ACTION_RESULT_BEGIN,         fn = handleOppressiveBolts },
     -- ── Felms: combat abilities ────────────────────────────────────────────
-    [FELMS_TELEPORT_STRIKE] = { result = ACTION_RESULT_BEGIN,
-        fn = function(self, context, alerts, abilityId,
-                      unitTag, sourceUnitTag, sourceUnitId, unitId,
-                      sourceUnitName, unitName)
-        local target = (unitName and unitName ~= "") and unitName or "?"
-        alerts:showAction("Strike! → " .. target)
-        local dur = select(1, GetAbilityCastInfo(FELMS_TELEPORT_STRIKE)) or 0
-        if dur <= 0 then dur = FALLBACK_STRIKE_DUR end
-        local cid = CA.alertCast(abilityId, "Strike → " .. target, dur,
-            { -3, 0, false, { 0, 0.6, 0.8, 0.4 }, { 0, 0.6, 0.8, 0.8 } })
-        if cid and unitId then self.alertList[unitId] = cid end
-        self.jumpTimer:reset()
-    end },
+    [FELMS_TELEPORT_STRIKE]   = { result = ACTION_RESULT_BEGIN,         fn = handleTeleportStrike },
 }
 
 OlmsEncounter.effectRoutes = {
-    -- DORMANT: mini-boss sleep/wake cycle (Llothis and Felms share this ID).
-    [DORMANT] = function(self, context, alerts, changeType, abilityId,
-                          unitTag, unitId, unitName, stackCount)
-        if unitName and unitName:find("Llothis") then
-            if changeType == EFFECT_RESULT_GAINED then
-                self.llothisActive = false
-                self.blastTimer:clear()
-                self.boltsTimer:clear()
-            elseif changeType == EFFECT_RESULT_FADED then
-                self.llothisActive = true
-                seedTimer(self.blastTimer, self.llothisSpawnTime)
-                seedTimer(self.boltsTimer, self.llothisSpawnTime)
-            end
-        elseif unitName and unitName:find("Felms") then
-            if changeType == EFFECT_RESULT_GAINED then
-                self.felmsActive = false
-                self.jumpTimer:clear()
-            elseif changeType == EFFECT_RESULT_FADED then
-                self.felmsActive = true
-                seedTimer(self.jumpTimer, self.felmsSpawnTime)
-            end
-        end
-    end,
-    -- Static Shield: Protector NPC channels this onto Olms; kill Protector first.
-    [STATIC_SHIELD] = function(self, context, alerts, changeType, abilityId, ...)
-        if changeType == EFFECT_RESULT_GAINED then
-            self.protectorUp = true
-            alerts:showAction("Kill the Protector!")
-            CA.alert(nil, "PROTECTOR ACTIVE", 0xFFCC00FF, SOUNDS.NONE, 4000)
-        elseif changeType == EFFECT_RESULT_FADED then
-            self.protectorUp = false
-            alerts:showAction("Shield down!")
-        end
-    end,
+    [DORMANT]       = handleDormant,
+    [STATIC_SHIELD] = handleStaticShield,
 }
 
 -- ── Info-line renderers ───────────────────────────────────────────────────

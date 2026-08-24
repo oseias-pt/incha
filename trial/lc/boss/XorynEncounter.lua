@@ -4,15 +4,15 @@ local Timer    = require("lib.Timer")
 local CA = require("lib.CA")
 
 -- ── Ability IDs ───────────────────────────────────────────────────────────
-local ARCANE_KNOT         = 213477   -- EFFECT_GAINED_DURATION on player → carry knot
-local ARCANE_CONV_DEBUFF  = 223060   -- EFFECT_GAINED_DURATION on player → tether
-local FLUCTUATING_CURRENT = 214597   -- EFFECT_GAINED_DURATION on player → hold (15s max)
-local OVERLOADED_CURRENT  = 214745   -- EFFECT_GAINED_DURATION on player → DROP
-local NECROTIC_BARRAGE    = 223198   -- BEGIN → caAlertCast
-local ACCELERATING_CHARGE = 214542   -- BEGIN → chain lightning incoming
-local TEMPEST             = 215107   -- BEGIN → MOVE from mirror line
-local GLASS_STOMP_CAST    = 219797   -- BEGIN → Crystal Atronach AOE on tank
-local LUSTROUS_JAVELIN    = 223546   -- BEGIN on player → alert
+local ARCANE_KNOT         = 213477   -- combatRoute: ACTION_RESULT_EFFECT_GAINED_DURATION / FADED → carry knot
+local ARCANE_CONV_DEBUFF  = 223060   -- combatRoute: ACTION_RESULT_EFFECT_GAINED_DURATION → tether on player
+local FLUCTUATING_CURRENT = 214597   -- combatRoute: ACTION_RESULT_EFFECT_GAINED_DURATION / FADED → hold (15s max)
+local OVERLOADED_CURRENT  = 214745   -- combatRoute: ACTION_RESULT_EFFECT_GAINED_DURATION → DROP current
+local NECROTIC_BARRAGE    = 223198   -- combatRoute: ACTION_RESULT_BEGIN → caAlertCast
+local ACCELERATING_CHARGE = 214542   -- combatRoute: ACTION_RESULT_BEGIN → chain lightning incoming
+local TEMPEST             = 215107   -- combatRoute: ACTION_RESULT_BEGIN → MOVE from mirror line
+local GLASS_STOMP_CAST    = 219797   -- combatRoute: ACTION_RESULT_BEGIN → Crystal Atronach AOE on tank
+local LUSTROUS_JAVELIN    = 223546   -- combatRoute: ACTION_RESULT_BEGIN → javelin on player
 
 -- ── Constants ─────────────────────────────────────────────────────────────
 local CURRENT_MAX_DUR = 15.0   -- holding Fluctuating Current beyond this = death
@@ -42,78 +42,91 @@ function XorynEncounter.new()
     }, XorynEncounter)
 end
 
+-- ── Handlers ────────────────────────────────────────────────────────────
+
+local function handleNecroticBarrage(self, context, alerts, abilityId, ...)
+    local dur = select(1, GetAbilityCastInfo(abilityId)) or 0
+    if dur <= 0 then dur = FALLBACK_BARRAGE_DUR end
+    CA.alertCast(abilityId, "Necrotic Barrage!", dur, COL_NECROTIC)
+end
+
+local function handleAcceleratingCharge(self, context, alerts, abilityId, ...)
+    CA.alert(nil, "Chain Lightning incoming!", 0xFFFF44FF, SOUNDS.NONE, 3000)
+    alerts:showAction("Accelerating Charge → Chain Lightning!")
+end
+
+local function handleTempest(self, context, alerts, abilityId, ...)
+    local dur = select(1, GetAbilityCastInfo(abilityId)) or 0
+    if dur <= 0 then dur = FALLBACK_DUR end
+    CA.alertCast(abilityId, "MOVE from line!", dur, COL_TEMPEST)
+    alerts:showAction("Tempest! MOVE from mirror line!")
+end
+
+local function handleGlassStomp(self, context, alerts, abilityId,
+                                 unitTag, sourceUnitTag, sourceUnitId, unitId,
+                                 sourceUnitName, unitName)
+    local target = (unitName and unitName ~= "") and unitName or "?"
+    local dur = select(1, GetAbilityCastInfo(abilityId)) or 0
+    if dur <= 0 then dur = FALLBACK_DUR end
+    CA.alertCast(abilityId, "Atronach AOE → " .. target, dur, COL_ATRONACH)
+    if IsUnitPlayer(unitTag) then
+        alerts:showAction("Atronach AOE on YOU!")
+    end
+end
+
+local function handleLustrousJavelin(self, context, alerts, abilityId, unitTag, ...)
+    if not IsUnitPlayer(unitTag) then return end
+    CA.alert(nil, "Javelin on YOU!", 0xFF8844FF, SOUNDS.NONE, 3000)
+    alerts:showAction("Lustrous Javelin on you!")
+end
+
+local function handleArcaneKnot(self, context, alerts, result, abilityId, unitTag, ...)
+    if not IsUnitPlayer(unitTag) then return end
+    if result == ACTION_RESULT_EFFECT_GAINED_DURATION then
+        self.holdingKnot = true
+        CA.alert(nil, "Carry knot! Pass it!", 0xFFAA44FF, SOUNDS.NONE, 4000)
+        alerts:showAction("Arcane Knot — carry and pass!")
+    elseif result == ACTION_RESULT_EFFECT_FADED then
+        self.holdingKnot = false
+    end
+end
+
+local function handleArcaneConvDebuff(self, context, alerts, abilityId, unitTag, ...)
+    if not IsUnitPlayer(unitTag) then return end
+    CA.alert(nil, "TETHER! Move away!", 0xFF4444FF, SOUNDS.NONE, 3000)
+    alerts:showAction("Tether on you! Separate from partner!")
+end
+
+local function handleFluctuatingCurrent(self, context, alerts, result, abilityId, unitTag, ...)
+    if not IsUnitPlayer(unitTag) then return end
+    if result == ACTION_RESULT_EFFECT_GAINED_DURATION then
+        self.holdingCurrent = true
+        self.currentTimer:reset(CURRENT_MAX_DUR)
+        CA.alert(nil, "Hold current! Drop at edge!", 0x44CCFFFF, SOUNDS.NONE, 3000)
+        alerts:showAction("Fluctuating Current — hold, then drop!")
+    elseif result == ACTION_RESULT_EFFECT_FADED then
+        self.holdingCurrent = false
+        self.currentTimer:clear()
+    end
+end
+
+local function handleOverloadedCurrent(self, context, alerts, abilityId, unitTag, ...)
+    if not IsUnitPlayer(unitTag) then return end
+    CA.alert(nil, "DROP current!", 0xFF0000FF, SOUNDS.NONE, 2000)
+    alerts:showAction("Overloaded — DROP the current!")
+end
+
 -- ── Routing tables (C3) ──────────────────────────────────────────────────
 XorynEncounter.combatRoutes = {
-    [NECROTIC_BARRAGE] = { result = ACTION_RESULT_BEGIN,
-        fn = function(self, context, alerts, abilityId, ...)
-        local dur = select(1, GetAbilityCastInfo(abilityId)) or 0
-        if dur <= 0 then dur = FALLBACK_BARRAGE_DUR end
-        CA.alertCast(abilityId, "Necrotic Barrage!", dur, COL_NECROTIC)
-    end },
-    [ACCELERATING_CHARGE] = { result = ACTION_RESULT_BEGIN,
-        fn = function(self, context, alerts, abilityId, ...)
-        CA.alert(nil, "Chain Lightning incoming!", 0xFFFF44FF, SOUNDS.NONE, 3000)
-        alerts:showAction("Accelerating Charge → Chain Lightning!")
-    end },
-    [TEMPEST] = { result = ACTION_RESULT_BEGIN,
-        fn = function(self, context, alerts, abilityId, ...)
-        local dur = select(1, GetAbilityCastInfo(abilityId)) or 0
-        if dur <= 0 then dur = FALLBACK_DUR end
-        CA.alertCast(abilityId, "MOVE from line!", dur, COL_TEMPEST)
-        alerts:showAction("Tempest! MOVE from mirror line!")
-    end },
-    [GLASS_STOMP_CAST] = { result = ACTION_RESULT_BEGIN,
-        fn = function(self, context, alerts, abilityId,
-                      unitTag, sourceUnitTag, sourceUnitId, unitId,
-                      sourceUnitName, unitName)
-        local target = (unitName and unitName ~= "") and unitName or "?"
-        local dur = select(1, GetAbilityCastInfo(abilityId)) or 0
-        if dur <= 0 then dur = FALLBACK_DUR end
-        CA.alertCast(abilityId, "Atronach AOE → " .. target, dur, COL_ATRONACH)
-        if IsUnitPlayer(unitTag) then
-            alerts:showAction("Atronach AOE on YOU!")
-        end
-    end },
-    [LUSTROUS_JAVELIN] = { result = ACTION_RESULT_BEGIN,
-        fn = function(self, context, alerts, abilityId, unitTag, ...)
-        if not IsUnitPlayer(unitTag) then return end
-        CA.alert(nil, "Javelin on YOU!", 0xFF8844FF, SOUNDS.NONE, 3000)
-        alerts:showAction("Lustrous Javelin on you!")
-    end },
-    [ARCANE_KNOT] = function(self, context, alerts, result, abilityId, unitTag, ...)
-        if not IsUnitPlayer(unitTag) then return end
-        if result == ACTION_RESULT_EFFECT_GAINED_DURATION then
-            self.holdingKnot = true
-            CA.alert(nil, "Carry knot! Pass it!", 0xFFAA44FF, SOUNDS.NONE, 4000)
-            alerts:showAction("Arcane Knot — carry and pass!")
-        elseif result == ACTION_RESULT_EFFECT_FADED then
-            self.holdingKnot = false
-        end
-    end,
-    [ARCANE_CONV_DEBUFF] = { result = ACTION_RESULT_EFFECT_GAINED_DURATION,
-        fn = function(self, context, alerts, abilityId, unitTag, ...)
-        if not IsUnitPlayer(unitTag) then return end
-        CA.alert(nil, "TETHER! Move away!", 0xFF4444FF, SOUNDS.NONE, 3000)
-        alerts:showAction("Tether on you! Separate from partner!")
-    end },
-    [FLUCTUATING_CURRENT] = function(self, context, alerts, result, abilityId, unitTag, ...)
-        if not IsUnitPlayer(unitTag) then return end
-        if result == ACTION_RESULT_EFFECT_GAINED_DURATION then
-            self.holdingCurrent = true
-            self.currentTimer:reset(CURRENT_MAX_DUR)
-            CA.alert(nil, "Hold current! Drop at edge!", 0x44CCFFFF, SOUNDS.NONE, 3000)
-            alerts:showAction("Fluctuating Current — hold, then drop!")
-        elseif result == ACTION_RESULT_EFFECT_FADED then
-            self.holdingCurrent = false
-            self.currentTimer:clear()
-        end
-    end,
-    [OVERLOADED_CURRENT] = { result = ACTION_RESULT_EFFECT_GAINED_DURATION,
-        fn = function(self, context, alerts, abilityId, unitTag, ...)
-        if not IsUnitPlayer(unitTag) then return end
-        CA.alert(nil, "DROP current!", 0xFF0000FF, SOUNDS.NONE, 2000)
-        alerts:showAction("Overloaded — DROP the current!")
-    end },
+    [NECROTIC_BARRAGE]    = { result = ACTION_RESULT_BEGIN,                    fn = handleNecroticBarrage },
+    [ACCELERATING_CHARGE] = { result = ACTION_RESULT_BEGIN,                    fn = handleAcceleratingCharge },
+    [TEMPEST]             = { result = ACTION_RESULT_BEGIN,                    fn = handleTempest },
+    [GLASS_STOMP_CAST]    = { result = ACTION_RESULT_BEGIN,                    fn = handleGlassStomp },
+    [LUSTROUS_JAVELIN]    = { result = ACTION_RESULT_BEGIN,                    fn = handleLustrousJavelin },
+    [ARCANE_KNOT]         = handleArcaneKnot,
+    [ARCANE_CONV_DEBUFF]  = { result = ACTION_RESULT_EFFECT_GAINED_DURATION,   fn = handleArcaneConvDebuff },
+    [FLUCTUATING_CURRENT] = handleFluctuatingCurrent,
+    [OVERLOADED_CURRENT]  = { result = ACTION_RESULT_EFFECT_GAINED_DURATION,   fn = handleOverloadedCurrent },
 }
 
 -- ── Info-line renderers ───────────────────────────────────────────────────

@@ -9,14 +9,14 @@ local BossBase       = require("lib.BossBase")
 local MapUtils       = require("lib.MapUtils")
 
 -- ── Ability IDs ────────────────────────────────────────────────────────────
-local GLACIAL_FIST    = 120838   -- ice atronarch cast (player or nearby)
-local ICE_TOMB        = 119632   -- combat BEGIN → start tomb cycle
-local IN_ICE          = 116044   -- combat EFFECT_GAINED/FADED → player in/out tomb
-local LASER_1         = 122820   -- flight #1: laser 40 s → landing +12.8 s
-local LASER_2         = 122821   -- flight #2: laser 10 s → landing +54.6 s
-local LASER_3         = 122822   -- flight #3: laser 32 s → landing +32.1 s
-local ICE_EFFECT_CAST = 124687   -- effect GAINED → TombCast signal
-local ICE_EFFECT_ARM  = 119638   -- effect GAINED→TombArmed  FADED→TombFaded
+local GLACIAL_FIST    = 120838   -- combatRoute: ACTION_RESULT_BEGIN → Block alert (player/nearby 4.5m)
+local ICE_TOMB        = 119632   -- combatRoute: ACTION_RESULT_BEGIN → start tomb cycle
+local IN_ICE          = 116044   -- combatRoute: ACTION_RESULT_EFFECT_GAINED / FADED → player in/out tomb
+local LASER_1         = 122820   -- combatRoute: ACTION_RESULT_BEGIN → laser 40s + landing 12.8s
+local LASER_2         = 122821   -- combatRoute: ACTION_RESULT_BEGIN → laser 10s + landing 54.6s
+local LASER_3         = 122822   -- combatRoute: ACTION_RESULT_BEGIN → laser 32s + landing 32.1s
+local ICE_EFFECT_CAST = 124687   -- effectRoute: EFFECT_RESULT_GAINED → TombCast signal
+local ICE_EFFECT_ARM  = 119638   -- effectRoute: EFFECT_RESULT_GAINED / FADED → TombArmed / TombFaded
 
 -- ── IceTomb display strings (match HTS palette) ───────────────────────────
 local sA    = "[|c00ff00A|r]: "
@@ -197,66 +197,74 @@ local function makeLaserHandler(laserDelay, landingAfterLaser)
     end }
 end
 
+local function handleGlacialFist(self, context, alerts, abilityId,
+                                  unitTag, sourceUnitTag, sourceUnitId, unitId,
+                                  sourceUnitName, unitName)
+    local show = false
+    if IsUnitPlayer(unitTag) then
+        if AreUnitsEqual("player", unitTag) then
+            show = true
+        else
+            show = MapUtils.isGroupMemberNearby(unitTag, 4.5)
+        end
+    end
+    if show then
+        alerts:showAction("Block! (Glacial Fist)")
+        local dur = select(1, GetAbilityCastInfo(GLACIAL_FIST)) or 0
+        if dur <= 0 then dur = FALLBACK_FIST_DUR end
+        local cid = CA.alertCast(abilityId, sourceUnitName, dur,
+            { -2, 0, false, { 0.3, 0.7, 1.0, 0.4 }, { 0.3, 0.7, 1.0, 0.8 } })
+        if cid and sourceUnitId then self.alertList[sourceUnitId] = cid end
+    end
+end
+
+local function handleIceTomb(self, context, alerts, abilityId, ...)
+    local now = GetGameTimeMilliseconds() / 1000
+    self.iceTime     = now + 13
+    self.iceNext     = now + 23
+    self.prevIce     = GetGameTimeMilliseconds()
+    self.iceNumber   = self.iceNumber % 3 + 1
+    self.tombsClear  = false
+    self.iceState    = 1
+    self.checkDouble = true
+end
+
+-- InIce: player enters (EFFECT_GAINED) / exits (EFFECT_FADED) a tomb.
+local function handleInIce(self, context, alerts, result, abilityId,
+                            unitTag, sourceUnitTag, sourceUnitId, unitId, ...)
+    if result == ACTION_RESULT_EFFECT_GAINED then
+        iceGained(self, unitId)
+    elseif result == ACTION_RESULT_EFFECT_FADED then
+        iceFaded(self, unitId)
+    end
+end
+
+-- 124687: cast signal (GAINED = tomb is being cast)
+local function handleIceEffectCast(self, context, alerts, changeType, abilityId, ...)
+    if changeType == EFFECT_RESULT_GAINED then
+        tombCast(self, GetGameTimeMilliseconds() / 1000)
+    end
+end
+
+-- 119638: arm/disarm signal (GAINED = tomb ready to enter, FADED = window closed)
+local function handleIceEffectArm(self, context, alerts, changeType, abilityId, ...)
+    if     changeType == EFFECT_RESULT_GAINED then tombArmed(self)
+    elseif changeType == EFFECT_RESULT_FADED  then tombFaded(self)
+    end
+end
+
 Lokke.combatRoutes = {
-    [GLACIAL_FIST] = { result = ACTION_RESULT_BEGIN,
-        fn = function(self, context, alerts, abilityId,
-                      unitTag, sourceUnitTag, sourceUnitId, unitId,
-                      sourceUnitName, unitName)
-        local show = false
-        if IsUnitPlayer(unitTag) then
-            if AreUnitsEqual("player", unitTag) then
-                show = true
-            else
-                show = MapUtils.isGroupMemberNearby(unitTag, 4.5)
-            end
-        end
-        if show then
-            alerts:showAction("Block! (Glacial Fist)")
-            local dur = select(1, GetAbilityCastInfo(GLACIAL_FIST)) or 0
-            if dur <= 0 then dur = FALLBACK_FIST_DUR end
-            local cid = CA.alertCast(abilityId, sourceUnitName, dur,
-                { -2, 0, false, { 0.3, 0.7, 1.0, 0.4 }, { 0.3, 0.7, 1.0, 0.8 } })
-            if cid and sourceUnitId then self.alertList[sourceUnitId] = cid end
-        end
-    end },
-    [ICE_TOMB] = { result = ACTION_RESULT_BEGIN,
-        fn = function(self, context, alerts, abilityId, ...)
-        local now = GetGameTimeMilliseconds() / 1000
-        self.iceTime     = now + 13
-        self.iceNext     = now + 23
-        self.prevIce     = GetGameTimeMilliseconds()
-        self.iceNumber   = self.iceNumber % 3 + 1
-        self.tombsClear  = false
-        self.iceState    = 1
-        self.checkDouble = true
-    end },
-    -- InIce: player enters (EFFECT_GAINED) / exits (EFFECT_FADED) a tomb.
-    [IN_ICE] = function(self, context, alerts, result, abilityId,
-                         unitTag, sourceUnitTag, sourceUnitId, unitId, ...)
-        if result == ACTION_RESULT_EFFECT_GAINED then
-            iceGained(self, unitId)
-        elseif result == ACTION_RESULT_EFFECT_FADED then
-            iceFaded(self, unitId)
-        end
-    end,
-    [LASER_1] = makeLaserHandler(40,   12.8),
-    [LASER_2] = makeLaserHandler(10,   54.6),
-    [LASER_3] = makeLaserHandler(32,   32.1),
+    [GLACIAL_FIST] = { result = ACTION_RESULT_BEGIN, fn = handleGlacialFist },
+    [ICE_TOMB]     = { result = ACTION_RESULT_BEGIN, fn = handleIceTomb },
+    [IN_ICE]       = handleInIce,
+    [LASER_1]      = makeLaserHandler(40,   12.8),
+    [LASER_2]      = makeLaserHandler(10,   54.6),
+    [LASER_3]      = makeLaserHandler(32,   32.1),
 }
 
 Lokke.effectRoutes = {
-    -- 124687: cast signal (GAINED = tomb is being cast)
-    [ICE_EFFECT_CAST] = function(self, context, alerts, changeType, abilityId, ...)
-        if changeType == EFFECT_RESULT_GAINED then
-            tombCast(self, GetGameTimeMilliseconds() / 1000)
-        end
-    end,
-    -- 119638: arm/disarm signal (GAINED = tomb ready to enter, FADED = window closed)
-    [ICE_EFFECT_ARM] = function(self, context, alerts, changeType, abilityId, ...)
-        if     changeType == EFFECT_RESULT_GAINED then tombArmed(self)
-        elseif changeType == EFFECT_RESULT_FADED  then tombFaded(self)
-        end
-    end,
+    [ICE_EFFECT_CAST] = handleIceEffectCast,
+    [ICE_EFFECT_ARM]  = handleIceEffectArm,
 }
 
 -- ── Info-line renderers ───────────────────────────────────────────────────

@@ -4,12 +4,12 @@ local Timer    = require("lib.Timer")
 local CA = require("lib.CA")
 
 -- ── Ability IDs (from BSCHTKA_Vrol.lua) ───────────────────────────────────
-local VROL_PORTAL_CAST  = 133994  -- Portal cast BEGIN → reset portal timer + alert
-local VROL_FOG_CAST     = 133808  -- Fog cast BEGIN    → starts fog duration countdown
-local VROL_FOG_INCREASE = 133756  -- Fog pulse hit     → every 3 hits extends fog by +9 s
-local VROL_PORTAL_KTIME = 134016  -- Portal kill-time debuff (EVENT_EFFECT_CHANGED, player only)
-local VROL_HARPOON      = 133913  -- Shocking Harpoon BEGIN → reset conduit timer + alert
-local VROL_APOTHECARY   = 140255  -- Apothecary BEGIN  → Interrupt alert
+local VROL_PORTAL_CAST  = 133994  -- combatRoute: ACTION_RESULT_BEGIN → reset portal timer + alert
+local VROL_FOG_CAST     = 133808  -- combatRoute: ACTION_RESULT_BEGIN → starts fog duration countdown
+local VROL_FOG_INCREASE = 133756  -- combatRoute: ACTION_RESULT_BEGIN → extends fog +9s per 3 hits
+local VROL_PORTAL_KTIME = 134016  -- effectRoute: EFFECT_RESULT_GAINED / FADED → kill-time debuff
+local VROL_HARPOON      = 133913  -- combatRoute: ACTION_RESULT_BEGIN → reset conduit timer + alert
+local VROL_APOTHECARY   = 140255  -- combatRoute: ACTION_RESULT_BEGIN → Interrupt alert
 
 -- ── Timer durations ───────────────────────────────────────────────────────
 local NEXT_PORTAL_TIME  = 45
@@ -81,92 +81,99 @@ function Vrol:onDied(context, alerts,
     end
 end
 
-Vrol.combatRoutes = {
-    [VROL_PORTAL_CAST] = { result = ACTION_RESULT_BEGIN,
-        fn = function(self, context, alerts, abilityId,
-                      unitTag, sourceUnitTag, sourceUnitId, unitId,
-                      sourceUnitName, unitName)
-        self.portalTimer:reset()
-        alerts:showAction("KILL Conjurer!")
-        -- Use portal kill-time ability ID for the icon (matches BSCHTKA).
-        CA.alertCast(VROL_PORTAL_KTIME, sourceUnitName, 3000,
-            { -3, 0, false, { 0.7, 0.2, 0.9, 0.4 }, { 0.7, 0.2, 0.9, 0.8 } })
-    end },
-    [VROL_FOG_CAST] = { result = ACTION_RESULT_BEGIN,
-        fn = function(self, context, alerts, abilityId,
-                      unitTag, sourceUnitTag, sourceUnitId, unitId,
-                      sourceUnitName, unitName)
-        self.fogTimer:reset()
-        self.fogEndTime  = GetGameTimeMilliseconds() + FOG_DURATION * 1000
-        self.fogHitCount = 0
-        alerts:showAction("Dodge/Move! (Fog)")
-        local cid = CA.alertCast(abilityId, sourceUnitName, 1000,
-            { -3, 0, false, { 0.0, 0.0, 1, 0.4 }, { 0.1, 0.1, 1, 0.8 } })
-        if cid and unitId then self.alertList[unitId] = cid end
-    end },
-    [VROL_FOG_INCREASE] = { result = ACTION_RESULT_BEGIN,
-        fn = function(self, context, alerts, abilityId, ...)
-        -- Each group of FOG_EXTEND_HITS pulses extends the active fog by FOG_EXTEND_SECS.
-        if self.fogEndTime > 0 then
-            self.fogHitCount = self.fogHitCount + 1
-            if self.fogHitCount >= FOG_EXTEND_HITS then
-                self.fogHitCount = 0
-                self.fogEndTime  = self.fogEndTime + FOG_EXTEND_SECS * 1000
-            end
+local function handlePortalCast(self, context, alerts, abilityId,
+                                 unitTag, sourceUnitTag, sourceUnitId, unitId,
+                                 sourceUnitName, unitName)
+    self.portalTimer:reset()
+    alerts:showAction("KILL Conjurer!")
+    -- Use portal kill-time ability ID for the icon (matches BSCHTKA).
+    CA.alertCast(VROL_PORTAL_KTIME, sourceUnitName, 3000,
+        { -3, 0, false, { 0.7, 0.2, 0.9, 0.4 }, { 0.7, 0.2, 0.9, 0.8 } })
+end
+
+local function handleFogCast(self, context, alerts, abilityId,
+                              unitTag, sourceUnitTag, sourceUnitId, unitId,
+                              sourceUnitName, unitName)
+    self.fogTimer:reset()
+    self.fogEndTime  = GetGameTimeMilliseconds() + FOG_DURATION * 1000
+    self.fogHitCount = 0
+    alerts:showAction("Dodge/Move! (Fog)")
+    local cid = CA.alertCast(abilityId, sourceUnitName, 1000,
+        { -3, 0, false, { 0.0, 0.0, 1, 0.4 }, { 0.1, 0.1, 1, 0.8 } })
+    if cid and unitId then self.alertList[unitId] = cid end
+end
+
+local function handleFogIncrease(self, context, alerts, abilityId, ...)
+    -- Each group of FOG_EXTEND_HITS pulses extends the active fog by FOG_EXTEND_SECS.
+    if self.fogEndTime > 0 then
+        self.fogHitCount = self.fogHitCount + 1
+        if self.fogHitCount >= FOG_EXTEND_HITS then
+            self.fogHitCount = 0
+            self.fogEndTime  = self.fogEndTime + FOG_EXTEND_SECS * 1000
         end
-    end },
-    [VROL_HARPOON] = { result = ACTION_RESULT_BEGIN,
-        fn = function(self, context, alerts, abilityId,
-                      unitTag, sourceUnitTag, sourceUnitId, unitId,
-                      sourceUnitName, unitName)
-        self.conduitTimer:reset()
-        alerts:showAction("Kill Harpoon! (~16 s)")
-        local cid = CA.castAlertsStart(abilityId, GetAbilityName(abilityId),
-            16000, 16000,
-            { 1, 0.7, 0, 0.5 },
-            { 16000, "Harpoon!", 0.8, 0, 0, 0.9, SOUNDS.NONE })
-        if cid and unitId then self.alertList[unitId] = cid end
-    end },
-    [VROL_APOTHECARY] = { result = ACTION_RESULT_BEGIN,
-        fn = function(self, context, alerts, abilityId, ...)
-        alerts:showAction("Interrupt Apothecary!")
-        CA.alert(nil, "Interrupt Apothecary!", 0x0099FFFF,
-            SOUNDS.CHAMPION_POINTS_COMMITTED, 2000)
-    end },
+    end
+end
+
+local function handleHarpoon(self, context, alerts, abilityId,
+                              unitTag, sourceUnitTag, sourceUnitId, unitId,
+                              sourceUnitName, unitName)
+    self.conduitTimer:reset()
+    alerts:showAction("Kill Harpoon! (~16 s)")
+    local cid = CA.castAlertsStart(abilityId, GetAbilityName(abilityId),
+        16000, 16000,
+        { 1, 0.7, 0, 0.5 },
+        { 16000, "Harpoon!", 0.8, 0, 0, 0.9, SOUNDS.NONE })
+    if cid and unitId then self.alertList[unitId] = cid end
+end
+
+local function handleApothecary(self, context, alerts, abilityId, ...)
+    alerts:showAction("Interrupt Apothecary!")
+    CA.alert(nil, "Interrupt Apothecary!", 0x0099FFFF,
+        SOUNDS.CHAMPION_POINTS_COMMITTED, 2000)
+end
+
+Vrol.combatRoutes = {
+    [VROL_PORTAL_CAST]  = { result = ACTION_RESULT_BEGIN, fn = handlePortalCast },
+    [VROL_FOG_CAST]     = { result = ACTION_RESULT_BEGIN, fn = handleFogCast },
+    [VROL_FOG_INCREASE] = { result = ACTION_RESULT_BEGIN, fn = handleFogIncrease },
+    [VROL_HARPOON]      = { result = ACTION_RESULT_BEGIN, fn = handleHarpoon },
+    [VROL_APOTHECARY]   = { result = ACTION_RESULT_BEGIN, fn = handleApothecary },
 }
 
 -- Portal kill-timer debuff on the local player (EVENT_EFFECT_CHANGED).
 -- GAINED = player entered portal → 20 s to kill the Conjurer.
 -- FADED  = debuff removed → check if Conjurer was killed in time.
-Vrol.effectRoutes = {
-    [VROL_PORTAL_KTIME] = function(self, context, alerts, changeType, abilityId,
-                                    unitTag, unitId, unitName, stackCount)
-        -- Only react to the local player's portal debuff.
-        if unitTag ~= GetLocalPlayerGroupUnitTag() then return end
+local function handlePortalKillTime(self, context, alerts, changeType, abilityId,
+                                     unitTag, unitId, unitName, stackCount)
+    -- Only react to the local player's portal debuff.
+    if unitTag ~= GetLocalPlayerGroupUnitTag() then return end
 
-        if changeType == EFFECT_RESULT_GAINED then
-            self.portalKillExpires = GetGameTimeMilliseconds() + 20000
-            alerts:showAction("KILL Conjurer! (20 s)")
-            self.portalKillBarId = CA.castAlertsStart(
-                abilityId, GetAbilityName(abilityId),
-                20000, 20000,
-                { 1, 0.7, 0, 0.5 },
-                { 20000, "KILL Conjurer!", 0.8, 0, 0, 0.9, SOUNDS.NONE })
+    if changeType == EFFECT_RESULT_GAINED then
+        self.portalKillExpires = GetGameTimeMilliseconds() + 20000
+        alerts:showAction("KILL Conjurer! (20 s)")
+        self.portalKillBarId = CA.castAlertsStart(
+            abilityId, GetAbilityName(abilityId),
+            20000, 20000,
+            { 1, 0.7, 0, 0.5 },
+            { 20000, "KILL Conjurer!", 0.8, 0, 0, 0.9, SOUNDS.NONE })
 
-        elseif changeType == EFFECT_RESULT_FADED then
-            CA.castAlertsStop(self.portalKillBarId)
-            self.portalKillBarId = nil
+    elseif changeType == EFFECT_RESULT_FADED then
+        CA.castAlertsStop(self.portalKillBarId)
+        self.portalKillBarId = nil
 
-            if GetGameTimeMilliseconds() < self.portalKillExpires then
-                alerts:showAction("Portal OK!")
-                CA.alert(nil, "Portal OK!", 0x119911FF, SOUNDS.DUEL_WON, 2000)
-            else
-                alerts:showAction("Portal Failed!")
-                CA.alert(nil, "Portal Failed!", 0x991111FF, SOUNDS.DUEL_FORFEIT, 2000)
-            end
-            self.portalKillExpires = 0
+        if GetGameTimeMilliseconds() < self.portalKillExpires then
+            alerts:showAction("Portal OK!")
+            CA.alert(nil, "Portal OK!", 0x119911FF, SOUNDS.DUEL_WON, 2000)
+        else
+            alerts:showAction("Portal Failed!")
+            CA.alert(nil, "Portal Failed!", 0x991111FF, SOUNDS.DUEL_FORFEIT, 2000)
         end
-    end,
+        self.portalKillExpires = 0
+    end
+end
+
+Vrol.effectRoutes = {
+    [VROL_PORTAL_KTIME] = handlePortalKillTime,
 }
 
 -- 200ms timer display — writes to info lines 1-3.

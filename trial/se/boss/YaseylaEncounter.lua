@@ -4,14 +4,14 @@ local Timer    = require("lib.Timer")
 local CA = require("lib.CA")
 
 -- ── Ability IDs (from SanitysEdgeHelper data) ────────────────────────────
-local DEFLECT         = 184823        -- Shrapnel — BEGIN + hitValue>1000 → STACK
-local FIRE_BOMBS      = 183660        -- Fire Bombs — BEGIN on player
-local CHAIN_PULL      = 184540        -- Chain Pull — BEGIN → timer
-local FROST_BOMB_1    = 185403        -- Frost Bomb applied
-local FROST_BOMB_2    = 183783        -- Frost Bomb applied (variant)
-local IGNITE          = 188188        -- Ignite — EFFECT_GAINED_DURATION on player
-local WAMASU_CHARGE   = 191133        -- Wamasu Charge — BEGIN + hitValue>200
-local ARCHER_TRUE_SHOT= 184802        -- Archer True Shot
+local DEFLECT         = 184823   -- combatRoute: ACTION_RESULT_BEGIN → Shrapnel stack
+local FIRE_BOMBS      = 183660   -- combatRoute: ACTION_RESULT_BEGIN → caAlertCast (targeted)
+local CHAIN_PULL      = 184540   -- combatRoute: ACTION_RESULT_BEGIN → Chains alert
+local FROST_BOMB_1    = 185403   -- combatRoute: ACTION_RESULT_EFFECT_GAINED_DURATION → Frost bomb alert
+local FROST_BOMB_2    = 183783   -- combatRoute: ACTION_RESULT_EFFECT_GAINED_DURATION → Frost bomb alert
+local IGNITE          = 188188   -- combatRoute: ACTION_RESULT_EFFECT_GAINED_DURATION → Move alert (player)
+local WAMASU_CHARGE   = 191133   -- combatRoute: ACTION_RESULT_BEGIN → caAlertCast
+local ARCHER_TRUE_SHOT= 184802   -- (dead constant — no route registered)
 
 -- ── Timer durations (seconds) ─────────────────────────────────────────────
 local FIREBOMB_FIRST_CD  =  7.5   -- time to first firebombs from combat start
@@ -71,46 +71,53 @@ local function handleFrostBomb(self, context, alerts, abilityId,
     end
 end
 
+local function handleFireBombs(self, context, alerts, abilityId,
+                               unitTag, sourceUnitTag, sourceUnitId, unitId,
+                               sourceUnitName, unitName)
+    self.firstFirebomb = false
+    local cd = self.executePhase and FIREBOMB_EXEC_CD or FIREBOMB_CD
+    self.firebombTimer:reset(cd)
+    local target = (unitName and unitName ~= "") and unitName or "?"
+    alerts:showAction("Fire Bombs → " .. target)
+    local dur = select(1, GetAbilityCastInfo(abilityId)) or 0
+    if dur <= 0 then dur = FALLBACK_DUR end
+    local cid = CA.alertCast(abilityId, "Fire Bombs!", dur, COL_FIRE)
+    if cid and unitId then self.alertList[unitId] = cid end
+end
+
+local function handleChainPull(self, context, alerts, abilityId, ...)
+    self.chainTimer:reset(CHAIN_CD)
+    alerts:showAction("Chains!")
+end
+
+local function handleIgnite(self, context, alerts, abilityId, unitTag, ...)
+    if not IsUnitPlayer(unitTag) then return end
+    alerts:showAction("Ignite on you! Move!")
+end
+
+local function handleDeflect(self, context, alerts, abilityId, ...)
+    self.shrapnelCount = self.shrapnelCount + 1
+    alerts:showAction("SHRAPNEL! Stack! (" .. self.shrapnelCount .. ")")
+    CA.alert(nil, "STACK!", 0xFF0033FF, SOUNDS.NONE, 3000)
+end
+
+local function handleWamasuCharge(self, context, alerts, abilityId,
+                                   unitTag, sourceUnitTag, sourceUnitId, unitId,
+                                   sourceUnitName, unitName)
+    local target = (unitName and unitName ~= "") and unitName or "?"
+    local dur = select(1, GetAbilityCastInfo(abilityId)) or 0
+    if dur <= 0 then dur = FALLBACK_DUR end
+    CA.alertCast(abilityId, "Charge → " .. target, dur, COL_FIRE)
+end
+
 YaseylaEncounter.combatRoutes = {
-    [FIRE_BOMBS] = { result = ACTION_RESULT_BEGIN,
-        fn = function(self, context, alerts, abilityId,
-                      unitTag, sourceUnitTag, sourceUnitId, unitId,
-                      sourceUnitName, unitName)
-        self.firstFirebomb = false
-        local cd = self.executePhase and FIREBOMB_EXEC_CD or FIREBOMB_CD
-        self.firebombTimer:reset(cd)
-        local target = (unitName and unitName ~= "") and unitName or "?"
-        alerts:showAction("Fire Bombs → " .. target)
-        local dur = select(1, GetAbilityCastInfo(abilityId)) or 0
-        if dur <= 0 then dur = FALLBACK_DUR end
-        local cid = CA.alertCast(abilityId, "Fire Bombs!", dur, COL_FIRE)
-        if cid and unitId then self.alertList[unitId] = cid end
-    end },
-    [CHAIN_PULL] = { result = ACTION_RESULT_BEGIN, fn = function(self, context, alerts, abilityId, ...)
-        self.chainTimer:reset(CHAIN_CD)
-        alerts:showAction("Chains!")
-    end },
+    [FIRE_BOMBS]   = { result = ACTION_RESULT_BEGIN,                  fn = handleFireBombs },
+    [CHAIN_PULL]   = { result = ACTION_RESULT_BEGIN,                  fn = handleChainPull },
     [FROST_BOMB_1] = { result = ACTION_RESULT_EFFECT_GAINED_DURATION, fn = handleFrostBomb },
     [FROST_BOMB_2] = { result = ACTION_RESULT_EFFECT_GAINED_DURATION, fn = handleFrostBomb },
-    [IGNITE] = { result = ACTION_RESULT_EFFECT_GAINED_DURATION,
-        fn = function(self, context, alerts, abilityId, unitTag, ...)
-        if not IsUnitPlayer(unitTag) then return end
-        alerts:showAction("Ignite on you! Move!")
-    end },
-    [DEFLECT] = { result = ACTION_RESULT_BEGIN, fn = function(self, context, alerts, abilityId, ...)
-        self.shrapnelCount = self.shrapnelCount + 1
-        alerts:showAction("SHRAPNEL! Stack! (" .. self.shrapnelCount .. ")")
-        CA.alert(nil, "STACK!", 0xFF0033FF, SOUNDS.NONE, 3000)
-    end },
-    [WAMASU_CHARGE] = { result = ACTION_RESULT_BEGIN,
-        fn = function(self, context, alerts, abilityId,
-                      unitTag, sourceUnitTag, sourceUnitId, unitId,
-                      sourceUnitName, unitName)
-        local target = (unitName and unitName ~= "") and unitName or "?"
-        local dur = select(1, GetAbilityCastInfo(abilityId)) or 0
-        if dur <= 0 then dur = FALLBACK_DUR end
-        CA.alertCast(abilityId, "Charge → " .. target, dur, COL_FIRE)
-    end },
+    [IGNITE]       = { result = ACTION_RESULT_EFFECT_GAINED_DURATION, fn = handleIgnite },
+    [DEFLECT]      = { result = ACTION_RESULT_BEGIN,                  fn = handleDeflect },
+    [WAMASU_CHARGE]= { result = ACTION_RESULT_BEGIN,                  fn = handleWamasuCharge },
 }
 
 -- ── Info-line renderers ───────────────────────────────────────────────────

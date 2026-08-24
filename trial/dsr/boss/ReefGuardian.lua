@@ -16,23 +16,23 @@
 local DreadsailCommon = require("trial.dsr.DreadsailCommon")
 
 -- ── Ability IDs ───────────────────────────────────────────────────────────
-local BUILDING_STATIC_1    = 163575   -- lightning stack effect 1
-local BUILDING_STATIC_2    = 169688   -- lightning stack effect 2
-local VOLATILE_RESIDUE_1   = 174835   -- poison stack effect 1
-local VOLATILE_RESIDUE_2   = 174932   -- poison stack effect 2
-local SHELTERED            = 163571   -- cleanse / immunity aura
-local HEARTBURN            = 163692   -- reef portal cast (BEGIN)
-local HEARTBURN_EFFECT     = 166036   -- reef portal tick (EFFECT_CHANGED)
-local ACID_REFLUX          = 163702   -- acid channel cast
-local ACID_POOL            = 165987   -- acid pool placed by reflux
-local CRAB_MONSTROUS_CLAW  = 166582   -- portal crab heavy
-local CRAB_SWIPE           = 166584   -- portal crab swipe
-local CRUSH                = 166019   -- main boss heavy 1
-local CLAW_ATTACK          = 166020   -- main boss heavy 2
-local CRACKDOWN            = 166586   -- bear-crab heavy
-local KING_ORGNUM_FIRE_DBF = 175832   -- debuff placed by Orgnum fire orb
-local ACIDIC_VULN          = 174659   -- vulnerability debuff (5 s)
-local REPLICATION          = 163701   -- boss replication cast
+local BUILDING_STATIC_1    = 163575   -- effectRoute: EFFECT_RESULT_GAINED/UPDATED/FADED → lightning stack tracker
+local BUILDING_STATIC_2    = 169688   -- effectRoute: EFFECT_RESULT_GAINED/UPDATED/FADED → lightning stack tracker
+local VOLATILE_RESIDUE_1   = 174835   -- effectRoute: EFFECT_RESULT_GAINED/UPDATED/FADED → poison stack tracker
+local VOLATILE_RESIDUE_2   = 174932   -- effectRoute: EFFECT_RESULT_GAINED/UPDATED/FADED → poison stack tracker
+local SHELTERED            = 163571   -- effectRoute: EFFECT_RESULT_GAINED/FADED → playerSheltered + clear stacks
+local HEARTBURN            = 163692   -- combatRoute: ACTION_RESULT_BEGIN → reef portal opens (60 s wipe timer)
+local HEARTBURN_EFFECT     = 166036   -- effectRoute: EFFECT_RESULT_GAINED → start reef wipe timer
+local ACID_REFLUX          = 163702   -- combatRoute: ACTION_RESULT_BEGIN → caAlertCast 10 s + 5 pool alerts
+local ACID_POOL            = 165987   -- (unused in routes — placed by Acid Reflux; no route needed)
+local CRAB_MONSTROUS_CLAW  = 166582   -- combatRoute: ACTION_RESULT_BEGIN → handleHeavy (player caAlertCast)
+local CRAB_SWIPE           = 166584   -- combatRoute: ACTION_RESULT_BEGIN → handleHeavy (player caAlertCast)
+local CRUSH                = 166019   -- combatRoute: ACTION_RESULT_BEGIN → handleHeavy (player caAlertCast)
+local CLAW_ATTACK          = 166020   -- combatRoute: ACTION_RESULT_BEGIN → handleHeavy (player caAlertCast)
+local CRACKDOWN            = 166586   -- combatRoute: ACTION_RESULT_BEGIN → handleHeavy (player caAlertCast)
+local KING_ORGNUM_FIRE_DBF = 175832   -- effectRoute: EFFECT_RESULT_GAINED (player) → fire MOVE alert
+local ACIDIC_VULN          = 174659   -- effectRoute: EFFECT_RESULT_GAINED/FADED (player) → acidicVulnLast timer
+local REPLICATION          = 163701   -- combatRoute: ACTION_RESULT_BEGIN → Replication! alert
 
 -- ── Timing constants ─────────────────────────────────────────────────────
 local PORTAL_WIPE_TIME     = 60       -- s: portal wipe timer after opening
@@ -96,39 +96,42 @@ local function handleHeavy(self, context, alerts, abilityId,
     CA.alertCast(abilityId, sourceUnitName, dur, COL_HEAVY)
 end
 
+-- Reef portal opening
+local function handleHeartburn(self, context, alerts, abilityId, ...)
+    self.reefNum = self.reefNum + 1
+    local idx = self.reefNum
+    self.reefPortals[idx] = { openTime = GetGameTimeMilliseconds() / 1000,
+                              wipeActive = false }
+    CA.alert(nil, "Reef " .. idx .. ": OPEN — 60 s!",
+        0xFFD700D9, SOUNDS.DUEL_START, 5000)
+    PlaySound(SOUNDS.DUEL_START)
+end
+
+-- Acid Reflux channel + 5 pool alerts
+local function handleAcidReflux(self, context, alerts, abilityId, ...)
+    CA.castAlertsStop(self.acidRefluxBarId)
+    self.acidRefluxBarId = CA.castAlertsStart(
+        abilityId, "Acid Reflux", 10000, 10000, COL_ACID, ACT_ACID)
+    for i = 1, ACID_COUNT do
+        local delay = i * ACID_INTERVAL
+        zo_callLater(function()
+            CA.alert(nil,
+                "Acid pool " .. i .. "/" .. ACID_COUNT .. " — MOVE!",
+                0x44DD22D9, SOUNDS.CHAMPION_POINTS_COMMITTED, 1500)
+        end, delay)
+    end
+end
+
+-- Boss replication
+local function handleReplication(self, context, alerts, abilityId, ...)
+    CA.alert(nil, "Replication!", 0xFF8800D9,
+        SOUNDS.CHAMPION_POINTS_COMMITTED, 3000)
+end
+
 ReefGuardian.combatRoutes = {
-    -- Reef portal opening
-    [HEARTBURN] = { result = ACTION_RESULT_BEGIN,
-        fn = function(self, context, alerts, abilityId, ...)
-        self.reefNum = self.reefNum + 1
-        local idx = self.reefNum
-        self.reefPortals[idx] = { openTime = GetGameTimeMilliseconds() / 1000,
-                                  wipeActive = false }
-        CA.alert(nil, "Reef " .. idx .. ": OPEN — 60 s!",
-            0xFFD700D9, SOUNDS.DUEL_START, 5000)
-        PlaySound(SOUNDS.DUEL_START)
-    end },
-    -- Acid Reflux channel + 5 pool alerts
-    [ACID_REFLUX] = { result = ACTION_RESULT_BEGIN,
-        fn = function(self, context, alerts, abilityId, ...)
-        CA.castAlertsStop(self.acidRefluxBarId)
-        self.acidRefluxBarId = CA.castAlertsStart(
-            abilityId, "Acid Reflux", 10000, 10000, COL_ACID, ACT_ACID)
-        for i = 1, ACID_COUNT do
-            local delay = i * ACID_INTERVAL
-            zo_callLater(function()
-                CA.alert(nil,
-                    "Acid pool " .. i .. "/" .. ACID_COUNT .. " — MOVE!",
-                    0x44DD22D9, SOUNDS.CHAMPION_POINTS_COMMITTED, 1500)
-            end, delay)
-        end
-    end },
-    -- Boss replication
-    [REPLICATION] = { result = ACTION_RESULT_BEGIN,
-        fn = function(self, context, alerts, abilityId, ...)
-        CA.alert(nil, "Replication!", 0xFF8800D9,
-            SOUNDS.CHAMPION_POINTS_COMMITTED, 3000)
-    end },
+    [HEARTBURN]           = { result = ACTION_RESULT_BEGIN, fn = handleHeartburn },
+    [ACID_REFLUX]         = { result = ACTION_RESULT_BEGIN, fn = handleAcidReflux },
+    [REPLICATION]         = { result = ACTION_RESULT_BEGIN, fn = handleReplication },
     -- Heavy / targeted attacks (5 IDs, shared handler)
     [CRAB_MONSTROUS_CLAW] = { result = ACTION_RESULT_BEGIN, fn = handleHeavy },
     [CRAB_SWIPE]          = { result = ACTION_RESULT_BEGIN, fn = handleHeavy },
@@ -169,50 +172,57 @@ local function handleVolatileResidue(self, context, alerts, changeType, abilityI
     end
 end
 
+local function handleSheltered(self, context, alerts, changeType, abilityId,
+                                unitTag, unitId, unitName, stackCount)
+    if changeType == EFFECT_RESULT_GAINED and AreUnitsEqual("player", unitTag) then
+        self.playerSheltered   = true
+        self.lastShelteredTime = GetGameTimeMilliseconds() / 1000
+        self.buildingStaticStacks  = 0
+        self.volatileResidueStacks = 0
+    elseif changeType == EFFECT_RESULT_FADED and AreUnitsEqual("player", unitTag) then
+        self.playerSheltered = false
+    end
+end
+
+-- Heartburn effect: reef portal wipe timer start.
+local function handleHeartburnEffect(self, context, alerts, abilityId, ...)
+    local now = GetGameTimeMilliseconds() / 1000
+    for i = self.reefNum, 1, -1 do
+        local reef = self.reefPortals[i]
+        if reef and not reef.wipeActive and (now - reef.openTime) < 5 then
+            reef.wipeActive = true
+            reef.wipeStart  = now
+            break
+        end
+    end
+end
+
+local function handleKingOrgnumFireDbf(self, context, alerts, changeType, abilityId,
+                                        unitTag, unitId, unitName, stackCount)
+    if changeType == EFFECT_RESULT_GAINED and AreUnitsEqual("player", unitTag) then
+        CA.alert(nil, "|cFF5500King Orgnum fire — MOVE!|r",
+            0xFF5500D9, SOUNDS.DUEL_START, 5000)
+    end
+end
+
+local function handleAcidicVuln(self, context, alerts, changeType, abilityId,
+                                  unitTag, unitId, unitName, stackCount)
+    if changeType == EFFECT_RESULT_GAINED and AreUnitsEqual("player", unitTag) then
+        self.acidicVulnLast = GetGameTimeMilliseconds() / 1000
+    elseif changeType == EFFECT_RESULT_FADED and AreUnitsEqual("player", unitTag) then
+        self.acidicVulnLast = 0
+    end
+end
+
 ReefGuardian.effectRoutes = {
-    [BUILDING_STATIC_1]  = handleBuildingStatic,
-    [BUILDING_STATIC_2]  = handleBuildingStatic,
-    [VOLATILE_RESIDUE_1] = handleVolatileResidue,
-    [VOLATILE_RESIDUE_2] = handleVolatileResidue,
-    [SHELTERED] = function(self, context, alerts, changeType, abilityId,
-                            unitTag, unitId, unitName, stackCount)
-        if changeType == EFFECT_RESULT_GAINED and AreUnitsEqual("player", unitTag) then
-            self.playerSheltered   = true
-            self.lastShelteredTime = GetGameTimeMilliseconds() / 1000
-            self.buildingStaticStacks  = 0
-            self.volatileResidueStacks = 0
-        elseif changeType == EFFECT_RESULT_FADED and AreUnitsEqual("player", unitTag) then
-            self.playerSheltered = false
-        end
-    end,
-    -- Heartburn effect: reef portal wipe timer start.
-    [HEARTBURN_EFFECT] = { changeType = EFFECT_RESULT_GAINED,
-        fn = function(self, context, alerts, abilityId, ...)
-        local now = GetGameTimeMilliseconds() / 1000
-        for i = self.reefNum, 1, -1 do
-            local reef = self.reefPortals[i]
-            if reef and not reef.wipeActive and (now - reef.openTime) < 5 then
-                reef.wipeActive = true
-                reef.wipeStart  = now
-                break
-            end
-        end
-    end },
-    [KING_ORGNUM_FIRE_DBF] = function(self, context, alerts, changeType, abilityId,
-                                       unitTag, unitId, unitName, stackCount)
-        if changeType == EFFECT_RESULT_GAINED and AreUnitsEqual("player", unitTag) then
-            CA.alert(nil, "|cFF5500King Orgnum fire — MOVE!|r",
-                0xFF5500D9, SOUNDS.DUEL_START, 5000)
-        end
-    end,
-    [ACIDIC_VULN] = function(self, context, alerts, changeType, abilityId,
-                              unitTag, unitId, unitName, stackCount)
-        if changeType == EFFECT_RESULT_GAINED and AreUnitsEqual("player", unitTag) then
-            self.acidicVulnLast = GetGameTimeMilliseconds() / 1000
-        elseif changeType == EFFECT_RESULT_FADED and AreUnitsEqual("player", unitTag) then
-            self.acidicVulnLast = 0
-        end
-    end,
+    [BUILDING_STATIC_1]    = handleBuildingStatic,
+    [BUILDING_STATIC_2]    = handleBuildingStatic,
+    [VOLATILE_RESIDUE_1]   = handleVolatileResidue,
+    [VOLATILE_RESIDUE_2]   = handleVolatileResidue,
+    [SHELTERED]            = handleSheltered,
+    [HEARTBURN_EFFECT]     = { changeType = EFFECT_RESULT_GAINED, fn = handleHeartburnEffect },
+    [KING_ORGNUM_FIRE_DBF] = handleKingOrgnumFireDbf,
+    [ACIDIC_VULN]          = handleAcidicVuln,
 }
 
 -- ── Info-line renderers ───────────────────────────────────────────────────

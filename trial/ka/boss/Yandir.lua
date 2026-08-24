@@ -4,15 +4,15 @@ local Timer = require("lib.Timer")
 local CA = require("lib.CA")
 
 -- ── Ability IDs (from BSCHTKA_Yandir.lua) ─────────────────────────────────
-local TOTEM_POISION      = 133515  -- Chaurus Totem Spawn + cast  → resets timer + Dodge alert
-local TOTEM_POISION_CP   = 133559  -- Second Chaurus poison cast   (delayed 26.8 s CA bar)
-local TOTEM_HARPY_SPWN   = 133510  -- Harpy Totem Spawn            → resets timer
-local TOTEM_DRAGON_SPWN  = 133045  -- Dragon Totem Spawn           → resets timer
-local TOTEM_GARGYL_SPWN  = 133513  -- Gargoyle Totem Spawn         → resets timer
-local TOTEM_GARGYL       = 133546  -- Gargoyle Totem cast          → Block alert
-local YANDIR_HEALING     = 133242  -- Yandir heal cast             → Healing alert
-local YANDIR_JUMP        = 132571  -- Yandir jump                  → Block alert
-local SEA_ADDER_BILE_SPRAY = 136591  -- Sea Adder spray (player-targeted) → Dodge alert
+local TOTEM_POISION      = 133515  -- combatRoute: ACTION_RESULT_BEGIN → resets timer + Dodge alert
+local TOTEM_POISION_CP   = 133559  -- combatRoute: ACTION_RESULT_EFFECT_GAINED → delayed 26.8s CA bar
+local TOTEM_HARPY_SPWN   = 133510  -- combatRoute: ACTION_RESULT_BEGIN → resets totem timer
+local TOTEM_DRAGON_SPWN  = 133045  -- combatRoute: ACTION_RESULT_BEGIN → resets totem timer
+local TOTEM_GARGYL_SPWN  = 133513  -- combatRoute: ACTION_RESULT_BEGIN → resets totem timer
+local TOTEM_GARGYL       = 133546  -- combatRoute: ACTION_RESULT_BEGIN → Block alert + caAlertCast
+local YANDIR_HEALING     = 133242  -- combatRoute: ACTION_RESULT_BEGIN → Healing alert
+local YANDIR_JUMP        = 132571  -- combatRoute: ACTION_RESULT_BEGIN → Block alert + caAlertCast
+local SEA_ADDER_BILE_SPRAY = 136591  -- combatRoute: ACTION_RESULT_BEGIN → Dodge alert (player-targeted)
 
 -- ── Spawn/cast durations ──────────────────────────────────────────────────
 local TOTEM_SPAWN_TIME  = 20
@@ -82,74 +82,80 @@ local function resetTotemTimer(self, context, alerts, result, abilityId, ...)
     if result == ACTION_RESULT_BEGIN then self.totemTimer:reset() end
 end
 
+local function handlePoisonTotem(self, context, alerts, abilityId,
+                                  unitTag, sourceUnitTag, sourceUnitId, unitId,
+                                  sourceUnitName, unitName)
+    self.totemTimer:reset()
+    alerts:showAction("Dodge! (Poison Totem)")
+    local cid = CA.alertCast(abilityId, sourceUnitName, 4300,
+        { -3, 0, false, { 0, 0.8, 0, 0.4 }, { 0, 0.8, 0, 0.8 } })
+    if cid and unitId then self.alertList[unitId] = cid end
+    self.PosionTotemID = unitId  -- track for delayed second-poison bar
+end
+
+local function handlePoisonTotemCp(self, context, alerts, abilityId,
+                                    unitTag, sourceUnitTag, sourceUnitId, unitId,
+                                    sourceUnitName, unitName)
+    -- Second poison from the same totem ~26.8 s after first cast.
+    -- Guard with BTotemCall so only one delayed bar fires per totem spawn.
+    if self.BTotemCall then return end
+    self.BTotemCall = true
+    local capturedSrc  = sourceUnitName or ""
+    local capturedSelf = self
+    zo_callLater(function()
+        if capturedSelf.PosionTotemID ~= -1 and IsUnitInCombat("player") then
+            capturedSelf.BTotemCall = false
+            CA.alertCast(TOTEM_POISION_CP, capturedSrc, 4300,
+                { -3, 0, false, { 0, 0.8, 0, 0.4 }, { 0, 0.8, 0, 0.8 } })
+        end
+    end, 26800)
+end
+
+local function handleGargoyleTotem(self, context, alerts, abilityId,
+                                    unitTag, sourceUnitTag, sourceUnitId, unitId,
+                                    sourceUnitName, unitName)
+    alerts:showAction("Block! (Gargoyle Totem)")
+    local dur = select(1, GetAbilityCastInfo(TOTEM_GARGYL)) or 0
+    if dur <= 0 then dur = FALLBACK_DUR end
+    local cid = CA.alertCast(abilityId, "Block!!", dur,
+        { -3, 0, false, { 0.7, 0.7, 0.7, 0.4 }, { 0.7, 0.7, 0.7, 0.8 } })
+    if cid and unitId then self.alertList[unitId] = cid end
+end
+
+local function handleYandirHealing(self, context, alerts, abilityId, ...)
+    alerts:showAction("Casts Healing!")
+    CA.alert(nil, "Casts Healing!", 0x991111FF, SOUNDS.NONE, 2000)
+end
+
+local function handleYandirJump(self, context, alerts, abilityId,
+                                 unitTag, sourceUnitTag, sourceUnitId, unitId,
+                                 sourceUnitName, unitName)
+    alerts:showAction("(Jump) Block!!")
+    local cid = CA.alertCast(abilityId, "(Jump) Block!!", 3000,
+        { -3, 0, false, { 0.7, 0.7, 0.7, 0.4 }, { 0.7, 0.7, 0.7, 0.8 } })
+    if cid and unitId then self.alertList[unitId] = cid end
+end
+
+local function handleSeaAdderSpray(self, context, alerts, abilityId,
+                                    unitTag, sourceUnitTag, sourceUnitId, unitId,
+                                    sourceUnitName, unitName)
+    if not IsUnitPlayer(unitTag) then return end
+    alerts:showAction("Dodge! (Sea Adder)")
+    local cid = CA.alertCast(abilityId, sourceUnitName, 1933,
+        { -3, 0, false, { 0.7, 0.7, 0.7, 0.4 }, { 0.7, 0.7, 0.7, 0.8 } })
+    if cid and unitId then self.alertList[unitId] = cid end
+end
+
 Yandir.combatRoutes = {
-    [TOTEM_POISION] = { result = ACTION_RESULT_BEGIN,
-        fn = function(self, context, alerts, abilityId,
-                      unitTag, sourceUnitTag, sourceUnitId, unitId,
-                      sourceUnitName, unitName)
-        self.totemTimer:reset()
-        alerts:showAction("Dodge! (Poison Totem)")
-        local cid = CA.alertCast(abilityId, sourceUnitName, 4300,
-            { -3, 0, false, { 0, 0.8, 0, 0.4 }, { 0, 0.8, 0, 0.8 } })
-        if cid and unitId then self.alertList[unitId] = cid end
-        self.PosionTotemID = unitId  -- track for delayed second-poison bar
-    end },
-    [TOTEM_POISION_CP] = { result = ACTION_RESULT_EFFECT_GAINED,
-        fn = function(self, context, alerts, abilityId,
-                      unitTag, sourceUnitTag, sourceUnitId, unitId,
-                      sourceUnitName, unitName)
-        -- Second poison from the same totem ~26.8 s after first cast.
-        -- Guard with BTotemCall so only one delayed bar fires per totem spawn.
-        if self.BTotemCall then return end
-        self.BTotemCall = true
-        local capturedSrc  = sourceUnitName or ""
-        local capturedSelf = self
-        zo_callLater(function()
-            if capturedSelf.PosionTotemID ~= -1 and IsUnitInCombat("player") then
-                capturedSelf.BTotemCall = false
-                CA.alertCast(TOTEM_POISION_CP, capturedSrc, 4300,
-                    { -3, 0, false, { 0, 0.8, 0, 0.4 }, { 0, 0.8, 0, 0.8 } })
-            end
-        end, 26800)
-    end },
-    [TOTEM_HARPY_SPWN]  = resetTotemTimer,
-    [TOTEM_DRAGON_SPWN] = resetTotemTimer,
-    [TOTEM_GARGYL_SPWN] = resetTotemTimer,
-    [TOTEM_GARGYL] = { result = ACTION_RESULT_BEGIN,
-        fn = function(self, context, alerts, abilityId,
-                      unitTag, sourceUnitTag, sourceUnitId, unitId,
-                      sourceUnitName, unitName)
-        alerts:showAction("Block! (Gargoyle Totem)")
-        local dur = select(1, GetAbilityCastInfo(TOTEM_GARGYL)) or 0
-        if dur <= 0 then dur = FALLBACK_DUR end
-        local cid = CA.alertCast(abilityId, "Block!!", dur,
-            { -3, 0, false, { 0.7, 0.7, 0.7, 0.4 }, { 0.7, 0.7, 0.7, 0.8 } })
-        if cid and unitId then self.alertList[unitId] = cid end
-    end },
-    [YANDIR_HEALING] = { result = ACTION_RESULT_BEGIN,
-        fn = function(self, context, alerts, abilityId, ...)
-        alerts:showAction("Casts Healing!")
-        CA.alert(nil, "Casts Healing!", 0x991111FF, SOUNDS.NONE, 2000)
-    end },
-    [YANDIR_JUMP] = { result = ACTION_RESULT_BEGIN,
-        fn = function(self, context, alerts, abilityId,
-                      unitTag, sourceUnitTag, sourceUnitId, unitId,
-                      sourceUnitName, unitName)
-        alerts:showAction("(Jump) Block!!")
-        local cid = CA.alertCast(abilityId, "(Jump) Block!!", 3000,
-            { -3, 0, false, { 0.7, 0.7, 0.7, 0.4 }, { 0.7, 0.7, 0.7, 0.8 } })
-        if cid and unitId then self.alertList[unitId] = cid end
-    end },
-    [SEA_ADDER_BILE_SPRAY] = { result = ACTION_RESULT_BEGIN,
-        fn = function(self, context, alerts, abilityId,
-                      unitTag, sourceUnitTag, sourceUnitId, unitId,
-                      sourceUnitName, unitName)
-        if not IsUnitPlayer(unitTag) then return end
-        alerts:showAction("Dodge! (Sea Adder)")
-        local cid = CA.alertCast(abilityId, sourceUnitName, 1933,
-            { -3, 0, false, { 0.7, 0.7, 0.7, 0.4 }, { 0.7, 0.7, 0.7, 0.8 } })
-        if cid and unitId then self.alertList[unitId] = cid end
-    end },
+    [TOTEM_POISION]      = { result = ACTION_RESULT_BEGIN,         fn = handlePoisonTotem },
+    [TOTEM_POISION_CP]   = { result = ACTION_RESULT_EFFECT_GAINED, fn = handlePoisonTotemCp },
+    [TOTEM_HARPY_SPWN]   = resetTotemTimer,
+    [TOTEM_DRAGON_SPWN]  = resetTotemTimer,
+    [TOTEM_GARGYL_SPWN]  = resetTotemTimer,
+    [TOTEM_GARGYL]       = { result = ACTION_RESULT_BEGIN,         fn = handleGargoyleTotem },
+    [YANDIR_HEALING]     = { result = ACTION_RESULT_BEGIN,         fn = handleYandirHealing },
+    [YANDIR_JUMP]        = { result = ACTION_RESULT_BEGIN,         fn = handleYandirJump },
+    [SEA_ADDER_BILE_SPRAY] = { result = ACTION_RESULT_BEGIN,       fn = handleSeaAdderSpray },
 }
 
 function Yandir:onPowerUpdate(context, healthPercent)

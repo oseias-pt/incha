@@ -3,10 +3,10 @@ local Location = require("core.Location")
 local CA = require("lib.CA")
 
 -- ── Ability IDs ───────────────────────────────────────────────────────────
-local BRILLIANT_ANNIHILATION = 214187   -- light side room wipe — BEGIN → STACK
-local BLEAK_ANNIHILATION     = 214203   -- dark side room wipe  — BEGIN → STACK
-local PORCIN_LIGHT           = 219329   -- EFFECT_GAINED_DURATION → player on Ryelaz (dark) side
-local PORCIN_DARK            = 219330   -- EFFECT_GAINED_DURATION → player on Zilyesset (light) side
+local BRILLIANT_ANNIHILATION = 214187   -- combatRoute: ACTION_RESULT_BEGIN → light side room wipe; STACK
+local BLEAK_ANNIHILATION     = 214203   -- combatRoute: ACTION_RESULT_BEGIN → dark side room wipe; STACK
+local PORCIN_LIGHT           = 219329   -- combatRoute: ACTION_RESULT_EFFECT_GAINED_DURATION / FADED → player on Ryelaz (dark) side
+local PORCIN_DARK            = 219330   -- combatRoute: ACTION_RESULT_EFFECT_GAINED_DURATION / FADED → player on Zilyesset (light) side
 
 -- ── CA colour palettes ────────────────────────────────────────────────────
 local COL_ANNIHIL = { -3, 0, false, { 1, 0.65, 0, 0.4 }, { 1, 0.65, 0, 0.8 } }
@@ -45,33 +45,27 @@ local function makeAnnihilHandler(label)
     end }
 end
 
--- Porcin FADED: shared for both light/dark — clear playerSide.
-local function handlePorcinFaded(self, context, alerts, result, abilityId,
-                                  unitTag, ...)
-    if result ~= ACTION_RESULT_EFFECT_FADED then return end
-    if not IsUnitPlayer(unitTag) then return end
-    self.playerSide = nil
+local function handlePorcinLight(self, context, alerts, result, abilityId, unitTag, ...)
+    if result == ACTION_RESULT_EFFECT_GAINED_DURATION and IsUnitPlayer(unitTag) then
+        self.playerSide = "ryelaz"
+    elseif result == ACTION_RESULT_EFFECT_FADED and IsUnitPlayer(unitTag) then
+        self.playerSide = nil
+    end
+end
+
+local function handlePorcinDark(self, context, alerts, result, abilityId, unitTag, ...)
+    if result == ACTION_RESULT_EFFECT_GAINED_DURATION and IsUnitPlayer(unitTag) then
+        self.playerSide = "zilyesset"
+    elseif result == ACTION_RESULT_EFFECT_FADED and IsUnitPlayer(unitTag) then
+        self.playerSide = nil
+    end
 end
 
 RyelazEncounter.combatRoutes = {
     [BRILLIANT_ANNIHILATION] = makeAnnihilHandler("Brilliant Annihilation!"),
     [BLEAK_ANNIHILATION]     = makeAnnihilHandler("Bleak Annihilation!"),
-    [PORCIN_LIGHT] = function(self, context, alerts, result, abilityId,
-                               unitTag, ...)
-        if result == ACTION_RESULT_EFFECT_GAINED_DURATION and IsUnitPlayer(unitTag) then
-            self.playerSide = "ryelaz"
-        elseif result == ACTION_RESULT_EFFECT_FADED and IsUnitPlayer(unitTag) then
-            self.playerSide = nil
-        end
-    end,
-    [PORCIN_DARK] = function(self, context, alerts, result, abilityId,
-                              unitTag, ...)
-        if result == ACTION_RESULT_EFFECT_GAINED_DURATION and IsUnitPlayer(unitTag) then
-            self.playerSide = "zilyesset"
-        elseif result == ACTION_RESULT_EFFECT_FADED and IsUnitPlayer(unitTag) then
-            self.playerSide = nil
-        end
-    end,
+    [PORCIN_LIGHT]           = handlePorcinLight,
+    [PORCIN_DARK]            = handlePorcinDark,
 }
 
 function RyelazEncounter:onUpdate(context, alerts)

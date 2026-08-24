@@ -21,27 +21,27 @@
 local DreadsailCommon = require("trial.dsr.DreadsailCommon")
 
 -- ── Ability IDs ───────────────────────────────────────────────────────────
-local RAPID_DELUGE_N   = 174959   -- Rapid Deluge normal
-local RAPID_DELUGE_V   = 174960   -- Rapid Deluge vet
-local RAPID_DELUGE_HM  = 174961   -- Rapid Deluge HM
-local CRASHING_WAVE_1  = 166353   -- Crashing Wave boss cast
-local CRASHING_WAVE_2  = 174943   -- Crashing Wave tank entity
-local CORAL_SLAM       = 163987   -- heavy melee
-local BARNACLE_BLADE   = 163901   -- light + BEGIN targeted
-local MAELSTROM_CAST   = 166292   -- Maelstrom channel begin
-local BEHEMOTH_SUMMON  = 166928   -- Sea Behemoth summoned
-local ARCTIC_ANNIH     = 165827   -- Arctic Annihilation slam
-local STORM_WALL_CW    = 175447   -- Storm Wall clockwise spin
-local STORM_WALL_CCW   = 174866   -- Storm Wall counter-clockwise spin
-local LURE_OF_SEA      = 163952   -- fear cast
-local ASPECT_TERROR    = 174697   -- Sea Boiler fear cast
-local VENOM_EVOKER_P   = 175132   -- green portal opens (EFFECT_CHANGED)
-local SEA_BOILER_P     = 175134   -- yellow portal opens
-local TIDAL_MAGE_P     = 175136   -- purple portal opens
-local BRIDGE_1         = 166479   -- Bridge 1 BEGIN
-local BRIDGE_2         = 175279   -- Bridge 2 BEGIN
-local BRIDGE_3         = 175291   -- Bridge 3 BEGIN
-local WHIRLPOOL        = 163896   -- pool debuff on player
+local RAPID_DELUGE_N   = 174959   -- effectRoute: EFFECT_RESULT_GAINED + player → Move bubble alert
+local RAPID_DELUGE_V   = 174960   -- effectRoute: EFFECT_RESULT_GAINED + player → Move bubble alert
+local RAPID_DELUGE_HM  = 174961   -- effectRoute: EFFECT_RESULT_GAINED + player → Move bubble alert
+local CRASHING_WAVE_1  = 166353   -- combatRoute: ACTION_RESULT_BEGIN + player → caAlertCast
+local CRASHING_WAVE_2  = 174943   -- combatRoute: ACTION_RESULT_BEGIN + player → caAlertCast
+local CORAL_SLAM       = 163987   -- combatRoute: ACTION_RESULT_BEGIN + player → caAlertCast (heavy)
+local BARNACLE_BLADE   = 163901   -- combatRoute: ACTION_RESULT_BEGIN + player → caAlertCast
+local MAELSTROM_CAST   = 166292   -- combatRoute: ACTION_RESULT_BEGIN → Maelstrom heal 6s
+local BEHEMOTH_SUMMON  = 166928   -- combatRoute: ACTION_RESULT_BEGIN → behemoth summon tracker
+local ARCTIC_ANNIH     = 165827   -- combatRoute: ACTION_RESULT_BEGIN → slam timer +17s
+local STORM_WALL_CW    = 175447   -- effectRoute: EFFECT_RESULT_GAINED → stormWallCW = true
+local STORM_WALL_CCW   = 174866   -- effectRoute: EFFECT_RESULT_GAINED → stormWallCW = false
+local LURE_OF_SEA      = 163952   -- combatRoute: ACTION_RESULT_BEGIN → CastAlertsStart 4s + Break free
+local ASPECT_TERROR    = 174697   -- combatRoute: ACTION_RESULT_BEGIN + player → caAlertCast (fear)
+local VENOM_EVOKER_P   = 175132   -- effectRoute: EFFECT_RESULT_GAINED → green portal 60s
+local SEA_BOILER_P     = 175134   -- effectRoute: EFFECT_RESULT_GAINED → yellow portal 60s
+local TIDAL_MAGE_P     = 175136   -- effectRoute: EFFECT_RESULT_GAINED → purple portal 60s
+local BRIDGE_1         = 166479   -- combatRoute: ACTION_RESULT_BEGIN → bridge wipe 60s
+local BRIDGE_2         = 175279   -- combatRoute: ACTION_RESULT_BEGIN → bridge wipe 60s
+local BRIDGE_3         = 175291   -- combatRoute: ACTION_RESULT_BEGIN → bridge wipe 60s
+local WHIRLPOOL        = 163896   -- effectRoute: EFFECT_RESULT_GAINED / FADED + player → green border
 -- Portal / aoe debuffs
 local NEMATOCYST_P     = 174679   -- green portal debuff
 local NEMATOCYST_AOE   = 169938
@@ -136,62 +136,69 @@ local function makeBridgeHandler(bridgeIdx)
     end }
 end
 
+local function handleCoralSlam(self, context, alerts, abilityId,
+                               unitTag, sourceUnitTag, sourceUnitId, unitId,
+                               sourceUnitName, unitName)
+    if not IsUnitPlayer(unitTag) then return end
+    local dur = select(1, GetAbilityCastInfo(abilityId)) or 0
+    if dur <= 0 then dur = FALLBACK_SLAM_DUR end
+    CA.alertCast(abilityId, sourceUnitName, dur, COL_HEAVY)
+end
+
+local function handleBarnacleBlade(self, context, alerts, abilityId,
+                                    unitTag, sourceUnitTag, sourceUnitId, unitId,
+                                    sourceUnitName, unitName)
+    if not IsUnitPlayer(unitTag) then return end
+    local dur = select(1, GetAbilityCastInfo(abilityId)) or 0
+    if dur <= 0 then dur = FALLBACK_BLADE_DUR end
+    CA.alertCast(abilityId, sourceUnitName, dur, COL_HEAVY)
+end
+
+local function handleMaelstromCast(self, context, alerts, abilityId, ...)
+    self.lastMaelstrom = GetGameTimeMilliseconds() / 1000
+    CA.alert(nil, "|c66CC66Maelstrom — HEAL!|r (6 s)",
+        0x66CC66D9, SOUNDS.CHAMPION_POINTS_COMMITTED, 6000)
+end
+
+local function handleBehemothSummon(self, context, alerts, abilityId, ...)
+    local now = GetGameTimeMilliseconds() / 1000
+    self.lastBehemothSumm = now
+    self.behemothSlam     = now + 10   -- first slam ~10 s after summon
+    CA.alert(nil, "Sea Behemoth summoned!",
+        0xFF8800D9, SOUNDS.CHAMPION_POINTS_COMMITTED, 3000)
+end
+
+local function handleArcticAnnih(self, context, alerts, abilityId, ...)
+    self.behemothSlam = GetGameTimeMilliseconds() / 1000 + SLAM_CD
+    CA.alert(nil, "|cFF8800Behemoth SLAM!|r",
+        0xFF8800D9, SOUNDS.DUEL_START, 3000)
+end
+
+local function handleLureOfSea(self, context, alerts, abilityId, ...)
+    CA.castAlertsStop(self.lureBarId)
+    self.lureBarId = CA.castAlertsStart(
+        abilityId, "Lure of the Sea", 4000, 4000, COL_FEAR, ACT_BREAK)
+end
+
+local function handleAspectTerror(self, context, alerts, abilityId,
+                                   unitTag, sourceUnitTag, sourceUnitId, unitId,
+                                   sourceUnitName, unitName)
+    if not IsUnitPlayer(unitTag) then return end
+    local dur = select(1, GetAbilityCastInfo(abilityId)) or 0
+    if dur <= 0 then dur = FALLBACK_FEAR_DUR end
+    CA.alertCast(abilityId, sourceUnitName, dur, COL_FEAR)
+end
+
 Taleria.combatRoutes = {
     [CRASHING_WAVE_1] = { result = ACTION_RESULT_BEGIN, fn = handleCrashingWave },
     [CRASHING_WAVE_2] = { result = ACTION_RESULT_BEGIN, fn = handleCrashingWave },
-    [CORAL_SLAM] = { result = ACTION_RESULT_BEGIN,
-        fn = function(self, context, alerts, abilityId,
-                      unitTag, sourceUnitTag, sourceUnitId, unitId,
-                      sourceUnitName, unitName)
-        if not IsUnitPlayer(unitTag) then return end
-        local dur = select(1, GetAbilityCastInfo(abilityId)) or 0
-        if dur <= 0 then dur = FALLBACK_SLAM_DUR end
-        CA.alertCast(abilityId, sourceUnitName, dur, COL_HEAVY)
-    end },
-    [BARNACLE_BLADE] = { result = ACTION_RESULT_BEGIN,
-        fn = function(self, context, alerts, abilityId,
-                      unitTag, sourceUnitTag, sourceUnitId, unitId,
-                      sourceUnitName, unitName)
-        if not IsUnitPlayer(unitTag) then return end
-        local dur = select(1, GetAbilityCastInfo(abilityId)) or 0
-        if dur <= 0 then dur = FALLBACK_BLADE_DUR end
-        CA.alertCast(abilityId, sourceUnitName, dur, COL_HEAVY)
-    end },
-    [MAELSTROM_CAST] = { result = ACTION_RESULT_BEGIN,
-        fn = function(self, context, alerts, abilityId, ...)
-        self.lastMaelstrom = GetGameTimeMilliseconds() / 1000
-        CA.alert(nil, "|c66CC66Maelstrom — HEAL!|r (6 s)",
-            0x66CC66D9, SOUNDS.CHAMPION_POINTS_COMMITTED, 6000)
-    end },
-    [BEHEMOTH_SUMMON] = { result = ACTION_RESULT_BEGIN,
-        fn = function(self, context, alerts, abilityId, ...)
-        local now = GetGameTimeMilliseconds() / 1000
-        self.lastBehemothSumm = now
-        self.behemothSlam     = now + 10   -- first slam ~10 s after summon
-        CA.alert(nil, "Sea Behemoth summoned!",
-            0xFF8800D9, SOUNDS.CHAMPION_POINTS_COMMITTED, 3000)
-    end },
-    [ARCTIC_ANNIH] = { result = ACTION_RESULT_BEGIN,
-        fn = function(self, context, alerts, abilityId, ...)
-        self.behemothSlam = GetGameTimeMilliseconds() / 1000 + SLAM_CD
-        CA.alert(nil, "|cFF8800Behemoth SLAM!|r",
-            0xFF8800D9, SOUNDS.DUEL_START, 3000)
-    end },
-    [LURE_OF_SEA] = { result = ACTION_RESULT_BEGIN,
-        fn = function(self, context, alerts, abilityId, ...)
-        CA.castAlertsStop(self.lureBarId)
-        self.lureBarId = CA.castAlertsStart(
-            abilityId, "Lure of the Sea", 4000, 4000, COL_FEAR, ACT_BREAK)
-    end },
-    [ASPECT_TERROR] = { result = ACTION_RESULT_BEGIN,
-        fn = function(self, context, alerts, abilityId,
-                      unitTag, sourceUnitTag, sourceUnitId, unitId,
-                      sourceUnitName, unitName)
-        if not IsUnitPlayer(unitTag) then return end
-        local dur = select(1, GetAbilityCastInfo(abilityId)) or 0
-        if dur <= 0 then dur = FALLBACK_FEAR_DUR end
-        CA.alertCast(abilityId, sourceUnitName, dur, COL_FEAR)
-    end },
+    [CORAL_SLAM]      = { result = ACTION_RESULT_BEGIN, fn = handleCoralSlam },
+    [BARNACLE_BLADE]  = { result = ACTION_RESULT_BEGIN, fn = handleBarnacleBlade },
+    [MAELSTROM_CAST]  = { result = ACTION_RESULT_BEGIN, fn = handleMaelstromCast },
+    [BEHEMOTH_SUMMON] = { result = ACTION_RESULT_BEGIN, fn = handleBehemothSummon },
+    [ARCTIC_ANNIH]    = { result = ACTION_RESULT_BEGIN, fn = handleArcticAnnih },
+    [LURE_OF_SEA]     = { result = ACTION_RESULT_BEGIN, fn = handleLureOfSea },
+    [ASPECT_TERROR]   = { result = ACTION_RESULT_BEGIN, fn = handleAspectTerror },
     [BRIDGE_1] = makeBridgeHandler(1),
     [BRIDGE_2] = makeBridgeHandler(2),
     [BRIDGE_3] = makeBridgeHandler(3),
@@ -206,57 +213,66 @@ local function handleRapidDeluge(self, context, alerts, changeType, abilityId,
     end
 end
 
+local function handleStormWallCw(self, context, alerts, changeType, abilityId, ...)
+    if changeType == EFFECT_RESULT_GAINED then
+        self.lastStormWall = GetGameTimeMilliseconds() / 1000
+        self.stormWallCW   = true
+    end
+end
+
+local function handleStormWallCcw(self, context, alerts, changeType, abilityId, ...)
+    if changeType == EFFECT_RESULT_GAINED then
+        self.lastStormWall = GetGameTimeMilliseconds() / 1000
+        self.stormWallCW   = false
+    end
+end
+
+local function handleVenomEvokerP(self, context, alerts, abilityId, ...)
+    local now = GetGameTimeMilliseconds() / 1000
+    self.bridgeOpen[1]      = true
+    self.bridgeWipeStart[1] = now
+    self.lastPlatformFall   = now
+    CA.alert(nil, "|c22CC22Green portal open|r — 60 s!",
+        0x22CC22D9, SOUNDS.DUEL_START, 4000)
+end
+
+local function handleSeaBoilerP(self, context, alerts, abilityId, ...)
+    local now = GetGameTimeMilliseconds() / 1000
+    self.bridgeOpen[2]      = true
+    self.bridgeWipeStart[2] = now
+    self.lastPlatformFall   = now
+    CA.alert(nil, "|cDDCC00Yellow portal open|r — 60 s!",
+        0xDDCC00D9, SOUNDS.DUEL_START, 4000)
+end
+
+local function handleTidalMageP(self, context, alerts, abilityId, ...)
+    local now = GetGameTimeMilliseconds() / 1000
+    self.bridgeOpen[3]      = true
+    self.bridgeWipeStart[3] = now
+    self.lastPlatformFall   = now
+    CA.alert(nil, "|c8822DDPurple portal open|r — 60 s!",
+        0x8822DDD9, SOUNDS.DUEL_START, 4000)
+end
+
+local function handleWhirlpool(self, context, alerts, changeType, abilityId,
+                                unitTag, unitId, unitName, stackCount)
+    if changeType == EFFECT_RESULT_GAINED and AreUnitsEqual("player", unitTag) then
+        CA.border(true, 8000, "green")
+    elseif changeType == EFFECT_RESULT_FADED and AreUnitsEqual("player", unitTag) then
+        CA.border(false, 0, nil)
+    end
+end
+
 Taleria.effectRoutes = {
     [RAPID_DELUGE_N]  = handleRapidDeluge,
     [RAPID_DELUGE_V]  = handleRapidDeluge,
     [RAPID_DELUGE_HM] = handleRapidDeluge,
-    [STORM_WALL_CW] = function(self, context, alerts, changeType, abilityId, ...)
-        if changeType == EFFECT_RESULT_GAINED then
-            self.lastStormWall = GetGameTimeMilliseconds() / 1000
-            self.stormWallCW   = true
-        end
-    end,
-    [STORM_WALL_CCW] = function(self, context, alerts, changeType, abilityId, ...)
-        if changeType == EFFECT_RESULT_GAINED then
-            self.lastStormWall = GetGameTimeMilliseconds() / 1000
-            self.stormWallCW   = false
-        end
-    end,
-    [VENOM_EVOKER_P] = { changeType = EFFECT_RESULT_GAINED,
-        fn = function(self, context, alerts, abilityId, ...)
-        local now = GetGameTimeMilliseconds() / 1000
-        self.bridgeOpen[1]      = true
-        self.bridgeWipeStart[1] = now
-        self.lastPlatformFall   = now
-        CA.alert(nil, "|c22CC22Green portal open|r — 60 s!",
-            0x22CC22D9, SOUNDS.DUEL_START, 4000)
-    end },
-    [SEA_BOILER_P] = { changeType = EFFECT_RESULT_GAINED,
-        fn = function(self, context, alerts, abilityId, ...)
-        local now = GetGameTimeMilliseconds() / 1000
-        self.bridgeOpen[2]      = true
-        self.bridgeWipeStart[2] = now
-        self.lastPlatformFall   = now
-        CA.alert(nil, "|cDDCC00Yellow portal open|r — 60 s!",
-            0xDDCC00D9, SOUNDS.DUEL_START, 4000)
-    end },
-    [TIDAL_MAGE_P] = { changeType = EFFECT_RESULT_GAINED,
-        fn = function(self, context, alerts, abilityId, ...)
-        local now = GetGameTimeMilliseconds() / 1000
-        self.bridgeOpen[3]      = true
-        self.bridgeWipeStart[3] = now
-        self.lastPlatformFall   = now
-        CA.alert(nil, "|c8822DDPurple portal open|r — 60 s!",
-            0x8822DDD9, SOUNDS.DUEL_START, 4000)
-    end },
-    [WHIRLPOOL] = function(self, context, alerts, changeType, abilityId,
-                            unitTag, unitId, unitName, stackCount)
-        if changeType == EFFECT_RESULT_GAINED and AreUnitsEqual("player", unitTag) then
-            CA.border(true, 8000, "green")
-        elseif changeType == EFFECT_RESULT_FADED and AreUnitsEqual("player", unitTag) then
-            CA.border(false, 0, nil)
-        end
-    end,
+    [STORM_WALL_CW]   = handleStormWallCw,
+    [STORM_WALL_CCW]  = handleStormWallCcw,
+    [VENOM_EVOKER_P]  = { changeType = EFFECT_RESULT_GAINED, fn = handleVenomEvokerP },
+    [SEA_BOILER_P]    = { changeType = EFFECT_RESULT_GAINED, fn = handleSeaBoilerP },
+    [TIDAL_MAGE_P]    = { changeType = EFFECT_RESULT_GAINED, fn = handleTidalMageP },
+    [WHIRLPOOL]       = handleWhirlpool,
 }
 
 -- ── Info-line renderers ───────────────────────────────────────────────────

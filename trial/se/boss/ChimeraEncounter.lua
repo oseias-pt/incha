@@ -4,19 +4,19 @@ local Timer    = require("lib.Timer")
 local CA = require("lib.CA")
 
 -- ── Ability IDs ───────────────────────────────────────────────────────────
-local VIVIFY           = 186000   -- Chimera spawns (EFFECT_FADED)
-local PETRIFY          = 185039   -- Chimera despawns (EFFECT_GAINED_DURATION)
-local CHAIN_LIGHTNING  = 183858   -- Chain Lightning (BEGIN + hitValue>1000)
-local CIRCUIT_CHARGE   = 199235   -- Debuff from chain lightning hit
-local CHIMERA_BOLT     = 186960   -- Lightning bolt (BEGIN + hitValue>500)
-local CHIMERA_MAUL     = 186937   -- Chimera maul (heavy attack)
-local CHIMERA_INFERNO  = 186948   -- Chimera inferno cast
-local GRYPHON_WIND_LANCE = 199132 -- Gryphon Wind Lance (BEGIN)
-local WAMASU_STORM     = 199119   -- Wamasu Impending Storm
-local WAMASU_REPULSION = 186995   -- Wamasu Repulsion Shock
-local MANTLE_WAMASU    = 184984   -- Player portal buff — green
-local MANTLE_LION      = 184983   -- Player portal buff — red
-local MANTLE_GRYPHON   = 183640   -- Player portal buff — blue
+local VIVIFY           = 186000   -- combatRoute: ACTION_RESULT_EFFECT_FADED → Chimera spawned, reset timers
+local PETRIFY          = 185039   -- combatRoute: ACTION_RESULT_EFFECT_GAINED_DURATION → despawning, clear timers
+local CHAIN_LIGHTNING  = 183858   -- combatRoute: ACTION_RESULT_BEGIN → Chain Lightning alert, reset chainTimer
+local CIRCUIT_CHARGE   = 199235   -- (dead constant — no route registered)
+local CHIMERA_BOLT     = 186960   -- combatRoute: ACTION_RESULT_BEGIN → Bolt caAlertCast (targeted)
+local CHIMERA_MAUL     = 186937   -- (dead constant — no route registered)
+local CHIMERA_INFERNO  = 186948   -- (dead constant — no route registered)
+local GRYPHON_WIND_LANCE = 199132 -- combatRoute: ACTION_RESULT_BEGIN → Wind Lance alert
+local WAMASU_STORM     = 199119   -- (dead constant — no route registered)
+local WAMASU_REPULSION = 186995   -- (dead constant — no route registered)
+local MANTLE_WAMASU    = 184984   -- combatRoute: ACTION_RESULT_EFFECT_GAINED → Wamasu portal (makePortalHandler)
+local MANTLE_LION      = 184983   -- combatRoute: ACTION_RESULT_EFFECT_GAINED → Lion portal (makePortalHandler)
+local MANTLE_GRYPHON   = 183640   -- combatRoute: ACTION_RESULT_EFFECT_GAINED → Gryphon portal (makePortalHandler)
 
 -- ── Timer durations (seconds) ─────────────────────────────────────────────
 local DESPAWN_CD           = 92   -- Chimera despawns ~92s after spawn
@@ -52,7 +52,7 @@ function ChimeraEncounter:onLeave(context)
     for _, cid in pairs(self.alertList) do CA.castAlertsStop(cid) end
 end
 
--- ── Routing tables (C3) ──────────────────────────────────────────────────
+-- ── Handlers ────────────────────────────────────────────────────────────
 
 -- Portal mantle: personal alert when assigned to a portal.
 local function makePortalHandler(color, label, colorHex)
@@ -64,47 +64,56 @@ local function makePortalHandler(color, label, colorHex)
     end }
 end
 
+local function handleVivify(self, context, alerts, abilityId, ...)
+    self.chimeraActive = true
+    self.firstChain    = true
+    self.despawnTimer:reset(DESPAWN_CD)
+    self.chainTimer:reset(CHAIN_FIRST_CD)
+    alerts:showHeader("Chimera spawned!")
+end
+
+local function handlePetrify(self, context, alerts, abilityId, ...)
+    self.chimeraActive = false
+    self.despawnTimer:clear()
+    self.chainTimer:clear()
+    alerts:showAction("Chimera despawning…")
+end
+
+local function handleChainLightning(self, context, alerts, abilityId, ...)
+    self.firstChain = false
+    self.chainTimer:reset(CHAIN_CD)
+    alerts:showAction("Chain Lightning!")
+    CA.alert(nil, "CHAIN LIGHTNING", 0xFFD666FF, SOUNDS.NONE, 2500)
+end
+
+local function handleChimeraBolt(self, context, alerts, abilityId,
+                                  unitTag, sourceUnitTag, sourceUnitId, unitId,
+                                  sourceUnitName, unitName)
+    local target = (unitName and unitName ~= "") and unitName or "?"
+    alerts:showAction("Lightning Bolt → " .. target)
+    local dur = select(1, GetAbilityCastInfo(abilityId)) or 0
+    if dur <= 0 then dur = FALLBACK_DUR end
+    local cid = CA.alertCast(abilityId, "Bolt!", dur, COL_LIGHTNING)
+    if cid and unitId then self.alertList[unitId] = cid end
+end
+
+local function handleGryphonWindLance(self, context, alerts, abilityId, ...)
+    alerts:showAction("Wind Lance! Move!")
+    CA.alert(nil, "WIND LANCE", 0xD1F1F9FF, SOUNDS.NONE, 2000)
+end
+
+-- ── Routing tables (C3) ──────────────────────────────────────────────────
+
 ChimeraEncounter.combatRoutes = {
-    -- Spawn / despawn
-    [VIVIFY] = { result = ACTION_RESULT_EFFECT_FADED, fn = function(self, context, alerts, abilityId, ...)
-        self.chimeraActive = true
-        self.firstChain    = true
-        self.despawnTimer:reset(DESPAWN_CD)
-        self.chainTimer:reset(CHAIN_FIRST_CD)
-        alerts:showHeader("Chimera spawned!")
-    end },
-    [PETRIFY] = { result = ACTION_RESULT_EFFECT_GAINED_DURATION, fn = function(self, context, alerts, abilityId, ...)
-        self.chimeraActive = false
-        self.despawnTimer:clear()
-        self.chainTimer:clear()
-        alerts:showAction("Chimera despawning…")
-    end },
-    -- Chimera abilities
-    [CHAIN_LIGHTNING] = { result = ACTION_RESULT_BEGIN, fn = function(self, context, alerts, abilityId, ...)
-        self.firstChain = false
-        self.chainTimer:reset(CHAIN_CD)
-        alerts:showAction("Chain Lightning!")
-        CA.alert(nil, "CHAIN LIGHTNING", 0xFFD666FF, SOUNDS.NONE, 2500)
-    end },
-    [CHIMERA_BOLT] = { result = ACTION_RESULT_BEGIN,
-        fn = function(self, context, alerts, abilityId,
-                      unitTag, sourceUnitTag, sourceUnitId, unitId,
-                      sourceUnitName, unitName)
-        local target = (unitName and unitName ~= "") and unitName or "?"
-        alerts:showAction("Lightning Bolt → " .. target)
-        local dur = select(1, GetAbilityCastInfo(abilityId)) or 0
-        if dur <= 0 then dur = FALLBACK_DUR end
-        local cid = CA.alertCast(abilityId, "Bolt!", dur, COL_LIGHTNING)
-        if cid and unitId then self.alertList[unitId] = cid end
-    end },
-    [GRYPHON_WIND_LANCE] = { result = ACTION_RESULT_BEGIN, fn = function(self, context, alerts, abilityId, ...)
-        alerts:showAction("Wind Lance! Move!")
-        CA.alert(nil, "WIND LANCE", 0xD1F1F9FF, SOUNDS.NONE, 2000)
-    end },
-    -- Portal mantle buffs
-    [MANTLE_WAMASU]  = makePortalHandler("green",  "Wamasu Portal (Green)", 0x02FF00FF),
-    [MANTLE_LION]    = makePortalHandler("red",    "Lion Portal (Red)",     0xFF0000FF),
-    [MANTLE_GRYPHON] = makePortalHandler("blue",   "Gryphon Portal (Blue)", 0x0044FFFF),
+    [VIVIFY]             = { result = ACTION_RESULT_EFFECT_FADED,          fn = handleVivify },
+    [PETRIFY]            = { result = ACTION_RESULT_EFFECT_GAINED_DURATION, fn = handlePetrify },
+    [CHAIN_LIGHTNING]    = { result = ACTION_RESULT_BEGIN,                  fn = handleChainLightning },
+    [CHIMERA_BOLT]       = { result = ACTION_RESULT_BEGIN,                  fn = handleChimeraBolt },
+    [GRYPHON_WIND_LANCE] = { result = ACTION_RESULT_BEGIN,                  fn = handleGryphonWindLance },
+    -- Portal mantle buffs (factory entries — EXEMPT from D7)
+    [MANTLE_WAMASU]  = makePortalHandler("green", "Wamasu Portal (Green)", 0x02FF00FF),
+    [MANTLE_LION]    = makePortalHandler("red",   "Lion Portal (Red)",     0xFF0000FF),
+    [MANTLE_GRYPHON] = makePortalHandler("blue",  "Gryphon Portal (Blue)", 0x0044FFFF),
 }
 
 -- ── Info-line renderers ───────────────────────────────────────────────────

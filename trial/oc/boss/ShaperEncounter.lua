@@ -3,9 +3,9 @@ local Location = require("core.Location")
 local CA = require("lib.CA")
 
 -- ── Ability IDs (from OsseinCageHelper) ──────────────────────────────────
-local OGRIM_CHARGE     = 236496   -- BEGIN on player → MOVE alert + caAlertCast
-local SHAPER_SHIELD    = 232511   -- EFFECT_GAINED → shaper protected; FADED → vulnerable
-local CHANNELER_SHIELD = 232510   -- EFFECT_GAINED → channelers shielding Shaper
+local OGRIM_CHARGE     = 236496   -- combatRoute: ACTION_RESULT_BEGIN → MOVE caAlertCast (player)
+local SHAPER_SHIELD    = 232511   -- combatRoute: (plain) EFFECT_RESULT_GAINED/FADED → shield state
+local CHANNELER_SHIELD = 232510   -- combatRoute: ACTION_RESULT_EFFECT_GAINED → channelers alert
 
 -- ── CA colour palettes ────────────────────────────────────────────────────
 local COL_CHARGE = { -3, 0, false, { 1, 0.4, 0, 0.4 }, { 1, 0.4, 0, 0.8 } }
@@ -27,39 +27,45 @@ function ShaperEncounter.new()
     }, ShaperEncounter)
 end
 
+-- ── Handlers ────────────────────────────────────────────────────────────
+
+local function handleOgrimCharge(self, context, alerts, abilityId,
+                                  unitTag, sourceUnitTag, sourceUnitId, unitId,
+                                  sourceUnitName, unitName)
+    local target = (unitName and unitName ~= "") and unitName or "?"
+    local dur = select(1, GetAbilityCastInfo(abilityId)) or 0
+    if dur <= 0 then dur = FALLBACK_DUR end
+    CA.alertCast(abilityId, "MOVE — Ogrim Charge!", dur, COL_CHARGE)
+    if IsUnitPlayer(unitTag) then
+        alerts:showAction("Ogrim Charge on YOU! Move!")
+    else
+        alerts:showAction("Ogrim Charge → " .. target)
+    end
+end
+
+local function handleShaperShield(self, context, alerts, result, abilityId, ...)
+    if result == ACTION_RESULT_EFFECT_GAINED then
+        self.shaperShielded = true
+        CA.alert(nil, "Shaper shielded — kill channelers!", 0xAA44FFFF, SOUNDS.NONE, 4000)
+        alerts:showAction("Shaper of Flesh shielded — kill channelers!")
+    elseif result == ACTION_RESULT_EFFECT_FADED then
+        self.shaperShielded = false
+        CA.alert(nil, "Shaper vulnerable!", 0x44FF88FF, SOUNDS.NONE, 3000)
+        alerts:showAction("Shaper vulnerable — BURN!")
+    end
+end
+
+local function handleChannelerShield(self, context, alerts, abilityId, ...)
+    self.shaperShielded = true
+    alerts:showAction("Channelers shielding Shaper — eliminate them!")
+end
+
 -- ── Routing tables (C3) ──────────────────────────────────────────────────
 
 ShaperEncounter.combatRoutes = {
-    [OGRIM_CHARGE] = { result = ACTION_RESULT_BEGIN,
-        fn = function(self, context, alerts, abilityId,
-                      unitTag, sourceUnitTag, sourceUnitId, unitId,
-                      sourceUnitName, unitName)
-        local target = (unitName and unitName ~= "") and unitName or "?"
-        local dur = select(1, GetAbilityCastInfo(abilityId)) or 0
-        if dur <= 0 then dur = FALLBACK_DUR end
-        CA.alertCast(abilityId, "MOVE — Ogrim Charge!", dur, COL_CHARGE)
-        if IsUnitPlayer(unitTag) then
-            alerts:showAction("Ogrim Charge on YOU! Move!")
-        else
-            alerts:showAction("Ogrim Charge → " .. target)
-        end
-    end },
-    [SHAPER_SHIELD] = function(self, context, alerts, result, abilityId, ...)
-        if result == ACTION_RESULT_EFFECT_GAINED then
-            self.shaperShielded = true
-            CA.alert(nil, "Shaper shielded — kill channelers!", 0xAA44FFFF, SOUNDS.NONE, 4000)
-            alerts:showAction("Shaper of Flesh shielded — kill channelers!")
-        elseif result == ACTION_RESULT_EFFECT_FADED then
-            self.shaperShielded = false
-            CA.alert(nil, "Shaper vulnerable!", 0x44FF88FF, SOUNDS.NONE, 3000)
-            alerts:showAction("Shaper vulnerable — BURN!")
-        end
-    end,
-    [CHANNELER_SHIELD] = { result = ACTION_RESULT_EFFECT_GAINED,
-        fn = function(self, context, alerts, abilityId, ...)
-        self.shaperShielded = true
-        alerts:showAction("Channelers shielding Shaper — eliminate them!")
-    end },
+    [OGRIM_CHARGE]     = { result = ACTION_RESULT_BEGIN,         fn = handleOgrimCharge },
+    [SHAPER_SHIELD]    = handleShaperShield,
+    [CHANNELER_SHIELD] = { result = ACTION_RESULT_EFFECT_GAINED, fn = handleChannelerShield },
 }
 
 function ShaperEncounter:onUpdate(context, alerts)

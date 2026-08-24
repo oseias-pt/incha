@@ -15,16 +15,16 @@
 local RockgroveCommon = require("trial.rg.RockgroveCommon")
 
 -- ── Ability IDs ────────────────────────────────────────────────────────────
-local SAVAGE_BLITZ    = 149414
-local SAVAGE_BLITZ_HM = 157932   -- fires after boss drops below 50% HP
-local NOXIOUS_SLUDGE  = 149190
-local SLUDGE_DEBUFF   = 157860   -- debuff placed on two players
-local SUNBURST        = 153181   -- Annihilator heavy → meteor block 2.5 s later
-local CINDER_CLEAVE   = 152688   -- Annihilator frontal cone
-local EMBER_CHAINS    = 152699   -- Annihilator chain to far target
-local ADD_SPAWN       = 152365   -- signals Annihilator spawning
-local BOSS_ENRAGE     = 152502
-local MINI_ENRAGE     = 152503
+local SAVAGE_BLITZ    = 149414   -- combatRoute: ACTION_RESULT_BEGIN → Savage Blitz caAlertCast
+local SAVAGE_BLITZ_HM = 157932   -- combatRoute: ACTION_RESULT_BEGIN → Savage Blitz HM (< 50% HP)
+local NOXIOUS_SLUDGE  = 149190   -- combatRoute: ACTION_RESULT_BEGIN → Noxious Sludge alert
+local SLUDGE_DEBUFF   = 157860   -- effectRoute: EFFECT_RESULT_GAINED → left/right side assignment
+local SUNBURST        = 153181   -- combatRoute: ACTION_RESULT_BEGIN → meteor Block alert 2.5s later
+local CINDER_CLEAVE   = 152688   -- combatRoute: ACTION_RESULT_BEGIN → Dodge alert (player-targeted)
+local EMBER_CHAINS    = 152699   -- combatRoute: ACTION_RESULT_BEGIN → caAlertCast (player-targeted)
+local ADD_SPAWN       = 152365   -- combatRoute: ACTION_RESULT_EFFECT_GAINED → ADD SPAWNING alert
+local BOSS_ENRAGE     = 152502   -- effectRoute: EFFECT_RESULT_GAINED / FADED → bossEnraged flag
+local MINI_ENRAGE     = 152503   -- effectRoute: EFFECT_RESULT_GAINED / FADED → miniEnraged flag
 
 -- ── Pool reference position (world coords) ────────────────────────────────
 -- Exit-left pool — used to assign left/right side to poisoned players.
@@ -73,41 +73,46 @@ local function handleSavageBlitz(self, context, alerts, abilityId, ...)
     CA.castAlertsStart(abilityId, "Savage Blitz", 2750, 2750, COL_BLITZ)
 end
 
+local function handleNoxiousSludge(self, context, alerts, abilityId, ...)
+    self.lastSludge = GetGameTimeMilliseconds() / 1000
+    CA.alert(nil, "Noxious Sludge", 0x00CC00D9, SOUNDS.CHAMPION_POINTS_COMMITTED, 2500)
+end
+
+-- Sunburst casts, then ~2.5 s later a meteor hits; alert fires at impact.
+local function handleSunburst(self, context, alerts, abilityId, ...)
+    zo_callLater(function()
+        CA.alert(nil, "Meteor. BLOCK!", 0xFF2020FF, SOUNDS.CHAMPION_POINTS_COMMITTED, 3000)
+    end, 2500)
+end
+
+-- QRH: hitValue returns ~4 s but actual dodge window is ~2 s; hardcode 2000.
+local function handleCinderCleave(self, context, alerts, abilityId,
+                                   unitTag, sourceUnitTag, sourceUnitId, unitId,
+                                   sourceUnitName, unitName)
+    if not IsUnitPlayer(unitTag) then return end
+    alerts:showAction("Dodge! (Cone)")
+    CA.alertCast(abilityId, sourceUnitName, 2000, COL_CONE)
+end
+
+local function handleEmberChains(self, context, alerts, abilityId,
+                                  unitTag, sourceUnitTag, sourceUnitId, unitId,
+                                  sourceUnitName, unitName)
+    if not IsUnitPlayer(unitTag) then return end
+    CA.alertCast(abilityId, sourceUnitName, 750, COL_CHAINS)
+end
+
+local function handleAddSpawn(self, context, alerts, abilityId, ...)
+    alerts:showAction("ADD SPAWNING!")
+end
+
 Oaxiltso.combatRoutes = {
-    [SAVAGE_BLITZ]    = { result = ACTION_RESULT_BEGIN, fn = handleSavageBlitz },
-    [SAVAGE_BLITZ_HM] = { result = ACTION_RESULT_BEGIN, fn = handleSavageBlitz },
-    [NOXIOUS_SLUDGE] = { result = ACTION_RESULT_BEGIN,
-        fn = function(self, context, alerts, abilityId, ...)
-        self.lastSludge = GetGameTimeMilliseconds() / 1000
-        CA.alert(nil, "Noxious Sludge", 0x00CC00D9, SOUNDS.CHAMPION_POINTS_COMMITTED, 2500)
-    end },
-    -- Sunburst casts, then ~2.5 s later a meteor hits; alert fires at impact.
-    [SUNBURST] = { result = ACTION_RESULT_BEGIN,
-        fn = function(self, context, alerts, abilityId, ...)
-        zo_callLater(function()
-            CA.alert(nil, "Meteor. BLOCK!", 0xFF2020FF, SOUNDS.CHAMPION_POINTS_COMMITTED, 3000)
-        end, 2500)
-    end },
-    -- QRH: hitValue returns ~4 s but actual dodge window is ~2 s; hardcode 2000.
-    [CINDER_CLEAVE] = { result = ACTION_RESULT_BEGIN,
-        fn = function(self, context, alerts, abilityId,
-                      unitTag, sourceUnitTag, sourceUnitId, unitId,
-                      sourceUnitName, unitName)
-        if not IsUnitPlayer(unitTag) then return end
-        alerts:showAction("Dodge! (Cone)")
-        CA.alertCast(abilityId, sourceUnitName, 2000, COL_CONE)
-    end },
-    [EMBER_CHAINS] = { result = ACTION_RESULT_BEGIN,
-        fn = function(self, context, alerts, abilityId,
-                      unitTag, sourceUnitTag, sourceUnitId, unitId,
-                      sourceUnitName, unitName)
-        if not IsUnitPlayer(unitTag) then return end
-        CA.alertCast(abilityId, sourceUnitName, 750, COL_CHAINS)
-    end },
-    [ADD_SPAWN] = { result = ACTION_RESULT_EFFECT_GAINED,
-        fn = function(self, context, alerts, abilityId, ...)
-        alerts:showAction("ADD SPAWNING!")
-    end },
+    [SAVAGE_BLITZ]    = { result = ACTION_RESULT_BEGIN,         fn = handleSavageBlitz },
+    [SAVAGE_BLITZ_HM] = { result = ACTION_RESULT_BEGIN,         fn = handleSavageBlitz },
+    [NOXIOUS_SLUDGE]  = { result = ACTION_RESULT_BEGIN,         fn = handleNoxiousSludge },
+    [SUNBURST]        = { result = ACTION_RESULT_BEGIN,         fn = handleSunburst },
+    [CINDER_CLEAVE]   = { result = ACTION_RESULT_BEGIN,         fn = handleCinderCleave },
+    [EMBER_CHAINS]    = { result = ACTION_RESULT_BEGIN,         fn = handleEmberChains },
+    [ADD_SPAWN]       = { result = ACTION_RESULT_EFFECT_GAINED, fn = handleAddSpawn },
 }
 
 -- Track first poisoned player; alert with left/right side assignment when pair is complete.
@@ -155,14 +160,18 @@ local function handleSludgeDebuff(self, context, alerts, abilityId,
     end
 end
 
+local function handleBossEnrage(self, context, alerts, changeType, abilityId, ...)
+    self.bossEnraged = (changeType == EFFECT_RESULT_GAINED)
+end
+
+local function handleMiniEnrage(self, context, alerts, changeType, abilityId, ...)
+    self.miniEnraged = (changeType == EFFECT_RESULT_GAINED)
+end
+
 Oaxiltso.effectRoutes = {
     [SLUDGE_DEBUFF] = { changeType = EFFECT_RESULT_GAINED, fn = handleSludgeDebuff },
-    [BOSS_ENRAGE] = function(self, context, alerts, changeType, abilityId, ...)
-        self.bossEnraged = (changeType == EFFECT_RESULT_GAINED)
-    end,
-    [MINI_ENRAGE] = function(self, context, alerts, changeType, abilityId, ...)
-        self.miniEnraged = (changeType == EFFECT_RESULT_GAINED)
-    end,
+    [BOSS_ENRAGE]   = handleBossEnrage,
+    [MINI_ENRAGE]   = handleMiniEnrage,
 }
 
 -- ── Info-line renderers ───────────────────────────────────────────────────

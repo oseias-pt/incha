@@ -4,8 +4,8 @@ local Timer    = require("lib.Timer")
 local CA = require("lib.CA")
 
 -- ── Ability IDs ───────────────────────────────────────────────────────────
-local PIERCING_BEAM = 219165   -- BEGIN → INTERRUPT; CD 14s first / 32s steady
-local VITRIFY       = 219083   -- BEGIN → INTERRUPT; CD  9s first / 20s steady
+local PIERCING_BEAM = 219165   -- combatRoute: ACTION_RESULT_BEGIN → INTERRUPT; CD 14s first / 32s steady
+local VITRIFY       = 219083   -- combatRoute: ACTION_RESULT_BEGIN → INTERRUPT; CD  9s first / 20s steady
 
 -- ── Timer durations (seconds) ─────────────────────────────────────────────
 local BEAM_FIRST_CD    = 14.0
@@ -37,27 +37,31 @@ function XynizataEncounter.new()
     }, XynizataEncounter)
 end
 
+-- ── Handlers ────────────────────────────────────────────────────────────
+
+local function handlePiercingBeam(self, context, alerts, abilityId, ...)
+    self.firstBeam = false
+    self.piercingBeamTimer:reset(BEAM_CD)
+    local dur = select(1, GetAbilityCastInfo(abilityId)) or 0
+    if dur <= 0 then dur = FALLBACK_BEAM_DUR end
+    CA.alertCast(abilityId, "INTERRUPT — Beam!", dur, COL_INTERRUPT)
+    alerts:showAction("INTERRUPT — Piercing Beam!")
+end
+
+local function handleVitrify(self, context, alerts, abilityId, ...)
+    self.firstVitrify = false
+    self.vitrifyTimer:reset(VITRIFY_CD)
+    local dur = select(1, GetAbilityCastInfo(abilityId)) or 0
+    if dur <= 0 then dur = FALLBACK_VITRIFY_DUR end
+    CA.alertCast(abilityId, "INTERRUPT — Vitrify!", dur, COL_INTERRUPT)
+    alerts:showAction("INTERRUPT — Vitrify!")
+end
+
 -- ── Routing tables (C3) ──────────────────────────────────────────────────
 
 XynizataEncounter.combatRoutes = {
-    [PIERCING_BEAM] = { result = ACTION_RESULT_BEGIN,
-        fn = function(self, context, alerts, abilityId, ...)
-        self.firstBeam = false
-        self.piercingBeamTimer:reset(BEAM_CD)
-        local dur = select(1, GetAbilityCastInfo(abilityId)) or 0
-        if dur <= 0 then dur = FALLBACK_BEAM_DUR end
-        CA.alertCast(abilityId, "INTERRUPT — Beam!", dur, COL_INTERRUPT)
-        alerts:showAction("INTERRUPT — Piercing Beam!")
-    end },
-    [VITRIFY] = { result = ACTION_RESULT_BEGIN,
-        fn = function(self, context, alerts, abilityId, ...)
-        self.firstVitrify = false
-        self.vitrifyTimer:reset(VITRIFY_CD)
-        local dur = select(1, GetAbilityCastInfo(abilityId)) or 0
-        if dur <= 0 then dur = FALLBACK_VITRIFY_DUR end
-        CA.alertCast(abilityId, "INTERRUPT — Vitrify!", dur, COL_INTERRUPT)
-        alerts:showAction("INTERRUPT — Vitrify!")
-    end },
+    [PIERCING_BEAM] = { result = ACTION_RESULT_BEGIN, fn = handlePiercingBeam },
+    [VITRIFY]       = { result = ACTION_RESULT_BEGIN, fn = handleVitrify },
 }
 
 function XynizataEncounter:onUpdate(context, alerts)

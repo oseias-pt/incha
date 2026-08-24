@@ -4,13 +4,13 @@ local Timer    = require("lib.Timer")
 local CA = require("lib.CA")
 
 -- ── Ability IDs ───────────────────────────────────────────────────────────
-local THUNDER_THRALL  = 214383   -- Xoryn jump — BEGIN → timer 25.5s; 8s from return
-local LIGHTNING_FLOOD = 214355   -- Xoryn cone — BEGIN → timer 21.5s; 3s from return
-local COLOR_CHANGE    = 213913   -- mirror switch — EFFECT_GAINED → alert
-local BREAKOUT        = 220185   -- crystal prison — BEGIN on player → alert
-local SHIELD_THROW    = 221945   -- Crystal Sentinel — BEGIN → caAlertCast
-local XORYN_IMMUNE_1  = 217987   -- Xoryn jumps away — EFFECT_GAINED → reset
-local XORYN_IMMUNE_2  = 219545   -- Xoryn jumps away (variant)
+local THUNDER_THRALL  = 214383   -- combatRoute: ACTION_RESULT_BEGIN → Xoryn jump; timer 25.5s / 8s first
+local LIGHTNING_FLOOD = 214355   -- combatRoute: ACTION_RESULT_BEGIN → Xoryn cone; timer 21.5s / 3s first
+local COLOR_CHANGE    = 213913   -- combatRoute: ACTION_RESULT_EFFECT_GAINED → mirror switch alert
+local BREAKOUT        = 220185   -- combatRoute: ACTION_RESULT_BEGIN → crystal prison on player
+local SHIELD_THROW    = 221945   -- combatRoute: ACTION_RESULT_BEGIN → Crystal Sentinel caAlertCast
+local XORYN_IMMUNE_1  = 217987   -- combatRoute: ACTION_RESULT_EFFECT_GAINED / FADED → Xoryn away / returned
+local XORYN_IMMUNE_2  = 219545   -- combatRoute: ACTION_RESULT_EFFECT_GAINED / FADED → Xoryn away variant
 
 -- ── Timer durations (seconds) ─────────────────────────────────────────────
 local THRALL_FIRST_CD =  8.0    -- first Thrall after Xoryn returns
@@ -43,7 +43,7 @@ function OrphicEncounter.new()
     }, OrphicEncounter)
 end
 
--- ── Routing tables (C3) ──────────────────────────────────────────────────
+-- ── Handlers ────────────────────────────────────────────────────────────
 
 -- Xoryn immune: shared handler for both variants (GAINED = away, FADED = returned).
 local function handleXorynImmune(self, context, alerts, result, abilityId, ...)
@@ -58,47 +58,53 @@ local function handleXorynImmune(self, context, alerts, result, abilityId, ...)
     end
 end
 
+local function handleThunderThrall(self, context, alerts, abilityId, ...)
+    self.xorynActive = true
+    self.firstThrall = false
+    self.thunderThrallTimer:reset(THRALL_CD)
+    alerts:showAction("Thunder Thrall (Xoryn jump)")
+end
+
+local function handleLightningFlood(self, context, alerts, abilityId,
+                                    unitTag, sourceUnitTag, sourceUnitId, unitId,
+                                    sourceUnitName, unitName)
+    self.xorynActive = true
+    self.firstFlood  = false
+    self.lightningFloodTimer:reset(FLOOD_CD)
+    local target = (unitName and unitName ~= "") and unitName or "?"
+    alerts:showAction("Lightning Flood → " .. target)
+end
+
+local function handleBreakout(self, context, alerts, abilityId, unitTag, ...)
+    if not IsUnitPlayer(unitTag) then return end
+    CA.alertCast(abilityId, "BREAK OUT!", 3000, COL_CRYSTAL)
+    alerts:showAction("Break out of the crystal!")
+end
+
+local function handleShieldThrow(self, context, alerts, abilityId,
+                                  unitTag, sourceUnitTag, sourceUnitId, unitId,
+                                  sourceUnitName, unitName)
+    local target = (unitName and unitName ~= "") and unitName or "?"
+    local dur = select(1, GetAbilityCastInfo(abilityId)) or 0
+    if dur <= 0 then dur = FALLBACK_DUR end
+    CA.alertCast(abilityId, "Shield Throw → " .. target, dur, COL_LIGHTNING)
+end
+
+local function handleColorChange(self, context, alerts, abilityId, ...)
+    CA.alert(nil, "Color Change!", 0xFFFF44FF, SOUNDS.NONE, 3000)
+    alerts:showAction("Color change! Switch mirror!")
+end
+
+-- ── Routing tables (C3) ──────────────────────────────────────────────────
+
 OrphicEncounter.combatRoutes = {
-    [THUNDER_THRALL] = { result = ACTION_RESULT_BEGIN,
-        fn = function(self, context, alerts, abilityId, ...)
-        self.xorynActive = true
-        self.firstThrall = false
-        self.thunderThrallTimer:reset(THRALL_CD)
-        alerts:showAction("Thunder Thrall (Xoryn jump)")
-    end },
-    [LIGHTNING_FLOOD] = { result = ACTION_RESULT_BEGIN,
-        fn = function(self, context, alerts, abilityId,
-                      unitTag, sourceUnitTag, sourceUnitId, unitId,
-                      sourceUnitName, unitName)
-        self.xorynActive = true
-        self.firstFlood  = false
-        self.lightningFloodTimer:reset(FLOOD_CD)
-        local target = (unitName and unitName ~= "") and unitName or "?"
-        alerts:showAction("Lightning Flood → " .. target)
-    end },
-    [BREAKOUT] = { result = ACTION_RESULT_BEGIN,
-        fn = function(self, context, alerts, abilityId,
-                      unitTag, ...)
-        if not IsUnitPlayer(unitTag) then return end
-        CA.alertCast(abilityId, "BREAK OUT!", 3000, COL_CRYSTAL)
-        alerts:showAction("Break out of the crystal!")
-    end },
-    [SHIELD_THROW] = { result = ACTION_RESULT_BEGIN,
-        fn = function(self, context, alerts, abilityId,
-                      unitTag, sourceUnitTag, sourceUnitId, unitId,
-                      sourceUnitName, unitName)
-        local target = (unitName and unitName ~= "") and unitName or "?"
-        local dur = select(1, GetAbilityCastInfo(abilityId)) or 0
-        if dur <= 0 then dur = FALLBACK_DUR end
-        CA.alertCast(abilityId, "Shield Throw → " .. target, dur, COL_LIGHTNING)
-    end },
-    [COLOR_CHANGE] = { result = ACTION_RESULT_EFFECT_GAINED,
-        fn = function(self, context, alerts, abilityId, ...)
-        CA.alert(nil, "Color Change!", 0xFFFF44FF, SOUNDS.NONE, 3000)
-        alerts:showAction("Color change! Switch mirror!")
-    end },
-    [XORYN_IMMUNE_1] = handleXorynImmune,
-    [XORYN_IMMUNE_2] = handleXorynImmune,
+    [THUNDER_THRALL]  = { result = ACTION_RESULT_BEGIN,         fn = handleThunderThrall },
+    [LIGHTNING_FLOOD] = { result = ACTION_RESULT_BEGIN,         fn = handleLightningFlood },
+    [BREAKOUT]        = { result = ACTION_RESULT_BEGIN,         fn = handleBreakout },
+    [SHIELD_THROW]    = { result = ACTION_RESULT_BEGIN,         fn = handleShieldThrow },
+    [COLOR_CHANGE]    = { result = ACTION_RESULT_EFFECT_GAINED, fn = handleColorChange },
+    [XORYN_IMMUNE_1]  = handleXorynImmune,
+    [XORYN_IMMUNE_2]  = handleXorynImmune,
 }
 
 function OrphicEncounter:onUpdate(context, alerts)
