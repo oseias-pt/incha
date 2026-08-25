@@ -5,6 +5,7 @@ local Timer       = require("lib.Timer")
 
 local CA = require("lib.CA")
 local BossBase = require("lib.BossBase")
+local CastDur = require("lib.CastDur")
 
 -- ── OSI helpers (OdySupportIcons, optional) ───────────────────────────────
 -- Textures: pulled from the live ability data so they always match the
@@ -279,8 +280,7 @@ local function handleBloodCleave(self, context, alerts, abilityId,
                                   unitTag, sourceUnitTag, sourceUnitId, unitId,
                                   sourceUnitName, unitName)
     alerts:showAction("DODGE!")
-    local dur = select(1, GetAbilityCastInfo(FALGRAVN_M_CLEAVE)) or 0
-    if dur <= 0 then dur = FALLBACK_DUR end
+    local dur = CastDur.get(FALGRAVN_M_CLEAVE, FALLBACK_DUR)
     CA.castAlertsStart(abilityId, sourceUnitName, dur, dur,
         { 1, 0, 0.6, 0.4 },
         { 700, "DODGE!", 1, 0, 0.6, 0.8, SOUNDS.CHAMPION_POINTS_COMMITTED })

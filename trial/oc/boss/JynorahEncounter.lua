@@ -3,6 +3,7 @@ local Timer    = require("lib.Timer")
 
 local CA = require("lib.CA")
 local BossBase = require("lib.BossBase")
+local CastDur = require("lib.CastDur")
 
 -- ── Ability IDs (from OsseinCageHelper) ──────────────────────────────────
 -- Dragons (Valneer = fire/orange, Myrinax = lightning/blue)
@@ -95,8 +96,7 @@ local function handleTailSlam(self, context, alerts, abilityId,
                                 unitTag, sourceUnitTag, sourceUnitId, unitId,
                                 sourceUnitName, unitName)
     local target = (unitName and unitName ~= "") and unitName or "?"
-    local dur = select(1, GetAbilityCastInfo(abilityId)) or 0
-    if dur <= 0 then dur = FALLBACK_DUR end
+    local dur = CastDur.get(abilityId, FALLBACK_DUR)
     CA.alertCast(abilityId, "Tail Slam → " .. target, dur, COL_CLASH)
 end
 

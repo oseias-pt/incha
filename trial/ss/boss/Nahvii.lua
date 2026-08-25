@@ -43,6 +43,7 @@ local WIPE_FINISHED    = 121216   -- combatRoute: ACTION_RESULT_EFFECT_FADED →
 local NEGATE_FIELD     = 121411   -- combatRoute: ACTION_RESULT_BEGIN → Dodge alert (player only)
 
 local CA = require("lib.CA")
+local CastDur = require("lib.CastDur")
 
 -- ── CA colour palettes ─────────────────────────────────────────────────────
 local COL_SLAM   = { -2, 0, false, { 1.0, 0.27, 0.0, 0.4 }, { 1.0, 0.27, 0.0, 0.8 } }
@@ -146,8 +147,7 @@ local function handlePowerfulSlam(self, context, alerts, abilityId,
     end
     if show then
         alerts:showAction("Block! (Slam)")
-        local dur = select(1, GetAbilityCastInfo(POWERFUL_SLAM)) or 0
-        if dur <= 0 then dur = FALLBACK_SLAM_DUR end
+        local dur = CastDur.get(POWERFUL_SLAM, FALLBACK_SLAM_DUR)
         local cid = CA.alertCast(abilityId, sourceUnitName, dur, COL_SLAM)
         if cid and sourceUnitId then self.alertList[sourceUnitId] = cid end
     end
@@ -158,8 +158,7 @@ local function handleStonefist(self, context, alerts, abilityId,
                                 sourceUnitName, unitName)
     if not (IsUnitPlayer(unitTag) and AreUnitsEqual("player", unitTag)) then return end
     alerts:showAction("Block! (Stonefist)")
-    local dur = select(1, GetAbilityCastInfo(STONEFIST)) or 0
-    if dur <= 0 then dur = FALLBACK_SLAM_DUR end
+    local dur = CastDur.get(STONEFIST, FALLBACK_SLAM_DUR)
     local cid = CA.alertCast(abilityId, sourceUnitName, dur, COL_STONE)
     if cid and sourceUnitId then self.alertList[sourceUnitId] = cid end
 end
@@ -175,8 +174,7 @@ local function handleSweepLeft(self, context, alerts, abilityId, ...)
 end
 
 local function handleThrash(self, context, alerts, abilityId, ...)
-    local dur = select(1, GetAbilityCastInfo(THRASH)) or 0
-    if dur <= 0 then dur = FALLBACK_THRASH_DUR end
+    local dur = CastDur.get(THRASH, FALLBACK_THRASH_DUR)
     CA.castAlertsStop(self.thrashBarId)
     self.thrashBarId = CA.castAlertsStart(
         abilityId, "Thrash",
@@ -237,8 +235,7 @@ end
 
 local function handlePortalInterrupt(self, context, alerts, abilityId,
                                      unitTag, sourceUnitTag, sourceUnitId, unitId, ...)
-    local dur = select(1, GetAbilityCastInfo(PORTAL_INTERRUPT)) or 0
-    if dur <= 0 then dur = FALLBACK_INTERRUPT_DUR end
+    local dur = CastDur.get(PORTAL_INTERRUPT, FALLBACK_INTERRUPT_DUR)
     self.interruptTimer:reset(dur / 1000)
     self.interruptUnitId = unitId
     self.pinsTime        = 0

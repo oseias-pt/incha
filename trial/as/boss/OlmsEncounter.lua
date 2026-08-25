@@ -3,6 +3,7 @@ local Timer    = require("lib.Timer")
 
 local CA = require("lib.CA")
 local BossBase = require("lib.BossBase")
+local CastDur = require("lib.CastDur")
 
 -- ── Ability IDs (from AsylumTracker / AsylumPriorityTarget) ───────────────
 -- Olms
@@ -108,8 +109,7 @@ end
 local function handleScaldingRoar(self, context, alerts, abilityId,
                                    unitTag, sourceUnitTag, sourceUnitId, unitId, ...)
     alerts:showAction("Steam Breath! Move!")
-    local dur = select(1, GetAbilityCastInfo(OLMS_SCALDING_ROAR)) or 0
-    if dur <= 0 then dur = FALLBACK_ROAR_DUR end
+    local dur = CastDur.get(OLMS_SCALDING_ROAR, FALLBACK_ROAR_DUR)
     local cid = CA.alertCast(abilityId, "Steam Breath!", dur,
         { -3, 0, false, { 0.8, 0.4, 0, 0.4 }, { 0.8, 0.4, 0, 0.8 } })
     if cid and unitId then self.alertList[unitId] = cid end
@@ -154,8 +154,7 @@ local function handleDefilingBlast(self, context, alerts, abilityId,
                                     sourceUnitName, unitName)
     local target = (unitName and unitName ~= "") and unitName or "?"
     alerts:showAction("Blast! → " .. target)
-    local dur = select(1, GetAbilityCastInfo(LLOTHIS_DEFILING_BLAST)) or 0
-    if dur <= 0 then dur = FALLBACK_BLAST_DUR end
+    local dur = CastDur.get(LLOTHIS_DEFILING_BLAST, FALLBACK_BLAST_DUR)
     local cid = CA.alertCast(abilityId, "Blast → " .. target, dur,
         { -3, 0, false, { 0.6, 0, 0.8, 0.4 }, { 0.6, 0, 0.8, 0.8 } })
     if cid and unitId then self.alertList[unitId] = cid end
@@ -173,8 +172,7 @@ local function handleTeleportStrike(self, context, alerts, abilityId,
                                      sourceUnitName, unitName)
     local target = (unitName and unitName ~= "") and unitName or "?"
     alerts:showAction("Strike! → " .. target)
-    local dur = select(1, GetAbilityCastInfo(FELMS_TELEPORT_STRIKE)) or 0
-    if dur <= 0 then dur = FALLBACK_STRIKE_DUR end
+    local dur = CastDur.get(FELMS_TELEPORT_STRIKE, FALLBACK_STRIKE_DUR)
     local cid = CA.alertCast(abilityId, "Strike → " .. target, dur,
         { -3, 0, false, { 0, 0.6, 0.8, 0.4 }, { 0, 0.6, 0.8, 0.8 } })
     if cid and unitId then self.alertList[unitId] = cid end

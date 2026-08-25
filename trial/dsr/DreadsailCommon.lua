@@ -26,6 +26,7 @@
 --- Returns true if the event was consumed (caller should return).
 
 local CA = require("lib.CA")
+local CastDur = require("lib.CastDur")
 local DreadsailCommon = {}
 
 -- ── Ability IDs ───────────────────────────────────────────────────────────
@@ -60,8 +61,7 @@ function DreadsailCommon.handle(alerts, result, abilityId, unitTag, sourceUnitNa
     -- ── Overseer: Cascading Boot (player-targeted ice kick) ───────────────
     if abilityId == CASCADE_BOOT then
         if not IsUnitPlayer(unitTag) then return false end
-        local dur = select(1, GetAbilityCastInfo(abilityId)) or 0
-        if dur <= 0 then dur = DUR_MELEE end
+        local dur = CastDur.get(abilityId, DUR_MELEE)
         CA.alertCast(abilityId, sourceUnitName, dur, COL_ICE)
         return true
     end
@@ -69,8 +69,7 @@ function DreadsailCommon.handle(alerts, result, abilityId, unitTag, sourceUnitNa
     -- ── Sail Riper: Storm Cell (player-targeted donut) ────────────────────
     if abilityId == STORM_CELL then
         if not IsUnitPlayer(unitTag) then return false end
-        local dur = select(1, GetAbilityCastInfo(abilityId)) or 0
-        if dur <= 0 then dur = DUR_MELEE end
+        local dur = CastDur.get(abilityId, DUR_MELEE)
         CA.alertCast(abilityId, sourceUnitName, dur, COL_MELEE, ACT_DONUT)
         return true
     end
@@ -78,8 +77,7 @@ function DreadsailCommon.handle(alerts, result, abilityId, unitTag, sourceUnitNa
     -- ── Harpy: Wing Slice (heavy melee) ───────────────────────────────────
     if abilityId == WING_SLICE then
         if not IsUnitPlayer(unitTag) then return false end
-        local dur = select(1, GetAbilityCastInfo(abilityId)) or 0
-        if dur <= 0 then dur = DUR_MELEE end
+        local dur = CastDur.get(abilityId, DUR_MELEE)
         CA.alertCast(abilityId, sourceUnitName, dur, COL_MELEE)
         return true
     end
@@ -87,8 +85,7 @@ function DreadsailCommon.handle(alerts, result, abilityId, unitTag, sourceUnitNa
     -- ── Bow Breaker: Horn Strike (frontal charge) ─────────────────────────
     if abilityId == HORN_STRIKE_1 or abilityId == HORN_STRIKE_2 then
         if not IsUnitPlayer(unitTag) then return false end
-        local dur = select(1, GetAbilityCastInfo(abilityId)) or 0
-        if dur <= 0 then dur = DUR_MELEE end
+        local dur = CastDur.get(abilityId, DUR_MELEE)
         CA.alertCast(abilityId, sourceUnitName, dur, COL_MELEE)
         return true
     end
@@ -96,8 +93,7 @@ function DreadsailCommon.handle(alerts, result, abilityId, unitTag, sourceUnitNa
     -- ── Bow Breaker: Toxic Mucus (ranged spit) ────────────────────────────
     if abilityId == TOXIC_MUCUS then
         if not IsUnitPlayer(unitTag) then return false end
-        local dur = select(1, GetAbilityCastInfo(abilityId)) or 0
-        if dur <= 0 then dur = DUR_RANGED end
+        local dur = CastDur.get(abilityId, DUR_RANGED)
         CA.alertCast(abilityId, sourceUnitName, dur, COL_MELEE)
         return true
     end

@@ -3,6 +3,7 @@ local Timer = require("lib.Timer")
 
 local CA = require("lib.CA")
 local BossBase = require("lib.BossBase")
+local CastDur = require("lib.CastDur")
 
 -- ── Ability IDs (from BSCHTKA_Yandir.lua) ─────────────────────────────────
 local TOTEM_POISION      = 133515  -- combatRoute: ACTION_RESULT_BEGIN → resets timer + Dodge alert
@@ -135,8 +136,7 @@ local function handleGargoyleTotem(self, context, alerts, abilityId,
                                     unitTag, sourceUnitTag, sourceUnitId, unitId,
                                     sourceUnitName, unitName)
     alerts:showAction("Block! (Gargoyle Totem)")
-    local dur = select(1, GetAbilityCastInfo(TOTEM_GARGYL)) or 0
-    if dur <= 0 then dur = FALLBACK_DUR end
+    local dur = CastDur.get(TOTEM_GARGYL, FALLBACK_DUR)
     local cid = CA.alertCast(abilityId, "Block!!", dur,
         { -3, 0, false, { 0.7, 0.7, 0.7, 0.4 }, { 0.7, 0.7, 0.7, 0.8 } })
     if cid and unitId then self.alertList[unitId] = cid end

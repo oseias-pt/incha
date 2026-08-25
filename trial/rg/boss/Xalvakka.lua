@@ -62,6 +62,7 @@ local RUN2_BOT = 40
 
 local CA = require("lib.CA")
 local BossBase = require("lib.BossBase")
+local CastDur = require("lib.CastDur")
 
 -- ── CA colour palettes ─────────────────────────────────────────────────────
 local COL_SCATHING = { -2, 0, false, { 0.9, 0.2, 0.9, 0.4 }, { 0.9, 0.2, 0.9, 0.8 } }
@@ -167,8 +168,7 @@ local function handleScathing(self, context, alerts, abilityId,
                                unitTag, sourceUnitTag, sourceUnitId, unitId,
                                sourceUnitName, unitName)
     if not IsUnitPlayer(unitTag) then return end
-    local dur = select(1, GetAbilityCastInfo(abilityId)) or 0
-    if dur <= 0 then dur = FALLBACK_SCATHING_DUR end
+    local dur = CastDur.get(abilityId, FALLBACK_SCATHING_DUR)
     CA.alertCast(abilityId, sourceUnitName, dur, COL_SCATHING)
 end
 

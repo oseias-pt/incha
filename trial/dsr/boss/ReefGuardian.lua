@@ -14,6 +14,7 @@
 ---   AcidicVulnerability (174659): GAINED/FADED → track for info4
 
 local DreadsailCommon = require("trial.dsr.DreadsailCommon")
+local CastDur = require("lib.CastDur")
 
 -- ── Ability IDs ───────────────────────────────────────────────────────────
 local BUILDING_STATIC_1    = 163575   -- effectRoute: EFFECT_RESULT_GAINED/UPDATED/FADED → lightning stack tracker
@@ -92,8 +93,7 @@ local function handleHeavy(self, context, alerts, abilityId,
                             unitTag, sourceUnitTag, sourceUnitId, unitId,
                             sourceUnitName, unitName)
     if not IsUnitPlayer(unitTag) then return end
-    local dur = select(1, GetAbilityCastInfo(abilityId)) or 0
-    if dur <= 0 then dur = FALLBACK_DUR end
+    local dur = CastDur.get(abilityId, FALLBACK_DUR)
     CA.alertCast(abilityId, sourceUnitName, dur, COL_HEAVY)
 end
 

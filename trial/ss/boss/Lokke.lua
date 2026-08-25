@@ -29,6 +29,7 @@ local sInc  = "|c00ffffinc|r"
 local NEXT_TOMB = { [0]=1, [1]=2, [2]=3, [3]=1 }   -- iceNumber → next label
 
 local CA = require("lib.CA")
+local CastDur = require("lib.CastDur")
 
 local function newTombSlots()
     return {
@@ -213,8 +214,7 @@ local function handleGlacialFist(self, context, alerts, abilityId,
     end
     if show then
         alerts:showAction("Block! (Glacial Fist)")
-        local dur = select(1, GetAbilityCastInfo(GLACIAL_FIST)) or 0
-        if dur <= 0 then dur = FALLBACK_FIST_DUR end
+        local dur = CastDur.get(GLACIAL_FIST, FALLBACK_FIST_DUR)
         local cid = CA.alertCast(abilityId, sourceUnitName, dur,
             { -2, 0, false, { 0.3, 0.7, 1.0, 0.4 }, { 0.3, 0.7, 1.0, 0.8 } })
         if cid and sourceUnitId then self.alertList[sourceUnitId] = cid end

@@ -46,6 +46,7 @@ local EYE_CCW          = 153518   -- combatRoute: ACTION_RESULT_EFFECT_GAINED �
 
 local CA = require("lib.CA")
 local BossBase = require("lib.BossBase")
+local CastDur = require("lib.CastDur")
 
 -- ── CA colour palettes ─────────────────────────────────────────────────────
 local COL_INTERRUPT = { -2, 0, true,  { 0.3, 0.6, 1.0, 0.4 }, { 0.3, 0.6, 1.0, 0.8 } }
@@ -132,8 +133,7 @@ local function handleSalvo(self, context, alerts, abilityId,
                             sourceUnitName, unitName)
     local _, _, isTank = GetPlayerRoles()
     if isTank then
-        local dur = select(1, GetAbilityCastInfo(SALVO2)) or 0
-        if dur <= 0 then dur = FALLBACK_SALVO_DUR end
+        local dur = CastDur.get(SALVO2, FALLBACK_SALVO_DUR)
         CA.alertCast(abilityId, sourceUnitName, dur, COL_INTERRUPT)
         CA.alert(nil, "Interrupt!", 0xFF2020FF, SOUNDS.CHAMPION_POINTS_COMMITTED, 2000)
     end
@@ -144,8 +144,7 @@ local function handleSickle(self, context, alerts, abilityId,
                              sourceUnitName, unitName)
     self.nextSickle = GetGameTimeMilliseconds() / 1000 + 15
     if IsUnitPlayer(unitTag) then
-        local dur = select(1, GetAbilityCastInfo(SICKLE)) or 0
-        if dur <= 0 then dur = FALLBACK_SICKLE_DUR end
+        local dur = CastDur.get(SICKLE, FALLBACK_SICKLE_DUR)
         CA.alertCast(abilityId, sourceUnitName, dur, COL_SICKLE)
     end
 end
@@ -162,8 +161,7 @@ local function handleRancidHammer(self, context, alerts, abilityId,
                                    sourceUnitName, unitName)
     local _, _, isTank = GetPlayerRoles()
     if isTank then
-        local dur = select(1, GetAbilityCastInfo(RANCID_HAMMER)) or 0
-        if dur <= 0 then dur = FALLBACK_HAMMER_DUR end
+        local dur = CastDur.get(RANCID_HAMMER, FALLBACK_HAMMER_DUR)
         CA.alertCast(abilityId, sourceUnitName, dur, COL_HAMMER)
     end
 end

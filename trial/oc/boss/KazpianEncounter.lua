@@ -3,6 +3,7 @@ local Timer    = require("lib.Timer")
 
 local CA = require("lib.CA")
 local BossBase = require("lib.BossBase")
+local CastDur = require("lib.CastDur")
 
 -- ── Ability IDs (from OsseinCageHelper) ──────────────────────────────────
 -- Chains
@@ -95,21 +96,18 @@ end
 
 -- Giant Pulse: shared handler for both variants.
 local function handleGiantPulse(self, context, alerts, abilityId, ...)
-    local dur = select(1, GetAbilityCastInfo(abilityId)) or 0
-    if dur <= 0 then dur = FALLBACK_DUR end
+    local dur = CastDur.get(abilityId, FALLBACK_DUR)
     CA.alertCast(abilityId, "Giant Sword!", dur, COL_SLAM)
 end
 
 local function handleVileLeap(self, context, alerts, abilityId, ...)
-    local dur = select(1, GetAbilityCastInfo(abilityId)) or 0
-    if dur <= 0 then dur = FALLBACK_DUR end
+    local dur = CastDur.get(abilityId, FALLBACK_DUR)
     CA.alertCast(abilityId, "Vile Leap!", dur, COL_LEAP)
     alerts:showAction("Vile Leap!")
 end
 
 local function handleSeethingLeap(self, context, alerts, abilityId, ...)
-    local dur = select(1, GetAbilityCastInfo(abilityId)) or 0
-    if dur <= 0 then dur = FALLBACK_DUR end
+    local dur = CastDur.get(abilityId, FALLBACK_DUR)
     CA.alertCast(abilityId, "VILE LEAP (enrage)!", dur, COL_LEAP_RED)
     alerts:showAction("Seething Vile Leap!")
 end
@@ -131,15 +129,13 @@ local function handleShockSpear(self, context, alerts, abilityId, ...)
 end
 
 local function handleStormSlam(self, context, alerts, abilityId, ...)
-    local dur = select(1, GetAbilityCastInfo(abilityId)) or 0
-    if dur <= 0 then dur = FALLBACK_DUR end
+    local dur = CastDur.get(abilityId, FALLBACK_DUR)
     CA.alertCast(abilityId, "DODGE — Storm Slam!", dur, COL_SLAM)
     alerts:showAction("Molag Kena Storm Slam — DODGE!")
 end
 
 local function handleStormSurge(self, context, alerts, abilityId, ...)
-    local dur = select(1, GetAbilityCastInfo(abilityId)) or 0
-    if dur <= 0 then dur = FALLBACK_DUR end
+    local dur = CastDur.get(abilityId, FALLBACK_DUR)
     CA.alertCast(abilityId, "Storm Surge!", dur, COL_SURGE)
 end
 

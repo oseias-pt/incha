@@ -3,6 +3,7 @@ local Timer    = require("lib.Timer")
 
 local CA = require("lib.CA")
 local BossBase = require("lib.BossBase")
+local CastDur = require("lib.CastDur")
 
 -- ── Ability IDs ───────────────────────────────────────────────────────────
 local VIVIFY           = 186000   -- combatRoute: ACTION_RESULT_EFFECT_FADED → Chimera spawned, reset timers
@@ -97,8 +98,7 @@ local function handleChimeraBolt(self, context, alerts, abilityId,
                                   sourceUnitName, unitName)
     local target = (unitName and unitName ~= "") and unitName or "?"
     alerts:showAction("Lightning Bolt → " .. target)
-    local dur = select(1, GetAbilityCastInfo(abilityId)) or 0
-    if dur <= 0 then dur = FALLBACK_DUR end
+    local dur = CastDur.get(abilityId, FALLBACK_DUR)
     local cid = CA.alertCast(abilityId, "Bolt!", dur, COL_LIGHTNING)
     if cid and unitId then self.alertList[unitId] = cid end
 end

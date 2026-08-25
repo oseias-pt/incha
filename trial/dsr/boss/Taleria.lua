@@ -19,6 +19,7 @@
 ---                   suffocating (174691/169935) → tracked per player
 
 local DreadsailCommon = require("trial.dsr.DreadsailCommon")
+local CastDur = require("lib.CastDur")
 
 -- ── Ability IDs ───────────────────────────────────────────────────────────
 local RAPID_DELUGE_N   = 174959   -- effectRoute: EFFECT_RESULT_GAINED + player → Move bubble alert
@@ -118,8 +119,7 @@ local function handleCrashingWave(self, context, alerts, abilityId,
                                    unitTag, sourceUnitTag, sourceUnitId, unitId,
                                    sourceUnitName, unitName)
     if not IsUnitPlayer(unitTag) then return end
-    local dur = select(1, GetAbilityCastInfo(abilityId)) or 0
-    if dur <= 0 then dur = FALLBACK_WAVE_DUR end
+    local dur = CastDur.get(abilityId, FALLBACK_WAVE_DUR)
     CA.alertCast(abilityId, sourceUnitName, dur, COL_HEAVY)
 end
 
@@ -142,8 +142,7 @@ local function handleCoralSlam(self, context, alerts, abilityId,
                                unitTag, sourceUnitTag, sourceUnitId, unitId,
                                sourceUnitName, unitName)
     if not IsUnitPlayer(unitTag) then return end
-    local dur = select(1, GetAbilityCastInfo(abilityId)) or 0
-    if dur <= 0 then dur = FALLBACK_SLAM_DUR end
+    local dur = CastDur.get(abilityId, FALLBACK_SLAM_DUR)
     CA.alertCast(abilityId, sourceUnitName, dur, COL_HEAVY)
 end
 
@@ -151,8 +150,7 @@ local function handleBarnacleBlade(self, context, alerts, abilityId,
                                     unitTag, sourceUnitTag, sourceUnitId, unitId,
                                     sourceUnitName, unitName)
     if not IsUnitPlayer(unitTag) then return end
-    local dur = select(1, GetAbilityCastInfo(abilityId)) or 0
-    if dur <= 0 then dur = FALLBACK_BLADE_DUR end
+    local dur = CastDur.get(abilityId, FALLBACK_BLADE_DUR)
     CA.alertCast(abilityId, sourceUnitName, dur, COL_HEAVY)
 end
 
@@ -186,8 +184,7 @@ local function handleAspectTerror(self, context, alerts, abilityId,
                                    unitTag, sourceUnitTag, sourceUnitId, unitId,
                                    sourceUnitName, unitName)
     if not IsUnitPlayer(unitTag) then return end
-    local dur = select(1, GetAbilityCastInfo(abilityId)) or 0
-    if dur <= 0 then dur = FALLBACK_FEAR_DUR end
+    local dur = CastDur.get(abilityId, FALLBACK_FEAR_DUR)
     CA.alertCast(abilityId, sourceUnitName, dur, COL_FEAR)
 end
 

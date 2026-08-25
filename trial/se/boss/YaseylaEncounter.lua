@@ -3,6 +3,7 @@ local Timer    = require("lib.Timer")
 
 local CA = require("lib.CA")
 local BossBase = require("lib.BossBase")
+local CastDur = require("lib.CastDur")
 
 -- ── Ability IDs (from SanitysEdgeHelper data) ────────────────────────────
 local DEFLECT         = 184823   -- combatRoute: ACTION_RESULT_BEGIN → Shrapnel stack
@@ -85,8 +86,7 @@ local function handleFireBombs(self, context, alerts, abilityId,
     self.firebombTimer:reset(cd)
     local target = (unitName and unitName ~= "") and unitName or "?"
     alerts:showAction("Fire Bombs → " .. target)
-    local dur = select(1, GetAbilityCastInfo(abilityId)) or 0
-    if dur <= 0 then dur = FALLBACK_DUR end
+    local dur = CastDur.get(abilityId, FALLBACK_DUR)
     local cid = CA.alertCast(abilityId, "Fire Bombs!", dur, COL_FIRE)
     if cid and unitId then self.alertList[unitId] = cid end
 end
@@ -111,8 +111,7 @@ local function handleWamasuCharge(self, context, alerts, abilityId,
                                    unitTag, sourceUnitTag, sourceUnitId, unitId,
                                    sourceUnitName, unitName)
     local target = (unitName and unitName ~= "") and unitName or "?"
-    local dur = select(1, GetAbilityCastInfo(abilityId)) or 0
-    if dur <= 0 then dur = FALLBACK_DUR end
+    local dur = CastDur.get(abilityId, FALLBACK_DUR)
     CA.alertCast(abilityId, "Charge → " .. target, dur, COL_FIRE)
 end
 

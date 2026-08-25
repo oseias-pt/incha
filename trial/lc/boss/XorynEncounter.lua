@@ -3,6 +3,7 @@ local Timer    = require("lib.Timer")
 
 local CA = require("lib.CA")
 local BossBase = require("lib.BossBase")
+local CastDur = require("lib.CastDur")
 
 -- ── Ability IDs ───────────────────────────────────────────────────────────
 local ARCANE_KNOT         = 213477   -- combatRoute: ACTION_RESULT_EFFECT_GAINED_DURATION / FADED → carry knot
@@ -51,8 +52,7 @@ end
 -- ── Handlers ────────────────────────────────────────────────────────────
 
 local function handleNecroticBarrage(self, context, alerts, abilityId, ...)
-    local dur = select(1, GetAbilityCastInfo(abilityId)) or 0
-    if dur <= 0 then dur = FALLBACK_BARRAGE_DUR end
+    local dur = CastDur.get(abilityId, FALLBACK_BARRAGE_DUR)
     CA.alertCast(abilityId, "Necrotic Barrage!", dur, COL_NECROTIC)
 end
 
@@ -62,8 +62,7 @@ local function handleAcceleratingCharge(self, context, alerts, abilityId, ...)
 end
 
 local function handleTempest(self, context, alerts, abilityId, ...)
-    local dur = select(1, GetAbilityCastInfo(abilityId)) or 0
-    if dur <= 0 then dur = FALLBACK_DUR end
+    local dur = CastDur.get(abilityId, FALLBACK_DUR)
     CA.alertCast(abilityId, "MOVE from line!", dur, COL_TEMPEST)
     alerts:showAction("Tempest! MOVE from mirror line!")
 end
@@ -72,8 +71,7 @@ local function handleGlassStomp(self, context, alerts, abilityId,
                                  unitTag, sourceUnitTag, sourceUnitId, unitId,
                                  sourceUnitName, unitName)
     local target = (unitName and unitName ~= "") and unitName or "?"
-    local dur = select(1, GetAbilityCastInfo(abilityId)) or 0
-    if dur <= 0 then dur = FALLBACK_DUR end
+    local dur = CastDur.get(abilityId, FALLBACK_DUR)
     CA.alertCast(abilityId, "Atronach AOE → " .. target, dur, COL_ATRONACH)
     if IsUnitPlayer(unitTag) then
         alerts:showAction("Atronach AOE on YOU!")

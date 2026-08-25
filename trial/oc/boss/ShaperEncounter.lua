@@ -2,6 +2,7 @@ local Location = require("core.Location")
 
 local CA = require("lib.CA")
 local BossBase = require("lib.BossBase")
+local CastDur = require("lib.CastDur")
 
 -- ── Ability IDs (from OsseinCageHelper) ──────────────────────────────────
 local OGRIM_CHARGE     = 236496   -- combatRoute: ACTION_RESULT_BEGIN → MOVE caAlertCast (player)
@@ -39,8 +40,7 @@ local function handleOgrimCharge(self, context, alerts, abilityId,
                                   unitTag, sourceUnitTag, sourceUnitId, unitId,
                                   sourceUnitName, unitName)
     local target = (unitName and unitName ~= "") and unitName or "?"
-    local dur = select(1, GetAbilityCastInfo(abilityId)) or 0
-    if dur <= 0 then dur = FALLBACK_DUR end
+    local dur = CastDur.get(abilityId, FALLBACK_DUR)
     CA.alertCast(abilityId, "MOVE — Ogrim Charge!", dur, COL_CHARGE)
     if IsUnitPlayer(unitTag) then
         alerts:showAction("Ogrim Charge on YOU! Move!")

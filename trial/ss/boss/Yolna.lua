@@ -21,6 +21,7 @@ local NEXT_FLARE_B  = 121459   -- combatRoute: ACTION_RESULT_EFFECT_FADED → ne
 local CATACLYSM     = 122598   -- combatRoute: ACTION_RESULT_BEGIN → caAlertCast + landing timer
 
 local CA = require("lib.CA")
+local CastDur = require("lib.CastDur")
 
 -- ── CA colour palettes ─────────────────────────────────────────────────────
 local COL_GEYSER = { -2, 0, false, { 1.0, 0.4, 0.0, 0.4 }, { 1.0, 0.4, 0.0, 0.8 } }
@@ -90,8 +91,7 @@ local function handleLavaGeyser(self, context, alerts, abilityId,
     end
     if show then
         alerts:showAction("Dodge! (Geyser)")
-        local dur = select(1, GetAbilityCastInfo(LAVA_GEYSER)) or 0
-        if dur <= 0 then dur = FALLBACK_GEYSER_DUR end
+        local dur = CastDur.get(LAVA_GEYSER, FALLBACK_GEYSER_DUR)
         CA.alertCast(abilityId, sourceUnitName, dur, COL_GEYSER)
     end
 end
@@ -106,8 +106,7 @@ local function handleNextFlareB(self, context, alerts, abilityId, ...)
 end
 
 local function handleCataclysm(self, context, alerts, abilityId, ...)
-    local dur = select(1, GetAbilityCastInfo(CATACLYSM)) or 0
-    if dur <= 0 then dur = FALLBACK_CATA_DUR end
+    local dur = CastDur.get(CATACLYSM, FALLBACK_CATA_DUR)
     self.cataTimer:reset(dur / 1000)
     self.landingTimer:reset(dur / 1000 + 6.8)
     CA.castAlertsStop(self.cataBarId)

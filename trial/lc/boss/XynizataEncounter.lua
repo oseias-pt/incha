@@ -3,6 +3,7 @@ local Timer    = require("lib.Timer")
 
 local CA = require("lib.CA")
 local BossBase = require("lib.BossBase")
+local CastDur = require("lib.CastDur")
 
 -- ── Ability IDs ───────────────────────────────────────────────────────────
 local PIERCING_BEAM = 219165   -- combatRoute: ACTION_RESULT_BEGIN → INTERRUPT; CD 14s first / 32s steady
@@ -48,8 +49,7 @@ end
 local function handlePiercingBeam(self, context, alerts, abilityId, ...)
     self.firstBeam = false
     self.piercingBeamTimer:reset(BEAM_CD)
-    local dur = select(1, GetAbilityCastInfo(abilityId)) or 0
-    if dur <= 0 then dur = FALLBACK_BEAM_DUR end
+    local dur = CastDur.get(abilityId, FALLBACK_BEAM_DUR)
     CA.alertCast(abilityId, "INTERRUPT — Beam!", dur, COL_INTERRUPT)
     alerts:showAction("INTERRUPT — Piercing Beam!")
 end
@@ -57,8 +57,7 @@ end
 local function handleVitrify(self, context, alerts, abilityId, ...)
     self.firstVitrify = false
     self.vitrifyTimer:reset(VITRIFY_CD)
-    local dur = select(1, GetAbilityCastInfo(abilityId)) or 0
-    if dur <= 0 then dur = FALLBACK_VITRIFY_DUR end
+    local dur = CastDur.get(abilityId, FALLBACK_VITRIFY_DUR)
     CA.alertCast(abilityId, "INTERRUPT — Vitrify!", dur, COL_INTERRUPT)
     alerts:showAction("INTERRUPT — Vitrify!")
 end

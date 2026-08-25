@@ -3,6 +3,7 @@ local Timer    = require("lib.Timer")
 
 local CA = require("lib.CA")
 local BossBase = require("lib.BossBase")
+local CastDur = require("lib.CastDur")
 
 -- ── Ability ID sets for mini-boss detection ───────────────────────────────
 -- Any of these firing marks that mini as active (detects +1/+2/+3 variant).
@@ -202,8 +203,7 @@ local function handleSiroFlare(self, context, alerts, result, abilityId,
     if result ~= ACTION_RESULT_BEGIN then return end
     local target = (unitName and unitName ~= "") and unitName or "?"
     alerts:showAction("Flare → " .. target)
-    local dur = select(1, GetAbilityCastInfo(abilityId)) or 0
-    if dur <= 0 then dur = math.floor(FLARE_WINDOW * 1000) end
+    local dur = CastDur.get(abilityId, math.floor(FLARE_WINDOW * 1000))
     local cid = CA.alertCast(abilityId, "Flare → " .. target, dur, COL_SIRO)
     if cid and unitId then self.alertList[unitId] = cid end
 end
@@ -254,8 +254,7 @@ end
 -- Crushing Darkness: shared handler for 3 variants.
 local function handleCrushingDark(self, context, alerts, abilityId, ...)
     alerts:showAction("Kite! Crushing Darkness")
-    local dur = select(1, GetAbilityCastInfo(abilityId)) or 0
-    if dur <= 0 then dur = FALLBACK_DARK_DUR end
+    local dur = CastDur.get(abilityId, FALLBACK_DARK_DUR)
     CA.alertCast(abilityId, "KITE!", dur, COL_ZMAJA)
 end
 
@@ -266,8 +265,7 @@ local function handleSiroHa(self, context, alerts, result, abilityId,
     if result ~= ACTION_RESULT_BEGIN then return end
     local target = (unitName and unitName ~= "") and unitName or "?"
     alerts:showAction("Siroria HA! (" .. target .. ")")
-    local dur = select(1, GetAbilityCastInfo(SIRO_HA)) or 0
-    if dur <= 0 then dur = FALLBACK_HA_DUR end
+    local dur = CastDur.get(SIRO_HA, FALLBACK_HA_DUR)
     local cid = CA.alertCast(abilityId, "Siro HA!", dur, COL_SIRO)
     if cid and unitId then self.alertList[unitId] = cid end
 end
@@ -301,8 +299,7 @@ local function handleReleHa(self, context, alerts, result, abilityId,
     if result ~= ACTION_RESULT_BEGIN then return end
     local target = (unitName and unitName ~= "") and unitName or "?"
     alerts:showAction("Relequen HA! (" .. target .. ")")
-    local dur = select(1, GetAbilityCastInfo(RELE_HA)) or 0
-    if dur <= 0 then dur = FALLBACK_HA_DUR end
+    local dur = CastDur.get(RELE_HA, FALLBACK_HA_DUR)
     local cid = CA.alertCast(abilityId, "Rele HA!", dur, COL_RELE)
     if cid and unitId then self.alertList[unitId] = cid end
 end
@@ -353,8 +350,7 @@ local function handleGaleHa(self, context, alerts, result, abilityId,
     if result ~= ACTION_RESULT_BEGIN then return end
     local target = (unitName and unitName ~= "") and unitName or "?"
     alerts:showAction("Galenwe HA! (" .. target .. ")")
-    local dur = select(1, GetAbilityCastInfo(GALE_HA)) or 0
-    if dur <= 0 then dur = FALLBACK_HA_DUR end
+    local dur = CastDur.get(GALE_HA, FALLBACK_HA_DUR)
     local cid = CA.alertCast(abilityId, "Gale HA!", dur, COL_GALE)
     if cid and unitId then self.alertList[unitId] = cid end
 end

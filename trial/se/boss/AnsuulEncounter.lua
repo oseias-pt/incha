@@ -3,6 +3,7 @@ local Timer    = require("lib.Timer")
 
 local CA = require("lib.CA")
 local BossBase = require("lib.BossBase")
+local CastDur = require("lib.CastDur")
 
 -- ── Ability IDs ───────────────────────────────────────────────────────────
 local SUNBURST         = 199344   -- combatRoute: ACTION_RESULT_BEGIN → Dodge alert (player only)
@@ -89,14 +90,12 @@ end
 local function handleSunburst(self, context, alerts, abilityId, unitTag, ...)
     if not IsUnitPlayer(unitTag) then return end
     alerts:showAction("Sunburst on you! Dodge!")
-    local dur = select(1, GetAbilityCastInfo(SUNBURST)) or 0
-    if dur <= 0 then dur = FALLBACK_SUNBURST_DUR end
+    local dur = CastDur.get(SUNBURST, FALLBACK_SUNBURST_DUR)
     CA.alertCast(SUNBURST, "SUNBURST", dur, COL_VOID)
 end
 
 local function handleWrathstorm(self, context, alerts, abilityId, ...)
-    local dur = select(1, GetAbilityCastInfo(WRATHSTORM)) or 0
-    if dur <= 0 then dur = FALLBACK_WRATHSTORM_DUR end
+    local dur = CastDur.get(WRATHSTORM, FALLBACK_WRATHSTORM_DUR)
     CA.alertCast(WRATHSTORM, "Wrathstorm!", dur, COL_VOID)
 end
 

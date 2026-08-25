@@ -17,6 +17,7 @@
 ---   GetAbilityCastInfo(abilityId) with a per-ability fallback constant instead.
 
 local CA = require("lib.CA")
+local CastDur = require("lib.CastDur")
 local SunspireCommon = {}
 
 -- ── Ability ID sets ────────────────────────────────────────────────────────
@@ -81,8 +82,7 @@ function SunspireCommon.handle(alerts, result, abilityId, unitTag, sourceUnitNam
     -- ── Heavy Attack (player-targeted) ─────────────────────────────────
     if HA_IDS[abilityId] then
         if not IsUnitPlayer(unitTag) then return false end
-        local dur = select(1, GetAbilityCastInfo(abilityId)) or 0
-        if dur <= 0 then dur = HA_FALLBACK end
+        local dur = CastDur.get(abilityId, HA_FALLBACK)
         alerts:showAction("Block! (Heavy Attack)")
         CA.alertCast(abilityId, sourceUnitName, dur, COL_HA)
         return true
@@ -92,8 +92,7 @@ function SunspireCommon.handle(alerts, result, abilityId, unitTag, sourceUnitNam
     -- HTS delayed the alert by hitValue (jump travel time).  Without that value
     -- we show immediately; the CA bar covers the remaining travel window.
     if BLOCK_IDS[abilityId] then
-        local dur = select(1, GetAbilityCastInfo(abilityId)) or 0
-        if dur <= 0 then dur = BLOCK_FALLBACK end
+        local dur = CastDur.get(abilityId, BLOCK_FALLBACK)
         alerts:showAction("Block! (Jump)")
         CA.alertCast(abilityId, sourceUnitName, dur, COL_BLOCK)
         return true
@@ -101,8 +100,7 @@ function SunspireCommon.handle(alerts, result, abilityId, unitTag, sourceUnitNam
 
     -- ── 2H add Leap (Dodge) ───────────────────────────────────────────
     if abilityId == LEAP then
-        local dur = select(1, GetAbilityCastInfo(LEAP)) or 0
-        if dur <= 0 then dur = BLOCK_FALLBACK end
+        local dur = CastDur.get(LEAP, BLOCK_FALLBACK)
         alerts:showAction("Dodge! (Leap)")
         CA.alertCast(abilityId, sourceUnitName, dur, COL_BLOCK)
         return true
@@ -111,8 +109,7 @@ function SunspireCommon.handle(alerts, result, abilityId, unitTag, sourceUnitNam
     -- ── Shield Charge (player-targeted) ──────────────────────────────
     if abilityId == SHIELD_CHARGE then
         if not IsUnitPlayer(unitTag) then return false end
-        local dur = select(1, GetAbilityCastInfo(SHIELD_CHARGE)) or 0
-        if dur <= 0 then dur = CHARGE_FALLBACK end
+        local dur = CastDur.get(SHIELD_CHARGE, CHARGE_FALLBACK)
         alerts:showAction("Block! (Shield Charge)")
         CA.alertCast(abilityId, sourceUnitName, dur, COL_CHARGE)
         return true
@@ -121,8 +118,7 @@ function SunspireCommon.handle(alerts, result, abilityId, unitTag, sourceUnitNam
     -- ── Dragon Breath (player-targeted) ──────────────────────────────
     if BREATH_IDS[abilityId] then
         if not IsUnitPlayer(unitTag) then return false end
-        local dur = select(1, GetAbilityCastInfo(abilityId)) or 0
-        if dur <= 0 then dur = BREATH_FALLBACK end
+        local dur = CastDur.get(abilityId, BREATH_FALLBACK)
         alerts:showAction("Dodge! (Breath)")
         CA.alertCast(abilityId, sourceUnitName, dur, COL_BREATH)
         return true
@@ -134,8 +130,7 @@ function SunspireCommon.handle(alerts, result, abilityId, unitTag, sourceUnitNam
     local spitOffset = SPIT_IDS[abilityId]
     if spitOffset then
         if not IsUnitPlayer(unitTag) then return false end
-        local dur = select(1, GetAbilityCastInfo(abilityId)) or 0
-        if dur <= 0 then dur = SPIT_FALLBACK end
+        local dur = CastDur.get(abilityId, SPIT_FALLBACK)
         alerts:showAction("Atro incoming! (Spit)")
         CA.alertCast(abilityId, sourceUnitName, dur + spitOffset, COL_SPIT)
         return true

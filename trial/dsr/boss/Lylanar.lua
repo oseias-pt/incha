@@ -89,6 +89,7 @@ local BUBBLE_CD_HM   = 20    -- s: bubble drop cooldown (HM)
 
 local CA = require("lib.CA")
 local BossBase = require("lib.BossBase")
+local CastDur = require("lib.CastDur")
 
 -- ── CA colour palettes ────────────────────────────────────────────────────
 local COL_FIRE_HEAVY = { -2, 0, false, { 1.0, 0.35, 0.1, 0.4 }, { 1.0, 0.35, 0.1, 0.8 } }
@@ -190,8 +191,7 @@ local function handleBroilingHew(self, context, alerts, abilityId,
                                   unitTag, sourceUnitTag, sourceUnitId, unitId,
                                   sourceUnitName, unitName)
     if not IsUnitPlayer(unitTag) then return end
-    local dur = select(1, GetAbilityCastInfo(abilityId)) or 0
-    if dur <= 0 then dur = FALLBACK_HEAVY_DUR end
+    local dur = CastDur.get(abilityId, FALLBACK_HEAVY_DUR)
     CA.alertCast(abilityId, sourceUnitName, dur, COL_FIRE_HEAVY)
 end
 
@@ -199,8 +199,7 @@ local function handleTorridCleave(self, context, alerts, abilityId,
                                    unitTag, sourceUnitTag, sourceUnitId, unitId,
                                    sourceUnitName, unitName)
     if not IsUnitPlayer(unitTag) then return end
-    local dur = select(1, GetAbilityCastInfo(abilityId)) or 0
-    if dur <= 0 then dur = FALLBACK_HEAVY_DUR end
+    local dur = CastDur.get(abilityId, FALLBACK_HEAVY_DUR)
     alerts:showAction("Dodge! (Cleave)")
     CA.alertCast(abilityId, sourceUnitName, dur, COL_FIRE_HEAVY)
 end
@@ -229,8 +228,7 @@ local function handleStingingShear(self, context, alerts, abilityId,
                                     unitTag, sourceUnitTag, sourceUnitId, unitId,
                                     sourceUnitName, unitName)
     if not IsUnitPlayer(unitTag) then return end
-    local dur = select(1, GetAbilityCastInfo(abilityId)) or 0
-    if dur <= 0 then dur = FALLBACK_HEAVY_DUR end
+    local dur = CastDur.get(abilityId, FALLBACK_HEAVY_DUR)
     CA.alertCast(abilityId, sourceUnitName, dur, COL_ICE_HEAVY)
 end
 
@@ -238,8 +236,7 @@ local function handleBriskRip(self, context, alerts, abilityId,
                                unitTag, sourceUnitTag, sourceUnitId, unitId,
                                sourceUnitName, unitName)
     if not IsUnitPlayer(unitTag) then return end
-    local dur = select(1, GetAbilityCastInfo(abilityId)) or 0
-    if dur <= 0 then dur = FALLBACK_HEAVY_DUR end
+    local dur = CastDur.get(abilityId, FALLBACK_HEAVY_DUR)
     alerts:showAction("Dodge! (Cleave)")
     CA.alertCast(abilityId, sourceUnitName, dur, COL_ICE_HEAVY)
 end

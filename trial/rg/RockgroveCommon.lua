@@ -10,6 +10,7 @@
 ---   handleEffect: not needed (all Rockgrove adds use combat events only)
 
 local CA = require("lib.CA")
+local CastDur = require("lib.CastDur")
 local RockgroveCommon = {}
 
 -- ── Ability IDs ────────────────────────────────────────────────────────────
@@ -57,8 +58,7 @@ function RockgroveCommon.handle(alerts, result, abilityId, unitTag, sourceUnitNa
     -- ── Reaver: Sundering (targeted heavy — player only) ─────────────────
     if abilityId == SUNDERING then
         if not IsUnitPlayer(unitTag) then return false end
-        local dur = select(1, GetAbilityCastInfo(SUNDERING)) or 0
-        if dur <= 0 then dur = FALL_MELEE end
+        local dur = CastDur.get(SUNDERING, FALL_MELEE)
         alerts:showAction("Block! (Sundering)")
         CA.alertCast(abilityId, sourceUnitName, dur, COL_MELEE)
         PlaySound(SOUNDS.DUEL_START)
@@ -69,8 +69,7 @@ function RockgroveCommon.handle(alerts, result, abilityId, unitTag, sourceUnitNa
     if abilityId == TAKING_AIM then
         local _, _, isTank = GetPlayerRoles()
         if isTank then
-            local dur = select(1, GetAbilityCastInfo(TAKING_AIM)) or 0
-            if dur <= 0 then dur = FALL_MELEE end
+            local dur = CastDur.get(TAKING_AIM, FALL_MELEE)
             CA.alertCast(abilityId, sourceUnitName, dur, COL_TANK_INT)
             PlaySound(SOUNDS.DUEL_START)
         end
@@ -86,8 +85,7 @@ function RockgroveCommon.handle(alerts, result, abilityId, unitTag, sourceUnitNa
     -- ── Butcher: Quick Strike (targeted heavy — player only) ─────────────
     if abilityId == QUICK_STRIKE then
         if not IsUnitPlayer(unitTag) then return false end
-        local dur = select(1, GetAbilityCastInfo(QUICK_STRIKE)) or 0
-        if dur <= 0 then dur = FALL_MELEE end
+        local dur = CastDur.get(QUICK_STRIKE, FALL_MELEE)
         CA.alertCast(abilityId, sourceUnitName, dur, COL_MELEE)
         return true
     end
@@ -96,8 +94,7 @@ function RockgroveCommon.handle(alerts, result, abilityId, unitTag, sourceUnitNa
     -- Same ability ID appears on Bahsei's Fire Behemoth add — handled here.
     if abilityId == SCALDING then
         if not IsUnitPlayer(unitTag) then return false end
-        local dur = select(1, GetAbilityCastInfo(SCALDING)) or 0
-        if dur <= 0 then dur = FALL_MELEE end
+        local dur = CastDur.get(SCALDING, FALL_MELEE)
         alerts:showAction("Dodge! (Scalding)")
         CA.alertCast(abilityId, sourceUnitName, dur, COL_DOT)
         CA.alert(nil, "Scalding", 0xCC0000D9, SOUNDS.DUEL_START, 9000)
@@ -107,8 +104,7 @@ function RockgroveCommon.handle(alerts, result, abilityId, unitTag, sourceUnitNa
 
     -- ── Barbarian: Hasted Assault (group jump — block window) ────────────
     if ASSAULT_IDS[abilityId] then
-        local dur = select(1, GetAbilityCastInfo(abilityId)) or 0
-        if dur <= 0 then dur = FALL_ASSAULT end
+        local dur = CastDur.get(abilityId, FALL_ASSAULT)
         CA.castAlertsStart(abilityId, "Hasted Assault (Barbarian)",
             dur, 4000, COL_ASSAULT, ACT_ASSAULT)
         PlaySound(SOUNDS.DUEL_START)
@@ -125,8 +121,7 @@ function RockgroveCommon.handle(alerts, result, abilityId, unitTag, sourceUnitNa
 
     -- ── Ash Titan: Molten Rain (kite — no dodge text, just bar) ──────────
     if abilityId == MOLTEN_RAIN then
-        local dur = select(1, GetAbilityCastInfo(MOLTEN_RAIN)) or 0
-        if dur <= 0 then dur = FALL_MOLTEN end
+        local dur = CastDur.get(MOLTEN_RAIN, FALL_MOLTEN)
         CA.alertCast(abilityId, sourceUnitName, dur, COL_FIRE)
         return true
     end
