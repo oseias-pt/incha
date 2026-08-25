@@ -61,6 +61,7 @@ local RUN2_TOP = 45    -- second transition: boss flees at 40%
 local RUN2_BOT = 40
 
 local CA = require("lib.CA")
+local BossBase = require("lib.BossBase")
 
 -- ── CA colour palettes ─────────────────────────────────────────────────────
 local COL_SCATHING = { -2, 0, false, { 0.9, 0.2, 0.9, 0.4 }, { 0.9, 0.2, 0.9, 0.8 } }
@@ -88,16 +89,18 @@ Xalvakka.key               = "xalvakka"
 Xalvakka.name              = "Xalvakka"     -- TODO: verify exact unit name via GetUnitName("boss1")
 Xalvakka.hmHealthThreshold = 100000001      -- TODO: verify exact HM health pool
 
+Xalvakka.stateSchema = {
+    nextJump       = 0,
+    numJumps       = 0,
+    shellShield    = 0,
+    onBlob         = false,
+    soulStart      = 0,
+    selfManifold   = false,
+    manifoldOthers = function() return {} end,
+}
+
 function Xalvakka.new()
-    return setmetatable({
-        nextJump       = 0,     -- s: absolute time of next expected jump
-        numJumps       = 0,     -- jump count; hide timer when ≥ 4
-        shellShield    = 0,     -- current Volatile Shell HP (from shield events)
-        onBlob         = false, -- true while player carries Unstable Charge debuff
-        soulStart      = 0,     -- s: when player gained Soul Resonance; 0 = inactive
-        selfManifold   = false, -- true while local player carries Manifold Curse
-        manifoldOthers = {},    -- [unitTag] → displayName for other players cursed
-    }, Xalvakka)
+    return BossBase.fromSchema(Xalvakka)
 end
 
 -- ── Lifecycle ─────────────────────────────────────────────────────────────

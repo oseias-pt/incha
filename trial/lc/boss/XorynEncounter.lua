@@ -2,6 +2,7 @@ local Location = require("core.Location")
 local Timer    = require("lib.Timer")
 
 local CA = require("lib.CA")
+local BossBase = require("lib.BossBase")
 
 -- ── Ability IDs ───────────────────────────────────────────────────────────
 local ARCANE_KNOT         = 213477   -- combatRoute: ACTION_RESULT_EFFECT_GAINED_DURATION / FADED → carry knot
@@ -34,12 +35,14 @@ XorynEncounter.nameAliases       = { "Xoryn" }
 XorynEncounter.hmHealthThreshold = 100000000
 XorynEncounter.location          = Location.new(0, 0, 0, 0, 0, 0)
 
+XorynEncounter.stateSchema = {
+    currentTimer    = function() return Timer.new(CURRENT_MAX_DUR) end,
+    holdingKnot     = false,
+    holdingCurrent  = false,
+}
+
 function XorynEncounter.new()
-    return setmetatable({
-        currentTimer    = Timer.new(CURRENT_MAX_DUR),
-        holdingKnot     = false,
-        holdingCurrent  = false,
-    }, XorynEncounter)
+    return BossBase.fromSchema(XorynEncounter)
 end
 
 -- ── Handlers ────────────────────────────────────────────────────────────

@@ -64,6 +64,7 @@ local MAELSTROM_DODGE  = 1.5   -- s: dodge before maelstrom ends
 local BRIDGE_HP = { 50.9, 35.9, 20.9 }
 
 local CA = require("lib.CA")
+local BossBase = require("lib.BossBase")
 
 -- ── CA colour palettes ────────────────────────────────────────────────────
 local COL_HEAVY  = { -2, 0, false, { 1.0, 0.35, 0.1, 0.4 }, { 1.0, 0.35, 0.1, 0.8 } }
@@ -84,23 +85,21 @@ Taleria.key              = "taleria"
 Taleria.name             = "Tideborn Taleria"   -- TODO: verify via GetUnitName("boss1") in-game
 Taleria.hmHealthThreshold = 100000001            -- TODO: verify
 
+Taleria.stateSchema = {
+    lastMaelstrom     = 0,
+    lastBehemothSumm  = 0,
+    behemothSlam      = 0,
+    lastStormWall     = 0,
+    stormWallCW       = true,
+    lastPlatformFall  = 0,
+    -- Bridge state: index 1/2/3 = green/yellow/purple
+    bridgeOpen      = function() return { false, false, false } end,
+    bridgeWipeStart = function() return { 0, 0, 0 } end,
+    bridgeDone      = function() return { false, false, false } end,
+}
+
 function Taleria.new()
-    return setmetatable({
-        lastMaelstrom     = 0,     -- s: when maelstrom channel began
-        lastBehemothSumm  = 0,     -- s: last behemoth summon
-        behemothSlam      = 0,     -- s: expected next slam time
-        lastStormWall     = 0,     -- s: when storm wall began spinning
-        stormWallCW       = true,  -- true = CW, false = CCW
-        lastPlatformFall  = 0,     -- s: when last bridge opened (portal suppresses storm display)
-
-        -- Bridge state: index 1/2/3 = green/yellow/purple
-        bridgeOpen      = { false, false, false },
-        bridgeWipeStart = { 0, 0, 0 },          -- s: when wipe timer began
-        bridgeDone      = { false, false, false },
-
-        -- Lure of the Sea bar ID for cleanup
-        lureBarId = nil,
-    }, Taleria)
+    return BossBase.fromSchema(Taleria)
 end
 
 -- ── Lifecycle ─────────────────────────────────────────────────────────────

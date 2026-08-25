@@ -45,6 +45,7 @@ local EYE_CW           = 153517   -- combatRoute: ACTION_RESULT_EFFECT_GAINED �
 local EYE_CCW          = 153518   -- combatRoute: ACTION_RESULT_EFFECT_GAINED → CCW portal direction
 
 local CA = require("lib.CA")
+local BossBase = require("lib.BossBase")
 
 -- ── CA colour palettes ─────────────────────────────────────────────────────
 local COL_INTERRUPT = { -2, 0, true,  { 0.3, 0.6, 1.0, 0.4 }, { 0.3, 0.6, 1.0, 0.8 } }
@@ -66,21 +67,21 @@ Bahsei.key               = "bahsei"
 Bahsei.name              = "Bahsei"      -- TODO: verify; may be "Flame-Herald Bahsei"
 Bahsei.hmHealthThreshold = 100000001     -- TODO: verify exact HM health pool in-game
 
+Bahsei.stateSchema = {
+    lastCursedGround    = 0,
+    nextPortal          = 0,
+    portalNumber        = 1,
+    selfDoNotPortalTime = 0,
+    numPlayersInPortal  = 0,
+    portalTracker       = function() return {} end,
+    lastDeathTouch      = 0,
+    nextMtExplosion     = 0,
+    nextSickle          = 0,
+    lastPortalCW        = true,
+}
+
 function Bahsei.new()
-    return setmetatable({
-        lastCursedGround    = 0,     -- s: last Cursed Ground cast time
-        nextPortal          = 0,     -- s: absolute time of next portal opening
-        portalNumber        = 1,     -- 1 or 2, alternates each cycle
-        selfDoNotPortalTime = 0,     -- s: until player's Malignant Marrow expires
-        numPlayersInPortal  = 0,
-        portalTracker       = {},    -- [unitId] = true while in portal
-        lastDeathTouch      = 0,     -- s: when the local player received death touch
-        nextMtExplosion     = 0,     -- s: expected MT explosion time (lastDT + 9)
-        mtUnitId            = nil,   -- unitId of current main tank
-        nextSickle          = 0,     -- s: absolute time of next expected sickle
-        sunBarId            = nil,   -- CA CastAlertsStart bar for Prime Meteor
-        lastPortalCW        = true,  -- true=clockwise, false=CCW
-    }, Bahsei)
+    return BossBase.fromSchema(Bahsei)
 end
 
 -- ── Lifecycle ─────────────────────────────────────────────────────────────

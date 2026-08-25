@@ -1,6 +1,7 @@
 local Location = require("core.Location")
 
 local CA = require("lib.CA")
+local BossBase = require("lib.BossBase")
 
 -- ── Ability IDs (from OsseinCageHelper) ──────────────────────────────────
 local OGRIM_CHARGE     = 236496   -- combatRoute: ACTION_RESULT_BEGIN → MOVE caAlertCast (player)
@@ -21,10 +22,12 @@ ShaperEncounter.nameAliases       = { "Shaper of Flesh" }
 ShaperEncounter.hmHealthThreshold = 0
 ShaperEncounter.location          = Location.new(0, 0, 0, 0, 0, 0)
 
+ShaperEncounter.stateSchema = {
+    shaperShielded = false,
+}
+
 function ShaperEncounter.new()
-    return setmetatable({
-        shaperShielded = false,
-    }, ShaperEncounter)
+    return BossBase.fromSchema(ShaperEncounter)
 end
 
 -- ── Handlers ────────────────────────────────────────────────────────────

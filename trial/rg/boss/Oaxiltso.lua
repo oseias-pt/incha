@@ -32,6 +32,7 @@ local MINI_ENRAGE     = 152503   -- effectRoute: EFFECT_RESULT_GAINED / FADED �
 local POOL_EX_LEFT = { 91973, 35751, 81764 }
 
 local CA = require("lib.CA")
+local BossBase = require("lib.BossBase")
 
 -- ── CA colour palettes ─────────────────────────────────────────────────────
 local COL_BLITZ  = { 0.8, 0.0, 0.0, 0.4 }   -- red fill, no action text (mirrors QRH)
@@ -51,17 +52,17 @@ Oaxiltso.__index = Oaxiltso
 Oaxiltso.key  = "oaxiltso"
 Oaxiltso.name = "Oaxiltso"   -- TODO: verify exact unit name via GetUnitName("boss1") in-game
 
+Oaxiltso.stateSchema = {
+    lastBlitz          = 0,
+    lastSludge         = 0,
+    lastPoisonTracker  = 0,
+    sludgeTracker1     = 0,
+    bossEnraged        = false,
+    miniEnraged        = false,
+}
+
 function Oaxiltso.new()
-    return setmetatable({
-        lastBlitz          = 0,     -- s: last Savage Blitz cast time
-        lastSludge         = 0,     -- s: last Noxious Sludge cast time
-        lastPoisonTracker  = 0,     -- s: dedup gate (SLUDGE_DEBUFF fires 3× per cast)
-        sludgeTracker1     = 0,     -- unitId   of first poisoned player
-        sludgeTracker1Tag  = nil,   -- unitTag  of first poisoned player
-        sludgeTracker1Name = nil,   -- display name of first poisoned player
-        bossEnraged        = false,
-        miniEnraged        = false,
-    }, Oaxiltso)
+    return BossBase.fromSchema(Oaxiltso)
 end
 
 -- ── Routing tables (C3) ──────────────────────────────────────────────────

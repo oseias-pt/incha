@@ -2,6 +2,7 @@ local Location = require("core.Location")
 local Timer    = require("lib.Timer")
 
 local CA = require("lib.CA")
+local BossBase = require("lib.BossBase")
 
 -- ── Ability IDs ───────────────────────────────────────────────────────────
 local THUNDER_THRALL  = 214383   -- combatRoute: ACTION_RESULT_BEGIN → Xoryn jump; timer 25.5s / 8s first
@@ -33,14 +34,16 @@ OrphicEncounter.nameAliases       = { "Orphic Shattered Shard" }
 OrphicEncounter.hmHealthThreshold = 80000000
 OrphicEncounter.location          = Location.new(0, 0, 0, 0, 0, 0)
 
+OrphicEncounter.stateSchema = {
+    thunderThrallTimer  = function() return Timer.new(THRALL_CD) end,
+    lightningFloodTimer = function() return Timer.new(FLOOD_CD) end,
+    xorynActive         = false,
+    firstThrall         = true,
+    firstFlood          = true,
+}
+
 function OrphicEncounter.new()
-    return setmetatable({
-        thunderThrallTimer  = Timer.new(THRALL_CD),
-        lightningFloodTimer = Timer.new(FLOOD_CD),
-        xorynActive         = false,
-        firstThrall         = true,   -- true until first Thrall after a Xoryn return
-        firstFlood          = true,
-    }, OrphicEncounter)
+    return BossBase.fromSchema(OrphicEncounter)
 end
 
 -- ── Handlers ────────────────────────────────────────────────────────────

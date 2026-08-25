@@ -2,6 +2,7 @@ local Location = require("core.Location")
 local Timer    = require("lib.Timer")
 
 local CA = require("lib.CA")
+local BossBase = require("lib.BossBase")
 
 -- ── Ability IDs ───────────────────────────────────────────────────────────
 local SUNBURST         = 199344   -- combatRoute: ACTION_RESULT_BEGIN → Dodge alert (player only)
@@ -35,14 +36,16 @@ AnsuulEncounter.nameAliases       = { "Ansuul the Tormentor" }
 AnsuulEncounter.hmHealthThreshold = 100000000  -- vet ~69M, HM ~160.7M
 AnsuulEncounter.location          = Location.new(0, 0, 0, 0, 0, 0)
 
+AnsuulEncounter.stateSchema = {
+    calamityTimer  = function() return Timer.new(CALAMITY_CD) end,
+    firstCalamity  = true,
+    inMaze         = false,
+    inTriplet      = false,
+    alertList      = function() return {} end,
+}
+
 function AnsuulEncounter.new()
-    return setmetatable({
-        calamityTimer  = Timer.new(CALAMITY_CD),
-        firstCalamity  = true,
-        inMaze         = false,   -- TheRitual active
-        inTriplet      = false,   -- Breakdown active (split phase)
-        alertList      = {},
-    }, AnsuulEncounter)
+    return BossBase.fromSchema(AnsuulEncounter)
 end
 
 -- ── Routing tables (C3) ──────────────────────────────────────────────────

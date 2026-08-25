@@ -2,6 +2,7 @@ local Location = require("core.Location")
 local Timer    = require("lib.Timer")
 
 local CA = require("lib.CA")
+local BossBase = require("lib.BossBase")
 
 -- ── Ability IDs (from BSCHTKA_Vrol.lua) ───────────────────────────────────
 local VROL_PORTAL_CAST  = 133994  -- combatRoute: ACTION_RESULT_BEGIN → reset portal timer + alert
@@ -28,25 +29,24 @@ Vrol.key               = "vrol"
 Vrol.hmHealthThreshold = 72769370
 Vrol.location          = Location.new(110200, 118500, 24500, 29000, 65000, 78800)
 
+Vrol.stateSchema = {
+    -- Timers start expired; onCombatState arms them when the fight begins.
+    portalTimer       = function() return Timer.new(NEXT_PORTAL_TIME) end,
+    conduitTimer      = function() return Timer.new(NEXT_CONDUIT_TIME) end,
+    fogTimer          = function() return Timer.new(NEXT_FOG_TIME) end,
+    bPORTAL_END       = false,
+    -- Portal kill-timer: ms timestamp when the current portal debuff expires.
+    portalKillExpires = 0,
+    -- [unitId] → CA cast bar ID; cleared on leave/death.
+    alertList         = function() return {} end,
+    -- Fog duration tracking: ms timestamp when fog clears (0 = no active fog).
+    -- fogHitCount counts VROL_FOG_INCREASE pulses; resets every FOG_EXTEND_HITS.
+    fogEndTime        = 0,
+    fogHitCount       = 0,
+}
+
 function Vrol.new()
-    return setmetatable({
-        -- Timers start expired; onCombatState arms them when the fight begins.
-        portalTimer       = Timer.new(NEXT_PORTAL_TIME),
-        conduitTimer      = Timer.new(NEXT_CONDUIT_TIME),
-        fogTimer          = Timer.new(NEXT_FOG_TIME),
-        bPORTAL_END       = false,
-        -- Portal kill-timer: ms timestamp when the current portal debuff expires.
-        -- Set in onEffectChanged(EFFECT_RESULT_GAINED) to detect pass/fail on FADED.
-        portalKillExpires = 0,
-        -- [unitId] → CA cast bar ID; cleared on leave/death.
-        alertList         = {},
-        -- CA cast bar ID for the portal-kill debuff (started/stopped in onEffectChanged).
-        portalKillBarId   = nil,
-        -- Fog duration tracking: ms timestamp when fog clears (0 = no active fog).
-        -- fogHitCount counts VROL_FOG_INCREASE pulses; resets every FOG_EXTEND_HITS.
-        fogEndTime        = 0,
-        fogHitCount       = 0,
-    }, Vrol)
+    return BossBase.fromSchema(Vrol)
 end
 
 -- ── Lifecycle ─────────────────────────────────────────────────────────────

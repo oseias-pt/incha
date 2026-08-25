@@ -2,6 +2,7 @@ local Location = require("core.Location")
 local Timer    = require("lib.Timer")
 
 local CA = require("lib.CA")
+local BossBase = require("lib.BossBase")
 
 -- ── Ability IDs (from SanitysEdgeHelper data) ────────────────────────────
 local DEFLECT         = 184823   -- combatRoute: ACTION_RESULT_BEGIN → Shrapnel stack
@@ -37,17 +38,19 @@ YaseylaEncounter.nameAliases       = { "Exarchanic Yaseyla" }
 YaseylaEncounter.hmHealthThreshold = 80000000   -- vet ~65M, HM ~97.8M
 YaseylaEncounter.location          = Location.new(0, 0, 0, 0, 0, 0)
 
+YaseylaEncounter.stateSchema = {
+    firebombTimer  = function() return Timer.new(FIREBOMB_CD) end,
+    chainTimer     = function() return Timer.new(CHAIN_CD) end,
+    frostTimer     = function() return Timer.new(FROST_CD) end,
+    executePhase   = false,
+    firstFirebomb  = true,
+    firstFrost     = true,
+    shrapnelCount  = 0,
+    alertList      = function() return {} end,
+}
+
 function YaseylaEncounter.new()
-    return setmetatable({
-        firebombTimer  = Timer.new(FIREBOMB_CD),
-        chainTimer     = Timer.new(CHAIN_CD),
-        frostTimer     = Timer.new(FROST_CD),
-        executePhase   = false,
-        firstFirebomb  = true,
-        firstFrost     = true,
-        shrapnelCount  = 0,
-        alertList      = {},
-    }, YaseylaEncounter)
+    return BossBase.fromSchema(YaseylaEncounter)
 end
 
 -- ── Lifecycle ─────────────────────────────────────────────────────────────

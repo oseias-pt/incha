@@ -2,6 +2,7 @@ local Location = require("core.Location")
 local Timer    = require("lib.Timer")
 
 local CA = require("lib.CA")
+local BossBase = require("lib.BossBase")
 
 -- ── Ability IDs ───────────────────────────────────────────────────────────
 local PIERCING_BEAM = 219165   -- combatRoute: ACTION_RESULT_BEGIN → INTERRUPT; CD 14s first / 32s steady
@@ -28,13 +29,15 @@ XynizataEncounter.nameAliases       = { "Xynizata" }
 XynizataEncounter.hmHealthThreshold = 0
 XynizataEncounter.location          = Location.new(0, 0, 0, 0, 0, 0)
 
+XynizataEncounter.stateSchema = {
+    piercingBeamTimer = function() return Timer.new(BEAM_CD) end,
+    vitrifyTimer      = function() return Timer.new(VITRIFY_CD) end,
+    firstBeam         = true,
+    firstVitrify      = true,
+}
+
 function XynizataEncounter.new()
-    return setmetatable({
-        piercingBeamTimer = Timer.new(BEAM_CD),
-        vitrifyTimer      = Timer.new(VITRIFY_CD),
-        firstBeam         = true,
-        firstVitrify      = true,
-    }, XynizataEncounter)
+    return BossBase.fromSchema(XynizataEncounter)
 end
 
 -- ── Handlers ────────────────────────────────────────────────────────────

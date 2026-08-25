@@ -88,6 +88,7 @@ local BUBBLE_CD_NORM = 15    -- s: bubble drop cooldown (normal)
 local BUBBLE_CD_HM   = 20    -- s: bubble drop cooldown (HM)
 
 local CA = require("lib.CA")
+local BossBase = require("lib.BossBase")
 
 -- ── CA colour palettes ────────────────────────────────────────────────────
 local COL_FIRE_HEAVY = { -2, 0, false, { 1.0, 0.35, 0.1, 0.4 }, { 1.0, 0.35, 0.1, 0.8 } }
@@ -105,37 +106,35 @@ Lylanar.name         = "Lylanar"        -- TODO: verify via GetUnitName("boss1")
 Lylanar.nameAliases  = { "Turlassil" }  -- both bosses active simultaneously
 Lylanar.hmHealthThreshold = 100000001   -- TODO: verify exact HM health pool
 
+Lylanar.stateSchema = {
+    -- State — Fire
+    cinderSurgeActive      = false,
+    fireImminent           = function() return DebuffTracker.new(10) end,
+    fireFragility          = function() return DebuffTracker.new(FRAGILITY_DUR) end,
+    lastMagmaSpike         = 0,
+    lastIncendiaryAxe      = 0,
+    destructiveEmberStacks = 0,
+    lastDestructiveEmber   = 0,
+    firebrandTracker       = function() return {} end,
+    lastBrandMatchFire     = 0,
+    flameHounds            = 0,
+    -- State — Ice
+    numbingShardsActive    = false,
+    iceImminent            = function() return DebuffTracker.new(10) end,
+    iceFragility           = function() return DebuffTracker.new(FRAGILITY_DUR) end,
+    lastGlacialSpike       = 0,
+    lastCalamitousSword    = 0,
+    piercingHailstacks     = 0,
+    lastPiercingHail       = 0,
+    frostbrandTracker      = function() return {} end,
+    lastBrandMatchIce      = 0,
+    frostHounds            = 0,
+    -- State — Shared
+    lastBrandMatch         = 0,
+}
+
 function Lylanar.new()
-    return setmetatable({
-        -- State — Fire
-        cinderSurgeActive      = false,
-        fireImminent           = DebuffTracker.new(10),            -- ImminentBlister: 10 s window
-        fireFragility          = DebuffTracker.new(FRAGILITY_DUR), -- BlisteringFragility window
-        lastMagmaSpike         = 0,
-        lastIncendiaryAxe      = 0,
-        destructiveEmberStacks = 0,
-        destructiveEmberName   = nil,
-        lastDestructiveEmber   = 0,      -- last GAINED/UPDATED time
-        firebrandTracker       = {},     -- {unitId, name} pairs collected this cast
-        lastBrandMatchFire     = 0,      -- dedup gate
-        flameHounds            = 0,
-
-        -- State — Ice
-        numbingShardsActive    = false,
-        iceImminent            = DebuffTracker.new(10),            -- ImminentChill: 10 s window
-        iceFragility           = DebuffTracker.new(FRAGILITY_DUR), -- ChillingFragility window
-        lastGlacialSpike       = 0,
-        lastCalamitousSword    = 0,
-        piercingHailstacks     = 0,
-        piercingHailName       = nil,
-        lastPiercingHail       = 0,
-        frostbrandTracker      = {},
-        lastBrandMatchIce      = 0,
-        frostHounds            = 0,
-
-        -- State — Shared
-        lastBrandMatch = 0,  -- dedup for the combined MatchBrands alert
-    }, Lylanar)
+    return BossBase.fromSchema(Lylanar)
 end
 
 -- ── Brand matching (HM) ───────────────────────────────────────────────────

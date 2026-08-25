@@ -2,6 +2,7 @@ local Location = require("core.Location")
 local Timer = require("lib.Timer")
 
 local CA = require("lib.CA")
+local BossBase = require("lib.BossBase")
 
 -- ── Ability IDs (from BSCHTKA_Yandir.lua) ─────────────────────────────────
 local TOTEM_POISION      = 133515  -- combatRoute: ACTION_RESULT_BEGIN → resets timer + Dodge alert
@@ -28,18 +29,20 @@ Yandir.key               = "yandir"
 Yandir.hmHealthThreshold = 72769370
 Yandir.location          = Location.new(63200, 68900, 24300, 26300, 90500, 99600)
 
+Yandir.stateSchema = {
+    totemTimer           = function() return Timer.new(TOTEM_SPAWN_TIME) end,
+    gryphonTimer         = function() return Timer.new(GRYPHON_SPAWN_TIME) end,
+    bGRYPHON_SKIP        = false,
+    bGRYPHON_SKIP_TIME   = -1,
+    bGRYPHON_SKIP_FAILHP = 0,
+    PosionTotemID        = -1,
+    BTotemCall           = false,
+    -- [unitId] → CA cast bar ID; cleared and stopped on leave/death.
+    alertList            = function() return {} end,
+}
+
 function Yandir.new()
-    return setmetatable({
-        totemTimer           = Timer.new(TOTEM_SPAWN_TIME),
-        gryphonTimer         = Timer.new(GRYPHON_SPAWN_TIME),
-        bGRYPHON_SKIP        = false,
-        bGRYPHON_SKIP_TIME   = -1,
-        bGRYPHON_SKIP_FAILHP = 0,
-        PosionTotemID        = -1,
-        BTotemCall           = false,
-        -- Phase 4.2: [unitId] → CA cast bar ID; cleared and stopped on leave/death.
-        alertList            = {},
-    }, Yandir)
+    return BossBase.fromSchema(Yandir)
 end
 
 -- ── Lifecycle ─────────────────────────────────────────────────────────────

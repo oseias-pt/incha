@@ -4,6 +4,7 @@ local Settings    = require("core.Settings")
 local Timer       = require("lib.Timer")
 
 local CA = require("lib.CA")
+local BossBase = require("lib.BossBase")
 
 -- ── OSI helpers (OdySupportIcons, optional) ───────────────────────────────
 -- Textures: pulled from the live ability data so they always match the
@@ -105,40 +106,38 @@ Falgravn.healthRules          = HealthRules.register({
     },
 })
 
+Falgravn.stateSchema = {
+    -- Stage / mechanic state
+    showPercentUI    = false,
+    CURRENT_STAGE    = 1,
+    bHM              = false,
+    -- Dedup flags for Njordal's recurring mechanics (reset each encounter).
+    bMove            = true,
+    bBlock           = true,
+    bConnect         = true,
+    -- Torturer encounter state.
+    bStartTorturerCD = true,
+    torturerCount    = 8,
+    -- [unitId] → CA cast bar ID; cleared on leave/death.
+    alertList        = function() return {} end,
+    -- OSI mechanic icon tracking: [unitTag] → displayName.
+    osiPrison      = function() return {} end,
+    osiInstability = function() return {} end,
+    osiSynergy     = function() return {} end,
+    -- Timers
+    instabilityTimer = function() return Timer.new(INSTABILITY_INITIAL_DELAY) end,
+    bloodBallTimer   = function() return Timer.new(NEXT_BLOODBALL) end,
+    openGatesTimer   = function() return Timer.new(NEXT_OPENGATE_TIME) end,
+    torturerTimer    = function() return Timer.new(NEXT_TORTURER_TP) end,
+    -- Prisoner tracking: stack count per prisoner name.
+    PRISONERS = function() return {
+        Brekalda = 0, Thjorlak = 0, Aevar = 0, Triveta = 0,
+        Skormgondar = 0, Irthrig = 0, Ama = 0, Sislea = 0,
+    } end,
+}
+
 function Falgravn.new()
-    return setmetatable({
-        -- Stage / mechanic state
-        showPercentUI    = false,  -- reflects Settings.trial("ka").showPercent; read by healthRules.when()
-        CURRENT_STAGE    = 1,
-        bHM              = false,
-        -- Dedup flags for Njordal's recurring mechanics (reset each encounter).
-        bMove            = true,
-        bBlock           = true,
-        bConnect         = true,
-        -- Torturer encounter state.
-        bStartTorturerCD = true,
-        torturerCount    = 8,
-        -- [unitId] → CA cast bar ID; cleared on leave/death.
-        alertList        = {},
-        -- CA cast bar for the Prison debuff (single-slot; matches BSCHTKA pattern).
-        prisonBarId      = nil,
-        -- OSI mechanic icon tracking: [unitTag] → displayName.
-        -- Populated on EFFECT_RESULT_GAINED, cleared on FADED or leave.
-        osiPrison      = {},
-        osiInstability = {},
-        osiSynergy     = {},
-        -- Timers; instabilityTimer is armed in onCombatState (begins on boss entry).
-        -- The other three are armed only by specific combat events.
-        instabilityTimer = Timer.new(INSTABILITY_INITIAL_DELAY),
-        bloodBallTimer   = Timer.new(NEXT_BLOODBALL),
-        openGatesTimer   = Timer.new(NEXT_OPENGATE_TIME),
-        torturerTimer    = Timer.new(NEXT_TORTURER_TP),
-        -- Prisoner tracking: stack count per prisoner name.
-        PRISONERS = {
-            Brekalda = 0, Thjorlak = 0, Aevar       = 0, Triveta = 0,
-            Skormgondar = 0, Irthrig = 0, Ama        = 0, Sislea  = 0,
-        },
-    }, Falgravn)
+    return BossBase.fromSchema(Falgravn)
 end
 
 -- ── Lifecycle ─────────────────────────────────────────────────────────────

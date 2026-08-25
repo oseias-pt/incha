@@ -2,6 +2,7 @@ local Location = require("core.Location")
 local Timer    = require("lib.Timer")
 
 local CA = require("lib.CA")
+local BossBase = require("lib.BossBase")
 
 -- ── Ability IDs (from OsseinCageHelper) ──────────────────────────────────
 -- Dragons (Valneer = fire/orange, Myrinax = lightning/blue)
@@ -58,13 +59,15 @@ JynorahEncounter.nameAliases       = { "Jynorah", "Skorkhif" }
 JynorahEncounter.hmHealthThreshold = 0
 JynorahEncounter.location          = Location.new(0, 0, 0, 0, 0, 0)
 
+JynorahEncounter.stateSchema = {
+    leapTimer    = function() return Timer.new(LEAP_CD) end,
+    clashTimer   = function() return Timer.new(37.5) end,
+    firstLeap    = true,
+    clashActive  = false,
+}
+
 function JynorahEncounter.new()
-    return setmetatable({
-        leapTimer    = Timer.new(LEAP_CD),
-        clashTimer   = Timer.new(37.5),   -- Titanic Clash active phase duration
-        firstLeap    = true,
-        clashActive  = false,
-    }, JynorahEncounter)
+    return BossBase.fromSchema(JynorahEncounter)
 end
 
 -- ── Handlers ────────────────────────────────────────────────────────────

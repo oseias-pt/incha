@@ -41,6 +41,7 @@ local ACID_COUNT           = 5        -- number of acid pools per Reflux
 local SHELTERED_WINDOW     = 3        -- s: keep "CLEANSED" label brief
 
 local CA = require("lib.CA")
+local BossBase = require("lib.BossBase")
 
 -- ── CA colour palettes ────────────────────────────────────────────────────
 local COL_HEAVY   = { -2, 0, false, { 1.0, 0.35, 0.1, 0.4 }, { 1.0, 0.35, 0.1, 0.8 } }
@@ -59,23 +60,21 @@ ReefGuardian.key              = "reef_guardian"
 ReefGuardian.name             = "Reef Guardian"   -- TODO: verify via GetUnitName("boss1") in-game
 ReefGuardian.hmHealthThreshold = 100000001         -- TODO: verify
 
+ReefGuardian.stateSchema = {
+    buildingStaticStacks   = 0,
+    buildingStaticEndTime  = 0,
+    volatileResidueStacks  = 0,
+    volatileResidueEndTime = 0,
+    playerSheltered        = false,
+    lastShelteredTime      = 0,
+    -- Reef portals: up to 3 can be open simultaneously.
+    reefPortals   = function() return {} end,
+    reefNum       = 0,
+    acidicVulnLast  = 0,
+}
+
 function ReefGuardian.new()
-    return setmetatable({
-        buildingStaticStacks   = 0,
-        buildingStaticEndTime  = 0,
-        volatileResidueStacks  = 0,
-        volatileResidueEndTime = 0,
-        playerSheltered        = false,
-        lastShelteredTime      = 0,   -- for brief "CLEANSED" label in info1/2
-
-        -- Reef portals: up to 3 can be open simultaneously.
-        -- Each entry: { openTime, wipeActive }
-        reefPortals   = {},   -- table of open reef timers
-        reefNum       = 0,    -- total reefs opened (sequential)
-
-        acidicVulnLast  = 0,   -- time GAINED; 0 when inactive
-        acidRefluxBarId = nil,
-    }, ReefGuardian)
+    return BossBase.fromSchema(ReefGuardian)
 end
 
 -- ── Lifecycle ─────────────────────────────────────────────────────────────

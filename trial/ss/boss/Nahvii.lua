@@ -62,30 +62,29 @@ setmetatable(Nahvii, {__index = BossBase})
 Nahvii.key  = "nahvii"
 Nahvii.name = "Nahviintaas"
 
+Nahvii.stateSchema = {
+    alertList           = function() return {} end,
+    -- Meteor
+    meteorTargets       = function() return {} end,
+    meteorDisplayEnd_ms = 0,
+    -- NextMeteor / Thrash
+    nextMeteorTime      = 0,
+    -- FireStorm / landing
+    stormTime           = 0,
+    landingTime         = 0,
+    firstStormTrig      = true,
+    -- Portal
+    portalTime          = 0,
+    wipeTime            = 0,
+    cptPortal           = 0,
+    inPortal            = false,
+    -- Portal interrupt
+    interruptTimer      = function() return Timer.new(FALLBACK_INTERRUPT_DUR / 1000) end,
+    pinsTime            = 0,
+}
+
 function Nahvii.new()
-    return setmetatable({
-        alertList        = {},    -- [sourceUnitId] → CA bar (Slam/Stonefist)
-        -- Meteor
-        meteorTargets       = {},  -- [unitTag] → displayName
-        meteorDisplayEnd_ms = 0,   -- ms: when to stop showing meteor targets
-        -- NextMeteor / Thrash
-        nextMeteorTime   = 0,     -- s: when next meteor is due
-        -- FireStorm / landing
-        stormTime        = 0,     -- s: absolute time when storm ends (FireStorm begins + 13.7)
-        landingTime      = 0,     -- s: stormTime + 6.6
-        firstStormTrig   = true,  -- skip-first dedup
-        -- Portal
-        portalTime       = 0,     -- s: portal window expires (open + 14)
-        wipeTime         = 0,     -- s: raid wipe (portal open + 98)
-        cptPortal        = 0,     -- group members who entered portal this cycle
-        inPortal         = false,
-        -- Portal interrupt
-        interruptTimer   = Timer.new(FALLBACK_INTERRUPT_DUR / 1000), -- interrupt window countdown
-        interruptUnitId  = nil,   -- unitId of eternal servant being interrupted
-        pinsTime         = 0,     -- s: next pins attack (after bash + 20)
-        -- Misc CA bars
-        thrashBarId      = nil,
-    }, Nahvii)
+    return BossBase.fromSchema(Nahvii)
 end
 
 -- ── Lifecycle ─────────────────────────────────────────────────────────────

@@ -37,14 +37,15 @@ setmetatable(Yolna, {__index = BossBase})
 Yolna.key  = "yolna"
 Yolna.name = "Yolnahkriin"
 
+Yolna.stateSchema = {
+    alertList     = function() return {} end,
+    nextFlareTime = 0,
+    cataTimer     = function() return Timer.new(FALLBACK_CATA_DUR / 1000) end,
+    landingTimer  = function() return Timer.new(FALLBACK_CATA_DUR / 1000 + 6.8) end,
+}
+
 function Yolna.new()
-    return setmetatable({
-        alertList     = {},   -- [sourceUnitId] → CA bar ID (currently unused; kept for consistency)
-        nextFlareTime = 0,    -- s: absolute time when next flare is due
-        cataTimer     = Timer.new(FALLBACK_CATA_DUR / 1000),         -- Cataclysm cast countdown
-        landingTimer  = Timer.new(FALLBACK_CATA_DUR / 1000 + 6.8),   -- landing (cast + 6.8 s)
-        cataBarId     = nil,  -- CA CastAlertsStart bar ID
-    }, Yolna)
+    return BossBase.fromSchema(Yolna)
 end
 
 -- ── Lifecycle ─────────────────────────────────────────────────────────────

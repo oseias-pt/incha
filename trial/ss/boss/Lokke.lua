@@ -138,31 +138,31 @@ Lokke.key  = "lokke"
 Lokke.name = "Lokkestiiz"
 -- hmHealthThreshold: measure in-game
 
+Lokke.stateSchema = {
+    -- alertList: [sourceUnitId] → CA bar ID
+    alertList    = function() return {} end,
+    -- IceTomb machine
+    iceNumber    = 0,
+    iceTime      = 0,
+    iceNext      = 0,
+    prevIce      = 0,
+    tombsClear   = true,
+    iceDouble    = false,
+    checkDouble  = true,
+    iceState     = 0,
+    tCast        = 0,
+    tArmed       = 0,
+    tFaded       = 0,
+    iGained      = 0,
+    iFaded       = 0,
+    iceTomb      = function() return newTombSlots() end,
+    -- Laser / landing
+    laserTime    = 0,
+    landingTime  = 0,
+}
+
 function Lokke.new()
-    local self = setmetatable({
-        -- alertList: [sourceUnitId] → CA bar ID (GlacialFist, keyed by atronarch)
-        alertList    = {},
-        -- IceTomb machine
-        iceNumber    = 0,
-        iceTime      = 0,      -- s: tomb cast + 13 (cycle display ref)
-        iceNext      = 0,      -- s: expected next tomb (cast + 23)
-        prevIce      = 0,      -- ms: when last tomb fired
-        tombsClear   = true,
-        iceDouble    = false,
-        checkDouble  = true,
-        iceState     = 0,
-        tCast        = 0,
-        tArmed       = 0,
-        tFaded       = 0,
-        iGained      = 0,
-        iFaded       = 0,
-        iceTomb      = newTombSlots(),
-        -- Laser / landing
-        laserTime    = 0,      -- s: absolute time when laser fires
-        landingTime  = 0,      -- s: absolute time when boss lands
-        laserBarId   = nil,    -- CA bar ID for laser countdown
-    }, Lokke)
-    return self
+    return BossBase.fromSchema(Lokke)
 end
 
 -- ── Lifecycle ─────────────────────────────────────────────────────────────

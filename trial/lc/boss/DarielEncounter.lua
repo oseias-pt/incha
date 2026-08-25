@@ -1,6 +1,7 @@
 local Location = require("core.Location")
 
 local CA = require("lib.CA")
+local BossBase = require("lib.BossBase")
 
 -- ── Ability IDs ───────────────────────────────────────────────────────────
 local POWERFUL_THROW = 218971   -- combatRoute: ACTION_RESULT_BEGIN → caAlertCast; on player → explicit alert
@@ -19,8 +20,10 @@ DarielEncounter.nameAliases       = { "Dariel" }
 DarielEncounter.hmHealthThreshold = 0
 DarielEncounter.location          = Location.new(0, 0, 0, 0, 0, 0)
 
+DarielEncounter.stateSchema = {}
+
 function DarielEncounter.new()
-    return setmetatable({}, DarielEncounter)
+    return BossBase.fromSchema(DarielEncounter)
 end
 
 -- ── Handlers ────────────────────────────────────────────────────────────

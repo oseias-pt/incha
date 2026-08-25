@@ -1,6 +1,7 @@
 local Location = require("core.Location")
 
 local CA = require("lib.CA")
+local BossBase = require("lib.BossBase")
 
 -- ── Ability IDs ───────────────────────────────────────────────────────────
 local BRILLIANT_ANNIHILATION = 214187   -- combatRoute: ACTION_RESULT_BEGIN → light side room wipe; STACK
@@ -26,10 +27,10 @@ RyelazEncounter.location          = Location.new(0, 0, 0, 0, 0, 0)
 -- "ryelaz"    = player on Ryelaz dark side
 -- "zilyesset" = player on Zilyesset light side
 -- nil         = assignment unknown (split hasn't happened or effect not yet seen)
+RyelazEncounter.stateSchema = {}
+
 function RyelazEncounter.new()
-    return setmetatable({
-        playerSide = nil,
-    }, RyelazEncounter)
+    return BossBase.fromSchema(RyelazEncounter)
 end
 
 -- ── Routing tables (C3) ──────────────────────────────────────────────────

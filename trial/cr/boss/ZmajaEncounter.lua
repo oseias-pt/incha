@@ -2,6 +2,7 @@ local Location = require("core.Location")
 local Timer    = require("lib.Timer")
 
 local CA = require("lib.CA")
+local BossBase = require("lib.BossBase")
 
 -- ── Ability ID sets for mini-boss detection ───────────────────────────────
 -- Any of these firing marks that mini as active (detects +1/+2/+3 variant).
@@ -133,34 +134,35 @@ ZmajaEncounter.hmHealthThreshold = 0
 -- Location: entire arena — name-based detection is used instead.
 ZmajaEncounter.location          = Location.new(0, 0, 0, 0, 0, 0)
 
+ZmajaEncounter.stateSchema = {
+    -- Siroria
+    siroJumpTimer   = function() return Timer.new(SIRO_JUMP_CD) end,
+    siroBannerTimer = function() return Timer.new(SIRO_BANNER_CD) end,
+    -- Relequen
+    releJumpTimer   = function() return Timer.new(RELE_JUMP_CD) end,
+    releBashTimer   = function() return Timer.new(RELE_BASH_CD) end,
+    releJoltTimer   = function() return Timer.new(RELE_JOLT_CD) end,
+    -- Galenwe
+    galeJumpTimer   = function() return Timer.new(GALE_JUMP_CD) end,
+    galeBashTimer   = function() return Timer.new(GALE_BASH_CD) end,
+    galeDonutTimer  = function() return Timer.new(GALE_DONUT_CD) end,
+    -- Portal
+    portalTimer     = function() return Timer.new(PORTAL_OPEN_DUR) end,
+    portalNextTimer = function() return Timer.new(PORTAL_NEXT_CD) end,
+    -- Mini-boss presence
+    siroActive      = false,
+    releActive      = false,
+    galeActive      = false,
+    -- Portal / Z'Maja state
+    portalGroup     = 0,
+    portalActive    = false,
+    executePhase    = false,
+    spearCount      = 0,
+    alertList       = function() return {} end,
+}
+
 function ZmajaEncounter.new()
-    return setmetatable({
-        -- Siroria
-        siroJumpTimer   = Timer.new(SIRO_JUMP_CD),
-        siroBannerTimer = Timer.new(SIRO_BANNER_CD),
-        -- Relequen
-        releJumpTimer   = Timer.new(RELE_JUMP_CD),
-        releBashTimer   = Timer.new(RELE_BASH_CD),
-        releJoltTimer   = Timer.new(RELE_JOLT_CD),
-        -- Galenwe
-        galeJumpTimer   = Timer.new(GALE_JUMP_CD),
-        galeBashTimer   = Timer.new(GALE_BASH_CD),
-        galeDonutTimer  = Timer.new(GALE_DONUT_CD),
-        -- Portal
-        portalTimer     = Timer.new(PORTAL_OPEN_DUR),  -- open → close countdown
-        portalNextTimer = Timer.new(PORTAL_NEXT_CD),   -- close → next open countdown
-        -- Mini-boss presence
-        siroActive      = false,
-        releActive      = false,
-        galeActive      = false,
-        -- Portal / Z'Maja state
-        portalGroup     = 0,      -- increments on each PORTAL_OPEN (1, 2, 3…)
-        portalActive    = false,
-        executePhase    = false,
-        spearCount      = 0,
-        coreAlert       = nil,    -- "Core out!" / "Core MISSED!" / nil
-        alertList       = {},
-    }, ZmajaEncounter)
+    return BossBase.fromSchema(ZmajaEncounter)
 end
 
 -- ── Lifecycle ─────────────────────────────────────────────────────────────

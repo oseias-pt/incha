@@ -2,6 +2,7 @@ local Location = require("core.Location")
 local Timer    = require("lib.Timer")
 
 local CA = require("lib.CA")
+local BossBase = require("lib.BossBase")
 
 -- ── Ability IDs (from OsseinCageHelper) ──────────────────────────────────
 -- Chains
@@ -51,14 +52,14 @@ KazpianEncounter.nameAliases       = { "Overfiend Kazpian" }
 KazpianEncounter.hmHealthThreshold = 0
 KazpianEncounter.location          = Location.new(0, 0, 0, 0, 0, 0)
 
+KazpianEncounter.stateSchema = {
+    bombDebounce   = function() return Timer.new(5.0) end,
+    portalPhase    = 0,
+    channelersDead = 0,
+}
+
 function KazpianEncounter.new()
-    return setmetatable({
-        bombDebounce    = Timer.new(5.0),   -- dedup Agonizer Bombs spam
-        portalPhase     = 0,
-        channelersDead  = 0,
-        chainedA        = nil,  -- first chained player name
-        chainedB        = nil,  -- second chained player name
-    }, KazpianEncounter)
+    return BossBase.fromSchema(KazpianEncounter)
 end
 
 -- ── Handlers ────────────────────────────────────────────────────────────

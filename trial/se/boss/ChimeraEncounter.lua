@@ -2,6 +2,7 @@ local Location = require("core.Location")
 local Timer    = require("lib.Timer")
 
 local CA = require("lib.CA")
+local BossBase = require("lib.BossBase")
 
 -- ── Ability IDs ───────────────────────────────────────────────────────────
 local VIVIFY           = 186000   -- combatRoute: ACTION_RESULT_EFFECT_FADED → Chimera spawned, reset timers
@@ -37,14 +38,16 @@ ChimeraEncounter.nameAliases       = { "Chimera" }
 ChimeraEncounter.hmHealthThreshold = 70000000   -- vet ~46.5M, HM ~93.1M
 ChimeraEncounter.location          = Location.new(0, 0, 0, 0, 0, 0)
 
+ChimeraEncounter.stateSchema = {
+    despawnTimer   = function() return Timer.new(DESPAWN_CD) end,
+    chainTimer     = function() return Timer.new(CHAIN_CD) end,
+    chimeraActive  = false,
+    firstChain     = true,
+    alertList      = function() return {} end,
+}
+
 function ChimeraEncounter.new()
-    return setmetatable({
-        despawnTimer   = Timer.new(DESPAWN_CD),
-        chainTimer     = Timer.new(CHAIN_CD),
-        chimeraActive  = false,
-        firstChain     = true,
-        alertList      = {},
-    }, ChimeraEncounter)
+    return BossBase.fromSchema(ChimeraEncounter)
 end
 
 -- ── Lifecycle ─────────────────────────────────────────────────────────────

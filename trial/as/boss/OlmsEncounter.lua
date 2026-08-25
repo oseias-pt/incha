@@ -2,6 +2,7 @@ local Location = require("core.Location")
 local Timer    = require("lib.Timer")
 
 local CA = require("lib.CA")
+local BossBase = require("lib.BossBase")
 
 -- ── Ability IDs (from AsylumTracker / AsylumPriorityTarget) ───────────────
 -- Olms
@@ -50,27 +51,27 @@ OlmsEncounter.hmHealthThreshold = 0
 -- Location: entire arena — name-based detection is used instead.
 OlmsEncounter.location          = Location.new(0, 0, 0, 0, 0, 0)
 
+OlmsEncounter.stateSchema = {
+    -- Olms
+    stormTimer         = function() return Timer.new(STORM_CD) end,
+    steamTimer         = function() return Timer.new(STEAM_CD) end,
+    chargesTimer       = function() return Timer.new(CHARGES_CD) end,
+    fireTimer          = function() return Timer.new(FIRE_CD) end,
+    -- Llothis
+    blastTimer         = function() return Timer.new(BLAST_CD) end,
+    boltsTimer         = function() return Timer.new(BOLTS_CD) end,
+    -- Felms
+    jumpTimer          = function() return Timer.new(JUMP_CD) end,
+    -- state
+    llothisActive      = false,
+    felmsActive        = false,
+    protectorUp        = false,
+    nextJumpThreshold  = 1,
+    alertList          = function() return {} end,
+}
+
 function OlmsEncounter.new()
-    return setmetatable({
-        -- Olms
-        stormTimer         = Timer.new(STORM_CD),
-        steamTimer         = Timer.new(STEAM_CD),
-        chargesTimer       = Timer.new(CHARGES_CD),
-        fireTimer          = Timer.new(FIRE_CD),
-        -- Llothis
-        blastTimer         = Timer.new(BLAST_CD),
-        boltsTimer         = Timer.new(BOLTS_CD),
-        -- Felms
-        jumpTimer          = Timer.new(JUMP_CD),
-        -- state
-        llothisActive      = false,
-        llothisSpawnTime   = nil,    -- os.time() at BOSS_EVENT for Llothis
-        felmsActive        = false,
-        felmsSpawnTime     = nil,    -- os.time() at BOSS_EVENT for Felms
-        protectorUp        = false,  -- true while Protector's Static Shield is active
-        nextJumpThreshold  = 1,
-        alertList          = {},
-    }, OlmsEncounter)
+    return BossBase.fromSchema(OlmsEncounter)
 end
 
 -- ── Lifecycle ─────────────────────────────────────────────────────────────
