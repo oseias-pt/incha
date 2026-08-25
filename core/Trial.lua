@@ -1,10 +1,11 @@
-local AlertSink = require("core.AlertSink")
+local AlertSink    = require("core.AlertSink")
 local BossRegistry = require("core.BossRegistry")
-local Difficulty = require("core.Difficulty")
+local Difficulty   = require("core.Difficulty")
 local EventPipeline = require("core.EventPipeline")
-local HealthRules = require("core.HealthRules")
-local Throttle = require("lib.Throttle")
+local HealthRules  = require("core.HealthRules")
+local Throttle     = require("lib.Throttle")
 local TrialContext = require("core.TrialContext")
+local BridgeBase   = require("ui.Bridge")
 
 local Trial = {}
 Trial.__index = Trial
@@ -45,7 +46,8 @@ function Trial.create(options)
         zoneId = options.zoneId,
         name = options.name or options.id,
         eventPrefix = options.eventPrefix or ("Incha_" .. options.id),
-        bridge = options.bridge,
+        -- Default to BridgeBase so every hook can be called unconditionally.
+        bridge = options.bridge or BridgeBase,
         registry = BossRegistry.new(options.bosses),
         context = TrialContext.new(options.id),
         alerts = AlertSink.new(options.alerts),
@@ -146,17 +148,13 @@ function Trial:onBossesChanged(forceReset)
             instance:onEnter(self.context, self.alerts)
         end
 
-        if self.bridge and self.bridge.onBossEnter then
-            self.bridge.onBossEnter(instance, self.context)
-        end
+        self.bridge.onBossEnter(instance, self.context)
     else
         self.context:setBoss(nil)
         self.context:setDifficulty(Difficulty.NONE)
         self.alerts:clear()
 
-        if self.bridge and self.bridge.onBossExit then
-            self.bridge.onBossExit()
-        end
+        self.bridge.onBossExit()
     end
 end
 
@@ -188,11 +186,11 @@ function Trial:onPowerUpdate(powerValue, powerMax)
         if id then
             self.alerts:showAction(text)
         elseif boss.hideActionWhenNoRule then
-            self.alerts:emit("hideAction")
+            self.alerts:hideAction()
         end
     end
 
-    if not IsUnitInCombat("player") and self.bridge and self.bridge.checkHardmode then
+    if not IsUnitInCombat("player") then
         self.bridge.checkHardmode(self.context)
     end
 end
@@ -220,9 +218,7 @@ function Trial:enable()
 
     self.enabled = true
 
-    if self.bridge and self.bridge.onEnable then
-        self.bridge.onEnable()
-    end
+    self.bridge.onEnable()
 
     self.pipeline:enable()
     self:onBossesChanged(true)
@@ -245,9 +241,7 @@ function Trial:disable()
     self.healthThrottle:reset()
     self.alerts:clear()
 
-    if self.bridge and self.bridge.onDisable then
-        self.bridge.onDisable()
-    end
+    self.bridge.onDisable()
 
     self.enabled = false
 end
