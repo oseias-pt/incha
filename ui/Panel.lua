@@ -12,7 +12,6 @@
 ---   action(text)    — prominent mid-fight call-out (orange, bold)
 ---   hideAction()    — clears action without hiding panel
 ---   clear()         — clears all text and hides the panel
----   progress(text)  — backward-compat alias for info(1, text)
 ---
 --- Used by ka/rg/dsr.
 
@@ -154,14 +153,6 @@ Panel.alerts = {
     action = function(text)
         if not ctrl then return end
         ctrl.action:SetText(text or "")
-        ctrl.active = true
-        applyVisibility()
-    end,
-
-    -- backward-compat alias: showProgress() → info line 1
-    progress = function(text)
-        if not ctrl then return end
-        ctrl.info[1]:SetText(text or "")
         ctrl.active = true
         applyVisibility()
     end,

@@ -18,9 +18,6 @@ local function emit(self, eventType, text)
     end
 end
 
-function AlertSink:showProgress(text)
-    emit(self, "progress", text)
-end
 
 -- info lines take two args (slot index + text), so they can't route through
 -- the single-arg emit().  Handlers receive (n, text) directly.
