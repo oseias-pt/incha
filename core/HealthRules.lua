@@ -20,16 +20,31 @@ function HealthRules.matches(rule, healthPercent, context, boss)
     return true
 end
 
--- Returns id, text, priority as plain values (no table) since this runs on
--- the boss-health hot path and Lua multiple-return doesn't allocate.
+-- Returns id, text of the highest-priority matching rule as plain values
+-- (no table) since this runs on the boss-health hot path and Lua
+-- multiple-return doesn't allocate.
+--
+-- When multiple rules overlap the same HP range, the one with the largest
+-- `priority` field wins.  Rules with no `priority` field default to 0.
+-- Array order acts as a tiebreaker: the first entry seen at equal priority
+-- is kept.
 function HealthRules.evaluate(rules, healthPercent, context, boss)
-    for _, rule in ipairs(rules or {}) do
+    if not rules then return nil end
+
+    local bestId, bestText, bestPriority = nil, nil, nil
+
+    for _, rule in ipairs(rules) do
         if HealthRules.matches(rule, healthPercent, context, boss) then
-            return rule.id, formatText(rule.text, healthPercent), rule.priority or 0
+            local p = rule.priority or 0
+            if bestPriority == nil or p > bestPriority then
+                bestId       = rule.id
+                bestText     = formatText(rule.text, healthPercent)
+                bestPriority = p
+            end
         end
     end
 
-    return nil
+    return bestId, bestText
 end
 
 return HealthRules
