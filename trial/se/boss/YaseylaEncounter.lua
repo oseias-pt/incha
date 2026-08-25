@@ -1,21 +1,20 @@
-local Location = require("core.Location")
-local Timer    = require("lib.Timer")
+﻿local Timer    = require("lib.Timer")
 
 local CA = require("lib.CA")
 local BossBase = require("lib.BossBase")
 local CastDur = require("lib.CastDur")
 
--- ── Ability IDs (from SanitysEdgeHelper data) ────────────────────────────
-local DEFLECT         = 184823   -- combatRoute: ACTION_RESULT_BEGIN → Shrapnel stack
-local FIRE_BOMBS      = 183660   -- combatRoute: ACTION_RESULT_BEGIN → caAlertCast (targeted)
-local CHAIN_PULL      = 184540   -- combatRoute: ACTION_RESULT_BEGIN → Chains alert
-local FROST_BOMB_1    = 185403   -- combatRoute: ACTION_RESULT_EFFECT_GAINED_DURATION → Frost bomb alert
-local FROST_BOMB_2    = 183783   -- combatRoute: ACTION_RESULT_EFFECT_GAINED_DURATION → Frost bomb alert
-local IGNITE          = 188188   -- combatRoute: ACTION_RESULT_EFFECT_GAINED_DURATION → Move alert (player)
-local WAMASU_CHARGE   = 191133   -- combatRoute: ACTION_RESULT_BEGIN → caAlertCast
-local ARCHER_TRUE_SHOT= 184802   -- (dead constant — no route registered)
+-- â”€â”€ Ability IDs (from SanitysEdgeHelper data) â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+local DEFLECT         = 184823   -- combatRoute: ACTION_RESULT_BEGIN â†’ Shrapnel stack
+local FIRE_BOMBS      = 183660   -- combatRoute: ACTION_RESULT_BEGIN â†’ caAlertCast (targeted)
+local CHAIN_PULL      = 184540   -- combatRoute: ACTION_RESULT_BEGIN â†’ Chains alert
+local FROST_BOMB_1    = 185403   -- combatRoute: ACTION_RESULT_EFFECT_GAINED_DURATION â†’ Frost bomb alert
+local FROST_BOMB_2    = 183783   -- combatRoute: ACTION_RESULT_EFFECT_GAINED_DURATION â†’ Frost bomb alert
+local IGNITE          = 188188   -- combatRoute: ACTION_RESULT_EFFECT_GAINED_DURATION â†’ Move alert (player)
+local WAMASU_CHARGE   = 191133   -- combatRoute: ACTION_RESULT_BEGIN â†’ caAlertCast
+local ARCHER_TRUE_SHOT= 184802   -- (dead constant â€” no route registered)
 
--- ── Timer durations (seconds) ─────────────────────────────────────────────
+-- â”€â”€ Timer durations (seconds) â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 local FIREBOMB_FIRST_CD  =  7.5   -- time to first firebombs from combat start
 local FIREBOMB_CD        = 23.5   -- pre-execute CD
 local FIREBOMB_EXEC_CD   = 11     -- execute-phase CD (after <26% HP)
@@ -24,11 +23,11 @@ local CHAIN_CD           = 32     -- chain pull CD
 local FROST_FIRST_CD     = 17     -- first frost bomb delay
 local FROST_CD           = 25     -- subsequent frost bomb CD
 
--- ── CA colour palettes ────────────────────────────────────────────────────
+-- â”€â”€ CA colour palettes â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 local COL_FIRE  = { -3, 0, false, { 1, 0.34, 0, 0.4 }, { 1, 0.34, 0, 0.8 } }    -- orange-red
 local COL_ICE   = { -3, 0, false, { 0.6, 0.8, 1, 0.4 }, { 0.6, 0.8, 1, 0.8 } }  -- pale blue
 
--- ── Fallback durations (empirical; replace if GetAbilityCastInfo becomes reliable) ─
+-- â”€â”€ Fallback durations (empirical; replace if GetAbilityCastInfo becomes reliable) â”€
 local FALLBACK_DUR = 2000   -- FireBombs / WamasuCharge: empirical
 
 local YaseylaEncounter = {}
@@ -37,10 +36,9 @@ YaseylaEncounter.__index = YaseylaEncounter
 YaseylaEncounter.key               = "yaseyla"
 YaseylaEncounter.nameAliases       = { "Exarchanic Yaseyla" }
 YaseylaEncounter.hmHealthThreshold = 80000000   -- vet ~65M, HM ~97.8M
--- location: placeholder — Sunken Elder arena AABB not yet captured.
+-- location: placeholder â€” Sunken Elder arena AABB not yet captured.
 -- Detection falls back to nameAliases (name-based, may fail on non-EN clients).
 -- To calibrate: stand in arena, run /script d(GetUnitWorldPosition("boss1"))
-YaseylaEncounter.location          = Location.new(0, 0, 0, 0, 0, 0)
 
 YaseylaEncounter.stateSchema = {
     firebombTimer  = function() return Timer.new(FIREBOMB_CD) end,
@@ -57,12 +55,12 @@ function YaseylaEncounter.new()
     return BossBase.fromSchema(YaseylaEncounter)
 end
 
--- ── Lifecycle ─────────────────────────────────────────────────────────────
+-- â”€â”€ Lifecycle â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 function YaseylaEncounter:onLeave(context)
     for _, cid in pairs(self.alertList) do CA.castAlertsStop(cid) end
 end
 
--- ── Routing tables (C3) ──────────────────────────────────────────────────
+-- â”€â”€ Routing tables (C3) â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
 -- Frost Bomb: shared handler for both ability IDs.
 local function handleFrostBomb(self, context, alerts, abilityId,
@@ -72,9 +70,9 @@ local function handleFrostBomb(self, context, alerts, abilityId,
     self.frostTimer:reset(FROST_CD)
     if IsUnitPlayer(unitTag) then
         alerts:showAction("Frost Bomb on you! Drop it!")
-        CA.alert(nil, "FROST BOMB — drop!", 0x99CCFFFF, SOUNDS.NONE, 3000)
+        CA.alert(nil, "FROST BOMB â€” drop!", 0x99CCFFFF, SOUNDS.NONE, 3000)
     elseif unitName and unitName ~= "" then
-        alerts:showAction("Frost Bomb → " .. unitName)
+        alerts:showAction("Frost Bomb â†’ " .. unitName)
     end
 end
 
@@ -85,7 +83,7 @@ local function handleFireBombs(self, context, alerts, abilityId,
     local cd = self.executePhase and FIREBOMB_EXEC_CD or FIREBOMB_CD
     self.firebombTimer:reset(cd)
     local target = (unitName and unitName ~= "") and unitName or "?"
-    alerts:showAction("Fire Bombs → " .. target)
+    alerts:showAction("Fire Bombs â†’ " .. target)
     local dur = CastDur.get(abilityId, FALLBACK_DUR)
     local cid = CA.alertCast(abilityId, "Fire Bombs!", dur, COL_FIRE)
     if cid and unitId then self.alertList[unitId] = cid end
@@ -112,7 +110,7 @@ local function handleWamasuCharge(self, context, alerts, abilityId,
                                    sourceUnitName, unitName)
     local target = (unitName and unitName ~= "") and unitName or "?"
     local dur = CastDur.get(abilityId, FALLBACK_DUR)
-    CA.alertCast(abilityId, "Charge → " .. target, dur, COL_FIRE)
+    CA.alertCast(abilityId, "Charge â†’ " .. target, dur, COL_FIRE)
 end
 
 YaseylaEncounter.combatRoutes = {
@@ -125,7 +123,7 @@ YaseylaEncounter.combatRoutes = {
     [WAMASU_CHARGE]= { result = ACTION_RESULT_BEGIN,                  fn = handleWamasuCharge },
 }
 
--- ── Info-line renderers ───────────────────────────────────────────────────
+-- â”€â”€ Info-line renderers â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
 -- Line 1: Fire Bombs CD; label switches to "Bombs (exec)" once execute phase begins.
 local function showFireBombLine(self, alerts)

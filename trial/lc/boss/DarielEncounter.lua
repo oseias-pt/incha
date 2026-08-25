@@ -1,16 +1,15 @@
-local Location = require("core.Location")
-
+﻿
 local CA = require("lib.CA")
 local BossBase = require("lib.BossBase")
 local CastDur = require("lib.CastDur")
 
--- ── Ability IDs ───────────────────────────────────────────────────────────
-local POWERFUL_THROW = 218971   -- combatRoute: ACTION_RESULT_BEGIN → caAlertCast; on player → explicit alert
+-- â”€â”€ Ability IDs â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+local POWERFUL_THROW = 218971   -- combatRoute: ACTION_RESULT_BEGIN â†’ caAlertCast; on player â†’ explicit alert
 
--- ── CA colour palettes ────────────────────────────────────────────────────
+-- â”€â”€ CA colour palettes â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 local COL_THROW = { -3, 0, false, { 1, 0.5, 0, 0.4 }, { 1, 0.5, 0, 0.8 } }
 
--- ── Fallback durations (empirical; replace if GetAbilityCastInfo becomes reliable) ─
+-- â”€â”€ Fallback durations (empirical; replace if GetAbilityCastInfo becomes reliable) â”€
 local FALLBACK_DUR = 2500   -- PowerfulThrow: empirical
 
 local DarielEncounter = {}
@@ -19,10 +18,9 @@ DarielEncounter.__index = DarielEncounter
 DarielEncounter.key               = "dariel"
 DarielEncounter.nameAliases       = { "Dariel" }
 DarielEncounter.hmHealthThreshold = 0
--- location: placeholder — Lucent Citadel arena AABB not yet captured.
+-- location: placeholder â€” Lucent Citadel arena AABB not yet captured.
 -- Detection falls back to nameAliases (name-based, may fail on non-EN clients).
 -- To calibrate: stand in arena, run /script d(GetUnitWorldPosition("boss1"))
-DarielEncounter.location          = Location.new(0, 0, 0, 0, 0, 0)
 
 DarielEncounter.stateSchema = {}
 
@@ -30,22 +28,22 @@ function DarielEncounter.new()
     return BossBase.fromSchema(DarielEncounter)
 end
 
--- ── Handlers ────────────────────────────────────────────────────────────
+-- â”€â”€ Handlers â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
 local function handlePowerfulThrow(self, context, alerts, abilityId,
                                    unitTag, sourceUnitTag, sourceUnitId, unitId,
                                    sourceUnitName, unitName)
     local target = (unitName and unitName ~= "") and unitName or "?"
     local dur = CastDur.get(abilityId, FALLBACK_DUR)
-    CA.alertCast(abilityId, "Throw → " .. target, dur, COL_THROW)
+    CA.alertCast(abilityId, "Throw â†’ " .. target, dur, COL_THROW)
     if IsUnitPlayer(unitTag) then
         alerts:showAction("Powerful Throw on YOU!")
     else
-        alerts:showAction("Powerful Throw → " .. target)
+        alerts:showAction("Powerful Throw â†’ " .. target)
     end
 end
 
--- ── Routing tables (C3) ──────────────────────────────────────────────────
+-- â”€â”€ Routing tables (C3) â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
 DarielEncounter.combatRoutes = {
     [POWERFUL_THROW] = { result = ACTION_RESULT_BEGIN, fn = handlePowerfulThrow },

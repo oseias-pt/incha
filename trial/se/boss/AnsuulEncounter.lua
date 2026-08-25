@@ -1,31 +1,30 @@
-local Location = require("core.Location")
-local Timer    = require("lib.Timer")
+﻿local Timer    = require("lib.Timer")
 
 local CA = require("lib.CA")
 local BossBase = require("lib.BossBase")
 local CastDur = require("lib.CastDur")
 
--- ── Ability IDs ───────────────────────────────────────────────────────────
-local SUNBURST         = 199344   -- combatRoute: ACTION_RESULT_BEGIN → Dodge alert (player only)
-local WRACK            = 184621   -- combatRoute: ACTION_RESULT_BEGIN → Kite alert
-local WRATHSTORM       = 198759   -- combatRoute: ACTION_RESULT_BEGIN → caAlertCast
-local CALAMITY         = 186728   -- combatRoute: ACTION_RESULT_BEGIN → Calamity Stack alert
-local EXECUTE          = 198797   -- combatRoute: ACTION_RESULT_BEGIN → INTERRUPT alert
-local POISONED_MIND    = 184710   -- combatRoute: ACTION_RESULT_EFFECT_GAINED_DURATION → green border
-local MANIC_PHOBIA     = 185117   -- (dead constant — no route registered; verify if needed)
-local THE_RITUAL       = 183855   -- combatRoute: ACTION_RESULT_EFFECT_GAINED_DURATION / FADED → maze phase
-local BREAKDOWN_RED    = 188766   -- combatRoute: ACTION_RESULT_EFFECT_GAINED / FADED → split phase
-local BREAKDOWN_BLUE   = 188768   -- combatRoute: ACTION_RESULT_EFFECT_GAINED / FADED → split phase
-local BREAKDOWN_GREEN  = 188769   -- combatRoute: ACTION_RESULT_EFFECT_GAINED / FADED → split phase
+-- â”€â”€ Ability IDs â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+local SUNBURST         = 199344   -- combatRoute: ACTION_RESULT_BEGIN â†’ Dodge alert (player only)
+local WRACK            = 184621   -- combatRoute: ACTION_RESULT_BEGIN â†’ Kite alert
+local WRATHSTORM       = 198759   -- combatRoute: ACTION_RESULT_BEGIN â†’ caAlertCast
+local CALAMITY         = 186728   -- combatRoute: ACTION_RESULT_BEGIN â†’ Calamity Stack alert
+local EXECUTE          = 198797   -- combatRoute: ACTION_RESULT_BEGIN â†’ INTERRUPT alert
+local POISONED_MIND    = 184710   -- combatRoute: ACTION_RESULT_EFFECT_GAINED_DURATION â†’ green border
+local MANIC_PHOBIA     = 185117   -- (dead constant â€” no route registered; verify if needed)
+local THE_RITUAL       = 183855   -- combatRoute: ACTION_RESULT_EFFECT_GAINED_DURATION / FADED â†’ maze phase
+local BREAKDOWN_RED    = 188766   -- combatRoute: ACTION_RESULT_EFFECT_GAINED / FADED â†’ split phase
+local BREAKDOWN_BLUE   = 188768   -- combatRoute: ACTION_RESULT_EFFECT_GAINED / FADED â†’ split phase
+local BREAKDOWN_GREEN  = 188769   -- combatRoute: ACTION_RESULT_EFFECT_GAINED / FADED â†’ split phase
 
--- ── Timer durations (seconds) ─────────────────────────────────────────────
+-- â”€â”€ Timer durations (seconds) â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 local CALAMITY_FIRST_CD = 9    -- first calamity after combat start / maze end
 local CALAMITY_CD       = 25   -- subsequent calamity CD
 
--- ── CA colour palettes ────────────────────────────────────────────────────
+-- â”€â”€ CA colour palettes â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 local COL_VOID = { -3, 0, false, { 0.5, 0, 0.7, 0.4 }, { 0.5, 0, 0.7, 0.8 } }  -- purple
 
--- ── Fallback durations (empirical; replace if GetAbilityCastInfo becomes reliable) ─
+-- â”€â”€ Fallback durations (empirical; replace if GetAbilityCastInfo becomes reliable) â”€
 local FALLBACK_SUNBURST_DUR   = 2000   -- Sunburst: empirical
 local FALLBACK_WRATHSTORM_DUR = 4000   -- Wrathstorm: empirical
 
@@ -35,10 +34,9 @@ AnsuulEncounter.__index = AnsuulEncounter
 AnsuulEncounter.key               = "ansuul"
 AnsuulEncounter.nameAliases       = { "Ansuul the Tormentor" }
 AnsuulEncounter.hmHealthThreshold = 100000000  -- vet ~69M, HM ~160.7M
--- location: placeholder — Sunken Elder arena AABB not yet captured.
+-- location: placeholder â€” Sunken Elder arena AABB not yet captured.
 -- Detection falls back to nameAliases (name-based, may fail on non-EN clients).
 -- To calibrate: stand in arena, run /script d(GetUnitWorldPosition("boss1"))
-AnsuulEncounter.location          = Location.new(0, 0, 0, 0, 0, 0)
 
 AnsuulEncounter.stateSchema = {
     calamityTimer  = function() return Timer.new(CALAMITY_CD) end,
@@ -52,7 +50,7 @@ function AnsuulEncounter.new()
     return BossBase.fromSchema(AnsuulEncounter)
 end
 
--- ── Routing tables (C3) ──────────────────────────────────────────────────
+-- â”€â”€ Routing tables (C3) â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
 -- Breakdown (split phase): shared handler for red/blue/green clones.
 local function handleBreakdown(self, context, alerts, result, abilityId, ...)
@@ -131,15 +129,15 @@ AnsuulEncounter.combatRoutes = {
     [BREAKDOWN_GREEN] = handleBreakdown,
 }
 
--- ── Info-line renderers ───────────────────────────────────────────────────
+-- â”€â”€ Info-line renderers â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
--- Line 1: Calamity countdown — context-aware: maze suppression, triplet urgency, or normal CD.
+-- Line 1: Calamity countdown â€” context-aware: maze suppression, triplet urgency, or normal CD.
 local function showCalamityLine(self, alerts)
     if self.inMaze then
         alerts:showInfo(1, "Maze phase (no Calamity)")
     elseif self.inTriplet then
         local r = self.calamityTimer:remaining()
-        alerts:showInfo(1, "TRIPLET — Calamity: " .. (r > 0 and ZO_FormatCountdownTimer(r) or "now!"))
+        alerts:showInfo(1, "TRIPLET â€” Calamity: " .. (r > 0 and ZO_FormatCountdownTimer(r) or "now!"))
     elseif self.firstCalamity then
         alerts:showInfo(1, "Calamity: first ~9s")
     else
@@ -151,7 +149,7 @@ end
 -- Line 2: Current phase label (triplet split or maze navigation).
 local function showPhaseLine(self, alerts)
     if self.inTriplet then
-        alerts:showInfo(2, "Split phase — equalize HP!")
+        alerts:showInfo(2, "Split phase â€” equalize HP!")
     elseif self.inMaze then
         alerts:showInfo(2, "Navigate the maze")
     else

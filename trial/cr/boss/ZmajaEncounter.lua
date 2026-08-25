@@ -1,11 +1,10 @@
-local Location = require("core.Location")
-local Timer    = require("lib.Timer")
+﻿local Timer    = require("lib.Timer")
 
 local CA = require("lib.CA")
 local BossBase = require("lib.BossBase")
 local CastDur = require("lib.CastDur")
 
--- ── Ability ID sets for mini-boss detection ───────────────────────────────
+-- â”€â”€ Ability ID sets for mini-boss detection â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 -- Any of these firing marks that mini as active (detects +1/+2/+3 variant).
 local SIRO_IDS = {
     [104755]=true, -- HA
@@ -36,60 +35,60 @@ local GALE_IDS = {
     [106367]=true, -- Chilling Comet variant
 }
 
--- ── Ability IDs (from HowToCloudrest / CrutchAlerts) ─────────────────────
+-- â”€â”€ Ability IDs (from HowToCloudrest / CrutchAlerts) â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
--- ── Siroria ───────────────────────────────────────────────────────────────
-local SIRO_HA          = 104755  -- Heavy Attack → block/dodge
-local SIRO_JUMP        = 106601  -- Jump — 23 s CD
-local SIRO_BANNER      = 104902  -- Banner skill — 45 s CD
+-- â”€â”€ Siroria â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+local SIRO_HA          = 104755  -- Heavy Attack â†’ block/dodge
+local SIRO_JUMP        = 106601  -- Jump â€” 23 s CD
+local SIRO_BANNER      = 104902  -- Banner skill â€” 45 s CD
 local SIRO_DARK_TALONS = 105765  -- Root on player
-local SIRO_FLARE       = 103531  -- Roaring Flare → target name, 6.6 s window
+local SIRO_FLARE       = 103531  -- Roaring Flare â†’ target name, 6.6 s window
 local SIRO_FLARE_EXEC  = 110431  -- Roaring Flare execute variant
 
--- ── Relequen ──────────────────────────────────────────────────────────────
+-- â”€â”€ Relequen â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 local RELE_HA          = 105780  -- Heavy Attack
-local RELE_JUMP        = 105796  -- Flux Burst jump — 19 s CD
-local RELE_DIRECT_CURR = 105380  -- Direct Current channel → INTERRUPT! 20 s CD
-local RELE_JOLT        = 106614  -- Jolt cone — 15 s CD
+local RELE_JUMP        = 105796  -- Flux Burst jump â€” 19 s CD
+local RELE_DIRECT_CURR = 105380  -- Direct Current channel â†’ INTERRUPT! 20 s CD
+local RELE_JOLT        = 106614  -- Jolt cone â€” 15 s CD
 local RELE_OVERLOAD_1  = 103555  -- Voltaic Overload incoming (bar-swap warning)
 local RELE_OVERLOAD_2  = 87346   -- Voltaic Overload active on player
 
--- ── Galenwe ───────────────────────────────────────────────────────────────
+-- â”€â”€ Galenwe â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 local GALE_HA          = 106375  -- Heavy Attack
-local GALE_JUMP        = 106682  -- Teleport jump — 19 s CD
-local GALE_GLACIAL     = 106405  -- Glacial Spikes channel → INTERRUPT! 22 s CD
-local GALE_DONUT       = 106378  -- Donut AoE — 22 s CD
+local GALE_JUMP        = 106682  -- Teleport jump â€” 19 s CD
+local GALE_GLACIAL     = 106405  -- Glacial Spikes channel â†’ INTERRUPT! 22 s CD
+local GALE_DONUT       = 106378  -- Donut AoE â€” 22 s CD
 local GALE_HOARFROST_C = 105151  -- Hoarfrost cast (ground AoE incoming)
 local GALE_HOARFROST_C2= 110466  -- Hoarfrost cast execute variant
-local GALE_HOARFROST   = 103695  -- Hoarfrost debuff on player — 6 s drop window
+local GALE_HOARFROST   = 103695  -- Hoarfrost debuff on player â€” 6 s drop window
 local GALE_HOARFROST_2 = 110516  -- Hoarfrost debuff execute variant
 local GALE_HOARFROST_SY= 103697  -- Hoarfrost synergy used (drop frost now!)
 local GALE_HOARFROST_S2= 110525  -- Hoarfrost synergy execute variant
 local GALE_HOARFROST_AO= 103765  -- Hoarfrost AoE on ground
-local GALE_COMET       = 106374  -- Chilling Comet on player — 4 s window
+local GALE_COMET       = 106374  -- Chilling Comet on player â€” 4 s window
 local GALE_COMET_2     = 106367  -- Chilling Comet variant
 
--- ── Environment / mini shared ─────────────────────────────────────────────
+-- â”€â”€ Environment / mini shared â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 local RAZOR_THORNS     = 106656  -- Creeper root on player
 
--- ── Portal mechanics ──────────────────────────────────────────────────────
+-- â”€â”€ Portal mechanics â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 local PORTAL_OPEN      = 103946  -- Portal spawns / opens (75 s window)
 local PORTAL_CLOSE_1   = 104057  -- Remove Shadow Realm (normal close)
 local PORTAL_CLOSE_2   = 104792  -- Portal close (PC win)
-local PORTAL_RESET     = 105890  -- Z'Maja re-engage — reset portal group to 1
+local PORTAL_RESET     = 105890  -- Z'Maja re-engage â€” reset portal group to 1
 local PLAYER_EXIT      = 105218  -- Player exits shadow realm (side-boss variant)
 
--- ── Z'Maja abilities ──────────────────────────────────────────────────────
-local ZMAJA_JUMP       = 104564  -- BEGIN → "Z'Maja jumping!"
-local ZMAJA_HIDE_JUMP  = 104452  -- BEGIN → Z'Maja retreats to shadow
-local CRUSHING_DARK_1  = 105152  -- BEGIN → Kite! Crushing Darkness
+-- â”€â”€ Z'Maja abilities â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+local ZMAJA_JUMP       = 104564  -- BEGIN â†’ "Z'Maja jumping!"
+local ZMAJA_HIDE_JUMP  = 104452  -- BEGIN â†’ Z'Maja retreats to shadow
+local CRUSHING_DARK_1  = 105152  -- BEGIN â†’ Kite! Crushing Darkness
 local CRUSHING_DARK_2  = 105172
 local CRUSHING_DARK_3  = 105239
-local SHADOW_SPLASH    = 105123  -- BEGIN → Shadow Splash! Interrupt!
-local BANEFUL_MARK     = 107196  -- BEGIN (execute) → Baneful Mark!
-local ZMAJA_SHACKLE    = 107490  -- EFFECT_GAINED → mini shackled / dies
+local SHADOW_SPLASH    = 105123  -- BEGIN â†’ Shadow Splash! Interrupt!
+local BANEFUL_MARK     = 107196  -- BEGIN (execute) â†’ Baneful Mark!
+local ZMAJA_SHACKLE    = 107490  -- EFFECT_GAINED â†’ mini shackled / dies
 
--- ── Malevolent Cores / misc ───────────────────────────────────────────────
+-- â”€â”€ Malevolent Cores / misc â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 local CORE_EXPOSED     = 103980
 local CORE_PICKED_UP   = 103989
 local CORE_MISSED      = 110202
@@ -100,7 +99,7 @@ local OLORIME_SPEAR    = 104018
 local BREAK_AMULET     = 106023
 local MALICIOUS_SPHERE = 105291
 
--- ── Timer durations (seconds) ─────────────────────────────────────────────
+-- â”€â”€ Timer durations (seconds) â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 local SIRO_JUMP_CD     = 23
 local SIRO_BANNER_CD   = 45
 local RELE_JUMP_CD     = 19
@@ -115,13 +114,13 @@ local COMET_WINDOW     = 4     -- Chilling Comet window (seconds)
 local PORTAL_OPEN_DUR  = 75    -- portal stays open ~75 s
 local PORTAL_NEXT_CD   = 46    -- seconds until next portal after close
 
--- ── CA colour palettes ────────────────────────────────────────────────────
+-- â”€â”€ CA colour palettes â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 local COL_SIRO  = { -3, 0, false, { 1, 0.27, 0, 0.4 },    { 1, 0.27, 0, 0.8 } }    -- orange (fire)
 local COL_RELE  = { -3, 0, false, { 0.2, 0.6, 1, 0.4 },   { 0.2, 0.6, 1, 0.8 } }  -- blue (lightning)
 local COL_GALE  = { -3, 0, false, { 0, 0.87, 0.87, 0.4 }, { 0, 0.87, 0.87, 0.8 } } -- cyan (frost)
 local COL_ZMAJA = { -3, 0, false, { 0.6, 0, 0.8, 0.4 },   { 0.6, 0, 0.8, 0.8 } }   -- purple (shadow)
 
--- ── Fallback durations (empirical; replace if GetAbilityCastInfo becomes reliable) ─
+-- â”€â”€ Fallback durations (empirical; replace if GetAbilityCastInfo becomes reliable) â”€
 local FALLBACK_DARK_DUR = 6000   -- CrushingDarkness: empirical
 local FALLBACK_HA_DUR   = 1500   -- Siroria/Relequen/Galenwe HeavyAttack: empirical
 
@@ -134,11 +133,9 @@ ZmajaEncounter.nameAliases       = { "Z'Maja" }
 -- (0 would make detectDifficulty always return HARDMODE.)
 -- To calibrate: pull on vet HM, run /script d(GetUnitPower("boss1", POWERTYPE_HEALTH))
 ZmajaEncounter.hmHealthThreshold = math.huge
--- Location: entire arena — name-based detection is used instead.
--- location: placeholder — Cloudrest arena AABB not yet captured.
+-- location: placeholder â€” Cloudrest arena AABB not yet captured.
 -- Detection falls back to nameAliases (name-based, may fail on non-EN clients).
 -- To calibrate: stand in arena, run /script d(GetUnitWorldPosition("boss1"))
-ZmajaEncounter.location          = Location.new(0, 0, 0, 0, 0, 0)
 
 ZmajaEncounter.stateSchema = {
     -- Siroria
@@ -171,12 +168,12 @@ function ZmajaEncounter.new()
     return BossBase.fromSchema(ZmajaEncounter)
 end
 
--- ── Lifecycle ─────────────────────────────────────────────────────────────
+-- â”€â”€ Lifecycle â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 function ZmajaEncounter:onLeave(context)
     for _, cid in pairs(self.alertList) do CA.castAlertsStop(cid) end
 end
 
--- ── Handlers ────────────────────────────────────────────────────────────
+-- â”€â”€ Handlers â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 -- (Z'Maja has no shared common module; no per-unit DIED cleanup needed.)
 
 -- Mini-boss shackle: Z'Maja removes a mini from the fight.
@@ -202,9 +199,9 @@ local function handleSiroFlare(self, context, alerts, result, abilityId,
     if not self.siroActive then self.siroActive = true end
     if result ~= ACTION_RESULT_BEGIN then return end
     local target = (unitName and unitName ~= "") and unitName or "?"
-    alerts:showAction("Flare → " .. target)
+    alerts:showAction("Flare â†’ " .. target)
     local dur = CastDur.get(abilityId, math.floor(FLARE_WINDOW * 1000))
-    local cid = CA.alertCast(abilityId, "Flare → " .. target, dur, COL_SIRO)
+    local cid = CA.alertCast(abilityId, "Flare â†’ " .. target, dur, COL_SIRO)
     if cid and unitId then self.alertList[unitId] = cid end
 end
 
@@ -217,9 +214,9 @@ local function handleGaleHoarfrost(self, context, alerts, result, abilityId,
     if IsUnitPlayer(unitTag) then
         local carrier = GetUnitDisplayName("player") or "you"
         alerts:showAction("Frost! Drop in 6s (" .. carrier .. ")")
-        CA.alert(nil, "FROST — drop in 6s", 0x00EEEEff, SOUNDS.NONE, 4000)
+        CA.alert(nil, "FROST â€” drop in 6s", 0x00EEEEff, SOUNDS.NONE, 4000)
     elseif unitName and unitName ~= "" then
-        alerts:showAction("Frost → " .. unitName)
+        alerts:showAction("Frost â†’ " .. unitName)
     end
 end
 
@@ -240,7 +237,7 @@ local function handleGaleComet(self, context, alerts, result, abilityId,
     if result ~= ACTION_RESULT_EFFECT_GAINED then return end
     if not IsUnitPlayer(unitTag) then return end
     alerts:showAction("Chilling Comet! Move!")
-    CA.alert(nil, "COMET — move!", 0x00AAFFFF, SOUNDS.NONE, 2500)
+    CA.alert(nil, "COMET â€” move!", 0x00AAFFFF, SOUNDS.NONE, 2500)
 end
 
 -- Portal close: shared handler for normal close and PC win.
@@ -331,7 +328,7 @@ local function handleReleOverload1(self, context, alerts, result, abilityId,
     if not self.releActive then self.releActive = true end
     if result ~= ACTION_RESULT_EFFECT_GAINED_DURATION then return end
     if not IsUnitPlayer(unitTag) then return end
-    alerts:showAction("Overload incoming — bar swap!")
+    alerts:showAction("Overload incoming â€” bar swap!")
 end
 
 local function handleReleOverload2(self, context, alerts, result, abilityId,
@@ -339,7 +336,7 @@ local function handleReleOverload2(self, context, alerts, result, abilityId,
     if not self.releActive then self.releActive = true end
     if result ~= ACTION_RESULT_EFFECT_GAINED_DURATION then return end
     if not IsUnitPlayer(unitTag) then return end
-    alerts:showAction("Overload on you — swap now!")
+    alerts:showAction("Overload on you â€” swap now!")
     CA.alert(nil, "BAR SWAP", 0x3399FFFF, SOUNDS.NONE, 3000)
 end
 
@@ -388,7 +385,7 @@ local function handleOlorimeSpear(self, context, alerts, result, abilityId,
     if result ~= ACTION_RESULT_EFFECT_GAINED and result ~= ACTION_RESULT_BEGIN then return end
     self.spearCount = self.spearCount + 1
     local target = (unitName and unitName ~= "") and unitName or "?"
-    alerts:showAction("Spear → " .. target .. " (" .. self.spearCount .. ")")
+    alerts:showAction("Spear â†’ " .. target .. " (" .. self.spearCount .. ")")
 end
 
 local function handleRazorThorns(self, context, alerts, abilityId, unitTag, ...)
@@ -401,7 +398,7 @@ local function handlePortalOpen(self, context, alerts, abilityId, ...)
     self.portalActive = true
     self.portalTimer:reset(PORTAL_OPEN_DUR)
     self.portalNextTimer:clear()
-    alerts:showHeader("Shadow Realm — Group " .. self.portalGroup)
+    alerts:showHeader("Shadow Realm â€” Group " .. self.portalGroup)
 end
 
 local function handleZmajaJump(self, context, alerts, abilityId, ...)
@@ -440,13 +437,13 @@ local function handleCorePickedUp(self, context, alerts, abilityId, ...)
     alerts:showAction("Core picked up.")
 end
 
--- ── Routing tables (C3) ──────────────────────────────────────────────────
+-- â”€â”€ Routing tables (C3) â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
 ZmajaEncounter.combatRoutes = {
     -- Mini shackle
     [ZMAJA_SHACKLE]    = { result = ACTION_RESULT_EFFECT_GAINED, fn = handleShackle },
 
-    -- ── SIRORIA ────────────────────────────────────────────────────────────
+    -- â”€â”€ SIRORIA â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
     [SIRO_HA]           = handleSiroHa,
     [SIRO_JUMP]         = handleSiroJump,
     [SIRO_BANNER]       = handleSiroBanner,
@@ -454,7 +451,7 @@ ZmajaEncounter.combatRoutes = {
     [SIRO_FLARE_EXEC]   = handleSiroFlare,
     [SIRO_DARK_TALONS]  = handleSiroDarkTalons,
 
-    -- ── RELEQUEN ───────────────────────────────────────────────────────────
+    -- â”€â”€ RELEQUEN â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
     [RELE_HA]           = handleReleHa,
     [RELE_JUMP]         = handleReleJump,
     [RELE_DIRECT_CURR]  = handleReleDirectCurr,
@@ -462,7 +459,7 @@ ZmajaEncounter.combatRoutes = {
     [RELE_OVERLOAD_1]   = handleReleOverload1,
     [RELE_OVERLOAD_2]   = handleReleOverload2,
 
-    -- ── GALENWE ────────────────────────────────────────────────────────────
+    -- â”€â”€ GALENWE â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
     [GALE_HA]            = handleGaleHa,
     [GALE_JUMP]          = handleGaleJump,
     [GALE_GLACIAL]       = handleGaleGlacial,
@@ -476,15 +473,15 @@ ZmajaEncounter.combatRoutes = {
     [GALE_COMET]         = handleGaleComet,
     [GALE_COMET_2]       = handleGaleComet,
 
-    -- ── Environment ────────────────────────────────────────────────────────
+    -- â”€â”€ Environment â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
     [RAZOR_THORNS]    = { result = ACTION_RESULT_EFFECT_GAINED, fn = handleRazorThorns },
 
-    -- ── Portal ─────────────────────────────────────────────────────────────
+    -- â”€â”€ Portal â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
     [PORTAL_OPEN]     = { result = ACTION_RESULT_BEGIN, fn = handlePortalOpen },
     [PORTAL_CLOSE_1]  = { result = ACTION_RESULT_BEGIN, fn = handlePortalClose },
     [PORTAL_CLOSE_2]  = { result = ACTION_RESULT_BEGIN, fn = handlePortalClose },
 
-    -- ── Z'Maja ─────────────────────────────────────────────────────────────
+    -- â”€â”€ Z'Maja â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
     [ZMAJA_JUMP]      = { result = ACTION_RESULT_BEGIN, fn = handleZmajaJump },
     [ZMAJA_HIDE_JUMP] = { result = ACTION_RESULT_BEGIN, fn = handleZmajaHideJump },
     [CRUSHING_DARK_1] = { result = ACTION_RESULT_BEGIN, fn = handleCrushingDark },
@@ -494,14 +491,14 @@ ZmajaEncounter.combatRoutes = {
     [BANEFUL_MARK]    = { result = ACTION_RESULT_BEGIN, fn = handleBanefulMark },
     [OLORIME_SPEAR]   = handleOlorimeSpear,
 
-    -- ── Malevolent Cores ────────────────────────────────────────────────────
+    -- â”€â”€ Malevolent Cores â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
     [CORE_EXPOSED]   = { result = ACTION_RESULT_BEGIN, fn = handleCoreExposed },
     [CORE_MISSED]    = { result = ACTION_RESULT_BEGIN, fn = handleCoreMissed },
     [CORE_PICKED_UP] = { result = ACTION_RESULT_BEGIN, fn = handleCorePickedUp },
 }
--- (effectRoutes: CR-3 TODO — portal world-state, mini shackle via effect path)
+-- (effectRoutes: CR-3 TODO â€” portal world-state, mini shackle via effect path)
 
--- ── Info-line renderers ───────────────────────────────────────────────────
+-- â”€â”€ Info-line renderers â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
 -- Line 1: Portal open countdown, or time until next portal.
 local function showPortalStatusLine(self, alerts)
@@ -576,7 +573,7 @@ local function showGaleLine(self, alerts)
     end
 end
 
--- ── 200 ms display update ─────────────────────────────────────────────────
+-- â”€â”€ 200 ms display update â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 function ZmajaEncounter:onUpdate(context, alerts)
     showPortalStatusLine(self, alerts)
     showPortalGroupLine(self, alerts)

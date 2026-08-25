@@ -1,19 +1,18 @@
-local Location = require("core.Location")
-
+﻿
 local CA = require("lib.CA")
 local BossBase = require("lib.BossBase")
 local CastDur = require("lib.CastDur")
 
--- ── Ability IDs ───────────────────────────────────────────────────────────
-local BRILLIANT_ANNIHILATION = 214187   -- combatRoute: ACTION_RESULT_BEGIN → light side room wipe; STACK
-local BLEAK_ANNIHILATION     = 214203   -- combatRoute: ACTION_RESULT_BEGIN → dark side room wipe; STACK
-local PORCIN_LIGHT           = 219329   -- combatRoute: ACTION_RESULT_EFFECT_GAINED_DURATION / FADED → player on Ryelaz (dark) side
-local PORCIN_DARK            = 219330   -- combatRoute: ACTION_RESULT_EFFECT_GAINED_DURATION / FADED → player on Zilyesset (light) side
+-- â”€â”€ Ability IDs â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+local BRILLIANT_ANNIHILATION = 214187   -- combatRoute: ACTION_RESULT_BEGIN â†’ light side room wipe; STACK
+local BLEAK_ANNIHILATION     = 214203   -- combatRoute: ACTION_RESULT_BEGIN â†’ dark side room wipe; STACK
+local PORCIN_LIGHT           = 219329   -- combatRoute: ACTION_RESULT_EFFECT_GAINED_DURATION / FADED â†’ player on Ryelaz (dark) side
+local PORCIN_DARK            = 219330   -- combatRoute: ACTION_RESULT_EFFECT_GAINED_DURATION / FADED â†’ player on Zilyesset (light) side
 
--- ── CA colour palettes ────────────────────────────────────────────────────
+-- â”€â”€ CA colour palettes â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 local COL_ANNIHIL = { -3, 0, false, { 1, 0.65, 0, 0.4 }, { 1, 0.65, 0, 0.8 } }
 
--- ── Fallback durations (empirical; replace if GetAbilityCastInfo becomes reliable) ─
+-- â”€â”€ Fallback durations (empirical; replace if GetAbilityCastInfo becomes reliable) â”€
 local FALLBACK_DUR = 3000   -- Annihilation channel: empirical
 
 local RyelazEncounter = {}
@@ -22,12 +21,11 @@ RyelazEncounter.__index = RyelazEncounter
 RyelazEncounter.key               = "ryelaz"
 RyelazEncounter.nameAliases       = { "Count Ryelaz", "Zilyesset" }
 RyelazEncounter.hmHealthThreshold = 40000000
--- location: placeholder — Lucent Citadel arena AABB not yet captured.
+-- location: placeholder â€” Lucent Citadel arena AABB not yet captured.
 -- Detection falls back to nameAliases (name-based, may fail on non-EN clients).
 -- To calibrate: stand in arena, run /script d(GetUnitWorldPosition("boss1"))
-RyelazEncounter.location          = Location.new(0, 0, 0, 0, 0, 0)
 
--- ── State ─────────────────────────────────────────────────────────────────
+-- â”€â”€ State â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 -- "ryelaz"    = player on Ryelaz dark side
 -- "zilyesset" = player on Zilyesset light side
 -- nil         = assignment unknown (split hasn't happened or effect not yet seen)
@@ -37,14 +35,14 @@ function RyelazEncounter.new()
     return BossBase.fromSchema(RyelazEncounter)
 end
 
--- ── Routing tables (C3) ──────────────────────────────────────────────────
+-- â”€â”€ Routing tables (C3) â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
 -- Annihilation: shared alertCast, different showAction label.
 local function makeAnnihilHandler(label)
     return { result = ACTION_RESULT_BEGIN,
         fn = function(self, context, alerts, abilityId, ...)
         local dur = CastDur.get(abilityId, FALLBACK_DUR)
-        CA.alertCast(abilityId, "STACK — Annihilation!", dur, COL_ANNIHIL)
+        CA.alertCast(abilityId, "STACK â€” Annihilation!", dur, COL_ANNIHIL)
         alerts:showAction(label .. " STACK!")
     end }
 end
