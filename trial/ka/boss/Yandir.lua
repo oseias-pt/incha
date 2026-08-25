@@ -50,14 +50,31 @@ function Yandir:onLeave(context)
     for _, cid in pairs(self.alertList) do CA.castAlertsStop(cid) end
 end
 
+-- ── Combat state (fight start / wipe) ─────────────────────────────────────
+-- Arms both timers when the pull starts.  Timer.new() leaves expiresAt = 0,
+-- so isExpired() would return true immediately without this reset.
+function Yandir:onCombatState(context, inCombat, alerts)
+    if inCombat then
+        self.totemTimer:reset()
+        self.gryphonTimer:reset()
+    end
+end
 
 -- 200ms timer display — writes to info lines 1-2.
 -- No-op when sink has no info handler (e.g. LegacyUI during the KA transition).
 function Yandir:onUpdate(context, alerts)
     local t1 = self.totemTimer:remaining()
-    local t2 = self.gryphonTimer:remaining()
     alerts:showInfo(1, "Totem:   " .. (t1 > 0 and ZO_FormatCountdownTimer(t1) or "ready"))
-    alerts:showInfo(2, "Gryphon: " .. (t2 > 0 and ZO_FormatCountdownTimer(t2) or "ready"))
+    local line2
+    if self.bGRYPHON_SKIP then
+        line2 = "Gryphon: |c55aa55Skip!|r"
+    elseif self.bGRYPHON_SKIP_FAILHP > 0 then
+        line2 = string.format("Gryphon: |ccc4444Fail @ %.0f%%|r", self.bGRYPHON_SKIP_FAILHP)
+    else
+        local t2 = self.gryphonTimer:remaining()
+        line2 = "Gryphon: " .. (t2 > 0 and ZO_FormatCountdownTimer(t2) or "ready")
+    end
+    alerts:showInfo(2, line2)
 end
 
 -- ── Routing tables (C3) ──────────────────────────────────────────────────
