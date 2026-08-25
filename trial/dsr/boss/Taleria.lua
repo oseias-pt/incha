@@ -35,9 +35,9 @@ local STORM_WALL_CW    = 175447   -- effectRoute: EFFECT_RESULT_GAINED → storm
 local STORM_WALL_CCW   = 174866   -- effectRoute: EFFECT_RESULT_GAINED → stormWallCW = false
 local LURE_OF_SEA      = 163952   -- combatRoute: ACTION_RESULT_BEGIN → CastAlertsStart 4s + Break free
 local ASPECT_TERROR    = 174697   -- combatRoute: ACTION_RESULT_BEGIN + player → caAlertCast (fear)
-local VENOM_EVOKER_P   = 175132   -- effectRoute: EFFECT_RESULT_GAINED → green portal 60s
-local SEA_BOILER_P     = 175134   -- effectRoute: EFFECT_RESULT_GAINED → yellow portal 60s
-local TIDAL_MAGE_P     = 175136   -- effectRoute: EFFECT_RESULT_GAINED → purple portal 60s
+local VENOM_EVOKER_P   = 175132   -- effectRoute: EFFECT_RESULT_GAINED → green portal 60s  (makePortalEffectHandler 1)
+local SEA_BOILER_P     = 175134   -- effectRoute: EFFECT_RESULT_GAINED → yellow portal 60s (makePortalEffectHandler 2)
+local TIDAL_MAGE_P     = 175136   -- effectRoute: EFFECT_RESULT_GAINED → purple portal 60s (makePortalEffectHandler 3)
 local BRIDGE_1         = 166479   -- combatRoute: ACTION_RESULT_BEGIN → bridge wipe 60s
 local BRIDGE_2         = 175279   -- combatRoute: ACTION_RESULT_BEGIN → bridge wipe 60s
 local BRIDGE_3         = 175291   -- combatRoute: ACTION_RESULT_BEGIN → bridge wipe 60s
@@ -127,6 +127,7 @@ local function makeBridgeHandler(bridgeIdx)
     return { result = ACTION_RESULT_BEGIN,
         fn = function(self, context, alerts, abilityId, ...)
         local now = GetGameTimeMilliseconds() / 1000
+        self.bridgeOpen[bridgeIdx]      = true
         self.lastPlatformFall           = now
         self.bridgeWipeStart[bridgeIdx] = now
         CA.alert(nil,
@@ -227,31 +228,23 @@ local function handleStormWallCcw(self, context, alerts, changeType, abilityId, 
     end
 end
 
-local function handleVenomEvokerP(self, context, alerts, abilityId, ...)
-    local now = GetGameTimeMilliseconds() / 1000
-    self.bridgeOpen[1]      = true
-    self.bridgeWipeStart[1] = now
-    self.lastPlatformFall   = now
-    CA.alert(nil, "|c22CC22Green portal open|r — 60 s!",
-        0x22CC22D9, SOUNDS.DUEL_START, 4000)
-end
+-- Portal open: factory for the three portal-effect handlers (E6).
+-- Each differs only in bridge index, display label, and alert colour.
+local PORTAL_LABELS = {
+    "|c22CC22Green portal open|r — 60 s!",
+    "|cDDCC00Yellow portal open|r — 60 s!",
+    "|c8822DDPurple portal open|r — 60 s!",
+}
+local PORTAL_COLORS = { 0x22CC22D9, 0xDDCC00D9, 0x8822DDD9 }
 
-local function handleSeaBoilerP(self, context, alerts, abilityId, ...)
-    local now = GetGameTimeMilliseconds() / 1000
-    self.bridgeOpen[2]      = true
-    self.bridgeWipeStart[2] = now
-    self.lastPlatformFall   = now
-    CA.alert(nil, "|cDDCC00Yellow portal open|r — 60 s!",
-        0xDDCC00D9, SOUNDS.DUEL_START, 4000)
-end
-
-local function handleTidalMageP(self, context, alerts, abilityId, ...)
-    local now = GetGameTimeMilliseconds() / 1000
-    self.bridgeOpen[3]      = true
-    self.bridgeWipeStart[3] = now
-    self.lastPlatformFall   = now
-    CA.alert(nil, "|c8822DDPurple portal open|r — 60 s!",
-        0x8822DDD9, SOUNDS.DUEL_START, 4000)
+local function makePortalEffectHandler(idx)
+    return function(self, context, alerts, abilityId, ...)
+        local now = GetGameTimeMilliseconds() / 1000
+        self.bridgeOpen[idx]      = true
+        self.bridgeWipeStart[idx] = now
+        self.lastPlatformFall     = now
+        CA.alert(nil, PORTAL_LABELS[idx], PORTAL_COLORS[idx], SOUNDS.DUEL_START, 4000)
+    end
 end
 
 local function handleWhirlpool(self, context, alerts, changeType, abilityId,
@@ -269,9 +262,9 @@ Taleria.effectRoutes = {
     [RAPID_DELUGE_HM] = handleRapidDeluge,
     [STORM_WALL_CW]   = handleStormWallCw,
     [STORM_WALL_CCW]  = handleStormWallCcw,
-    [VENOM_EVOKER_P]  = { changeType = EFFECT_RESULT_GAINED, fn = handleVenomEvokerP },
-    [SEA_BOILER_P]    = { changeType = EFFECT_RESULT_GAINED, fn = handleSeaBoilerP },
-    [TIDAL_MAGE_P]    = { changeType = EFFECT_RESULT_GAINED, fn = handleTidalMageP },
+    [VENOM_EVOKER_P]  = { changeType = EFFECT_RESULT_GAINED, fn = makePortalEffectHandler(1) },
+    [SEA_BOILER_P]    = { changeType = EFFECT_RESULT_GAINED, fn = makePortalEffectHandler(2) },
+    [TIDAL_MAGE_P]    = { changeType = EFFECT_RESULT_GAINED, fn = makePortalEffectHandler(3) },
     [WHIRLPOOL]       = handleWhirlpool,
 }
 
