@@ -8,3 +8,6 @@
 # OS noise
 Thumbs.db
 .DS_Store
+
+# Claude Code internal state (worktrees, session data)
+.claude/
