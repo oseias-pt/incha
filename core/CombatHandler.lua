@@ -17,30 +17,12 @@
 ---   beginTime, endTime, stackCount, iconName, buffType, effectType,
 ---   abilityType, statusEffectType, unitName, unitId, abilityId, sourceType
 ---
---- C3: Boss classes may now declare routing tables instead of monolithic handlers:
+--- C3 / D6 / D7: Boss classes declare pure routing tables instead of monolithic
+--- handlers.  See dispatchCombatEntry / dispatchEffectEntry below for the two
+--- entry shapes (plain function and D6 filter shorthand).
 ---
----   Boss.combatRoutes = {
----       -- Plain handler: receives result, abilityId, and trailing ESO args.
----       [abilityId] = function(self, context, alerts, result, abilityId,
----                              unitTag, sourceUnitTag, sourceUnitId, unitId,
----                              sourceUnitName, unitName) ... end,
----
----       -- D6 filter shorthand: dispatcher pre-checks result; fn never sees it.
----       [abilityId] = { result = ACTION_RESULT_BEGIN,
----           fn = function(self, context, alerts, abilityId,
----                         unitTag, sourceUnitTag, sourceUnitId, unitId,
----                         sourceUnitName, unitName) ... end },
----   }
----   Boss.effectRoutes = {
----       -- Plain handler: receives changeType, abilityId, and trailing ESO args.
----       [abilityId] = function(self, context, alerts, changeType, abilityId,
----                              unitTag, unitId, unitName, stackCount) ... end,
----
----       -- D6 filter shorthand: dispatcher pre-checks changeType; fn never sees it.
----       [abilityId] = { changeType = EFFECT_RESULT_GAINED,
----           fn = function(self, context, alerts, abilityId,
----                         unitTag, unitId, unitName, stackCount) ... end },
----   }
+---   Boss.combatRoutes = { [abilityId] = fn | { result=CONST, fn=fn }, ... }
+---   Boss.effectRoutes = { [abilityId] = fn | { changeType=CONST, fn=fn }, ... }
 ---   Boss.onDied = function(self, context, alerts,
 ---                          unitTag, sourceUnitTag, sourceUnitId, unitId,
 ---                          sourceUnitName, unitName) ... end
@@ -56,6 +38,42 @@
 --- combatRoutes entry matches.
 
 local CombatHandler = {}
+
+-- ── D8: dispatch helpers ──────────────────────────────────────────────────
+-- Extracted from the identical type(entry) branches in onCombatEvent and
+-- onEffectChanged.  Each helper calls the plain function or, for a D6
+-- shorthand table, pre-checks the filter value before calling fn.
+
+local function dispatchCombatEntry(boss, context, alerts, entry, result,
+        abilityId, unitTag, sourceUnitTag, sourceUnitId, unitId,
+        sourceUnitName, unitName)
+    if type(entry) == "table" then
+        -- { result = CONST, fn = fn }: pre-filter; fn does not receive result.
+        if result == entry.result then
+            entry.fn(boss, context, alerts,
+                abilityId, unitTag, sourceUnitTag, sourceUnitId, unitId,
+                sourceUnitName, unitName)
+        end
+    else
+        entry(boss, context, alerts,
+            result, abilityId, unitTag, sourceUnitTag, sourceUnitId, unitId,
+            sourceUnitName, unitName)
+    end
+end
+
+local function dispatchEffectEntry(boss, context, alerts, entry, changeType,
+        abilityId, unitTag, unitId, unitName, stackCount)
+    if type(entry) == "table" then
+        -- { changeType = CONST, fn = fn }: pre-filter; fn does not receive changeType.
+        if changeType == entry.changeType then
+            entry.fn(boss, context, alerts,
+                abilityId, unitTag, unitId, unitName, stackCount)
+        end
+    else
+        entry(boss, context, alerts,
+            changeType, abilityId, unitTag, unitId, unitName, stackCount)
+    end
+end
 
 -- Boss handlers receive a trimmed subset of the raw ESO args to keep their
 -- signatures readable.  Extend if a future boss needs additional fields.
@@ -90,18 +108,9 @@ function CombatHandler.onCombatEvent(trial, eventCode,
     if boss.combatRoutes then
         local entry = boss.combatRoutes[abilityId]
         if entry then
-            if type(entry) == "table" then
-                -- { result = CONST, fn = fn }: pre-filter; fn does not receive result.
-                if result == entry.result then
-                    entry.fn(boss, context, alerts,
-                        abilityId, unitTag, sourceUnitTag, sourceUnitId, unitId,
-                        sourceUnitName, unitName)
-                end
-            else
-                entry(boss, context, alerts,
-                    result, abilityId, unitTag, sourceUnitTag, sourceUnitId, unitId,
-                    sourceUnitName, unitName)
-            end
+            dispatchCombatEntry(boss, context, alerts, entry, result,
+                abilityId, unitTag, sourceUnitTag, sourceUnitId, unitId,
+                sourceUnitName, unitName)
             return
         end
     end
@@ -134,16 +143,8 @@ function CombatHandler.onEffectChanged(trial, eventCode,
     if boss.effectRoutes then
         local entry = boss.effectRoutes[abilityId]
         if entry then
-            if type(entry) == "table" then
-                -- { changeType = CONST, fn = fn }: pre-filter; fn does not receive changeType.
-                if changeType == entry.changeType then
-                    entry.fn(boss, context, alerts,
-                        abilityId, unitTag, unitId, unitName, stackCount)
-                end
-            else
-                entry(boss, context, alerts,
-                    changeType, abilityId, unitTag, unitId, unitName, stackCount)
-            end
+            dispatchEffectEntry(boss, context, alerts, entry, changeType,
+                abilityId, unitTag, unitId, unitName, stackCount)
             return
         end
     end
