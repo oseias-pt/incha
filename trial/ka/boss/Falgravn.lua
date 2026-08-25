@@ -120,6 +120,8 @@ Falgravn.stateSchema = {
     torturerCount    = 8,
     -- [unitId] → CA cast bar ID; cleared on leave/death.
     alertList        = function() return {} end,
+    -- CA bar ID for the Prison debuff (false when not active).
+    prisonBarId      = false,
     -- OSI mechanic icon tracking: [unitTag] → displayName.
     osiPrison      = function() return {} end,
     osiInstability = function() return {} end,

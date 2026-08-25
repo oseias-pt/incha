@@ -37,6 +37,8 @@ Vrol.stateSchema = {
     bPORTAL_END       = false,
     -- Portal kill-timer: ms timestamp when the current portal debuff expires.
     portalKillExpires = 0,
+    -- CA bar ID for the active portal kill-timer debuff (false when not in portal).
+    portalKillBarId   = false,
     -- [unitId] → CA cast bar ID; cleared on leave/death.
     alertList         = function() return {} end,
     -- Fog duration tracking: ms timestamp when fog clears (0 = no active fog).
