@@ -36,6 +36,9 @@ ChimeraEncounter.__index = ChimeraEncounter
 ChimeraEncounter.key               = "chimera"
 ChimeraEncounter.nameAliases       = { "Chimera" }
 ChimeraEncounter.hmHealthThreshold = 70000000   -- vet ~46.5M, HM ~93.1M
+-- location: placeholder — Sunken Elder arena AABB not yet captured.
+-- Detection falls back to nameAliases (name-based, may fail on non-EN clients).
+-- To calibrate: stand in arena, run /script d(GetUnitWorldPosition("boss1"))
 ChimeraEncounter.location          = Location.new(0, 0, 0, 0, 0, 0)
 
 ChimeraEncounter.stateSchema = {

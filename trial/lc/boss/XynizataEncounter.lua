@@ -27,6 +27,9 @@ XynizataEncounter.__index = XynizataEncounter
 XynizataEncounter.key               = "xynizata"
 XynizataEncounter.nameAliases       = { "Xynizata" }
 XynizataEncounter.hmHealthThreshold = 0
+-- location: placeholder — Lucent Citadel arena AABB not yet captured.
+-- Detection falls back to nameAliases (name-based, may fail on non-EN clients).
+-- To calibrate: stand in arena, run /script d(GetUnitWorldPosition("boss1"))
 XynizataEncounter.location          = Location.new(0, 0, 0, 0, 0, 0)
 
 XynizataEncounter.stateSchema = {

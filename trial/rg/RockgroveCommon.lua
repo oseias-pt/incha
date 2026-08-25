@@ -1,10 +1,13 @@
 --- RockgroveCommon — trash-add mechanics shared across all three Rockgrove arenas.
 ---
 --- Nine add abilities appear regardless of which boss is active.
---- Each boss's onCombatEvent calls RockgroveCommon.handle() first, then
---- returns early if it was handled — identical pattern to SunspireCommon.
+--- Called by CombatHandler.onCombatEvent (boss.common.handle) before route
+--- lookup; returning true short-circuits routing — same contract as
+--- SunspireCommon and DreadsailCommon.
 ---
---- Returns true if the event was consumed (caller should return).
+--- Interface:
+---   .handle(alerts, result, abilityId, unitTag, sourceUnitName) → bool
+---   handleEffect: not needed (all Rockgrove adds use combat events only)
 
 local CA = require("lib.CA")
 local RockgroveCommon = {}
@@ -40,8 +43,8 @@ local ACT_ASSAULT  = { DODGE_DUR, "Hold Block!", 0.8, 0.0, 0.0, 0.9, nil }
 local ACT_METEOR   = { 10000,     "KILL SUN!",   0.8, 0.0, 0.0, 0.9, nil }
 
 -- ── Public handler ─────────────────────────────────────────────────────────
--- Call at the top of each boss's onCombatEvent.
--- result, abilityId, unitTag, sourceUnitName come straight from the dispatch.
+-- Called by CombatHandler (boss.common.handle) before the combatRoutes lookup.
+-- Returning true short-circuits the route dispatch for this event.
 function RockgroveCommon.handle(alerts, result, abilityId, unitTag, sourceUnitName)
     if result ~= ACTION_RESULT_BEGIN then return false end
 

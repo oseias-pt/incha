@@ -36,6 +36,9 @@ YaseylaEncounter.__index = YaseylaEncounter
 YaseylaEncounter.key               = "yaseyla"
 YaseylaEncounter.nameAliases       = { "Exarchanic Yaseyla" }
 YaseylaEncounter.hmHealthThreshold = 80000000   -- vet ~65M, HM ~97.8M
+-- location: placeholder — Sunken Elder arena AABB not yet captured.
+-- Detection falls back to nameAliases (name-based, may fail on non-EN clients).
+-- To calibrate: stand in arena, run /script d(GetUnitWorldPosition("boss1"))
 YaseylaEncounter.location          = Location.new(0, 0, 0, 0, 0, 0)
 
 YaseylaEncounter.stateSchema = {

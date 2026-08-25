@@ -34,6 +34,9 @@ AnsuulEncounter.__index = AnsuulEncounter
 AnsuulEncounter.key               = "ansuul"
 AnsuulEncounter.nameAliases       = { "Ansuul the Tormentor" }
 AnsuulEncounter.hmHealthThreshold = 100000000  -- vet ~69M, HM ~160.7M
+-- location: placeholder — Sunken Elder arena AABB not yet captured.
+-- Detection falls back to nameAliases (name-based, may fail on non-EN clients).
+-- To calibrate: stand in arena, run /script d(GetUnitWorldPosition("boss1"))
 AnsuulEncounter.location          = Location.new(0, 0, 0, 0, 0, 0)
 
 AnsuulEncounter.stateSchema = {

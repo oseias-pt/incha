@@ -65,6 +65,8 @@ Bahsei.__index = Bahsei
 
 Bahsei.key               = "bahsei"
 Bahsei.name              = "Bahsei"      -- TODO: verify; may be "Flame-Herald Bahsei"
+-- location: arena AABB not yet captured — detection is name-based.
+-- To add AABB: stand in arena, run /script d(GetUnitWorldPosition("boss1"))
 Bahsei.hmHealthThreshold = 100000001     -- TODO: verify exact HM health pool in-game
 
 Bahsei.stateSchema = {

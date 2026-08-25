@@ -49,6 +49,9 @@ OlmsEncounter.nameAliases       = { "Saint Olms the Just" }
 -- hmHealthThreshold: TBD — verify in-game on vet HM
 OlmsEncounter.hmHealthThreshold = 0
 -- Location: entire arena — name-based detection is used instead.
+-- location: placeholder — Asylum arena AABB not yet captured.
+-- Detection falls back to nameAliases (name-based, may fail on non-EN clients).
+-- To calibrate: stand in arena, run /script d(GetUnitWorldPosition("boss1"))
 OlmsEncounter.location          = Location.new(0, 0, 0, 0, 0, 0)
 
 OlmsEncounter.stateSchema = {

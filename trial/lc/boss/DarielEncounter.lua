@@ -18,6 +18,9 @@ DarielEncounter.__index = DarielEncounter
 DarielEncounter.key               = "dariel"
 DarielEncounter.nameAliases       = { "Dariel" }
 DarielEncounter.hmHealthThreshold = 0
+-- location: placeholder — Lucent Citadel arena AABB not yet captured.
+-- Detection falls back to nameAliases (name-based, may fail on non-EN clients).
+-- To calibrate: stand in arena, run /script d(GetUnitWorldPosition("boss1"))
 DarielEncounter.location          = Location.new(0, 0, 0, 0, 0, 0)
 
 DarielEncounter.stateSchema = {}

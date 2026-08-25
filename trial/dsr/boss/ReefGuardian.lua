@@ -58,6 +58,8 @@ ReefGuardian.common = DreadsailCommon   -- C3: common mechanic dispatch
 
 ReefGuardian.key              = "reef_guardian"
 ReefGuardian.name             = "Reef Guardian"   -- TODO: verify via GetUnitName("boss1") in-game
+-- location: arena AABB not yet captured — detection is name-based.
+-- To add AABB: stand in arena, run /script d(GetUnitWorldPosition("boss1"))
 ReefGuardian.hmHealthThreshold = 100000001         -- TODO: verify
 
 ReefGuardian.stateSchema = {

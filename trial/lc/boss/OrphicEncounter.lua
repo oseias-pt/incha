@@ -32,6 +32,9 @@ OrphicEncounter.__index = OrphicEncounter
 OrphicEncounter.key               = "orphic"
 OrphicEncounter.nameAliases       = { "Orphic Shattered Shard" }
 OrphicEncounter.hmHealthThreshold = 80000000
+-- location: placeholder — Lucent Citadel arena AABB not yet captured.
+-- Detection falls back to nameAliases (name-based, may fail on non-EN clients).
+-- To calibrate: stand in arena, run /script d(GetUnitWorldPosition("boss1"))
 OrphicEncounter.location          = Location.new(0, 0, 0, 0, 0, 0)
 
 OrphicEncounter.stateSchema = {

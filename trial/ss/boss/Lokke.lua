@@ -136,6 +136,9 @@ setmetatable(Lokke, {__index = BossBase})
 
 Lokke.key  = "lokke"
 Lokke.name = "Lokkestiiz"
+-- location: Sunspire arena is one shared room for all three bosses — a single AABB
+-- would be ambiguous.  Name-based detection is intentional; name is well-established
+-- EN string (same client since Elsweyr launch), non-EN risk is low.
 -- hmHealthThreshold: measure in-game
 
 Lokke.stateSchema = {

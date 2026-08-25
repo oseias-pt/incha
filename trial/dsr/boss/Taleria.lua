@@ -83,6 +83,8 @@ Taleria.__index = Taleria
 
 Taleria.key              = "taleria"
 Taleria.name             = "Tideborn Taleria"   -- TODO: verify via GetUnitName("boss1") in-game
+-- location: arena AABB not yet captured — detection is name-based.
+-- To add AABB: stand in arena, run /script d(GetUnitWorldPosition("boss1"))
 Taleria.hmHealthThreshold = 100000001            -- TODO: verify
 
 Taleria.stateSchema = {

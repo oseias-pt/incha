@@ -4,8 +4,13 @@
 --- active: boss heavy attacks, cat and 2H-add interrupts, shield charge,
 --- dragon breaths, and fire spit.
 ---
---- Each boss's onCombatEvent calls SunspireCommon.handle() first, then
---- continues into its own mechanic handlers.
+--- Called by CombatHandler.onCombatEvent (boss.common.handle) before route
+--- lookup; returning true short-circuits routing — same contract as
+--- RockgroveCommon and DreadsailCommon.
+---
+--- Interface:
+---   .handle(alerts, result, abilityId, unitTag, sourceUnitName) → bool
+---   handleEffect: not needed (all Sunspire adds use combat events only)
 ---
 --- hitValue unavailability note (old API → modern):
 ---   HTS used hitValue for cast-duration timers.  Modern API lacks it; we use
@@ -68,9 +73,8 @@ local COL_SPIT   = { -3, 0, false, { 1.0, 0.50, 0.0, 0.4 }, { 1.0, 0.50, 0.0, 0.
 local COL_CHARGE = { -2, 0, false, { 0.2, 0.60, 1.0, 0.4 }, { 0.2, 0.60, 1.0, 0.8 } }
 
 -- ── Public handler ─────────────────────────────────────────────────────────
--- Call from each boss's onCombatEvent before boss-specific logic.
--- Returns true if the event was handled so the caller can skip further checks
--- for the same abilityId; returns false otherwise.
+-- Called by CombatHandler (boss.common.handle) before the combatRoutes lookup.
+-- Returns true if the event was handled (caller returns immediately); false otherwise.
 function SunspireCommon.handle(alerts, result, abilityId, unitTag, sourceUnitName)
     if result ~= ACTION_RESULT_BEGIN then return false end
 

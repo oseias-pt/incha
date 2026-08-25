@@ -86,7 +86,7 @@ function CombatHandler.onCombatEvent(trial, eventCode,
     if not boss then return end
     local context, alerts = trial.context, trial.alerts
 
-    -- 1. Shared common handler (e.g. SunspireCommon, RockgroveCommon) —
+    -- 1. Shared common handler (SunspireCommon, RockgroveCommon, DreadsailCommon, …) —
     --    runs before boss routing; returning true short-circuits everything.
     if boss.common and boss.common.handle(alerts, result, abilityId, unitTag, sourceUnitName) then
         return

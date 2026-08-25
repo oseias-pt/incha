@@ -61,6 +61,9 @@ setmetatable(Nahvii, {__index = BossBase})
 
 Nahvii.key  = "nahvii"
 Nahvii.name = "Nahviintaas"
+-- location: Sunspire arena is one shared room for all three bosses — a single AABB
+-- would be ambiguous.  Name-based detection is intentional; name is well-established
+-- EN string (same client since Elsweyr launch), non-EN risk is low.
 
 Nahvii.stateSchema = {
     alertList           = function() return {} end,

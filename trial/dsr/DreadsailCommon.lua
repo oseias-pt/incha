@@ -1,8 +1,13 @@
 --- DreadsailCommon — trash-add mechanics shared across all three DSR arenas.
 ---
 --- Handles add abilities that appear regardless of which boss is active.
---- Each boss's onCombatEvent calls DreadsailCommon.handle() first and returns
---- early if the event was consumed — identical pattern to RockgroveCommon.
+--- Called by CombatHandler.onCombatEvent (boss.common.handle) before route
+--- lookup; returning true short-circuits routing — same contract as
+--- RockgroveCommon and SunspireCommon.
+---
+--- Interface:
+---   .handle(alerts, result, abilityId, unitTag, sourceUnitName) → bool
+---   .handleEffect(alerts, changeType, abilityId, unitTag) → bool
 ---
 --- Phase DSR-2 abilities:
 ---   SwashbucklerTargeted  (170523): EFFECT_GAINED → CastAlertsStart 6 s + "BLOCK!"
@@ -45,13 +50,10 @@ local ACT_BLOCK  = { 6000, "BLOCK!",     0.9, 0.1, 0.1, 0.9, nil }
 local ACT_KITE   = { 5000, "KITE BACK!", 0.9, 0.5, 0.0, 0.9, nil }
 local ACT_DONUT  = { 2000, "IN DONUT",   0.9, 0.8, 0.0, 0.9, nil }
 
--- ── Public handler ────────────────────────────────────────────────────────
--- Called from each boss's onCombatEvent AND (for swashbuckler) from
--- onEffectChanged. When called from effectChanged, result is nil and
--- changeType is used instead.
---
--- Signature for combat path:   handle(alerts, result, abilityId, unitTag, sourceUnitName)
--- Signature for effect path:   handleEffect(alerts, changeType, abilityId, unitTag)
+-- ── Public handler (combat path) ─────────────────────────────────────────
+-- Called by CombatHandler (boss.common.handle) before the combatRoutes lookup.
+-- Handles only ACTION_RESULT_BEGIN events on this path.
+-- Returning true short-circuits the route dispatch for this event.
 function DreadsailCommon.handle(alerts, result, abilityId, unitTag, sourceUnitName)
     if result ~= ACTION_RESULT_BEGIN then return false end
 

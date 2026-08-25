@@ -50,6 +50,9 @@ KazpianEncounter.__index = KazpianEncounter
 KazpianEncounter.key               = "kazpian"
 KazpianEncounter.nameAliases       = { "Overfiend Kazpian" }
 KazpianEncounter.hmHealthThreshold = 0
+-- location: placeholder — Oathsworn Pit arena AABB not yet captured.
+-- Detection falls back to nameAliases (name-based, may fail on non-EN clients).
+-- To calibrate: stand in arena, run /script d(GetUnitWorldPosition("boss1"))
 KazpianEncounter.location          = Location.new(0, 0, 0, 0, 0, 0)
 
 KazpianEncounter.stateSchema = {
