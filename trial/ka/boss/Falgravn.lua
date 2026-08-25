@@ -1,6 +1,7 @@
-local Location = require("core.Location")
-local Settings = require("core.Settings")
-local Timer    = require("lib.Timer")
+local Location    = require("core.Location")
+local HealthRules = require("core.HealthRules")
+local Settings    = require("core.Settings")
+local Timer       = require("lib.Timer")
 
 local CA = require("lib.CA")
 
@@ -77,7 +78,7 @@ Falgravn.key                  = "falgravn"
 Falgravn.hmHealthThreshold    = 248386060
 Falgravn.location             = Location.new(73700, 84500, 6000, 22500, 50200, 61900)
 Falgravn.hideActionWhenNoRule = true
-Falgravn.healthRules          = {
+Falgravn.healthRules          = HealthRules.register({
     {
         id   = "conga_90",
         min  = 90, max = 93,
@@ -102,7 +103,7 @@ Falgravn.healthRules          = {
         text = "Dont Ult! (35% / {hp}%)",
         when = function(ctx, boss) return boss.showPercentUI and ctx.stage < 3 end,
     },
-}
+})
 
 function Falgravn.new()
     return setmetatable({
