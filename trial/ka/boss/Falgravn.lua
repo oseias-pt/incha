@@ -103,7 +103,7 @@ Falgravn.healthRules          = HealthRules.register({
         id   = "dont_ult",
         min  = 35, max = 38,
         text = "Dont Ult! (35% / {hp}%)",
-        when = function(ctx, boss) return boss.showPercentUI and ctx.stage < 3 end,
+        when = function(ctx, boss) return boss.showPercentUI and boss.CURRENT_STAGE < 3 end,
     },
 })
 
@@ -165,11 +165,9 @@ end
 
 function Falgravn:onEnter(context, alerts)
     self.showPercentUI = Settings.trial("ka").showPercent
-    context.stage      = self.CURRENT_STAGE
 end
 
 function Falgravn:onPowerUpdate(context)
-    context.stage      = self.CURRENT_STAGE
     self.showPercentUI = Settings.trial("ka").showPercent
 end
 
