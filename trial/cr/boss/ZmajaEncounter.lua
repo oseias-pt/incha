@@ -129,8 +129,10 @@ ZmajaEncounter.__index = ZmajaEncounter
 
 ZmajaEncounter.key               = "zmaja"
 ZmajaEncounter.nameAliases       = { "Z'Maja" }
--- hmHealthThreshold: TBD — verify in-game on vet HM
-ZmajaEncounter.hmHealthThreshold = 0
+-- hmHealthThreshold: math.huge until measured in-game on vet HM.
+-- (0 would make detectDifficulty always return HARDMODE.)
+-- To calibrate: pull on vet HM, run /script d(GetUnitPower("boss1", POWERTYPE_HEALTH))
+ZmajaEncounter.hmHealthThreshold = math.huge
 -- Location: entire arena — name-based detection is used instead.
 -- location: placeholder — Cloudrest arena AABB not yet captured.
 -- Detection falls back to nameAliases (name-based, may fail on non-EN clients).

@@ -46,8 +46,10 @@ OlmsEncounter.__index = OlmsEncounter
 
 OlmsEncounter.key               = "olms"
 OlmsEncounter.nameAliases       = { "Saint Olms the Just" }
--- hmHealthThreshold: TBD — verify in-game on vet HM
-OlmsEncounter.hmHealthThreshold = 0
+-- hmHealthThreshold: math.huge until measured in-game on vet HM.
+-- (0 would make detectDifficulty always return HARDMODE.)
+-- To calibrate: pull on vet HM, run /script d(GetUnitPower("boss1", POWERTYPE_HEALTH))
+OlmsEncounter.hmHealthThreshold = math.huge
 -- Location: entire arena — name-based detection is used instead.
 -- location: placeholder — Asylum arena AABB not yet captured.
 -- Detection falls back to nameAliases (name-based, may fail on non-EN clients).
