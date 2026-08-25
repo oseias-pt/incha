@@ -16,7 +16,8 @@
 ---
 --- Used by ka/rg/dsr.
 
-local Settings = require("core.Settings")
+local BridgeBase = require("ui.Bridge")
+local Settings   = require("core.Settings")
 
 local Panel = {}
 
@@ -182,8 +183,10 @@ Panel.alerts = {
 }
 
 -- ── Bridge lifecycle table ─────────────────────────────────────────────────
+-- Wrapped with BridgeBase so checkHardmode (and any future hook) falls back
+-- to the documented no-op rather than silently being absent.
 
-Panel.bridge = {
+Panel.bridge = BridgeBase.extend({
     onEnable = function()
         build()  -- no-op after first call; safe on every zone enter
     end,
@@ -212,7 +215,8 @@ Panel.bridge = {
         ctrl.active = false
         applyVisibility()
     end,
-}
+    -- checkHardmode: inherited no-op from BridgeBase (Panel has no HM logic)
+})
 
 -- ── Settings refresh ───────────────────────────────────────────────────────
 
