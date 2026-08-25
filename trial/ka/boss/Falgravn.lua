@@ -18,6 +18,57 @@ local COL_PRISON      = { 0.8, 0.3, 1.0 }   -- lavender
 local COL_INSTABILITY = { 1.0, 0.6, 0.0 }   -- amber
 local COL_SYNERGY     = { 0.9, 0.1, 0.2 }   -- crimson
 
+-- ── OSI world-coordinate position icons ───────────────────────────────────
+-- Connection node positions: 4 lines × 5 nodes (wall=1 → boss=5).
+-- Shown when Lightning fires (90%/80% connect), hidden when Pulse fades.
+local CONN_NODES = {
+    LN1={ 23311, 21700,  8270 }, LN2={ 23647, 21672,  8594 },
+    LN3={ 23931, 21670,  8901 }, LN4={ 24254, 21670,  9200 },
+    LN5={ 24546, 21670,  9530 },
+    LS1={ 23165, 21700, 11754 }, LS2={ 23521, 21672, 11378 },
+    LS3={ 23832, 21670, 11079 }, LS4={ 24138, 21670, 10786 },
+    LS5={ 24488, 21670, 10457 },
+    RN1={ 26800, 21700,  8315 }, RN2={ 26486, 21672,  8627 },
+    RN3={ 26169, 21670,  8939 }, RN4={ 25865, 21670,  9236 },
+    RN5={ 25513, 21670,  9517 },
+    RS1={ 26718, 21700, 11705 }, RS2={ 26404, 21672, 11409 },
+    RS3={ 26115, 21670, 11104 }, RS4={ 25822, 21670, 10828 },
+    RS5={ 25483, 21670, 10509 },
+}
+local CONN_TEX = {
+    [1] = "odysupporticons/icons/squares/squaretwo_red_one.dds",
+    [2] = "odysupporticons/icons/squares/squaretwo_red_two.dds",
+    [3] = "odysupporticons/icons/squares/squaretwo_red_three.dds",
+    [4] = "odysupporticons/icons/squares/squaretwo_red_four.dds",
+    [5] = "odysupporticons/icons/squares/squaretwo_red_five.dds",
+}
+
+-- Blood-ball positions: 4 nodes at a lower floor level, stage 2 only.
+local BLOOD_NODES = {
+    { x=24546, y=14570, z= 9530, tex="odysupporticons/icons/squares/squaretwo_orange_one.dds"   },
+    { x=24488, y=14570, z=10457, tex="odysupporticons/icons/squares/squaretwo_orange_two.dds"   },
+    { x=25483, y=14570, z=10509, tex="odysupporticons/icons/squares/squaretwo_orange_three.dds" },
+    { x=25513, y=14570, z= 9517, tex="odysupporticons/icons/squares/squaretwo_orange_four.dds"  },
+}
+
+-- Torturer anchor positions (8 torturers around the arena perimeter).
+local TORTURER_NODES = {
+    Brekalda   ={ 25069, 7722,  7114 },
+    Thjorlak   ={ 27000, 7711,  8062 },
+    Aevar      ={ 27796, 7710, 10040 },
+    Triveta    ={ 26966, 7715, 12008 },
+    Skormgondar={ 24944, 7703, 12970 },
+    Irthrig    ={ 22966, 7718, 12034 },
+    Ama        ={ 22300, 7742, 10000 },
+    Sislea     ={ 23133, 7733,  8085 },
+}
+local TORTURER_TEX = {
+    blue   = "odysupporticons/icons/squares/square_blue.dds",
+    yellow = "odysupporticons/icons/squares/square_yellow.dds",
+    green  = "odysupporticons/icons/squares/square_green.dds",
+    red    = "odysupporticons/icons/squares/square_red.dds",
+}
+
 -- ── Fallback durations (empirical; replace if GetAbilityCastInfo becomes reliable) ─
 local FALLBACK_DUR = 2000   -- Cleave (FALGRAVN_M_CLEAVE): empirical
 
@@ -31,6 +82,61 @@ local function osiRemove(displayName)
     if OSI and displayName and displayName ~= "" then
         OSI.RemoveMechanicIconForUnit(displayName)
     end
+end
+
+-- createConnIcons / createBloodIcons / createTorturerIcons:
+--   Called once in onEnter (inside a zo_callLater); icons start hidden.
+--   Returns a table of icon handles keyed by node name, or false on failure.
+local function createConnIcons()
+    if not (OSI and OSI.CreatePositionIcon) then return false end
+    local icons = {}
+    for name, pos in pairs(CONN_NODES) do
+        local idx  = tonumber(string.sub(name, -1)) or 1
+        local icon = OSI.CreatePositionIcon(pos[1], pos[2], pos[3],
+                         CONN_TEX[idx], 60, { 1, 0.3, 0.3 })
+        if icon then icon.use = false; icons[name] = icon end
+    end
+    return icons
+end
+
+local function createBloodIcons()
+    if not (OSI and OSI.CreatePositionIcon) then return false end
+    local icons = {}
+    for i, node in ipairs(BLOOD_NODES) do
+        local icon = OSI.CreatePositionIcon(node.x, node.y, node.z,
+                         node.tex, 60, { 1, 0.6, 0.1 })
+        if icon then icon.use = false; icons[i] = icon end
+    end
+    return icons
+end
+
+local function createTorturerIcons()
+    if not (OSI and OSI.CreatePositionIcon) then return false end
+    local icons = {}
+    for name, pos in pairs(TORTURER_NODES) do
+        local icon = OSI.CreatePositionIcon(pos[1], pos[2], pos[3],
+                         TORTURER_TEX.blue, 60, { 0.3, 0.5, 1 })
+        if icon then icon.use = false; icons[name] = icon end
+    end
+    return icons
+end
+
+-- discardPosIcons: call OSI.DiscardPositionIcon on every handle in a table.
+local function discardPosIcons(iconTable)
+    if not (iconTable and OSI and OSI.DiscardPositionIcon) then return end
+    for _, icon in pairs(iconTable) do OSI.DiscardPositionIcon(icon) end
+end
+
+-- showPosIcons: toggle .use flag on every icon in a table.
+local function showPosIcons(iconTable, visible)
+    if not iconTable then return end
+    for _, icon in pairs(iconTable) do icon.use = visible end
+end
+
+-- updateTorturerIcon: swap texture + color for one named torturer icon.
+local function updateTorturerIcon(iconTable, name, tex, color)
+    if not (iconTable and iconTable[name] and OSI and OSI.UpdateIconData) then return end
+    OSI.UpdateIconData(iconTable[name], tex, nil, color)
 end
 
 -- ── Ability IDs (from BSCHTKA_Falgraven.lua) ──────────────────────────────
@@ -123,6 +229,12 @@ Falgravn.stateSchema = {
     alertList        = function() return {} end,
     -- CA bar ID for the Prison debuff (false when not active).
     prisonBarId      = false,
+    -- World-coordinate position icon handles (false = not created).
+    posIconConn      = false,
+    posIconBlood     = false,
+    posIconTorturer  = false,
+    -- Name of the torturer whose feed icon was last turned yellow (false = none).
+    activeFeedTorturer = false,
     -- OSI mechanic icon tracking: [unitTag] → displayName.
     osiPrison      = function() return {} end,
     osiInstability = function() return {} end,
@@ -153,6 +265,13 @@ function Falgravn:onLeave(context)
     for _, dn in pairs(self.osiPrison)      do osiRemove(dn) end
     for _, dn in pairs(self.osiInstability) do osiRemove(dn) end
     for _, dn in pairs(self.osiSynergy)     do osiRemove(dn) end
+    -- Discard world-coordinate position icons.
+    discardPosIcons(self.posIconConn)
+    discardPosIcons(self.posIconBlood)
+    discardPosIcons(self.posIconTorturer)
+    self.posIconConn      = false
+    self.posIconBlood     = false
+    self.posIconTorturer  = false
 end
 
 -- ── Combat state ──────────────────────────────────────────────────────────
@@ -165,6 +284,14 @@ end
 
 function Falgravn:onEnter(context, alerts)
     self.showPercentUI = Settings.trial("ka").showPercent
+    if Settings.trial("ka").posIconsFalgravn then
+        local s = self
+        zo_callLater(function()
+            if s.posIconConn     == false then s.posIconConn     = createConnIcons()     end
+            if s.posIconBlood    == false then s.posIconBlood    = createBloodIcons()    end
+            if s.posIconTorturer == false then s.posIconTorturer = createTorturerIcons() end
+        end, 3100)
+    end
 end
 
 function Falgravn:onPowerUpdate(context)
@@ -293,18 +420,21 @@ local function handleBloodFountain(self, context, alerts, abilityId,
 end
 
 -- Lightning / connection (plain entry; deduped via bConnect flag).
+-- BEGIN → show connection-node floor icons so players can see which nodes to stand on.
 local function handleLightning(self, context, alerts, result, abilityId, ...)
     if result == ACTION_RESULT_BEGIN and self.bConnect then
         self.bConnect = false
+        showPosIcons(self.posIconConn, true)
     elseif result == ACTION_RESULT_EFFECT_FADED and not self.bConnect then
         self.bConnect = true
     end
 end
 
--- Pulse fades → clear connection-node info lines 2-4.
+-- Pulse fades → clear connection-node info lines 2-4 and hide floor icons.
 local function handlePulse(self, context, alerts, result, abilityId, ...)
     if result == ACTION_RESULT_EFFECT_FADED then
         alerts:showInfo(2, ""); alerts:showInfo(3, ""); alerts:showInfo(4, "")
+        showPosIcons(self.posIconConn, false)
     end
 end
 
@@ -321,17 +451,23 @@ local function handleUnwPower(self, context, alerts, abilityId, ...)
 end
 
 -- Blood Ball (plain entry: updates Stage 2 state and bloodBallTimer).
+-- EFFECT_GAINED_DURATION → show blood-node floor icons; ensure torturer icons are up too.
 local function handleBloodBall(self, context, alerts, result, abilityId, ...)
     if self.CURRENT_STAGE ~= 2 then self.CURRENT_STAGE = 2 end
     if result == ACTION_RESULT_EFFECT_GAINED_DURATION then
         self.bloodBallTimer:reset(30)
+        showPosIcons(self.posIconBlood, true)
+        showPosIcons(self.posIconTorturer, true)   -- arm if handleStartStage2 didn't fire
     elseif result == ACTION_RESULT_EFFECT_FADED then
         self.bloodBallTimer:reset(NEXT_BLOODBALL)
     end
 end
 
 local function handleStartStage2(self, context, alerts, abilityId, ...)
-    if self.CURRENT_STAGE ~= 2 then self.CURRENT_STAGE = 2 end
+    if self.CURRENT_STAGE ~= 2 then
+        self.CURRENT_STAGE = 2
+        showPosIcons(self.posIconTorturer, true)
+    end
 end
 
 local function handleShatterMid(self, context, alerts, abilityId, ...)
@@ -339,6 +475,9 @@ local function handleShatterMid(self, context, alerts, abilityId, ...)
         self.CURRENT_STAGE = 3
         self.openGatesTimer:reset(INITIAL_OPENGATE_TIME)
         alerts:showInfo(2, ""); alerts:showInfo(3, ""); alerts:showInfo(4, "")
+        -- Floor drops; connection/blood nodes no longer relevant.
+        showPosIcons(self.posIconConn,  false)
+        showPosIcons(self.posIconBlood, false)
     end
 end
 
@@ -360,8 +499,10 @@ local function handleOpenDoor(self, context, alerts, abilityId,
 end
 
 -- Torturer feeding: kill countdown (plain entry; deduped per feed cycle).
+-- EFFECT_GAINED → mark the feeding torturer's floor icon yellow.
 local function handleTorturerFeed(self, context, alerts, result, abilityId,
-                                   unitTag, sourceUnitTag, sourceUnitId, unitId, ...)
+                                   unitTag, sourceUnitTag, sourceUnitId, unitId,
+                                   sourceUnitName, unitName)
     if result == ACTION_RESULT_EFFECT_GAINED then
         if self.bStartTorturerCD then
             self.bStartTorturerCD = false
@@ -372,14 +513,29 @@ local function handleTorturerFeed(self, context, alerts, result, abilityId,
                 { 10000, "KILL Torturer!", 0.8, 0, 0, 0.9, SOUNDS.NONE })
             if cid and sourceUnitId then self.alertList[sourceUnitId] = cid end
         end
+        -- Turn the active torturer's icon yellow so raiders can see which one to kill.
+        local name = zo_strformat("<<1>>", sourceUnitName)
+        if name and name ~= "" then
+            self.activeFeedTorturer = name
+            updateTorturerIcon(self.posIconTorturer, name, TORTURER_TEX.yellow, { 1, 0.9, 0.1 })
+        end
     elseif result == ACTION_RESULT_EFFECT_FADED then
-        self.bStartTorturerCD = true
+        self.bStartTorturerCD  = true
+        self.activeFeedTorturer = false
     end
 end
 
 -- Prisoner saved (plain entry; decrements torturer count).
-local function handleSacrifice(self, ...)
+-- Turn the last-active torturer's icon green to signal success.
+local function handleSacrifice(self, context, alerts, abilityId,
+                                unitTag, sourceUnitTag, sourceUnitId, unitId,
+                                sourceUnitName, unitName)
     self.torturerCount = self.torturerCount - 1
+    if self.activeFeedTorturer then
+        updateTorturerIcon(self.posIconTorturer, self.activeFeedTorturer,
+                           TORTURER_TEX.green, { 0.1, 1, 0.3 })
+        self.activeFeedTorturer = false
+    end
 end
 
 local function handleTorturerEsc(self, context, alerts, abilityId, ...)
@@ -437,6 +593,8 @@ local function handlePrisonerFeeding(self, context, alerts, abilityId,
         self.PRISONERS[name] = self.PRISONERS[name] + 1
         if self.PRISONERS[name] == 11 then
             self.torturerCount = self.torturerCount - 1
+            -- 11 stacks = prisoner dead; mark the torturer's icon red.
+            updateTorturerIcon(self.posIconTorturer, name, TORTURER_TEX.red, { 1, 0.15, 0.1 })
         end
     end
 end

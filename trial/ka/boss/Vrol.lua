@@ -3,6 +3,7 @@ local Timer    = require("lib.Timer")
 
 local CA = require("lib.CA")
 local BossBase = require("lib.BossBase")
+local Settings = require("core.Settings")
 
 -- ── Ability IDs (from BSCHTKA_Vrol.lua) ───────────────────────────────────
 local VROL_PORTAL_CAST  = 133994  -- combatRoute: ACTION_RESULT_BEGIN → reset portal timer + alert
@@ -39,6 +40,8 @@ Vrol.stateSchema = {
     portalKillExpires = 0,
     -- CA bar ID for the active portal kill-timer debuff (false when not in portal).
     portalKillBarId   = false,
+    -- World-coord portal position icon (false = not created; OSI handle when active).
+    portalIcon        = false,
     -- [unitId] → CA cast bar ID; cleared on leave/death.
     alertList         = function() return {} end,
     -- Fog duration tracking: ms timestamp when fog clears (0 = no active fog).
@@ -52,9 +55,27 @@ function Vrol.new()
 end
 
 -- ── Lifecycle ─────────────────────────────────────────────────────────────
+function Vrol:onEnter(context, alerts)
+    if Settings.trial("ka").portalIconVrol and OSI and OSI.CreatePositionIcon then
+        local s = self
+        zo_callLater(function()
+            if s.portalIcon == false then
+                s.portalIcon = OSI.CreatePositionIcon(
+                    114624, 25764, 71349,
+                    "/esoui/art/icons/malatar_agonizingbolts.dds",
+                    100, { 1, 1, 1 })
+            end
+        end, 3100)
+    end
+end
+
 function Vrol:onLeave(context)
     for _, cid in pairs(self.alertList) do CA.castAlertsStop(cid) end
     CA.castAlertsStop(self.portalKillBarId)
+    if self.portalIcon and OSI and OSI.DiscardPositionIcon then
+        OSI.DiscardPositionIcon(self.portalIcon)
+        self.portalIcon = false
+    end
 end
 
 -- ── Combat state ──────────────────────────────────────────────────────────
