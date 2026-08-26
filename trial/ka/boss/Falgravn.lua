@@ -72,6 +72,13 @@ local TORTURER_TEX = {
 -- ── Fallback durations (empirical; replace if GetAbilityCastInfo becomes reliable) ─
 local FALLBACK_DUR = 2000   -- Cleave (FALGRAVN_M_CLEAVE): empirical
 
+-- World-coordinate position icon handles.  Stored at module level so they
+-- survive across boss-instance replacements (which happen after each wipe).
+-- Created in onEnter once per zone visit; discarded in onLeave on zone exit.
+local _posIconConn     = false
+local _posIconBlood    = false
+local _posIconTorturer = false
+
 local function osiSet(displayName, texture, color)
     if OSI and displayName and displayName ~= "" then
         -- BSCHTKA uses 2 × GetIconSize() for mechanic icons.  Guard the call
@@ -233,10 +240,6 @@ Falgravn.stateSchema = {
     alertList        = function() return {} end,
     -- CA bar ID for the Prison debuff (false when not active).
     prisonBarId      = false,
-    -- World-coordinate position icon handles (false = not created).
-    posIconConn      = false,
-    posIconBlood     = false,
-    posIconTorturer  = false,
     -- Name of the torturer whose feed icon was last turned yellow (false = none).
     activeFeedTorturer = false,
     -- OSI mechanic icon tracking: [unitTag] → displayName.
@@ -265,18 +268,18 @@ function Falgravn:onLeave(context)
     -- Stop all alertList bars via the BossBase helper, then any extra bars.
     self:cleanupAlertList()
     CA.castAlertsStop(self.prisonBarId)
-    self.prisonBarId = nil
+    self.prisonBarId = false
     -- Remove any OSI mechanic icons.
     for _, dn in pairs(self.osiPrison)      do osiRemove(dn) end
     for _, dn in pairs(self.osiInstability) do osiRemove(dn) end
     for _, dn in pairs(self.osiSynergy)     do osiRemove(dn) end
-    -- Discard world-coordinate position icons.
-    discardPosIcons(self.posIconConn)
-    discardPosIcons(self.posIconBlood)
-    discardPosIcons(self.posIconTorturer)
-    self.posIconConn      = false
-    self.posIconBlood     = false
-    self.posIconTorturer  = false
+    -- Discard world-coordinate position icons (zone exit — module handles reset).
+    discardPosIcons(_posIconConn)
+    discardPosIcons(_posIconBlood)
+    discardPosIcons(_posIconTorturer)
+    _posIconConn     = false
+    _posIconBlood    = false
+    _posIconTorturer = false
 end
 
 -- ── Combat state ──────────────────────────────────────────────────────────
@@ -310,15 +313,15 @@ function Falgravn:onWipe(context, alerts)
 
     -- Hide world-coord position icons without discarding the handles —
     -- they will be shown again when the relevant mechanics fire next pull.
-    showPosIcons(self.posIconConn,  false)
-    showPosIcons(self.posIconBlood, false)
+    showPosIcons(_posIconConn,  false)
+    showPosIcons(_posIconBlood, false)
     -- Reset torturer icons to their idle (blue) state.
-    if self.posIconTorturer then
+    if _posIconTorturer then
         for name in pairs(TORTURER_NODES) do
-            updateTorturerIcon(self.posIconTorturer, name,
+            updateTorturerIcon(_posIconTorturer, name,
                                TORTURER_TEX.blue, { 0.3, 0.5, 1 })
         end
-        showPosIcons(self.posIconTorturer, false)
+        showPosIcons(_posIconTorturer, false)
     end
 
     -- Reset stage and all per-pull mechanic flags.
@@ -337,11 +340,10 @@ end
 function Falgravn:onEnter(context, alerts)
     self.showPercentUI = Settings.trial("ka").showPercent
     if Settings.trial("ka").posIconsFalgravn then
-        local s = self
         zo_callLater(function()
-            if s.posIconConn     == false then s.posIconConn     = createConnIcons()     end
-            if s.posIconBlood    == false then s.posIconBlood    = createBloodIcons()    end
-            if s.posIconTorturer == false then s.posIconTorturer = createTorturerIcons() end
+            if not _posIconConn     then _posIconConn     = createConnIcons()     end
+            if not _posIconBlood    then _posIconBlood    = createBloodIcons()    end
+            if not _posIconTorturer then _posIconTorturer = createTorturerIcons() end
         end, 3100)
     end
 end
@@ -471,7 +473,7 @@ end
 local function handleLightning(self, context, alerts, result, abilityId, ...)
     if result == ACTION_RESULT_BEGIN and self.bConnect then
         self.bConnect = false
-        showPosIcons(self.posIconConn, true)
+        showPosIcons(_posIconConn, true)
     elseif result == ACTION_RESULT_EFFECT_FADED and not self.bConnect then
         self.bConnect = true
     end
@@ -481,7 +483,7 @@ end
 local function handlePulse(self, context, alerts, result, abilityId, ...)
     if result == ACTION_RESULT_EFFECT_FADED then
         alerts:showInfo(2, ""); alerts:showInfo(3, ""); alerts:showInfo(4, "")
-        showPosIcons(self.posIconConn, false)
+        showPosIcons(_posIconConn, false)
     end
 end
 
@@ -503,8 +505,8 @@ local function handleBloodBall(self, context, alerts, result, abilityId, ...)
     if self.CURRENT_STAGE ~= 2 then self.CURRENT_STAGE = 2 end
     if result == ACTION_RESULT_EFFECT_GAINED_DURATION then
         self.bloodBallTimer:reset(30)
-        showPosIcons(self.posIconBlood, true)
-        showPosIcons(self.posIconTorturer, true)   -- arm if handleStartStage2 didn't fire
+        showPosIcons(_posIconBlood, true)
+        showPosIcons(_posIconTorturer, true)   -- arm if handleStartStage2 didn't fire
     elseif result == ACTION_RESULT_EFFECT_FADED then
         self.bloodBallTimer:reset(NEXT_BLOODBALL)
     end
@@ -513,7 +515,7 @@ end
 local function handleStartStage2(self, context, alerts, abilityId, ...)
     if self.CURRENT_STAGE ~= 2 then
         self.CURRENT_STAGE = 2
-        showPosIcons(self.posIconTorturer, true)
+        showPosIcons(_posIconTorturer, true)
     end
 end
 
@@ -523,8 +525,8 @@ local function handleShatterMid(self, context, alerts, abilityId, ...)
         self.openGatesTimer:reset(INITIAL_OPENGATE_TIME)
         alerts:showInfo(2, ""); alerts:showInfo(3, ""); alerts:showInfo(4, "")
         -- Floor drops; connection/blood nodes no longer relevant.
-        showPosIcons(self.posIconConn,  false)
-        showPosIcons(self.posIconBlood, false)
+        showPosIcons(_posIconConn,  false)
+        showPosIcons(_posIconBlood, false)
     end
 end
 
@@ -561,10 +563,11 @@ local function handleTorturerFeed(self, context, alerts, result, abilityId,
             if cid and sourceUnitId then self.alertList[sourceUnitId] = cid end
         end
         -- Turn the active torturer's icon yellow so raiders can see which one to kill.
-        local name = zo_strformat("<<1>>", sourceUnitName)
+        -- unitName is the prisoner (target of the feed ability), which keys TORTURER_NODES.
+        local name = zo_strformat("<<1>>", unitName)
         if name and name ~= "" then
             self.activeFeedTorturer = name
-            updateTorturerIcon(self.posIconTorturer, name, TORTURER_TEX.yellow, { 1, 0.9, 0.1 })
+            updateTorturerIcon(_posIconTorturer, name, TORTURER_TEX.yellow, { 1, 0.9, 0.1 })
         end
     elseif result == ACTION_RESULT_EFFECT_FADED then
         self.bStartTorturerCD  = true
@@ -582,7 +585,7 @@ local function handleSacrifice(self, context, alerts, result, abilityId,
     self.torturerCount = self.torturerCount - 1
     local name = zo_strformat("<<1>>", unitName)
     if name and name ~= "" then
-        updateTorturerIcon(self.posIconTorturer, name,
+        updateTorturerIcon(_posIconTorturer, name,
                            TORTURER_TEX.green, { 0.1, 1, 0.3 })
     end
     self.activeFeedTorturer = false
@@ -644,7 +647,7 @@ local function handlePrisonerFeeding(self, context, alerts, abilityId,
         if self.PRISONERS[name] == 11 then
             self.torturerCount = self.torturerCount - 1
             -- 11 stacks = prisoner dead; mark the torturer's icon red.
-            updateTorturerIcon(self.posIconTorturer, name, TORTURER_TEX.red, { 1, 0.15, 0.1 })
+            updateTorturerIcon(_posIconTorturer, name, TORTURER_TEX.red, { 1, 0.15, 0.1 })
         end
     end
 end

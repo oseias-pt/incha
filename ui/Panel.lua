@@ -51,6 +51,16 @@ local function applyPosition(panel)
     end
 end
 
+-- Clear all panel text and deactivate.
+-- Callers must guard with `if not ctrl then return end` before calling.
+local function panel_clear()
+    ctrl.header:SetText("")
+    ctrl.action:SetText("")
+    for i = 1, 7 do ctrl.info[i]:SetText("") end
+    ctrl.active = false
+    applyVisibility()
+end
+
 local function build()
     if ctrl then return end
 
@@ -165,11 +175,7 @@ Panel.alerts = {
 
     clear = function()
         if not ctrl then return end
-        ctrl.header:SetText("")
-        ctrl.action:SetText("")
-        for i = 1, 7 do ctrl.info[i]:SetText("") end
-        ctrl.active = false
-        applyVisibility()
+        panel_clear()
     end,
 }
 
@@ -184,11 +190,7 @@ Panel.bridge = BridgeBase.extend({
 
     onDisable = function()
         if not ctrl then return end
-        ctrl.header:SetText("")
-        ctrl.action:SetText("")
-        for i = 1, 7 do ctrl.info[i]:SetText("") end
-        ctrl.active = false
-        applyVisibility()
+        panel_clear()
     end,
 
     onBossEnter = function(boss, context)
@@ -200,11 +202,7 @@ Panel.bridge = BridgeBase.extend({
 
     onBossExit = function()
         if not ctrl then return end
-        ctrl.header:SetText("")
-        ctrl.action:SetText("")
-        for i = 1, 7 do ctrl.info[i]:SetText("") end
-        ctrl.active = false
-        applyVisibility()
+        panel_clear()
     end,
     -- checkHardmode: inherited no-op from BridgeBase (Panel has no HM logic)
 })

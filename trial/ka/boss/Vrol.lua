@@ -28,6 +28,11 @@ local FOG_EXTEND_SECS   = 9      -- seconds added per extension cycle
 
 local INITIAL_PORTAL_DELAY = 15  -- first portal is shorter than the recurring interval
 
+-- World-coord portal position icon handle.  Stored at module level so it
+-- survives across boss-instance replacements (which happen after each wipe).
+-- Created in onEnter once per zone visit; discarded in onLeave on zone exit.
+local _portalIcon = false
+
 local Vrol = {}
 Vrol.__index = Vrol
 setmetatable(Vrol, {__index = BossBase})   -- inherit cleanupAlertList, default onDied
@@ -46,8 +51,6 @@ Vrol.stateSchema = {
     portalKillExpires = 0,
     -- CA bar ID for the active portal kill-timer debuff (false when not in portal).
     portalKillBarId   = false,
-    -- World-coord portal position icon (false = not created; OSI handle when active).
-    portalIcon        = false,
     -- [unitId] → CA cast bar ID; cleared on leave/death.
     alertList         = function() return {} end,
     -- Fog duration tracking: ms timestamp when fog clears (0 = no active fog).
@@ -63,10 +66,9 @@ end
 -- ── Lifecycle ─────────────────────────────────────────────────────────────
 function Vrol:onEnter(context, alerts)
     if Settings.trial("ka").portalIconVrol and OSI and OSI.CreatePositionIcon then
-        local s = self
         zo_callLater(function()
-            if s.portalIcon == false then
-                s.portalIcon = OSI.CreatePositionIcon(
+            if not _portalIcon then
+                _portalIcon = OSI.CreatePositionIcon(
                     114624, 25764, 71349,
                     "/esoui/art/icons/malatar_agonizingbolts.dds",
                     100, { 1, 1, 1 })
@@ -78,10 +80,10 @@ end
 function Vrol:onLeave(context)
     self:cleanupAlertList()
     CA.castAlertsStop(self.portalKillBarId)
-    self.portalKillBarId = nil
-    if self.portalIcon and OSI and OSI.DiscardPositionIcon then
-        OSI.DiscardPositionIcon(self.portalIcon)
-        self.portalIcon = false
+    self.portalKillBarId = false
+    if _portalIcon and OSI and OSI.DiscardPositionIcon then
+        OSI.DiscardPositionIcon(_portalIcon)
+        _portalIcon = false
     end
 end
 
@@ -103,7 +105,7 @@ end
 function Vrol:onWipe(context, alerts)
     self:cleanupAlertList()
     CA.castAlertsStop(self.portalKillBarId)
-    self.portalKillBarId   = nil
+    self.portalKillBarId   = false
     self.bPORTAL_END       = false
     self.fogEndTime        = 0
     self.fogHitCount       = 0

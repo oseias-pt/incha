@@ -30,13 +30,20 @@ function BossBase.fromSchema(class)
     return setmetatable(inst, class)
 end
 
---- Stop a source unit's tracked cast bar and remove it from alertList.
---- Called automatically by CombatHandler when ACTION_RESULT_DIED fires.
+--- Stop tracked cast bars for both the dead unit and its killer, then
+--- remove both from alertList.  Called automatically by CombatHandler when
+--- ACTION_RESULT_DIED fires.  Boss overrides that need extra cleanup should
+--- call this via BossBase.onDied(self, ...) or replicate the two-key pattern.
 function BossBase:onDied(context, alerts,
                           unitTag, sourceUnitTag, sourceUnitId, unitId, ...)
-    if unitId and self.alertList then
+    if not self.alertList then return end
+    if unitId then
         CA.castAlertsStop(self.alertList[unitId])
         self.alertList[unitId] = nil
+    end
+    if sourceUnitId then
+        CA.castAlertsStop(self.alertList[sourceUnitId])
+        self.alertList[sourceUnitId] = nil
     end
 end
 
