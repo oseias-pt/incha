@@ -23,9 +23,14 @@ end
 ---                                     OR nameAliases table listing all unit names
 ---   REQUIRED: new() → instance      — returns a fresh table, NO carried-over state
 ---
----   onLeave(context)                — cleanup: stop CA bars, unregister events
+---   onLeave(context)                — full teardown on zone exit: stop bars,
+---                                     discard position icons, unregister events
 ---   onEnter(context, alerts)        — boss became active (called after context:setBoss)
 ---   onCombatState(ctx, inCombat, alerts)
+---   onWipe(ctx, alerts)             — soft reset on wipe while still in zone:
+---                                     stop active bars, clear per-pull flags and
+---                                     OSI mechanic icons; keep long-lived position
+---                                     icons so they survive into the next pull
 ---   onCombatEvent(ctx, alerts, result, abilityId,
 ---                 unitTag, sourceUnitTag, sourceUnitId, unitId,
 ---                 sourceUnitName, unitName)
@@ -162,6 +167,11 @@ function Trial:onPowerUpdate(powerValue, powerMax)
     if not self:isActiveZone() then
         return
     end
+    -- powerMax can be 0 briefly during boss transitions; skip the tick to
+    -- avoid a divide-by-zero producing nan in health rules.
+    if powerMax == 0 then
+        return
+    end
 
     local boss = self:getActiveBoss()
     if not boss then
@@ -208,6 +218,14 @@ function Trial:onCombatState(inCombat)
     local boss = self:getActiveBoss()
     if boss and boss.onCombatState then
         boss:onCombatState(self.context, inCombat, self.alerts)
+    end
+
+    -- On wipe (inCombat = false, boss still active), give the boss a chance
+    -- to soft-reset without a full zone-exit teardown: stop active cast bars,
+    -- clear per-pull flags, hide position icons — but keep long-lived icons
+    -- created in onEnter so they're still visible at the start of the next pull.
+    if not inCombat and boss and boss.onWipe then
+        boss:onWipe(self.context, self.alerts)
     end
 end
 

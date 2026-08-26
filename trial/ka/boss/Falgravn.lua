@@ -74,7 +74,10 @@ local FALLBACK_DUR = 2000   -- Cleave (FALGRAVN_M_CLEAVE): empirical
 
 local function osiSet(displayName, texture, color)
     if OSI and displayName and displayName ~= "" then
-        OSI.SetMechanicIconForUnit(displayName, texture, nil, color, nil, nil)
+        -- BSCHTKA uses 2 × GetIconSize() for mechanic icons.  Guard the call
+        -- in case a future OSI version removes or renames GetIconSize.
+        local sz = OSI.GetIconSize and (2 * OSI.GetIconSize()) or nil
+        OSI.SetMechanicIconForUnit(displayName, texture, sz, color, nil, nil)
     end
 end
 
@@ -181,6 +184,7 @@ local NEXT_TORTURER_TP           = 25   -- torturer teleport countdown
 
 local Falgravn = {}
 Falgravn.__index = Falgravn
+setmetatable(Falgravn, {__index = BossBase})   -- inherit cleanupAlertList, default onDied
 
 Falgravn.key                  = "falgravn"
 Falgravn.hmHealthThreshold    = 248386060
@@ -258,9 +262,10 @@ end
 -- ── Lifecycle ─────────────────────────────────────────────────────────────
 
 function Falgravn:onLeave(context)
-    -- Stop any lingering CA cast bars.
-    for _, cid in pairs(self.alertList) do CA.castAlertsStop(cid) end
+    -- Stop all alertList bars via the BossBase helper, then any extra bars.
+    self:cleanupAlertList()
     CA.castAlertsStop(self.prisonBarId)
+    self.prisonBarId = nil
     -- Remove any OSI mechanic icons.
     for _, dn in pairs(self.osiPrison)      do osiRemove(dn) end
     for _, dn in pairs(self.osiInstability) do osiRemove(dn) end
@@ -282,6 +287,53 @@ function Falgravn:onCombatState(context, inCombat, alerts)
     end
 end
 
+-- Soft reset on wipe while still inside the Falgravn arena.
+-- Stops active CA bars, clears per-player OSI mechanic icons (Prison /
+-- Instability / Synergy), hides world-coord position icons without
+-- discarding them (icons survive into the next pull), and resets all
+-- per-pull flags so the fight can restart from Stage 1.
+function Falgravn:onWipe(context, alerts)
+    -- Stop all cast bars.
+    self:cleanupAlertList()
+    CA.castAlertsStop(self.prisonBarId)
+    self.prisonBarId = false
+
+    -- Remove per-player OSI mechanic icons that were showing during the pull.
+    for _, dn in pairs(self.osiPrison)      do osiRemove(dn) end
+    for _, dn in pairs(self.osiInstability) do osiRemove(dn) end
+    for _, dn in pairs(self.osiSynergy)     do osiRemove(dn) end
+    -- Wipe the tracking tables so stale EFFECT_RESULT_FADED events fired
+    -- after the wipe don't try to double-remove already-cleared icons.
+    self.osiPrison      = {}
+    self.osiInstability = {}
+    self.osiSynergy     = {}
+
+    -- Hide world-coord position icons without discarding the handles —
+    -- they will be shown again when the relevant mechanics fire next pull.
+    showPosIcons(self.posIconConn,  false)
+    showPosIcons(self.posIconBlood, false)
+    -- Reset torturer icons to their idle (blue) state.
+    if self.posIconTorturer then
+        for name in pairs(TORTURER_NODES) do
+            updateTorturerIcon(self.posIconTorturer, name,
+                               TORTURER_TEX.blue, { 0.3, 0.5, 1 })
+        end
+        showPosIcons(self.posIconTorturer, false)
+    end
+
+    -- Reset stage and all per-pull mechanic flags.
+    self.CURRENT_STAGE      = 1
+    self.bMove              = true
+    self.bBlock             = true
+    self.bConnect           = true
+    self.bStartTorturerCD   = true
+    self.torturerCount      = 8
+    self.activeFeedTorturer = false
+
+    -- Reset prisoner feed-stack counters for all 8 torturers.
+    for name in pairs(self.PRISONERS) do self.PRISONERS[name] = 0 end
+end
+
 function Falgravn:onEnter(context, alerts)
     self.showPercentUI = Settings.trial("ka").showPercent
     if Settings.trial("ka").posIconsFalgravn then
@@ -293,11 +345,6 @@ function Falgravn:onEnter(context, alerts)
         end, 3100)
     end
 end
-
-function Falgravn:onPowerUpdate(context)
-    self.showPercentUI = Settings.trial("ka").showPercent
-end
-
 
 -- ── 200ms timer display ───────────────────────────────────────────────────
 -- Layout matches BSCHTKA's Falg_UpdateUI:
@@ -526,16 +573,19 @@ local function handleTorturerFeed(self, context, alerts, result, abilityId,
 end
 
 -- Prisoner saved (plain entry; decrements torturer count).
--- Turn the last-active torturer's icon green to signal success.
-local function handleSacrifice(self, context, alerts, abilityId,
+-- Use unitName (the saved prisoner's name, which matches the torturer node
+-- key) directly from the event, rather than relying on activeFeedTorturer
+-- state — this avoids the stale-name risk when two feeds overlap in Stage 3.
+local function handleSacrifice(self, context, alerts, result, abilityId,
                                 unitTag, sourceUnitTag, sourceUnitId, unitId,
                                 sourceUnitName, unitName)
     self.torturerCount = self.torturerCount - 1
-    if self.activeFeedTorturer then
-        updateTorturerIcon(self.posIconTorturer, self.activeFeedTorturer,
+    local name = zo_strformat("<<1>>", unitName)
+    if name and name ~= "" then
+        updateTorturerIcon(self.posIconTorturer, name,
                            TORTURER_TEX.green, { 0.1, 1, 0.3 })
-        self.activeFeedTorturer = false
     end
+    self.activeFeedTorturer = false
 end
 
 local function handleTorturerEsc(self, context, alerts, abilityId, ...)

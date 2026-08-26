@@ -30,10 +30,11 @@ local DEFAULTS = {
 
     trials = {
         ka = {
-            enabled        = true,
-            showBossUI     = true,   -- show the boss name / HM status panel
-            showPercent    = true,   -- show hp% milestone alerts (Falgravn etc.)
-            portalIconVrol = true,   -- show floor icon on Vrol portal spawn
+            enabled          = true,
+            showBossUI       = true,   -- show the boss name / HM status panel
+            showPercent      = true,   -- show hp% milestone alerts (Falgravn etc.)
+            portalIconVrol   = true,   -- show floor icon on Vrol portal spawn
+            posIconsFalgravn = true,   -- connection-node / blood-ball / torturer floor markers
         },
         rg  = { enabled = true },
         dsr = { enabled = true },
@@ -85,8 +86,13 @@ end
 --- Convenience accessor for a trial's sub-table, e.g.:
 ---   local ka = Settings.trial("ka")
 ---   if ka.showPercent then ... end
+--- Asserts that Settings.init() has been called and that trialId is a known
+--- key, so misuse surfaces immediately as a visible chat error rather than a
+--- silent nil-index panic somewhere deep in boss code.
 function Settings.trial(trialId)
-    return _sv and _sv.trials[trialId]
+    assert(_sv,                    "[Incha] Settings.trial() called before Settings.init()")
+    assert(_sv.trials[trialId],    "[Incha] Settings.trial(): unknown trial id '" .. tostring(trialId) .. "'")
+    return _sv.trials[trialId]
 end
 
 return Settings

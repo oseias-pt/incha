@@ -6,8 +6,8 @@ local BossBase = require("lib.BossBase")
 local CastDur = require("lib.CastDur")
 
 -- ── Ability IDs (from BSCHTKA_Yandir.lua) ─────────────────────────────────
-local TOTEM_POISION      = 133515  -- combatRoute: ACTION_RESULT_BEGIN → resets timer + Dodge alert
-local TOTEM_POISION_CP   = 133559  -- combatRoute: ACTION_RESULT_EFFECT_GAINED → delayed 26.8s CA bar
+local TOTEM_POISON       = 133515  -- combatRoute: ACTION_RESULT_BEGIN → resets timer + Dodge alert
+local TOTEM_POISON_CP    = 133559  -- combatRoute: ACTION_RESULT_EFFECT_GAINED → delayed 26.8s CA bar
 local TOTEM_HARPY_SPWN   = 133510  -- combatRoute: ACTION_RESULT_BEGIN → resets totem timer
 local TOTEM_DRAGON_SPWN  = 133045  -- combatRoute: ACTION_RESULT_BEGIN → resets totem timer
 local TOTEM_GARGYL_SPWN  = 133513  -- combatRoute: ACTION_RESULT_BEGIN → resets totem timer
@@ -25,6 +25,7 @@ local FALLBACK_DUR = 5000   -- TOTEM_GARGYL (Gargoyle Totem cast): empirical
 
 local Yandir = {}
 Yandir.__index = Yandir
+setmetatable(Yandir, {__index = BossBase})   -- inherit cleanupAlertList, default onDied
 
 Yandir.key               = "yandir"
 Yandir.hmHealthThreshold = 72769370
@@ -34,10 +35,15 @@ Yandir.stateSchema = {
     totemTimer           = function() return Timer.new(TOTEM_SPAWN_TIME) end,
     gryphonTimer         = function() return Timer.new(GRYPHON_SPAWN_TIME) end,
     bGRYPHON_SKIP        = false,
-    bGRYPHON_SKIP_TIME   = -1,
+    -- Seconds remaining on the gryphon timer at the moment the skip was
+    -- detected — displayed as "(Xs early)" so raiders see the margin.
+    bGRYPHON_SKIP_TIME   = 0,
     bGRYPHON_SKIP_FAILHP = 0,
-    PosionTotemID        = -1,
+    poisonTotemId        = -1,   -- unitId of the currently targeted poison totem
     BTotemCall           = false,
+    -- zo_callLater handle for the 26.8 s delayed second-poison bar.
+    -- Stored so it can be cancelled on wipe or zone exit.
+    poisonTotemTimer     = false,
     -- [unitId] → CA cast bar ID; cleared and stopped on leave/death.
     alertList            = function() return {} end,
 }
@@ -47,8 +53,32 @@ function Yandir.new()
 end
 
 -- ── Lifecycle ─────────────────────────────────────────────────────────────
+
+-- Cancel any pending delayed poison-totem CA bar and stop all alert bars.
+-- Called from both onLeave (zone exit) and onWipe so neither path leaks.
+local function yandir_cleanup(self)
+    self:cleanupAlertList()
+    if self.poisonTotemTimer then
+        zo_removeCallLater(self.poisonTotemTimer)
+        self.poisonTotemTimer = false
+    end
+end
+
 function Yandir:onLeave(context)
-    for _, cid in pairs(self.alertList) do CA.castAlertsStop(cid) end
+    yandir_cleanup(self)
+end
+
+-- Soft reset on wipe while still inside the trial zone.  Stops bars and
+-- resets all per-pull flags so the next pull starts clean without discarding
+-- the boss class's position icons (Yandir has none, but the pattern is here
+-- for consistency with Vrol and Falgravn).
+function Yandir:onWipe(context, alerts)
+    yandir_cleanup(self)
+    self.bGRYPHON_SKIP        = false
+    self.bGRYPHON_SKIP_TIME   = 0
+    self.bGRYPHON_SKIP_FAILHP = 0
+    self.poisonTotemId        = -1
+    self.BTotemCall           = false
 end
 
 -- ── Combat state (fight start / wipe) ─────────────────────────────────────
@@ -68,7 +98,11 @@ function Yandir:onUpdate(context, alerts)
     alerts:showInfo(1, "Totem:   " .. (t1 > 0 and ZO_FormatCountdownTimer(t1) or "ready"))
     local line2
     if self.bGRYPHON_SKIP then
-        line2 = "Gryphon: |c55aa55Skip!|r"
+        -- Show how much time was left on the timer when the skip was detected.
+        local earlyTag = self.bGRYPHON_SKIP_TIME > 0
+            and (" (" .. ZO_FormatCountdownTimer(self.bGRYPHON_SKIP_TIME) .. " early)")
+            or ""
+        line2 = "Gryphon: |c55aa55Skip!|r" .. earlyTag
     elseif self.bGRYPHON_SKIP_FAILHP > 0 then
         line2 = string.format("Gryphon: |ccc4444Fail @ %.0f%%|r", self.bGRYPHON_SKIP_FAILHP)
     else
@@ -91,9 +125,9 @@ function Yandir:onDied(context, alerts,
         CA.castAlertsStop(self.alertList[sourceUnitId])
         self.alertList[sourceUnitId] = nil
     end
-    -- If the player targeted by the poison totem dies, cancel delayed bar.
-    if self.PosionTotemID == unitId or self.PosionTotemID == sourceUnitId then
-        self.PosionTotemID = -1
+    -- If the player targeted by the poison totem dies, cancel the delayed bar.
+    if self.poisonTotemId == unitId or self.poisonTotemId == sourceUnitId then
+        self.poisonTotemId = -1
         self.BTotemCall    = false
     end
 end
@@ -111,7 +145,7 @@ local function handlePoisonTotem(self, context, alerts, abilityId,
     local cid = CA.alertCast(abilityId, sourceUnitName, 4300,
         { -3, 0, false, { 0, 0.8, 0, 0.4 }, { 0, 0.8, 0, 0.8 } })
     if cid and unitId then self.alertList[unitId] = cid end
-    self.PosionTotemID = unitId  -- track for delayed second-poison bar
+    self.poisonTotemId = unitId  -- track for delayed second-poison bar
 end
 
 local function handlePoisonTotemCp(self, context, alerts, abilityId,
@@ -123,10 +157,13 @@ local function handlePoisonTotemCp(self, context, alerts, abilityId,
     self.BTotemCall = true
     local capturedSrc  = sourceUnitName or ""
     local capturedSelf = self
-    zo_callLater(function()
-        if capturedSelf.PosionTotemID ~= -1 and IsUnitInCombat("player") then
+    -- Store the handle so onLeave/onWipe can cancel it if the zone is exited
+    -- or the group wipes before the 26.8 s fires.
+    self.poisonTotemTimer = zo_callLater(function()
+        self.poisonTotemTimer = false
+        if capturedSelf.poisonTotemId ~= -1 and IsUnitInCombat("player") then
             capturedSelf.BTotemCall = false
-            CA.alertCast(TOTEM_POISION_CP, capturedSrc, 4300,
+            CA.alertCast(TOTEM_POISON_CP, capturedSrc, 4300,
                 { -3, 0, false, { 0, 0.8, 0, 0.4 }, { 0, 0.8, 0, 0.8 } })
         end
     end, 26800)
@@ -167,8 +204,8 @@ local function handleSeaAdderSpray(self, context, alerts, abilityId,
 end
 
 Yandir.combatRoutes = {
-    [TOTEM_POISION]      = { result = ACTION_RESULT_BEGIN,         fn = handlePoisonTotem },
-    [TOTEM_POISION_CP]   = { result = ACTION_RESULT_EFFECT_GAINED, fn = handlePoisonTotemCp },
+    [TOTEM_POISON]       = { result = ACTION_RESULT_BEGIN,         fn = handlePoisonTotem },
+    [TOTEM_POISON_CP]    = { result = ACTION_RESULT_EFFECT_GAINED, fn = handlePoisonTotemCp },
     [TOTEM_HARPY_SPWN]   = resetTotemTimer,
     [TOTEM_DRAGON_SPWN]  = resetTotemTimer,
     [TOTEM_GARGYL_SPWN]  = resetTotemTimer,
@@ -181,7 +218,9 @@ Yandir.combatRoutes = {
 function Yandir:onPowerUpdate(context, healthPercent)
     if healthPercent < 60 and not self.gryphonTimer:isExpired() then
         if not self.bGRYPHON_SKIP then
-            self.bGRYPHON_SKIP_TIME = os.time()
+            -- Capture how many seconds remained on the gryphon timer so we
+            -- can display "Skip! (Xs early)" in onUpdate.
+            self.bGRYPHON_SKIP_TIME = self.gryphonTimer:remaining()
         end
         self.bGRYPHON_SKIP = true
     end

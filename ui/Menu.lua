@@ -104,6 +104,13 @@ local OPTIONS = {
         getFunc = function() return Settings.get().trials.ka.portalIconVrol end,
         setFunc = function(v) Settings.get().trials.ka.portalIconVrol = v end,
     },
+    {
+        type    = "checkbox",
+        name    = "Falgravn floor icons",
+        tooltip = "Show connection-node, blood-ball, and torturer position icons on Falgravn (requires OdySupportIcons).",
+        getFunc = function() return Settings.get().trials.ka.posIconsFalgravn end,
+        setFunc = function(v) Settings.get().trials.ka.posIconsFalgravn = v end,
+    },
 
     -- Section: Rockgrove
     {

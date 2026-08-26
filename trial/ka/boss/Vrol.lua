@@ -17,6 +17,11 @@ local VROL_APOTHECARY   = 140255  -- combatRoute: ACTION_RESULT_BEGIN → Interr
 local NEXT_PORTAL_TIME  = 45
 local NEXT_CONDUIT_TIME = 40
 local NEXT_FOG_TIME     = 30
+-- FOG_DURATION: the room stays fogged for ~30 s after the cast lands.
+-- HowToKyne reads this from the old-API hitValue field, which is not exposed
+-- in the modern EVENT_COMBAT_EVENT format used by incha.  30 s matches both
+-- BSCHTKA's NEXT_FOG_TIME constant and empirical observation, so it is safe
+-- to keep as a literal.  Revisit if ZOS ever changes the mechanic duration.
 local FOG_DURATION      = 30     -- seconds the fog fills the room after the cast lands
 local FOG_EXTEND_HITS   = 3      -- pulse hits before fog duration extends
 local FOG_EXTEND_SECS   = 9      -- seconds added per extension cycle
@@ -25,6 +30,7 @@ local INITIAL_PORTAL_DELAY = 15  -- first portal is shorter than the recurring i
 
 local Vrol = {}
 Vrol.__index = Vrol
+setmetatable(Vrol, {__index = BossBase})   -- inherit cleanupAlertList, default onDied
 
 Vrol.key               = "vrol"
 Vrol.hmHealthThreshold = 72769370
@@ -70,8 +76,9 @@ function Vrol:onEnter(context, alerts)
 end
 
 function Vrol:onLeave(context)
-    for _, cid in pairs(self.alertList) do CA.castAlertsStop(cid) end
+    self:cleanupAlertList()
     CA.castAlertsStop(self.portalKillBarId)
+    self.portalKillBarId = nil
     if self.portalIcon and OSI and OSI.DiscardPositionIcon then
         OSI.DiscardPositionIcon(self.portalIcon)
         self.portalIcon = false
@@ -86,6 +93,21 @@ function Vrol:onCombatState(context, inCombat, alerts)
         self.conduitTimer:reset()
         self.fogTimer:reset()
     end
+end
+
+-- Soft reset on wipe while still inside the Vrol arena.  Stops active bars
+-- and clears per-pull state so the next pull starts clean.  The portal world-
+-- coord icon is intentionally kept: it marks the fixed spawn location and
+-- remains useful at the start of every pull, so discarding it on a wipe
+-- would just force a redundant 3.1 s re-creation on the next onEnter.
+function Vrol:onWipe(context, alerts)
+    self:cleanupAlertList()
+    CA.castAlertsStop(self.portalKillBarId)
+    self.portalKillBarId   = nil
+    self.bPORTAL_END       = false
+    self.fogEndTime        = 0
+    self.fogHitCount       = 0
+    self.portalKillExpires = 0
 end
 
 
@@ -216,9 +238,16 @@ function Vrol:onUpdate(context, alerts)
     end
 
     local t2 = self.conduitTimer:remaining()
-    local t3 = self.portalTimer:remaining()
     alerts:showInfo(2, "Conduit: " .. (t2 > 0 and ZO_FormatCountdownTimer(t2) or "ready"))
-    alerts:showInfo(3, "Portal:  " .. (t3 > 0 and ZO_FormatCountdownTimer(t3) or "ready"))
+
+    -- Portals stop spawning once Vrol drops below 50% HP.  Suppress the
+    -- countdown when bPORTAL_END is set so we don't show stale "ready" text.
+    if self.bPORTAL_END then
+        alerts:showInfo(3, "")
+    else
+        local t3 = self.portalTimer:remaining()
+        alerts:showInfo(3, "Portal:  " .. (t3 > 0 and ZO_FormatCountdownTimer(t3) or "ready"))
+    end
 end
 
 function Vrol:onPowerUpdate(context, healthPercent)
