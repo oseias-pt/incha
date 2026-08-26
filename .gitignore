@@ -11,3 +11,6 @@ Thumbs.db
 
 # Claude Code internal state (worktrees, session data)
 .claude/
+
+# Integration test live data — log files are large; keep them local only
+test/live-data/
