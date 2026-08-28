@@ -1,4 +1,4 @@
-local ADDON_NAME = "Incha"
+local ADDON_NAME = "incha"  -- ESO fires EVENT_ADD_ON_LOADED with the folder name, not ## Title:
 
 local Settings    = require("core.Settings")
 local ZoneManager = require("core.ZoneManager")
