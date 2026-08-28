@@ -18,23 +18,44 @@ ZoneManager.registerTrial(1427, require("trial.se.Dispatcher"))
 ZoneManager.registerTrial(1478, require("trial.lc.Dispatcher"))
 ZoneManager.registerTrial(1548, require("trial.oc.Dispatcher"))
 
--- Fires 3 s after load regardless of addon events — confirms incha.lua executed.
+-- Fires 3 s after load — confirms incha.lua ran all the way through.
 zo_callLater(function()
-    d("|cFFD700[Incha]|r probe: incha.lua executed, awaiting EVENT_ADD_ON_LOADED")
+    d("|cFFD700[Incha]|r probe A: incha.lua executed OK")
 end, 3000)
 
+local _callbackFiredCount = 0
+
 local function OnAddOnLoaded(event, addonName)
-    -- Log every firing so we can see the actual addonName value ESO sends.
-    d("|cFFD700[Incha]|r OnAddOnLoaded fired: addonName=" .. tostring(addonName))
+    _callbackFiredCount = _callbackFiredCount + 1
+    local n = _callbackFiredCount
+
+    -- Schedule a deferred message so it survives the UI wipe phase.
+    zo_callLater(function()
+        d("|cFFD700[Incha]|r probe B[" .. n .. "]: callback fired, addonName=" .. tostring(addonName))
+    end, 4000 + n * 10)
+
     if addonName ~= ADDON_NAME then
         return
     end
 
+    -- Matched our addon — schedule a distinct probe for this path.
+    zo_callLater(function()
+        d("|cFFD700[Incha]|r probe C: matched ADDON_NAME, running init")
+    end, 5000)
+
     EVENT_MANAGER:UnregisterForEvent(ADDON_NAME, EVENT_ADD_ON_LOADED)
 
-    -- Settings must come first — other systems (Log, UI) read from it.
     Settings.init()
+
+    zo_callLater(function()
+        d("|cFFD700[Incha]|r probe D: Settings.init() done")
+    end, 5500)
+
     Menu.init()
+
+    zo_callLater(function()
+        d("|cFFD700[Incha]|r probe E: Menu.init() done — /incha should work")
+    end, 6000)
 
     EVENT_MANAGER:RegisterForEvent(ADDON_NAME, EVENT_PLAYER_ACTIVATED, ZoneManager.onZoneChanged)
     EVENT_MANAGER:RegisterForEvent(ADDON_NAME, EVENT_ZONE_CHANGED, ZoneManager.onZoneChanged)
