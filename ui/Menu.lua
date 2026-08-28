@@ -12,7 +12,7 @@ local Settings = require("core.Settings")
 
 local Menu = {}
 
-local PANEL_ID = "InchPanel"
+local PANEL_ID = "InchaSettings"
 
 -- ── LAM panel descriptor ───────────────────────────────────────────────────
 local PANEL = {

@@ -18,7 +18,14 @@ ZoneManager.registerTrial(1427, require("trial.se.Dispatcher"))
 ZoneManager.registerTrial(1478, require("trial.lc.Dispatcher"))
 ZoneManager.registerTrial(1548, require("trial.oc.Dispatcher"))
 
+-- Fires 3 s after load regardless of addon events — confirms incha.lua executed.
+zo_callLater(function()
+    d("|cFFD700[Incha]|r probe: incha.lua executed, awaiting EVENT_ADD_ON_LOADED")
+end, 3000)
+
 local function OnAddOnLoaded(event, addonName)
+    -- Log every firing so we can see the actual addonName value ESO sends.
+    d("|cFFD700[Incha]|r OnAddOnLoaded fired: addonName=" .. tostring(addonName))
     if addonName ~= ADDON_NAME then
         return
     end
@@ -33,6 +40,8 @@ local function OnAddOnLoaded(event, addonName)
     EVENT_MANAGER:RegisterForEvent(ADDON_NAME, EVENT_ZONE_CHANGED, ZoneManager.onZoneChanged)
 
     ZoneManager.onZoneChanged()
+
+    d("|cFFD700[Incha]|r v0.1.0 ready — /incha debug to enable verbose output")
 end
 
 EVENT_MANAGER:RegisterForEvent(ADDON_NAME, EVENT_ADD_ON_LOADED, OnAddOnLoaded)
