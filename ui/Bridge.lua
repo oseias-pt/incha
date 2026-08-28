@@ -35,4 +35,5 @@ function BridgeBase.extend(impl)
     return setmetatable(impl, BridgeBase)
 end
 
+package.loaded["ui.Bridge"] = BridgeBase
 return BridgeBase

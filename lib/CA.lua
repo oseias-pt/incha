@@ -44,4 +44,5 @@ function CA.border(active, dur, color)
     if CombatAlerts then CombatAlerts.AlertBorder(active, dur, color) end
 end
 
+package.loaded["lib.CA"] = CA
 return CA

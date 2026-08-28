@@ -343,4 +343,5 @@ function Lokke:onUpdate(context, alerts)
     showIceTombLines(self, alerts, now)
 end
 
+package.loaded["trial.ss.boss.Lokke"] = Lokke
 return Lokke

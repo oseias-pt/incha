@@ -95,4 +95,5 @@ function Settings.trial(trialId)
     return _sv.trials[trialId]
 end
 
+package.loaded["core.Settings"] = Settings
 return Settings

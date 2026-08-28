@@ -229,4 +229,5 @@ function Oaxiltso:onUpdate(context, alerts)
     alerts:showInfo(4, "")
 end
 
+package.loaded["trial.rg.boss.Oaxiltso"] = Oaxiltso
 return Oaxiltso

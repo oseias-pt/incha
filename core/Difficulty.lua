@@ -4,4 +4,5 @@ local Difficulty = {
     HARDMODE = 2,
 }
 
+package.loaded["core.Difficulty"] = Difficulty
 return Difficulty

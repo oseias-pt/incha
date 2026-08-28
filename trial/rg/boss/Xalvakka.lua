@@ -329,4 +329,5 @@ function Xalvakka:onUpdate(context, alerts)
     showRunLine(self, alerts, context)
 end
 
+package.loaded["trial.rg.boss.Xalvakka"] = Xalvakka
 return Xalvakka

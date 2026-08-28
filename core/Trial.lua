@@ -264,4 +264,5 @@ function Trial:disable()
     self.enabled = false
 end
 
+package.loaded["core.Trial"] = Trial
 return Trial

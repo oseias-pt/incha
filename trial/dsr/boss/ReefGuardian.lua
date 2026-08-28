@@ -317,4 +317,5 @@ function ReefGuardian:onUpdate(context, alerts)
     showReefWipeLines(self, alerts, now)
 end
 
+package.loaded["trial.dsr.boss.ReefGuardian"] = ReefGuardian
 return ReefGuardian

@@ -14,4 +14,5 @@ local asTrial = Trial.create({
     onEffectChanged = CombatHandler.onEffectChanged,
 })
 
+package.loaded["trial.as.Factory"] = asTrial
 return asTrial

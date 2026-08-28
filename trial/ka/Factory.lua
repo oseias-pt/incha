@@ -17,4 +17,5 @@ local kaTrial = Trial.create({
     onEffectChanged = CombatHandler.onEffectChanged,
 })
 
+package.loaded["trial.ka.Factory"] = kaTrial
 return kaTrial

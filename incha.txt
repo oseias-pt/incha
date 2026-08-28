@@ -1,9 +1,89 @@
 ## Title: Incha
-## Description: Trial helper — mechanics overlay for KA, SS, RG, DSR, AS, CR, SE, LC, OC
-## Version: 0.1.0
-## Author: Oseias
 ## APIVersion: 101042
 ## SavedVariables: Incha_SV
 ## OptionalDependsOn: LibAddonMenu-2.0 OdySupportIcons CombatAlerts
+
+bootstrap.lua
+
+lib/Log.lua
+lib/Throttle.lua
+lib/Timer.lua
+lib/CA.lua
+lib/CastDur.lua
+lib/MapUtils.lua
+lib/DebuffTracker.lua
+lib/BossBase.lua
+
+core/Difficulty.lua
+core/Location.lua
+core/AlertSink.lua
+core/HealthRules.lua
+core/TrialContext.lua
+core/BossRegistry.lua
+core/EventPipeline.lua
+core/Settings.lua
+core/ModuleLoader.lua
+core/CombatHandler.lua
+
+ui/Bridge.lua
+ui/Panel.lua
+ui/Menu.lua
+core/Trial.lua
+core/ZoneManager.lua
+
+trial/ka/boss/Yandir.lua
+trial/ka/boss/Vrol.lua
+trial/ka/boss/Falgravn.lua
+trial/ka/Factory.lua
+trial/ka/Dispatcher.lua
+
+trial/ss/SunspireCommon.lua
+trial/ss/boss/Lokke.lua
+trial/ss/boss/Yolna.lua
+trial/ss/boss/Nahvii.lua
+trial/ss/Factory.lua
+trial/ss/Dispatcher.lua
+
+trial/rg/RockgroveCommon.lua
+trial/rg/boss/Oaxiltso.lua
+trial/rg/boss/Bahsei.lua
+trial/rg/boss/Xalvakka.lua
+trial/rg/Factory.lua
+trial/rg/Dispatcher.lua
+
+trial/dsr/DreadsailCommon.lua
+trial/dsr/boss/Lylanar.lua
+trial/dsr/boss/ReefGuardian.lua
+trial/dsr/boss/Taleria.lua
+trial/dsr/Factory.lua
+trial/dsr/Dispatcher.lua
+
+trial/as/boss/OlmsEncounter.lua
+trial/as/Factory.lua
+trial/as/Dispatcher.lua
+
+trial/cr/boss/ZmajaEncounter.lua
+trial/cr/Factory.lua
+trial/cr/Dispatcher.lua
+
+trial/se/boss/YaseylaEncounter.lua
+trial/se/boss/ChimeraEncounter.lua
+trial/se/boss/AnsuulEncounter.lua
+trial/se/Factory.lua
+trial/se/Dispatcher.lua
+
+trial/lc/boss/RyelazEncounter.lua
+trial/lc/boss/DarielEncounter.lua
+trial/lc/boss/OrphicEncounter.lua
+trial/lc/boss/XynizataEncounter.lua
+trial/lc/boss/XorynEncounter.lua
+trial/lc/Factory.lua
+trial/lc/Dispatcher.lua
+
+trial/oc/boss/JynorahEncounter.lua
+trial/oc/boss/KazpianEncounter.lua
+trial/oc/boss/ShaperEncounter.lua
+trial/oc/Factory.lua
+trial/oc/Dispatcher.lua
 
 incha.lua

@@ -14,4 +14,5 @@ local crTrial = Trial.create({
     onEffectChanged = CombatHandler.onEffectChanged,
 })
 
+package.loaded["trial.cr.Factory"] = crTrial
 return crTrial

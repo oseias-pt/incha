@@ -339,4 +339,5 @@ function Bahsei:onUpdate(context, alerts)
     showSickleLine(self, alerts, now, isHM)
 end
 
+package.loaded["trial.rg.boss.Bahsei"] = Bahsei
 return Bahsei

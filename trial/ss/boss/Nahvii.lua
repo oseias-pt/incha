@@ -389,4 +389,5 @@ function Nahvii:onUpdate(context, alerts)
     showLandingWipeLine(self, alerts, now, context)
 end
 
+package.loaded["trial.ss.boss.Nahvii"] = Nahvii
 return Nahvii

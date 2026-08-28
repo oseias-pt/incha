@@ -1,4 +1,4 @@
-﻿local Timer    = require("lib.Timer")
+local Timer    = require("lib.Timer")
 
 local CA = require("lib.CA")
 local BossBase = require("lib.BossBase")
@@ -171,4 +171,5 @@ function AnsuulEncounter:onPowerUpdate(context, healthPercent, alerts)
     -- No HP milestone logic for Ansuul.
 end
 
+package.loaded["trial.se.boss.AnsuulEncounter"] = AnsuulEncounter
 return AnsuulEncounter

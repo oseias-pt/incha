@@ -1,4 +1,4 @@
-﻿local Timer    = require("lib.Timer")
+local Timer    = require("lib.Timer")
 
 local CA = require("lib.CA")
 local BossBase = require("lib.BossBase")
@@ -588,4 +588,5 @@ function ZmajaEncounter:onPowerUpdate(context, healthPercent, alerts)
     -- CR-3: execute threshold pre-warning (if applicable)
 end
 
+package.loaded["trial.cr.boss.ZmajaEncounter"] = ZmajaEncounter
 return ZmajaEncounter

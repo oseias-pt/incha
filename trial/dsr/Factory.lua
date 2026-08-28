@@ -17,4 +17,5 @@ local dsrTrial = Trial.create({
     onEffectChanged = CombatHandler.onEffectChanged,
 })
 
+package.loaded["trial.dsr.Factory"] = dsrTrial
 return dsrTrial

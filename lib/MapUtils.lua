@@ -12,4 +12,5 @@ function MapUtils.isGroupMemberNearby(unitTag, threshold)
     return x2 and y2 and math.sqrt((x1 - x2)^2 + (y1 - y2)^2) * 1000 <= threshold
 end
 
+package.loaded["lib.MapUtils"] = MapUtils
 return MapUtils

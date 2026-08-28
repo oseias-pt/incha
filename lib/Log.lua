@@ -38,4 +38,5 @@ function Log.warn(template, ...)
     d(PREFIX .. "[WARN] " .. string.format(template, ...))
 end
 
+package.loaded["lib.Log"] = Log
 return Log

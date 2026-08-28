@@ -47,4 +47,5 @@ function ZoneManager.getActiveZoneId()
     return activeZoneId
 end
 
+package.loaded["core.ZoneManager"] = ZoneManager
 return ZoneManager

@@ -17,4 +17,5 @@ function CastDur.get(abilityId, fallback)
     return dur > 0 and dur or (fallback or 2000)
 end
 
+package.loaded["lib.CastDur"] = CastDur
 return CastDur

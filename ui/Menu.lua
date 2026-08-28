@@ -267,4 +267,5 @@ end
 
 Menu.options = OPTIONS
 
+package.loaded["ui.Menu"] = Menu
 return Menu

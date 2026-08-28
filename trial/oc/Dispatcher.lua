@@ -1,23 +1,9 @@
-local ModuleLoader = require("core.ModuleLoader")
+--- Ossein Cage Dispatcher -- loaded once at addon start; delegates enable/disable to the trial.
+local Factory    = require("trial.oc.Factory")
+local Dispatcher = {}
 
-local Dispatcher = { zoneId = 1548 }
+function Dispatcher.enable()  Factory:enable()  end
+function Dispatcher.disable() Factory:disable() end
 
-local loadedModules = nil
-local activeTrial   = nil
-
-function Dispatcher.enable()
-    activeTrial, loadedModules = ModuleLoader.loadScoped("trial.oc.Factory")
-    activeTrial:enable()
-end
-
-function Dispatcher.disable()
-    if activeTrial then activeTrial:disable() end
-    activeTrial = nil
-
-    if loadedModules then
-        ModuleLoader.unload(loadedModules)
-        loadedModules = nil
-    end
-end
-
+package.loaded["trial.oc.Dispatcher"] = Dispatcher
 return Dispatcher

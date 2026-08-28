@@ -128,4 +128,5 @@ function DreadsailCommon.handleEffect(alerts, changeType, abilityId, unitTag)
     return false
 end
 
+package.loaded["trial.dsr.DreadsailCommon"] = DreadsailCommon
 return DreadsailCommon

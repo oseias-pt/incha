@@ -75,4 +75,5 @@ function EventPipeline:disable()
     self.enabled = false
 end
 
+package.loaded["core.EventPipeline"] = EventPipeline
 return EventPipeline

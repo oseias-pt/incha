@@ -383,4 +383,5 @@ function Taleria:onUpdate(context, alerts)
     showBridgeLine(self, alerts, now, context)
 end
 
+package.loaded["trial.dsr.boss.Taleria"] = Taleria
 return Taleria

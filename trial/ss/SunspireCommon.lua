@@ -139,4 +139,5 @@ function SunspireCommon.handle(alerts, result, abilityId, unitTag, sourceUnitNam
     return false
 end
 
+package.loaded["trial.ss.SunspireCommon"] = SunspireCommon
 return SunspireCommon

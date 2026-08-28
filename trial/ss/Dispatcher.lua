@@ -1,27 +1,9 @@
-local ModuleLoader = require("core.ModuleLoader")
+--- Sunspire Dispatcher -- loaded once at addon start; delegates enable/disable to the trial.
+local Factory    = require("trial.ss.Factory")
+local Dispatcher = {}
 
-local Dispatcher = {
-    zoneId = 1121,
-}
+function Dispatcher.enable()  Factory:enable()  end
+function Dispatcher.disable() Factory:disable() end
 
--- Loads trial.ss.Factory (and all its dependencies) on first zone entry;
--- unloads everything on zone exit so trial code is eligible for GC.
-local loadedModules = nil
-local activeTrial   = nil
-
-function Dispatcher.enable()
-    activeTrial, loadedModules = ModuleLoader.loadScoped("trial.ss.Factory")
-    activeTrial:enable()
-end
-
-function Dispatcher.disable()
-    if activeTrial then activeTrial:disable() end
-    activeTrial = nil
-
-    if loadedModules then
-        ModuleLoader.unload(loadedModules)
-        loadedModules = nil
-    end
-end
-
+package.loaded["trial.ss.Dispatcher"] = Dispatcher
 return Dispatcher

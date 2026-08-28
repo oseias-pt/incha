@@ -67,4 +67,5 @@ function Timer:getExpiresAt()
     return self.expiresAt
 end
 
+package.loaded["lib.Timer"] = Timer
 return Timer

@@ -258,4 +258,5 @@ function Vrol:onPowerUpdate(context, healthPercent)
     end
 end
 
+package.loaded["trial.ka.boss.Vrol"] = Vrol
 return Vrol

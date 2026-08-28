@@ -1,4 +1,4 @@
-﻿local Timer    = require("lib.Timer")
+local Timer    = require("lib.Timer")
 
 local CA = require("lib.CA")
 local BossBase = require("lib.BossBase")
@@ -234,4 +234,5 @@ function KazpianEncounter:onUpdate(context, alerts)
     alerts:showInfo(7, "")
 end
 
+package.loaded["trial.oc.boss.KazpianEncounter"] = KazpianEncounter
 return KazpianEncounter

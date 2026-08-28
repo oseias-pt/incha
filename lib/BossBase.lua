@@ -55,4 +55,5 @@ function BossBase:cleanupAlertList()
     self.alertList = {}
 end
 
+package.loaded["lib.BossBase"] = BossBase
 return BossBase

@@ -15,4 +15,5 @@ function Location:contains(x, y, z)
         and self.z1 < z and z < self.z2
 end
 
+package.loaded["core.Location"] = Location
 return Location

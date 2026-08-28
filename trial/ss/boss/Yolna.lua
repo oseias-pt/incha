@@ -186,4 +186,5 @@ function Yolna:onUpdate(context, alerts)
     showLandingOrFlyLine(self, alerts, context)
 end
 
+package.loaded["trial.ss.boss.Yolna"] = Yolna
 return Yolna

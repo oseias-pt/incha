@@ -692,7 +692,15 @@ Split HP tracking: all three clones named "Ansuul the Tormentor" — differentia
 
 ## Open architecture questions
 
-1. **AS/CR concurrent-boss model**: both trials have multiple simultaneous boss entities.
+1. **`core/` must not depend on `ui/`** — currently `core/Trial.lua` does
+   `require("ui.Bridge")`, which inverts the dependency layer.  `Bridge` is a
+   pure interface (no WINDOW_MANAGER calls, no UI state) and belongs in core.
+   Fix: move `ui/Bridge.lua` → `core/Bridge.lua`; update the two callers:
+   `core/Trial.lua` and `ui/Panel.lua` both `require("core.Bridge")`.
+   Update `incha.txt` accordingly (remove `ui/Bridge.lua`, add `core/Bridge.lua`
+   in the core block before `core/Trial.lua`).
+
+2. **AS/CR concurrent-boss model**: both trials have multiple simultaneous boss entities.
    We need either (a) a compound module that handles all entities internally, or
    (b) a small extension to `Trial` that supports multiple "active" bosses.
    Option (a) is lower risk and doesn't change the existing API.

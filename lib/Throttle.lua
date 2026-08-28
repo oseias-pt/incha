@@ -34,4 +34,5 @@ function Throttle:reset()
     self.lastBucket = nil
 end
 
+package.loaded["lib.Throttle"] = Throttle
 return Throttle

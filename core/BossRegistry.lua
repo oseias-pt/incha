@@ -70,4 +70,5 @@ function BossRegistry:detectDifficulty(boss, effectiveMaxHealth)
     return Difficulty.NORMAL
 end
 
+package.loaded["core.BossRegistry"] = BossRegistry
 return BossRegistry

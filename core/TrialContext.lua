@@ -33,4 +33,5 @@ function TrialContext:setDifficulty(difficulty)
     self.isHM       = (self.difficulty == Difficulty.HARDMODE)
 end
 
+package.loaded["core.TrialContext"] = TrialContext
 return TrialContext

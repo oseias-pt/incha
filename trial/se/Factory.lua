@@ -16,4 +16,5 @@ local seTrial = Trial.create({
     onEffectChanged = CombatHandler.onEffectChanged,
 })
 
+package.loaded["trial.se.Factory"] = seTrial
 return seTrial

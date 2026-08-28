@@ -129,4 +129,5 @@ function RockgroveCommon.handle(alerts, result, abilityId, unitTag, sourceUnitNa
     return false
 end
 
+package.loaded["trial.rg.RockgroveCommon"] = RockgroveCommon
 return RockgroveCommon

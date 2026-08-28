@@ -57,4 +57,5 @@ function HealthRules.evaluate(rules, healthPercent, context, boss)
     return nil
 end
 
+package.loaded["core.HealthRules"] = HealthRules
 return HealthRules

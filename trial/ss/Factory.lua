@@ -17,4 +17,5 @@ local ssTrial = Trial.create({
     onEffectChanged = CombatHandler.onEffectChanged,
 })
 
+package.loaded["trial.ss.Factory"] = ssTrial
 return ssTrial

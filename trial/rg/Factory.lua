@@ -17,4 +17,5 @@ local rgTrial = Trial.create({
     onEffectChanged = CombatHandler.onEffectChanged,
 })
 
+package.loaded["trial.rg.Factory"] = rgTrial
 return rgTrial

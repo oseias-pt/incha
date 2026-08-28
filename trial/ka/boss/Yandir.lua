@@ -232,4 +232,5 @@ function Yandir:onPowerUpdate(context, healthPercent)
     end
 end
 
+package.loaded["trial.ka.boss.Yandir"] = Yandir
 return Yandir

@@ -41,4 +41,5 @@ function ModuleLoader.unload(moduleNames)
     end
 end
 
+package.loaded["core.ModuleLoader"] = ModuleLoader
 return ModuleLoader

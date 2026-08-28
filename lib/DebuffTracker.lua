@@ -61,4 +61,5 @@ function DebuffTracker:playerName()
     return self._player
 end
 
+package.loaded["lib.DebuffTracker"] = DebuffTracker
 return DebuffTracker

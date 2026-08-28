@@ -47,4 +47,5 @@ function AlertSink:clear()
     emit(self, "clear")
 end
 
+package.loaded["core.AlertSink"] = AlertSink
 return AlertSink

@@ -599,4 +599,5 @@ function Lylanar:onUpdate(context, alerts)
     showSpikeLine(self, alerts, now, isHM)
 end
 
+package.loaded["trial.dsr.boss.Lylanar"] = Lylanar
 return Lylanar

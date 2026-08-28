@@ -1,4 +1,4 @@
-﻿local Timer    = require("lib.Timer")
+local Timer    = require("lib.Timer")
 
 local CA = require("lib.CA")
 local BossBase = require("lib.BossBase")
@@ -148,4 +148,5 @@ function ChimeraEncounter:onPowerUpdate(context, healthPercent, alerts)
     -- No HP milestone logic for Chimera.
 end
 
+package.loaded["trial.se.boss.ChimeraEncounter"] = ChimeraEncounter
 return ChimeraEncounter

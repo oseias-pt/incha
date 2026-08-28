@@ -218,4 +218,5 @@ function Panel.refresh()
     applyPosition(ctrl.panel)
 end
 
+package.loaded["ui.Panel"] = Panel
 return Panel

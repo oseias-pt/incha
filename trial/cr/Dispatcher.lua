@@ -1,21 +1,9 @@
-local ModuleLoader = require("core.ModuleLoader")
+--- Cloudrest Dispatcher -- loaded once at addon start; delegates enable/disable to the trial.
+local Factory    = require("trial.cr.Factory")
+local Dispatcher = {}
 
-local Dispatcher = { zoneId = 1051 }
-local loadedModules = nil
-local activeTrial   = nil
+function Dispatcher.enable()  Factory:enable()  end
+function Dispatcher.disable() Factory:disable() end
 
-function Dispatcher.enable()
-    activeTrial, loadedModules = ModuleLoader.loadScoped("trial.cr.Factory")
-    activeTrial:enable()
-end
-
-function Dispatcher.disable()
-    if activeTrial then activeTrial:disable() end
-    activeTrial = nil
-    if loadedModules then
-        ModuleLoader.unload(loadedModules)
-        loadedModules = nil
-    end
-end
-
+package.loaded["trial.cr.Dispatcher"] = Dispatcher
 return Dispatcher

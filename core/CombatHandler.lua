@@ -157,4 +157,5 @@ function CombatHandler.onEffectChanged(trial, eventCode,
     end
 end
 
+package.loaded["core.CombatHandler"] = CombatHandler
 return CombatHandler

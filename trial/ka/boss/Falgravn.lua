@@ -707,4 +707,5 @@ Falgravn.effectRoutes = {
     [FALGRAVN_BLOPSYNERGIE] = handleBlopSynergie,
 }
 
+package.loaded["trial.ka.boss.Falgravn"] = Falgravn
 return Falgravn

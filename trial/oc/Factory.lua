@@ -16,4 +16,5 @@ local ocTrial = Trial.create({
     onEffectChanged = CombatHandler.onEffectChanged,
 })
 
+package.loaded["trial.oc.Factory"] = ocTrial
 return ocTrial
