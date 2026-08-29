@@ -59,7 +59,6 @@ local function clearTombs(self)
     self.tombsClear  = true
     self.iceDouble   = false
     self.checkDouble = true
-    self.iceState    = 0
     self.iceTomb     = newTombSlots()
 end
 
@@ -82,12 +81,9 @@ end
 local function tombFaded(self)
     self.tFaded = self.tFaded + 1
 
-    -- detect double-tomb: both armed slots faded but only 1 player entered.
-    -- Guard self.iceTomb[2] explicitly — it should always exist after
-    -- newTombSlots(), but a stale EFFECT_FADED from a previous pull could
-    -- arrive after clearTombs() has reset the counter.
-    local slot2 = self.iceTomb[2]
-    if self.checkDouble and self.tFaded == 2 and slot2 and slot2.unit == 0 then
+    -- Detect double-tomb: both arm windows closed but only 1 player entered.
+    -- 100 ms delay lets iceGained settle before we read iGained.
+    if self.checkDouble and self.tFaded == 2 and self.iceTomb[2].unit == 0 then
         self.checkDouble = false
         local s = self
         zo_callLater(function()
@@ -98,9 +94,6 @@ local function tombFaded(self)
     local slot = self.iceTomb[self.tFaded]
     if not slot then return end
     slot.armed = false
-    if self.iceState == 1 and self.tFaded == 2 then
-        self.iceState = 2
-    end
 end
 
 local function iceGained(self, unitId)
@@ -145,13 +138,10 @@ Lokke.stateSchema = {
     alertList    = function() return {} end,
     -- IceTomb machine
     iceNumber    = 0,
-    iceTime      = 0,
     iceNext      = 0,
-    prevIce      = 0,
     tombsClear   = true,
     iceDouble    = false,
     checkDouble  = true,
-    iceState     = 0,
     tCast        = 0,
     tArmed       = 0,
     tFaded       = 0,
@@ -196,7 +186,6 @@ function Lokke:onWipe(context, alerts)
     self.laserTime   = 0
     self.landingTime = 0
     self.iceNumber   = 0
-    self.prevIce     = 0
     clearTombs(self)
 end
 
@@ -226,7 +215,6 @@ local function makeLaserHandler(laserDelay, landingAfterLaser)
         self.laserResetTimer = zo_callLater(function()
             s.laserResetTimer = false
             s.iceNumber = 0
-            s.prevIce   = 0
         end, 10000)
     end }
 end
@@ -252,14 +240,14 @@ local function handleGlacialFist(self, context, alerts, abilityId,
 end
 
 local function handleIceTomb(self, context, alerts, abilityId, ...)
-    local now = GetGameTimeMilliseconds() / 1000
-    self.iceTime     = now + 13
-    self.iceNext     = now + 23
-    self.prevIce     = GetGameTimeMilliseconds()
-    self.iceNumber   = self.iceNumber % 3 + 1
-    self.tombsClear  = false
-    self.iceState    = 1
-    self.checkDouble = true
+    -- Reset any unresolved state from the previous cycle before starting
+    -- this one.  Normally iceFaded calls clearTombs() to clean up, but if
+    -- the tomb resolved abnormally (player died inside, no IN_ICE FADED)
+    -- the counters would otherwise carry over and corrupt the new cycle.
+    clearTombs(self)
+    self.iceNext    = GetGameTimeMilliseconds() / 1000 + 23
+    self.iceNumber  = self.iceNumber % 3 + 1
+    self.tombsClear = false
 end
 
 -- InIce: player enters (EFFECT_GAINED) / exits (EFFECT_FADED) a tomb.
