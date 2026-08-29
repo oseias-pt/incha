@@ -1,0 +1,16 @@
+#!/bin/sh
+# Enforce branch naming: only feature/* or fix/* branches may be pushed.
+# master is handled by GitHub branch protection.
+
+branch=$(git symbolic-ref HEAD 2>/dev/null | sed 's|refs/heads/||')
+
+case "$branch" in
+  feature/*|fix/*|master)
+    exit 0
+    ;;
+  *)
+    echo "ERROR: Branch '$branch' does not match naming rules."
+    echo "       Use feature/<name> or fix/<name>."
+    exit 1
+    ;;
+esac
