@@ -240,6 +240,9 @@ Falgravn.stateSchema = {
     alertList        = function() return {} end,
     -- CA bar ID for the Prison debuff (false when not active).
     prisonBarId      = false,
+    -- zo_callLater handle for the 25 s Open Door heavy-attack alert.
+    -- Stored so onWipe can cancel it if the next pull starts within that window.
+    openGatesDelayTimer = false,
     -- Name of the torturer whose feed icon was last turned yellow (false = none).
     activeFeedTorturer = false,
     -- OSI mechanic icon tracking: [unitTag] → displayName.
@@ -300,6 +303,10 @@ function Falgravn:onWipe(context, alerts)
     self:cleanupAlertList()
     CA.castAlertsStop(self.prisonBarId)
     self.prisonBarId = false
+    if self.openGatesDelayTimer then
+        zo_removeCallLater(self.openGatesDelayTimer)
+        self.openGatesDelayTimer = false
+    end
 
     -- Remove per-player OSI mechanic icons that were showing during the pull.
     for _, dn in pairs(self.osiPrison)      do osiRemove(dn) end
@@ -412,6 +419,7 @@ local function handleFalgravnHm(self, context, alerts, result, abilityId, ...)
         self.bHM = true
         alerts:showHeader(GetUnitName("boss1") .. " [HM: ON]")
     elseif result == ACTION_RESULT_EFFECT_FADED then
+        alerts:showHeader(GetUnitName("boss1"))
         zo_callLater(function()
             if not IsUnitInCombat("player") then self.bHM = false end
         end, 2000)
@@ -540,7 +548,11 @@ local function handleOpenDoor(self, context, alerts, abilityId,
     CA.alert(nil, "Open the Gates!", 0x991111FF,
         SOUNDS.CHAMPION_POINTS_COMMITTED, 2000)
     local capturedSrc = sourceUnitName or ""
-    zo_callLater(function()
+    if self.openGatesDelayTimer then
+        zo_removeCallLater(self.openGatesDelayTimer)
+    end
+    self.openGatesDelayTimer = zo_callLater(function()
+        self.openGatesDelayTimer = false
         if not IsUnitInCombat("player") then return end
         CA.alertCast(FALGRAVN_OPEN_DOOR, capturedSrc, 7500,
             { -3, 0, false, { 0, 0, 0.7, 0.4 }, { 0, 0, 0.7, 0.8 } })
@@ -633,7 +645,7 @@ local function handlePrisonEffect(self, context, alerts, changeType, abilityId,
         if dn and dn ~= "" then self.osiPrison[unitTag] = dn end
     elseif changeType == EFFECT_RESULT_FADED then
         CA.castAlertsStop(self.prisonBarId)
-        self.prisonBarId = nil
+        self.prisonBarId = false
         osiRemove(self.osiPrison[unitTag])
         self.osiPrison[unitTag] = nil
     end
