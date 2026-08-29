@@ -10,10 +10,6 @@ local BridgeBase   = require("ui.Bridge")
 local Trial = {}
 Trial.__index = Trial
 
-local function getPlayerZoneId()
-    return GetZoneId(GetUnitZoneIndex("player"))
-end
-
 --- Boss interface — all methods are optional unless marked REQUIRED.
 --- Each boss is a table with __index pointing at the class (prototype).
 --- Trial checks for each method before calling; missing methods are no-ops.
@@ -98,16 +94,12 @@ function Trial.create(options)
     return self
 end
 
-function Trial:isActiveZone()
-    return getPlayerZoneId() == self.zoneId
-end
-
 function Trial:getActiveBoss()
     return self.activeBoss
 end
 
 function Trial:onBossesChanged(forceReset)
-    if not self:isActiveZone() then
+    if not self.enabled then
         return
     end
 
@@ -164,7 +156,7 @@ function Trial:onBossesChanged(forceReset)
 end
 
 function Trial:onPowerUpdate(powerValue, powerMax)
-    if not self:isActiveZone() then
+    if not self.enabled then
         return
     end
     -- powerMax can be 0 briefly during boss transitions; skip the tick to
@@ -206,7 +198,7 @@ function Trial:onPowerUpdate(powerValue, powerMax)
 end
 
 function Trial:onUpdate()
-    if not self:isActiveZone() then return end
+    if not self.enabled then return end
     local boss = self:getActiveBoss()
     if not boss or not boss.onUpdate then return end
     boss:onUpdate(self.context, self.alerts)
