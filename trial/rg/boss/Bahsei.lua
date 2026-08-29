@@ -81,6 +81,10 @@ Bahsei.stateSchema = {
     nextMtExplosion     = 0,
     nextSickle          = 0,
     lastPortalCW        = true,
+    -- unitId of the last player hit by a carve/slice/rendflesh (MT detection).
+    mtUnitId            = false,
+    -- CA bar handle for the HM Prime Meteor (Meteor Swarm) cast (false when not active).
+    sunBarId            = false,
 }
 
 function Bahsei.new()
@@ -90,6 +94,24 @@ end
 -- ── Lifecycle ─────────────────────────────────────────────────────────────
 function Bahsei:onLeave(context)
     CA.castAlertsStop(self.sunBarId)
+    self.sunBarId = false
+end
+
+-- Soft reset on wipe: cancel the Prime Meteor bar if it's running and clear
+-- per-pull counters so the next attempt starts clean.
+function Bahsei:onWipe(context, alerts)
+    CA.castAlertsStop(self.sunBarId)
+    self.sunBarId           = false
+    self.lastCursedGround   = 0
+    self.nextPortal         = 0
+    self.portalNumber       = 1
+    self.selfDoNotPortalTime = 0
+    self.numPlayersInPortal = 0
+    self.portalTracker      = {}
+    self.lastDeathTouch     = 0
+    self.nextMtExplosion    = 0
+    self.nextSickle         = 0
+    self.mtUnitId           = false
 end
 
 -- ── Combat state ──────────────────────────────────────────────────────────
