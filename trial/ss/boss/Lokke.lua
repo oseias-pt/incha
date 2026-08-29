@@ -161,8 +161,11 @@ Lokke.stateSchema = {
     iFaded       = 0,
     iceTomb      = function() return newTombSlots() end,
     -- Laser / landing
-    laserTime    = 0,
-    landingTime  = 0,
+    laserTime      = 0,
+    landingTime    = 0,
+    -- zo_callLater handle for the 10 s airborne ice-counter reset.
+    -- Stored so onLeave can cancel it if the zone is exited mid-flight.
+    laserResetTimer = false,
 }
 
 function Lokke.new()
@@ -173,6 +176,10 @@ end
 function Lokke:onLeave(context)
     self:cleanupAlertList()
     CA.castAlertsStop(self.laserBarId)
+    if self.laserResetTimer then
+        zo_removeCallLater(self.laserResetTimer)
+        self.laserResetTimer = false
+    end
 end
 
 -- ── Routing tables (C3) ──────────────────────────────────────────────────
@@ -193,8 +200,13 @@ local function makeLaserHandler(laserDelay, landingAfterLaser)
             { 1, 0.7, 0, 0.5 },
             { laserDelay * 1000, "LASER!", 1, 0.5, 0, 0.9, SOUNDS.NONE })
         -- Reset iceNumber once boss is airborne (~10 s in).
+        -- Store the handle so onLeave can cancel it on zone exit.
+        if self.laserResetTimer then
+            zo_removeCallLater(self.laserResetTimer)
+        end
         local s = self
-        zo_callLater(function()
+        self.laserResetTimer = zo_callLater(function()
+            s.laserResetTimer = false
             s.iceNumber = 0
             s.prevIce   = 0
         end, 10000)
