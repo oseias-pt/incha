@@ -46,6 +46,8 @@ Yolna.stateSchema = {
     nextFlareTime = 0,
     cataTimer     = function() return Timer.new(FALLBACK_CATA_DUR / 1000) end,
     landingTimer  = function() return Timer.new(FALLBACK_CATA_DUR / 1000 + 6.8) end,
+    -- CA bar handle for the in-flight cataclysm bar.
+    cataBarId     = false,
 }
 
 function Yolna.new()
@@ -53,9 +55,24 @@ function Yolna.new()
 end
 
 -- ── Lifecycle ─────────────────────────────────────────────────────────────
-function Yolna:onLeave(context)
+
+local function yolna_cleanup(self)
     self:cleanupAlertList()
     CA.castAlertsStop(self.cataBarId)
+    self.cataBarId = false
+end
+
+function Yolna:onLeave(context)
+    yolna_cleanup(self)
+end
+
+-- Soft reset on wipe: cancel bars immediately and clear timer display so
+-- the UI starts clean on the next pull.
+function Yolna:onWipe(context, alerts)
+    yolna_cleanup(self)
+    self.nextFlareTime = 0
+    self.cataTimer:clear()
+    self.landingTimer:clear()
 end
 
 -- ── Combat state (fight start / wipe) ─────────────────────────────────────

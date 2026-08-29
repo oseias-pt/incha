@@ -163,6 +163,8 @@ Lokke.stateSchema = {
     -- Laser / landing
     laserTime      = 0,
     landingTime    = 0,
+    -- CA bar handle for the in-flight laser bar.
+    laserBarId     = false,
     -- zo_callLater handle for the 10 s airborne ice-counter reset.
     -- Stored so onLeave can cancel it if the zone is exited mid-flight.
     laserResetTimer = false,
@@ -173,13 +175,31 @@ function Lokke.new()
 end
 
 -- ── Lifecycle ─────────────────────────────────────────────────────────────
-function Lokke:onLeave(context)
+
+local function lokke_cleanup(self)
     self:cleanupAlertList()
     CA.castAlertsStop(self.laserBarId)
+    self.laserBarId = false
     if self.laserResetTimer then
         zo_removeCallLater(self.laserResetTimer)
         self.laserResetTimer = false
     end
+end
+
+function Lokke:onLeave(context)
+    lokke_cleanup(self)
+end
+
+-- Soft reset on wipe: cancel bars immediately so they don't linger while
+-- the group runs back.  Ice/laser display state resets to zero so the next
+-- pull's onUpdate starts clean.
+function Lokke:onWipe(context, alerts)
+    lokke_cleanup(self)
+    self.laserTime   = 0
+    self.landingTime = 0
+    self.iceNumber   = 0
+    self.prevIce     = 0
+    clearTombs(self)
 end
 
 -- ── Routing tables (C3) ──────────────────────────────────────────────────
