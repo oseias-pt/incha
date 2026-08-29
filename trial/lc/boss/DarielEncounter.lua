@@ -17,7 +17,9 @@ DarielEncounter.__index = DarielEncounter
 
 DarielEncounter.key               = "dariel"
 DarielEncounter.nameAliases       = { "Dariel" }
-DarielEncounter.hmHealthThreshold = 0
+-- hmHealthThreshold: math.huge until measured in-game on vet HM.
+-- (0 would make detectDifficulty always return HARDMODE.)
+DarielEncounter.hmHealthThreshold = math.huge
 -- location: placeholder â€” Lucent Citadel arena AABB not yet captured.
 -- Detection falls back to nameAliases (name-based, may fail on non-EN clients).
 -- To calibrate: stand in arena, run /script d(GetUnitWorldPosition("boss1"))

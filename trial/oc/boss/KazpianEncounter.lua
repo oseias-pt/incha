@@ -33,7 +33,7 @@ local CHANNELER_RITUAL = 234349  -- combatRoute: ACTION_RESULT_EFFECT_FADED â�
 -- Debuffs on player
 local STRICKEN        = 235594   -- combatRoute: ACTION_RESULT_EFFECT_GAINED_DURATION â†’ Stricken alert (player)
 local FIREBOMB_DEBUF  = 245264   -- combatRoute: ACTION_RESULT_EFFECT_GAINED_DURATION â†’ Firebomb alert (player)
-local IMMOLATING_SPHRE= 237011   -- combatRoute: ACTION_RESULT_BEGIN â†’ Immolating Sphere alert (player)
+local IMMOLATING_SPHERE= 237011   -- combatRoute: ACTION_RESULT_BEGIN â†' Immolating Sphere alert (player)
 
 -- â”€â”€ CA colour palettes â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 local COL_LEAP     = { -3, 0, false, { 0.6, 0,   0.9, 0.4 }, { 0.6, 0,   0.9, 0.8 } }
@@ -49,7 +49,9 @@ KazpianEncounter.__index = KazpianEncounter
 
 KazpianEncounter.key               = "kazpian"
 KazpianEncounter.nameAliases       = { "Overfiend Kazpian" }
-KazpianEncounter.hmHealthThreshold = 0
+-- hmHealthThreshold: math.huge until measured in-game on vet HM.
+-- (0 would make detectDifficulty always return HARDMODE.)
+KazpianEncounter.hmHealthThreshold = math.huge
 -- location: placeholder â€” Oathsworn Pit arena AABB not yet captured.
 -- Detection falls back to nameAliases (name-based, may fail on non-EN clients).
 -- To calibrate: stand in arena, run /script d(GetUnitWorldPosition("boss1"))
@@ -199,7 +201,7 @@ KazpianEncounter.combatRoutes = {
     [STORM_SLAM]       = { result = ACTION_RESULT_BEGIN,               fn = handleStormSlam },
     [STORM_SURGE]      = { result = ACTION_RESULT_BEGIN,               fn = handleStormSurge },
     [HEAVY_SHOCK]      = { result = ACTION_RESULT_BEGIN,               fn = handleHeavyShock },
-    [IMMOLATING_SPHRE] = { result = ACTION_RESULT_BEGIN,               fn = handleImmolating },
+    [IMMOLATING_SPHERE] = { result = ACTION_RESULT_BEGIN,               fn = handleImmolating },
     [VILE_TELEPORT]    = { result = ACTION_RESULT_BEGIN,               fn = handleVileTeleport },
     -- Chains (EFFECT_GAINED_DURATION)
     [CHAINS_1]         = { result = ACTION_RESULT_EFFECT_GAINED_DURATION, fn = handleChains },
