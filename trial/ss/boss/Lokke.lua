@@ -72,7 +72,6 @@ local function tombCast(self, time)
 end
 
 local function tombArmed(self)
-    if self.tArmed < 0 then self.tArmed = 0 end
     self.tArmed = self.tArmed + 1
     local slot = self.iceTomb[self.tArmed]
     if not slot then return end
@@ -81,7 +80,6 @@ local function tombArmed(self)
 end
 
 local function tombFaded(self)
-    if self.tFaded < 0 then self.tFaded = self.tFaded + 1 end
     self.tFaded = self.tFaded + 1
 
     -- detect double-tomb: both armed slots faded but only 1 player entered.
