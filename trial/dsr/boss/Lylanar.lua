@@ -118,6 +118,7 @@ Lylanar.stateSchema = {
     lastIncendiaryAxe      = 0,
     destructiveEmberStacks = 0,
     lastDestructiveEmber   = 0,
+    destructiveEmberName   = false,
     firebrandTracker       = function() return {} end,
     lastBrandMatchFire     = 0,
     flameHounds            = 0,
@@ -129,6 +130,7 @@ Lylanar.stateSchema = {
     lastCalamitousSword    = 0,
     piercingHailstacks     = 0,
     lastPiercingHail       = 0,
+    piercingHailName       = false,
     frostbrandTracker      = function() return {} end,
     lastBrandMatchIce      = 0,
     frostHounds            = 0,
@@ -379,7 +381,7 @@ local function handleDestructiveEmber(self, context, alerts, changeType, ability
     elseif changeType == EFFECT_RESULT_FADED then
         if AreUnitsEqual("player", unitTag) then
             self.destructiveEmberStacks = 0
-            self.destructiveEmberName   = nil
+            self.destructiveEmberName   = false
             self.lastDestructiveEmber   = 0
         end
     end
@@ -397,7 +399,7 @@ local function handlePiercingHailstone(self, context, alerts, changeType, abilit
     elseif changeType == EFFECT_RESULT_FADED then
         if AreUnitsEqual("player", unitTag) then
             self.piercingHailstacks = 0
-            self.piercingHailName   = nil
+            self.piercingHailName   = false
             self.lastPiercingHail   = 0
         end
     end

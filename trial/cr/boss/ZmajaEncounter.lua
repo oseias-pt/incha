@@ -162,6 +162,8 @@ ZmajaEncounter.stateSchema = {
     executePhase    = false,
     spearCount      = 0,
     alertList       = function() return {} end,
+    -- Nullable string: "Core MISSED!" while a missed core is in play; false otherwise.
+    coreAlert       = false,
 }
 
 function ZmajaEncounter.new()
@@ -245,7 +247,7 @@ local function handlePortalClose(self, context, alerts, abilityId, ...)
     self.portalActive = false
     self.portalTimer:clear()
     self.portalNextTimer:reset(PORTAL_NEXT_CD)
-    self.coreAlert = nil
+    self.coreAlert = false
 end
 
 -- Crushing Darkness: shared handler for 3 variants.
@@ -433,7 +435,7 @@ local function handleCoreMissed(self, context, alerts, abilityId, ...)
 end
 
 local function handleCorePickedUp(self, context, alerts, abilityId, ...)
-    self.coreAlert = nil
+    self.coreAlert = false
     alerts:showAction("Core picked up.")
 end
 
