@@ -152,7 +152,6 @@ end
 local function handleHemorrhage(self, context, alerts, abilityId, unitTag, ...)
     if not IsUnitPlayer(unitTag) then return end
     PlaySound(SOUNDS.DUEL_START)
-    PlaySound(SOUNDS.DUEL_START)
     CA.alert(nil, "Bleeding", 0xCC0000D9, SOUNDS.DUEL_START, 9000)
 end
 
