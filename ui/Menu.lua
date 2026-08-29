@@ -112,6 +112,19 @@ local OPTIONS = {
         setFunc = function(v) Settings.get().trials.ka.posIconsFalgravn = v end,
     },
 
+    -- Section: Sunspire
+    {
+        type = "header",
+        name = "Sunspire",
+    },
+    {
+        type    = "checkbox",
+        name    = "Enable",
+        tooltip = "Track Lokke laser/tomb timers, Yolna/Nahvii mechanics, and shared-add alerts.",
+        getFunc = function() return Settings.get().trials.ss.enabled end,
+        setFunc = function(v) Settings.get().trials.ss.enabled = v end,
+    },
+
     -- Section: Rockgrove
     {
         type = "header",

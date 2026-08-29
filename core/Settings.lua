@@ -36,6 +36,7 @@ local DEFAULTS = {
             portalIconVrol   = true,   -- show floor icon on Vrol portal spawn
             posIconsFalgravn = true,   -- connection-node / blood-ball / torturer floor markers
         },
+        ss  = { enabled = true },
         rg  = { enabled = true },
         dsr = { enabled = true },
         as  = { enabled = true },
