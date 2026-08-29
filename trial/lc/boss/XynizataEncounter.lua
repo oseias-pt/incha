@@ -26,7 +26,9 @@ XynizataEncounter.__index = XynizataEncounter
 
 XynizataEncounter.key               = "xynizata"
 XynizataEncounter.nameAliases       = { "Xynizata" }
-XynizataEncounter.hmHealthThreshold = 0
+-- hmHealthThreshold: math.huge until measured in-game on vet HM.
+-- (0 would make detectDifficulty always return HARDMODE.)
+XynizataEncounter.hmHealthThreshold = math.huge
 -- location: placeholder â€” Lucent Citadel arena AABB not yet captured.
 -- Detection falls back to nameAliases (name-based, may fail on non-EN clients).
 -- To calibrate: stand in arena, run /script d(GetUnitWorldPosition("boss1"))
