@@ -66,28 +66,30 @@ end
 local function tombCast(self, time)
     self.tCast = self.tCast + 1
     local slot = self.iceTomb[self.tCast]
-    if slot then
-        slot.cast = true
-        slot.time = time
-    end
+    if not slot then return end
+    slot.cast = true
+    slot.time = time
 end
 
 local function tombArmed(self)
     if self.tArmed < 0 then self.tArmed = 0 end
     self.tArmed = self.tArmed + 1
     local slot = self.iceTomb[self.tArmed]
-    if slot then
-        slot.armed = true
-        slot.time  = GetGameTimeMilliseconds() / 1000 + 10
-    end
+    if not slot then return end
+    slot.armed = true
+    slot.time  = GetGameTimeMilliseconds() / 1000 + 10
 end
 
 local function tombFaded(self)
     if self.tFaded < 0 then self.tFaded = self.tFaded + 1 end
     self.tFaded = self.tFaded + 1
 
-    -- detect double-tomb: both armed slots faded but only 1 player entered
-    if self.checkDouble and self.tFaded == 2 and self.iceTomb[2].unit == 0 then
+    -- detect double-tomb: both armed slots faded but only 1 player entered.
+    -- Guard self.iceTomb[2] explicitly — it should always exist after
+    -- newTombSlots(), but a stale EFFECT_FADED from a previous pull could
+    -- arrive after clearTombs() has reset the counter.
+    local slot2 = self.iceTomb[2]
+    if self.checkDouble and self.tFaded == 2 and slot2 and slot2.unit == 0 then
         self.checkDouble = false
         local s = self
         zo_callLater(function()
@@ -96,22 +98,20 @@ local function tombFaded(self)
     end
 
     local slot = self.iceTomb[self.tFaded]
-    if slot then
-        slot.armed = false
-        if self.iceState == 1 and self.tFaded == 2 then
-            self.iceState = 2
-        end
+    if not slot then return end
+    slot.armed = false
+    if self.iceState == 1 and self.tFaded == 2 then
+        self.iceState = 2
     end
 end
 
 local function iceGained(self, unitId)
     self.iGained = self.iGained + 1
     local slot = self.iceTomb[self.iGained]
-    if slot then
-        slot.time   = GetGameTimeMilliseconds() / 1000 + 8
-        slot.taken  = true
-        if unitId and unitId ~= 0 then slot.unit = unitId end
-    end
+    if not slot then return end
+    slot.time   = GetGameTimeMilliseconds() / 1000 + 8
+    slot.taken  = true
+    if unitId and unitId ~= 0 then slot.unit = unitId end
 end
 
 local function iceFaded(self, unitId)
