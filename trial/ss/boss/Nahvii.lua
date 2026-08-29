@@ -84,7 +84,10 @@ Nahvii.stateSchema = {
     inPortal            = false,
     -- Portal interrupt
     interruptTimer      = function() return Timer.new(FALLBACK_INTERRUPT_DUR / 1000) end,
+    interruptUnitId     = false,
     pinsTime            = 0,
+    -- CA bar handle for the in-flight thrash bar.
+    thrashBarId         = false,
 }
 
 function Nahvii.new()
@@ -92,9 +95,34 @@ function Nahvii.new()
 end
 
 -- ── Lifecycle ─────────────────────────────────────────────────────────────
-function Nahvii:onLeave(context)
+
+local function nahvii_cleanup(self)
     self:cleanupAlertList()
     CA.castAlertsStop(self.thrashBarId)
+    self.thrashBarId = false
+end
+
+function Nahvii:onLeave(context)
+    nahvii_cleanup(self)
+end
+
+-- Soft reset on wipe: cancel bars immediately and clear all countdown
+-- display state so the UI starts clean on the next pull.
+function Nahvii:onWipe(context, alerts)
+    nahvii_cleanup(self)
+    self.nextMeteorTime      = 0
+    self.stormTime           = 0
+    self.landingTime         = 0
+    self.firstStormTrig      = true
+    self.portalTime          = 0
+    self.wipeTime            = 0
+    self.cptPortal           = 0
+    self.inPortal            = false
+    self.interruptTimer:clear()
+    self.interruptUnitId     = false
+    self.pinsTime            = 0
+    self.meteorTargets       = {}
+    self.meteorDisplayEnd_ms = 0
 end
 
 -- ── Routing tables (C3) ──────────────────────────────────────────────────
