@@ -256,7 +256,7 @@ local function handlePortalExit(self, context, alerts, abilityId, unitTag, ...)
     if IsUnitPlayer(unitTag) and AreUnitsEqual("player", unitTag) then
         self.inPortal        = false
         self.interruptTimer:clear()
-        self.interruptUnitId = nil
+        self.interruptUnitId = false
         self.pinsTime        = 0
     end
 end
@@ -307,7 +307,7 @@ function Nahvii:onCombatEvent(context, alerts, result, abilityId,
                                sourceUnitName, unitName)
     if result == ACTION_RESULT_INTERRUPT and unitId and unitId == self.interruptUnitId then
         self.interruptTimer:clear()
-        self.interruptUnitId = nil
+        self.interruptUnitId = false
         self.pinsTime        = GetGameTimeMilliseconds() / 1000 + 20
     end
 end
