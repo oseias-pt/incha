@@ -35,7 +35,7 @@
 
 local RockgroveCommon = require("trial.rg.RockgroveCommon")
 
-local SHIELD_EVENT_KEY = "Incha_RG_XalvakkaShield"
+local SHIELD_EVENT_KEY = ADDON_PREFIX .. "RG_XalvakkaShield"
 
 -- ── Ability IDs ────────────────────────────────────────────────────────────
 local SCATHING1       = 149180   -- combatRoute: ACTION_RESULT_BEGIN → player-targeted alert

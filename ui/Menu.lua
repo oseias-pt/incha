@@ -1,10 +1,10 @@
 --- Settings UI entry point.
 ---
 --- Registers an in-game settings panel via LibAddonMenu-2.0 (LAM) when it
---- is present, and always registers /incha as a slash-command fallback.
+--- is present, and always registers ADDON_SLASH as a slash-command fallback.
 ---
---- LAM panel ID: "InchPanel"
---- Slash command: /incha  (debug | lock | scale <n> | reset)
+--- LAM panel ID: ADDON_LAM  (set in bootstrap.lua)
+--- Slash command: ADDON_SLASH  (debug | lock | scale <n> | reset)
 
 local Log      = require("lib.Log")
 local Panel    = require("ui.Panel")
@@ -12,16 +12,16 @@ local Settings = require("core.Settings")
 
 local Menu = {}
 
-local PANEL_ID = "InchaSettings"
+local PANEL_ID = ADDON_LAM
 
 -- ── LAM panel descriptor ───────────────────────────────────────────────────
 local PANEL = {
     type                = "panel",
-    name                = "Incha",
-    displayName         = "|cFFD700Incha|r",
+    name                = ADDON_TITLE,
+    displayName         = "|cFFD700" .. ADDON_TITLE .. "|r",
     author              = "Oseias",
     version             = "0.1.0",
-    slashCommand        = "/incha",
+    slashCommand        = ADDON_SLASH,
     registerForRefresh  = false,
     registerForDefaults = false,
 }
@@ -205,11 +205,11 @@ local OPTIONS = {
 -- ── Slash command fallback ────────────────────────────────────────────────
 
 local function printHelp()
-    d("|cFFD700[Incha]|r Commands:")
-    d("  /incha debug         — toggle debug logging")
-    d("  /incha lock          — toggle overlay drag lock")
-    d("  /incha scale <n>     — set overlay scale (0.5 – 3.0)")
-    d("  /incha reset         — reset overlay to default position")
+    d(ADDON_TAG .. " Commands:")
+    d("  " .. ADDON_SLASH .. " debug         — toggle debug logging")
+    d("  " .. ADDON_SLASH .. " lock          — toggle overlay drag lock")
+    d("  " .. ADDON_SLASH .. " scale <n>     — set overlay scale (0.5 – 3.0)")
+    d("  " .. ADDON_SLASH .. " reset         — reset overlay to default position")
 end
 
 local function handleSlash(text)
@@ -233,7 +233,7 @@ local function handleSlash(text)
             Panel.refresh()
             d("|cFFD700[Incha]|r Scale → " .. n)
         else
-            d("|cFFD700[Incha]|r Usage: /incha scale <0.5 – 3.0>")
+            d(ADDON_TAG .. " Usage: " .. ADDON_SLASH .. " scale <0.5 – 3.0>")
         end
 
     elseif cmd == "reset" then
@@ -253,7 +253,7 @@ end
 function Menu.init()
     -- Always register the slash command — useful even when LAM is present
     -- and essential when it is not installed.
-    SLASH_COMMANDS["/incha"] = handleSlash
+    SLASH_COMMANDS[ADDON_SLASH] = handleSlash
 
     -- Wire to LibAddonMenu-2.0 when it is loaded.
     -- incha.txt declares ## OptionalDependsOn: LibAddonMenu-2.0 so ESO

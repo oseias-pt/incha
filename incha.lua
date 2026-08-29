@@ -1,4 +1,4 @@
-local ADDON_NAME = "incha"  -- ESO fires EVENT_ADD_ON_LOADED with the folder name, not ## Title:
+-- ADDON_NAME and friends are defined in bootstrap.lua (the first file loaded).
 
 local Settings    = require("core.Settings")
 local ZoneManager = require("core.ZoneManager")
@@ -34,7 +34,7 @@ local function OnAddOnLoaded(event, addonName)
 
     ZoneManager.onZoneChanged()
 
-    d("|cFFD700[Incha]|r v0.1.0 loaded — /incha for commands")
+    d(ADDON_TAG .. " v0.1.0 loaded — " .. ADDON_SLASH .. " for commands")
 end
 
 EVENT_MANAGER:RegisterForEvent(ADDON_NAME, EVENT_ADD_ON_LOADED, OnAddOnLoaded)

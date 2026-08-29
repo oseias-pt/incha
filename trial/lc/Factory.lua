@@ -10,7 +10,7 @@ local XorynEncounter    = require("trial.lc.boss.XorynEncounter")
 local lcTrial = Trial.create({
     id              = "lc",
     zoneId          = 1478,
-    eventPrefix     = "Incha_LC",
+    eventPrefix     = ADDON_PREFIX .. "LC",
     bosses          = { RyelazEncounter, DarielEncounter, OrphicEncounter,
                         XynizataEncounter, XorynEncounter },
     bridge          = Panel.bridge,

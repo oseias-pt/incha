@@ -4,7 +4,7 @@
 --- before any other module calls Settings.get() or Settings.trial().
 --- ESO does not populate SavedVars until that event fires.
 ---
---- The manifest (incha.txt) must declare:  ## SavedVariables: Incha_SV
+--- The manifest (incha.txt) must declare:  ## SavedVariables: &lt;ADDON_SV&gt; (set in bootstrap.lua)
 
 local Settings = {}
 
@@ -56,7 +56,7 @@ local _sv = nil
 
 --- Must be called once during EVENT_ADD_ON_LOADED.
 function Settings.init()
-    _sv = ZO_SavedVars:NewAccountWide("Incha_SV", SCHEMA_VERSION, nil, DEFAULTS)
+    _sv = ZO_SavedVars:NewAccountWide(ADDON_SV, SCHEMA_VERSION, nil, DEFAULTS)
 
     -- One-time import from the legacy BSCHTKA addon so existing users keep
     -- their preferences when they first run Incha without BSCHTKA.

@@ -50,7 +50,7 @@ function Trial.create(options)
         id = options.id,
         zoneId = options.zoneId,
         name = options.name or options.id,
-        eventPrefix = options.eventPrefix or ("Incha_" .. options.id),
+        eventPrefix = options.eventPrefix or (ADDON_PREFIX .. options.id),
         -- Default to BridgeBase so every hook can be called unconditionally.
         bridge = options.bridge or BridgeBase,
         registry = BossRegistry.new(options.bosses),
