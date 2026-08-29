@@ -206,7 +206,7 @@ local function handlePortalKillTime(self, context, alerts, changeType, abilityId
 
     elseif changeType == EFFECT_RESULT_FADED then
         CA.castAlertsStop(self.portalKillBarId)
-        self.portalKillBarId = nil
+        self.portalKillBarId = false
 
         if GetGameTimeMilliseconds() < self.portalKillExpires then
             alerts:showAction("Portal OK!")
