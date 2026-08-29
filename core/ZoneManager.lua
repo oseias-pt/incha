@@ -22,7 +22,7 @@ end
 
 local function disableCurrentTrial()
     if activeTrial and activeTrial.disable then
-        activeTrial.disable()
+        activeTrial:disable()
     end
 
     activeTrial = nil
@@ -54,7 +54,7 @@ local function enableTrialForZone(zoneId)
 
     activeZoneId = zoneId
     activeTrial = entry.module
-    entry.module.enable()
+    entry.module:enable()
 end
 
 function ZoneManager.onZoneChanged()
