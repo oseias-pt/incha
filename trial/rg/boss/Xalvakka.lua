@@ -150,6 +150,19 @@ function Xalvakka:onEnter(context, alerts)
         end)
 end
 
+-- Soft reset on wipe: clear the CA danger border and all per-pull state
+-- so the next attempt starts clean.
+function Xalvakka:onWipe(context, alerts)
+    CA.border(false, 0, nil)
+    self.nextJump       = 0
+    self.numJumps       = 0
+    self.shellShield    = 0
+    self.onBlob         = false
+    self.soulStart      = 0
+    self.selfManifold   = false
+    self.manifoldOthers = {}
+end
+
 -- ── Combat state ──────────────────────────────────────────────────────────
 function Xalvakka:onCombatState(context, inCombat, alerts)
     if inCombat then
