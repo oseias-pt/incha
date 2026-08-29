@@ -61,10 +61,38 @@ Oaxiltso.stateSchema = {
     sludgeTracker1     = 0,
     bossEnraged        = false,
     miniEnraged        = false,
+    -- zo_callLater handle for the 2.5 s Sunburst delayed meteor alert.
+    -- Stored so onWipe can cancel it if the group wipes in that window.
+    sunburstTimer      = false,
 }
 
 function Oaxiltso.new()
     return BossBase.fromSchema(Oaxiltso)
+end
+
+-- ── Lifecycle ─────────────────────────────────────────────────────────────
+function Oaxiltso:onLeave(context)
+    if self.sunburstTimer then
+        zo_removeCallLater(self.sunburstTimer)
+        self.sunburstTimer = false
+    end
+end
+
+-- Soft reset on wipe: cancel the pending Sunburst alert and clear
+-- per-pull counters so the next attempt starts clean.
+function Oaxiltso:onWipe(context, alerts)
+    if self.sunburstTimer then
+        zo_removeCallLater(self.sunburstTimer)
+        self.sunburstTimer = false
+    end
+    self.lastBlitz         = 0
+    self.lastSludge        = 0
+    self.lastPoisonTracker = 0
+    self.sludgeTracker1    = 0
+    self.sludgeTracker1Tag  = nil
+    self.sludgeTracker1Name = nil
+    self.bossEnraged       = false
+    self.miniEnraged       = false
 end
 
 -- ── Routing tables (C3) ──────────────────────────────────────────────────
@@ -82,8 +110,12 @@ local function handleNoxiousSludge(self, context, alerts, abilityId, ...)
 end
 
 -- Sunburst casts, then ~2.5 s later a meteor hits; alert fires at impact.
+-- Store the handle so onWipe can cancel it if the group wipes in the window.
 local function handleSunburst(self, context, alerts, abilityId, ...)
-    zo_callLater(function()
+    if self.sunburstTimer then zo_removeCallLater(self.sunburstTimer) end
+    self.sunburstTimer = zo_callLater(function()
+        self.sunburstTimer = false
+        if not IsUnitInCombat("player") then return end
         CA.alert(nil, "Meteor. BLOCK!", 0xFF2020FF, SOUNDS.CHAMPION_POINTS_COMMITTED, 3000)
     end, 2500)
 end
