@@ -113,18 +113,14 @@ function Yandir:onUpdate(context, alerts)
 end
 
 -- ── Routing tables (C3) ──────────────────────────────────────────────────
--- DIED: clean up alertList + totem tracker.
+-- DIED: delegate alertList cleanup to BossBase, then handle totem-specific state.
 function Yandir:onDied(context, alerts,
                         unitTag, sourceUnitTag, sourceUnitId, unitId,
                         sourceUnitName, unitName)
-    if unitId then
-        CA.castAlertsStop(self.alertList[unitId])
-        self.alertList[unitId] = nil
-    end
-    if sourceUnitId then
-        CA.castAlertsStop(self.alertList[sourceUnitId])
-        self.alertList[sourceUnitId] = nil
-    end
+    -- BossBase stops and clears alertList[unitId] and alertList[sourceUnitId].
+    BossBase.onDied(self, context, alerts,
+        unitTag, sourceUnitTag, sourceUnitId, unitId,
+        sourceUnitName, unitName)
     -- If the player targeted by the poison totem dies, cancel the delayed bar.
     if self.poisonTotemId == unitId or self.poisonTotemId == sourceUnitId then
         self.poisonTotemId = -1
