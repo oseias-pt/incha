@@ -1,7 +1,53 @@
 # Incha — Roadmap
 
-Working plan last updated 2026-08-23. Phases are ordered by dependency.
+Working plan last updated 2026-08-30. Phases are ordered by dependency.
 Checked items are **shipped** (committed). Unchecked items are pending.
+
+---
+
+## Known bugs — fix immediately
+
+### P0 — mechanic completely non-functional
+- [ ] **OC / JynorahEncounter — `handleReflective` parameter order inverted.**
+      `trial/oc/boss/JynorahEncounter.lua:97` — plain-function combatRoute entries receive
+      `(self, context, alerts, result, abilityId, unitTag, ...)` but `handleReflective`
+      declares them as `(self, context, alerts, abilityId, result, ...)`.
+      The condition `result == ACTION_RESULT_EFFECT_GAINED` compares a numeric abilityId
+      against an enum — never matches. Reflective Scales yellow border never fires.
+      **Fix:** swap the 4th and 5th parameter names.
+
+### P1 — state correctness bugs
+- [ ] **DSR / ReefGuardian — `acidRefluxBarId` missing from `stateSchema`.**
+      `trial/dsr/boss/ReefGuardian.lua` — `onLeave` calls `CA.castAlertsStop(self.acidRefluxBarId)`
+      but the field is nil on first encounter entry; cleanup silently does nothing.
+      **Fix:** add `acidRefluxBarId = false` to `stateSchema`.
+- [ ] **DSR / Taleria — `lureBarId` missing from `stateSchema`.**
+      `trial/dsr/boss/Taleria.lua` — same pattern.
+      **Fix:** add `lureBarId = false` to `stateSchema`.
+- [ ] **RG / Oaxiltso — `sludgeTracker1Tag` / `sludgeTracker1Name` missing from `stateSchema`.**
+      `trial/rg/boss/Oaxiltso.lua` — fields set in `onWipe` but never declared.
+      **Fix:** add both with `nil` value to `stateSchema`.
+- [ ] **OC / KazpianEncounter — `chainedA` / `chainedB` not in `stateSchema`.**
+      `trial/oc/boss/KazpianEncounter.lua` — reset to nil in `onWipe` but not declared.
+      **Fix:** add `chainedA = nil`, `chainedB = nil` to `stateSchema` for consistency.
+- [ ] **OC / OsseinCageCommon — `_carrionStacks` not reset on wipe.**
+      Module-level upvalue survives encounter wipes; the stack count shown after a wipe
+      reflects the pre-wipe value until the next `EFFECT_FADED` fires.
+      **Fix:** export `OsseinCageCommon.reset()` and call it from each boss `onWipe`.
+
+### File encoding corruption
+- [x] Eight files contained `a"EUR` sequences (corrupted `─` U+2500 box-drawing chars).
+      Fixed: replaced all occurrences with `─` and re-saved as UTF-8 without BOM.
+      `trial/cr/boss/ZmajaEncounter.lua` was already clean (used `-- --` style).
+      Fixed files:
+      - `trial/as/boss/OlmsEncounter.lua` (647 replacements)
+      - `trial/lc/boss/DarielEncounter.lua` (232)
+      - `trial/lc/boss/OrphicEncounter.lua` (279)
+      - `trial/lc/boss/RyelazEncounter.lua` (237)
+      - `trial/lc/boss/XorynEncounter.lua` (348)
+      - `trial/lc/boss/XynizataEncounter.lua` (279)
+      - `trial/oc/boss/KazpianEncounter.lua` (207)
+      - `trial/oc/boss/ShaperEncounter.lua` (207)
 
 ---
 
@@ -68,6 +114,14 @@ Checked items are **shipped** (committed). Unchecked items are pending.
       Location bounds TBD.
 - [ ] Real `Location` bounds for both trials — verify unit zone coordinates in-game.
 - [ ] Real HM health thresholds for RG (Bahsei, Oaxiltso, Xalvakka) and DSR (all bosses).
+      RG reference confirms `maxTargetHP > 100_000_000` is the HM boundary; use
+      `GetUnitMaxPower("boss1", POWERTYPE_HEALTH)` on a vet HM clear for exact values.
+- [ ] **DSR / Lylanar** — register `lylanar_torrid_cleave = 167298` and
+      `turlassil_brisk_rip = 167290` (frontal cleaves, currently untracked).
+- [ ] **DSR / ReefGuardian** — register third crab ability `166585`; add Heartburn
+      resolution tracking: `166031` (success) / `166032` (fail).
+- [ ] **DSR / Taleria** — register second Barnacle Blade variant `174801`
+      (existing `BARNACLE_BLADE = 163901` covers only one variant).
 
 ---
 
@@ -82,6 +136,8 @@ Checked items are **shipped** (committed). Unchecked items are pending.
       Torturer 25 s pre-alert via `zo_callLater` + combat guard
 - [ ] KA OSI floor icons (deferred — requires in-game coordinate measurement):
       connection nodes (×8), blood fountain spawns, torturer walk positions
+- [ ] Falgravn: add prisoner-feed pre-wipe warning at stack 9 or 10 (current code tracks
+      the counter but fires no alert before the group wipes at 11 stacks)
 
 ---
 
@@ -155,9 +211,11 @@ BOSS_EVENT              = 10298   -- ACTION_RESULT_EFFECT_GAINED hitValue=1
 - [ ] OSI icons: Oppressive Bolts targets (if applicable — verify if player-targeted)
 
 #### AS-3 — In-game verification
+- [ ] Real Location bounds — stand at room corners: `/script local x,y,z,_ = GetUnitWorldPosition("player"); d(x..","..y)`
 - [ ] Confirm exact boss name string returned by `GetUnitName("boss1")` in EN/other locales
 - [ ] Confirm `hitValue` filter needed on Defiling Blast (ref uses `hitValue == 2000`)
 - [ ] Verify mini-boss spawn timing (~12 s from `BOSS_EVENT`) for pre-warning accuracy
+- [ ] HM thresholds for Saint Olms, Llothis, and Felms: `/script d(GetUnitMaxPower("boss1", POWERTYPE_HEALTH))`
 
 ---
 
@@ -265,6 +323,8 @@ ZMAJA_SHACKLE_MINI = 107490  -- Mini dies → Z'Maja phase
 
 #### CR-4 — In-game verification
 - [ ] Zone ID constant
+- [ ] Real Location bounds — stand at room corners: `/script local x,y,z,_ = GetUnitWorldPosition("player"); d(x..","..y)`
+- [ ] HM threshold for Z'Maja: `/script d(GetUnitMaxPower("boss1", POWERTYPE_HEALTH))`
 - [ ] Confirm portal assignments fire correctly with all group configurations
 - [ ] Verify Shadow Bead spawn/charge events for ground-icon eligibility
 
@@ -316,9 +376,17 @@ KNOT_CARRY           = 213477  -- Player picks up knot → alert with name
 ```
 - [ ] Accelerating Charge interrupt alert
 - [ ] Fluctuating Current player icon (timer OSI + alert if >12 s held)
-- [ ] Knot Carry: who holds it → `showInfo`
+- [ ] Arcane Conveyance cast alert: `223024` / `ACTION_RESULT_BEGIN` — group-wide warning
+      *before* the debuff lands (currently only the tethered player's debuff `223060` is tracked)
+- [ ] Knot Carry: who holds it → `showInfo` for **all** players, not just the holder.
+      Reference (`LCH.Xoryn`): `knotHolder = GetNameForId(targetUnitId)` shown to everyone.
 - [ ] Tether debuff player icons
 - [ ] Tempest line mechanic alert
+
+**Missing vs. LucentCitadelHelper (Ryelaz):**
+- [ ] Add-spawn alerts gated on `self.playerSide`: `summon_shardborn_lightweaver = 218113`
+      (light side) and `summon_gloomy_blackguard = 218109` (dark side). These adds require
+      priority attention; their spawns are currently unannounced.
 
 #### LC-5 — Zilyesset (with Count Ryelaz)
 ```
@@ -345,7 +413,9 @@ These modules exist in LC main but LCH doesn't cover them → mechanics unknown 
 - [ ] Implement once abilities are known
 
 #### LC-7 — In-game verification
-- [ ] Zone ID, boss name strings, HM thresholds
+- [ ] Zone ID, boss name strings
+- [ ] Real Location bounds — stand at room corners: `/script local x,y,z,_ = GetUnitWorldPosition("player"); d(x..","..y)`
+- [ ] HM thresholds for all bosses: `/script d(GetUnitMaxPower("boss1", POWERTYPE_HEALTH))`
 - [ ] Pad icon coordinate accuracy (LCH coords pre-measured but verify they match)
 
 ---
@@ -358,6 +428,12 @@ Boss 1: Jynorah (with Skorkhif mini). Boss 2: Kazpian. Boss 3: Shaper of Flesh.
 **Reference addons:** `OsseinCageHelper` (OCH), `AsquartOsseinCageHelper` (Asquart).
 
 **Zone ID:** Verify in-game (Fallen Banners DLC, 2025 — likely ~1600+ range).
+
+#### OC-0 — Immediate bugs (see Known Bugs section above)
+- [ ] Fix `handleReflective` parameter order in JynorahEncounter (P0 — mechanic completely broken)
+- [ ] Add `chainedA = nil`, `chainedB = nil` to KazpianEncounter `stateSchema`
+- [ ] Export `OsseinCageCommon.reset()` and call from each boss `onWipe` to clear
+      `_carrionStacks` (currently stale after wipes)
 
 #### OC-1 — Infrastructure
 - [ ] Determine zone ID
@@ -504,7 +580,9 @@ IMMOLATING_SPHERE    = 237011   -- Incinerator
 - [ ] Implement once abilities are known
 
 #### OC-6 — In-game verification
-- [ ] Zone ID, boss name strings, HM thresholds (dragon_max_hp=242176464 on vet HM)
+- [ ] Zone ID, boss name strings
+- [ ] Real Location bounds — stand at room corners: `/script local x,y,z,_ = GetUnitWorldPosition("player"); d(x..","..y)`
+- [ ] HM thresholds (Jynorah/Skorkhif dragon_max_hp=242176464 on vet HM confirmed; verify Kazpian + Shaper): `/script d(GetUnitMaxPower("boss1", POWERTYPE_HEALTH))`
 - [ ] Portal color assignment logic (Jynorah) — verify curse tracking accuracy
 - [ ] Caustic Carrion max danger stacks per boss (6/8/10 per OCH)
 
@@ -522,6 +600,10 @@ Boss 1: Exarchanic Yaseyla. Boss 2: Chimera. Boss 3: Ansuul the Tormentor.
 - [ ] Register `se` in `incha.lua`; stub bosses: Yaseyla, Chimera, Ansuul
 
 #### SE-2 — Yaseyla (boss 1)
+**Cleanup:**
+- [ ] Remove dead constant `ARCHER_TRUE_SHOT = 184802` (no combatRoute entry; or add a
+      comment block explicitly marking it unimplemented to explain the gap).
+
 ```
 -- Primary abilities
 FIREBOMB_TOSS        = 183660
@@ -617,6 +699,13 @@ Crystal number icons (used during active phase for positioning):
 - [ ] Crystal number icons (need coordinates from SEH data file)
 
 #### SE-4 — Ansuul the Tormentor (boss 3)
+**Missing vs. SanitysEdgeHelper:**
+- [ ] Register 4th breakdown variant `188760` — reference: `{188760, 188766, 188768, 188769}`.
+      Incha has 188766/68/69; if the game fires 188760 the triplet transition silently fails.
+- [ ] Add warlock add alerts: `ansuul_warlock_sunburst = 187059` and
+      `ansuul_warlock_wrathstorm = 189163` (Warlock adds cast both with no current alert).
+- [ ] `hmHealthThreshold = 100000000` is a round-number TODO sentinel — measure in-game.
+
 The most complex SE boss. Has a maze phase (The Ritual) and a split-clone phase (Breakdown).
 
 ```
@@ -663,6 +752,8 @@ Split HP tracking: all three clones named "Ansuul the Tormentor" — differentia
 
 #### SE-5 — In-game verification
 - [ ] Confirm zone ID = 1427 matches the correct zone (verify with `GetUnitZoneByIndex`)
+- [ ] Real Location bounds — stand at room corners: `/script local x,y,z,_ = GetUnitWorldPosition("player"); d(x..","..y)`
+- [ ] HM thresholds for all three bosses: `/script d(GetUnitMaxPower("boss1", POWERTYPE_HEALTH))`
 - [ ] Breakdown ability IDs (`ansuul_red/green/blue_split_breakdown`) — read SEH main data file
 - [ ] Chimera crystal number icon coordinates — read SEH data file
 - [ ] Calamity cooldown values — read SEH data file
@@ -676,6 +767,9 @@ Split HP tracking: all three clones named "Ansuul the Tormentor" — differentia
 ### All new trials
 - [ ] Zone IDs for CR, LC, OC (AS=1000 confirmed, SE=1427 confirmed)
 - [ ] Boss name strings for `BossRegistry.nameAliases` in each trial's Factory
+- [ ] Real Location bounds for AS, CR, LC, OC, SE — stand at boss room corners and run:
+      `/script local x,y,z,_ = GetUnitWorldPosition("player"); d(x..","..y)`
+      Record min/max x/z at each corner; y is the floor plane.
 
 ### KA
 - [ ] OSI floor icon world coordinates: connection nodes (×8), blood fountains, torturer walk spots
@@ -715,7 +809,14 @@ Split HP tracking: all three clones named "Ansuul the Tormentor" — differentia
    Update `incha.txt` accordingly (remove `ui/Bridge.lua`, add `core/Bridge.lua`
    in the core block before `core/Trial.lua`).
 
-2. **AS/CR concurrent-boss model**: both trials have multiple simultaneous boss entities.
+2. **Module-level mutable state in `*Common` files**: `OsseinCageCommon._carrionStacks` and
+   `_toxicIreLastMs` are module-level upvalues. They survive wipes and re-entries within
+   a session — any code path that reads them between a wipe and the next `EFFECT_FADED`
+   shows stale data. Pattern: move shared counters into a `Trial`-context object or export
+   a `reset()` function called from each boss's `onWipe`. Same audit recommended for
+   `SunspireCommon` and `RockgroveCommon` if they carry mutable upvalues.
+
+3. **AS/CR concurrent-boss model**: both trials have multiple simultaneous boss entities.
    We need either (a) a compound module that handles all entities internally, or
    (b) a small extension to `Trial` that supports multiple "active" bosses.
    Option (a) is lower risk and doesn't change the existing API.
@@ -740,13 +841,13 @@ The following bosses are implemented (mechanics complete) but `hmHealthThreshold
 still `math.huge` or a placeholder `100000001`.  Until the correct value is supplied,
 `detectDifficulty()` always returns `NORMAL`, silently skipping HM-specific alerts.
 
-**How to measure:**  Pull on Vet HM → `/script d(GetUnitPower("boss1", POWERTYPE_HEALTH))`
+**How to measure:**  Pull on Vet HM → `/script d(GetUnitMaxPower("boss1", POWERTYPE_HEALTH))`
 
 | Boss file | Current value | Trial |
 |---|---|---|
 | `trial/cr/boss/ZmajaEncounter.lua` | `math.huge` | Cloudrest — Z'Maja |
-| `trial/as/boss/OlmsEncounter.lua` | `math.huge` | Asylum Sanctorium — Saint Olms |
-| `trial/dsr/boss/Lylanar.lua` | `100000001` (placeholder) | Dreadsail Reef boss 1 |
+| `trial/as/boss/OlmsEncounter.lua` | `math.huge` | Asylum Sanctorium — Saint Olms / Llothis / Felms |
+| `trial/dsr/boss/Lylanar.lua` | `100000001` (placeholder) | Dreadsail Reef boss 1 (Lylanar / Turlassil) |
 | `trial/dsr/boss/Taleria.lua` | `100000001` (placeholder) | Dreadsail Reef boss 3 |
 | `trial/dsr/boss/ReefGuardian.lua` | `100000001` (placeholder) | Dreadsail Reef boss 2 |
 | `trial/lc/boss/DarielEncounter.lua` | `math.huge` | Lucent Citadel — Dariel |
@@ -790,6 +891,10 @@ with few active timers.
 ## i18n / Localisation layer  (architecture)
 
 All user-visible strings are hard-coded in English.  To support other locales:
-- Extract alert labels and action strings into `lang/en.lua`
-- Load the appropriate file at startup via `GetCVar("Language.2")`
-- Fall back to `en` for any missing key
+- Create `lang/en.lua` with all NPC name strings, alert labels, and action strings
+- Create `lang/de.lua`, `lang/fr.lua` etc. sourced from ESO reference addons
+- Create `core/Lang.lua` loader: reads `GetCVar("Language.2")`, requires the
+  matching `lang/<code>.lua`, falls back to `en` for any missing key
+- Replace all hardcoded NPC name strings in boss files **and** in
+  `BossRegistry.nameAliases` with `Lang.*` key lookups
+- Replace alert/action string literals in all encounter modules with `Lang.*` keys
