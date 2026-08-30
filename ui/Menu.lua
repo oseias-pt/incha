@@ -8,6 +8,7 @@
 
 local Log      = require("lib.Log")
 local Panel    = require("ui.Panel")
+local Preview  = require("ui.Preview")
 local Settings = require("core.Settings")
 
 local Menu = {}
@@ -289,6 +290,49 @@ local OPTIONS = {
         tooltip = "Display boss name and hardmode status on enter.",
         getFunc = function() return Settings.get().trials.oc.showBossUI end,
         setFunc = function(v) Settings.get().trials.oc.showBossUI = v end,
+    },
+
+    -- Section: Preview --------------------------------------------------------
+    -- Lets you fire each UI element from the settings panel without entering
+    -- combat.  Useful for checking overlay position, scale, and readability.
+    {
+        type = "header",
+        name = "Preview",
+    },
+    {
+        type    = "description",
+        title   = "",
+        text    = "Fire UI elements without entering combat.  Use Clear when done.",
+    },
+    {
+        type = "button",
+        name = "Panel: sample data",
+        tooltip = "Fill the overlay with a realistic header, two timer lines, and an action alert.",
+        func = function() Preview.showPanel() end,
+    },
+    {
+        type = "button",
+        name = "Instability icon",
+        tooltip = "Start the animated instability head-icon on your own character (requires OdySupportIcons).",
+        func = function() Preview.showInstability() end,
+    },
+    {
+        type = "button",
+        name = "CA: border flash",
+        tooltip = "Flash the red screen-edge danger border for 3 s (requires CombatAlerts).",
+        func = function() Preview.showCaBorder() end,
+    },
+    {
+        type = "button",
+        name = "CA: text alert",
+        tooltip = "Fire a CombatAlerts text flash for 3 s (requires CombatAlerts).",
+        func = function() Preview.showCaAlert() end,
+    },
+    {
+        type = "button",
+        name = "Clear all",
+        tooltip = "Stop the animation, clear the overlay, and dismiss the CA border.",
+        func = function() Preview.clear() end,
     },
 }
 
