@@ -5,51 +5,57 @@ local BossBase         = require("lib.BossBase")
 local CastDur          = require("lib.CastDur")
 local OsseinCageCommon = require("trial.oc.OsseinCageCommon")
 
--- a"EURa"EUR Ability IDs (from OsseinCageHelper) a"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EUR
+-- -- Ability IDs (from OsseinCageHelper) ----------------------------------------------------------
 -- Dragons (Valneer = fire/orange, Myrinax = lightning/blue)
-local TITANIC_CLASH   = 232375   -- combatRoute: ACTION_RESULT_BEGIN a+' CLASH phase caAlertCast
-local TITANIC_LEAP_1  = 233477   -- combatRoute: ACTION_RESULT_BEGIN a+' Leap alert, reset leapTimer
-local TITANIC_LEAP_2  = 234704   -- combatRoute: ACTION_RESULT_BEGIN a+' Leap alert, reset leapTimer
-local TITANIC_LEAP_3  = 233452   -- combatRoute: ACTION_RESULT_BEGIN a+' Leap alert, reset leapTimer
-local TITANIC_LEAP_4  = 233489   -- combatRoute: ACTION_RESULT_BEGIN a+' Leap alert, reset leapTimer
-local TITANIC_LEAP_5  = 234722   -- combatRoute: ACTION_RESULT_BEGIN a+' Leap alert, reset leapTimer
-local TITANIC_LEAP_6  = 233466   -- combatRoute: ACTION_RESULT_BEGIN a+' Leap alert, reset leapTimer
+local TITANIC_CLASH   = 232375   -- combatRoute: ACTION_RESULT_BEGIN -> CLASH phase caAlertCast
+local TITANIC_LEAP_1  = 233477   -- combatRoute: ACTION_RESULT_BEGIN -> Leap alert, reset leapTimer
+local TITANIC_LEAP_2  = 234704   -- combatRoute: ACTION_RESULT_BEGIN -> Leap alert, reset leapTimer
+local TITANIC_LEAP_3  = 233452   -- combatRoute: ACTION_RESULT_BEGIN -> Leap alert, reset leapTimer
+local TITANIC_LEAP_4  = 233489   -- combatRoute: ACTION_RESULT_BEGIN -> Leap alert, reset leapTimer
+local TITANIC_LEAP_5  = 234722   -- combatRoute: ACTION_RESULT_BEGIN -> Leap alert, reset leapTimer
+local TITANIC_LEAP_6  = 233466   -- combatRoute: ACTION_RESULT_BEGIN -> Leap alert, reset leapTimer
+-- Clash hits (which dragon was hit during Titanic Clash phase)
+local TITANIC_CLASH_HIT_V = 232460  -- combatRoute: ACTION_RESULT_BEGIN -> Valneer hit
+local TITANIC_CLASH_HIT_M = 232465  -- combatRoute: ACTION_RESULT_BEGIN -> Myrinax hit
 -- Curse casts
-local SPARKING_CURSE_CAST  = 234000   -- combatRoute: ACTION_RESULT_BEGIN a+' curse cast announcement (targeted)
-local BLAZING_CURSE_CAST   = 234276   -- combatRoute: ACTION_RESULT_BEGIN a+' curse cast announcement (targeted)
+local SPARKING_CURSE_CAST  = 234000   -- combatRoute: ACTION_RESULT_BEGIN -> curse cast announcement (targeted)
+local BLAZING_CURSE_CAST   = 234276   -- combatRoute: ACTION_RESULT_BEGIN -> curse cast announcement (targeted)
 -- Curse debuffs
-local SPARKING_CURSE_DEBUF = 234008   -- combatRoute: ACTION_RESULT_EFFECT_GAINED_DURATION a+' Swap! alert (player)
-local BLAZING_CURSE_DEBUF  = 234280   -- combatRoute: ACTION_RESULT_EFFECT_GAINED_DURATION a+' Swap! alert (player)
+local SPARKING_CURSE_DEBUF = 234008   -- combatRoute: ACTION_RESULT_EFFECT_GAINED_DURATION -> blue border + alert (player)
+local BLAZING_CURSE_DEBUF  = 234280   -- combatRoute: ACTION_RESULT_EFFECT_GAINED_DURATION -> red border + alert (player)
 -- AoE on player
-local COLDFLAME_SURGE  = 234321   -- combatRoute: ACTION_RESULT_BEGIN a+' Coldflame on YOU! (player)
-local BRIMSTONE_SURGE  = 234330   -- combatRoute: ACTION_RESULT_BEGIN a+' Brimstone on YOU! (player)
-local COLDFLAME_STOMP  = 234521   -- combatRoute: ACTION_RESULT_BEGIN a+' Coldflame Stomp caAlertCast
-local BRIMSTONE_STOMP  = 234524   -- combatRoute: ACTION_RESULT_BEGIN a+' Brimstone Stomp caAlertCast
+local COLDFLAME_SURGE  = 234321   -- combatRoute: ACTION_RESULT_BEGIN -> Coldflame on YOU! (player)
+local BRIMSTONE_SURGE  = 234330   -- combatRoute: ACTION_RESULT_BEGIN -> Brimstone on YOU! (player)
+local COLDFLAME_STOMP  = 234521   -- combatRoute: ACTION_RESULT_BEGIN -> Coldflame Stomp caAlertCast
+local BRIMSTONE_STOMP  = 234524   -- combatRoute: ACTION_RESULT_BEGIN -> Brimstone Stomp caAlertCast
 -- Dragon breath
-local MYRINAX_BREATH   = 234548   -- combatRoute: ACTION_RESULT_BEGIN a+' BREATH MOVE! alert (player)
-local VALNEER_BREATH   = 234558   -- combatRoute: ACTION_RESULT_BEGIN a+' BREATH MOVE! alert (player)
+local MYRINAX_BREATH   = 234548   -- combatRoute: ACTION_RESULT_BEGIN -> BREATH MOVE! alert (player)
+local VALNEER_BREATH   = 234558   -- combatRoute: ACTION_RESULT_BEGIN -> BREATH MOVE! alert (player)
+-- Heat Rays (dragon summon breath on player)
+local JYN_HEAT_RAY     = 234141   -- combatRoute: ACTION_RESULT_BEGIN -> Heat Ray alert (player)
+local SKOR_HEAT_RAY    = 234161   -- combatRoute: ACTION_RESULT_BEGIN -> Heat Ray alert (player)
 -- Tail Slam
-local TAIL_SLAM_1      = 235800   -- combatRoute: ACTION_RESULT_EFFECT_GAINED a+' Tail Slam caAlertCast
-local TAIL_SLAM_2      = 235803   -- combatRoute: ACTION_RESULT_EFFECT_GAINED a+' Tail Slam caAlertCast
--- Reflective Scales aEUR" on player when standing on wrong side
-local REFLECTIVE_1     = 233321   -- combatRoute: ACTION_RESULT_EFFECT_GAINED a+' red border (player)
-local REFLECTIVE_2     = 233330   -- combatRoute: ACTION_RESULT_EFFECT_GAINED a+' red border (player)
+local TAIL_SLAM_1      = 235800   -- combatRoute: ACTION_RESULT_EFFECT_GAINED -> Tail Slam caAlertCast
+local TAIL_SLAM_2      = 235803   -- combatRoute: ACTION_RESULT_EFFECT_GAINED -> Tail Slam caAlertCast
+-- Reflective Scales - yellow border when dragon buff is active (stop DPS)
+local REFLECTIVE_1     = 233321   -- combatRoute: EFFECT_GAINED -> border on; EFFECT_FADED -> border off
+local REFLECTIVE_2     = 233330   -- combatRoute: EFFECT_GAINED -> border on; EFFECT_FADED -> border off
 
 local LEAP_IDS = {
     [TITANIC_LEAP_1]=true, [TITANIC_LEAP_2]=true, [TITANIC_LEAP_3]=true,
     [TITANIC_LEAP_4]=true, [TITANIC_LEAP_5]=true, [TITANIC_LEAP_6]=true,
 }
 
--- a"EURa"EUR Timer durations (seconds) a"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EUR
+-- -- Timer durations (seconds) ---------------------------------------------------------------------
 local LEAP_FIRST_CD = 5.0
 local LEAP_CD       = 48.0
 
--- a"EURa"EUR CA colour palettes a"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EUR
+-- -- CA colour palettes ----------------------------------------------------------------------------
 local COL_FIRE      = { -3, 0, false, { 1, 0.4, 0,   0.4 }, { 1, 0.4, 0,   0.8 } }
 local COL_ICE       = { -3, 0, false, { 0.3, 0.8, 1, 0.4 }, { 0.3, 0.8, 1, 0.8 } }
 local COL_CLASH     = { -3, 0, false, { 1, 0.1, 0.1, 0.4 }, { 1, 0.1, 0.1, 0.8 } }
 
--- a"EURa"EUR Fallback durations (empirical; replace if GetAbilityCastInfo becomes reliable) a"EUR
+-- -- Fallback durations (empirical; replace if GetAbilityCastInfo becomes reliable) -
 local FALLBACK_DUR = 2000   -- Tail Slam: empirical
 
 local JynorahEncounter = {}
@@ -60,7 +66,7 @@ JynorahEncounter.nameAliases       = { "Jynorah", "Skorkhif" }
 -- hmHealthThreshold: math.huge until measured in-game on vet HM.
 -- (0 would make detectDifficulty always return HARDMODE.)
 JynorahEncounter.hmHealthThreshold = math.huge
--- location: placeholder aEUR" Oathsworn Pit arena AABB not yet captured.
+-- location: placeholder - Oathsworn Pit arena AABB not yet captured.
 -- Detection falls back to nameAliases (name-based, may fail on non-EN clients).
 -- To calibrate: stand in arena, run /script d(GetUnitWorldPosition("boss1"))
 
@@ -69,13 +75,14 @@ JynorahEncounter.stateSchema = {
     clashTimer   = function() return Timer.new(37.5) end,
     firstLeap    = true,
     clashActive  = false,
+    playerCurse  = nil,
 }
 
 function JynorahEncounter.new()
     return BossBase.fromSchema(JynorahEncounter)
 end
 
--- a"EURa"EUR Handlers a"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EUR
+-- -- Handlers --------------------------------------------------------------------------------------
 
 -- Titanic Leap: shared handler for all 6 leap variant IDs.
 local function handleLeap(self, context, alerts, abilityId, ...)
@@ -84,12 +91,17 @@ local function handleLeap(self, context, alerts, abilityId, ...)
     alerts:showAction("Titanic Leap!")
 end
 
--- Reflective Scales: red border for player on wrong side.
-local function handleReflective(self, context, alerts, abilityId,
+-- Reflective Scales: yellow border while the dragon buff is active.
+-- Uses plain-function routing so it receives the result code and handles both
+-- ACTION_RESULT_EFFECT_GAINED (border on) and ACTION_RESULT_EFFECT_FADED (border off).
+local function handleReflective(self, context, alerts, abilityId, result,
                                   unitTag, ...)
-    if not IsUnitPlayer(unitTag) then return end
-    CA.border(true, 5000, "red")
-    alerts:showAction("Wrong side! Reflective Scales!")
+    if result == ACTION_RESULT_EFFECT_GAINED then
+        CA.border(true, 6000, "yellow")
+        alerts:showAction("Reflective Scales  -  stop DPS!")
+    elseif result == ACTION_RESULT_EFFECT_FADED then
+        CA.border(false, 0, "yellow")
+    end
 end
 
 -- Tail Slam: shared handler for both variants.
@@ -98,81 +110,109 @@ local function handleTailSlam(self, context, alerts, abilityId,
                                 sourceUnitName, unitName)
     local target = (unitName and unitName ~= "") and unitName or "?"
     local dur = CastDur.get(abilityId, FALLBACK_DUR)
-    CA.alertCast(abilityId, "Tail Slam a+' " .. target, dur, COL_CLASH)
+    CA.alertCast(abilityId, "Tail Slam -> " .. target, dur, COL_CLASH)
 end
 
 local function handleTitanicClash(self, context, alerts, abilityId, ...)
     self.clashActive = true
     self.clashTimer:reset(37.5)
     CA.alertCast(abilityId, "TITANIC CLASH! DODGE!", 3500, COL_CLASH)
-    alerts:showAction("Titanic Clash aEUR" dodge the breath!")
+    alerts:showAction("Titanic Clash (~37.5s)")
+end
+
+local function handleTitanicClashHitV(self, context, alerts, abilityId, ...)
+    alerts:showAction("Valneer hit!")
+end
+
+local function handleTitanicClashHitM(self, context, alerts, abilityId, ...)
+    alerts:showAction("Myrinax hit!")
 end
 
 local function handleSparkingCurseCast(self, context, alerts, abilityId,
                                         unitTag, sourceUnitTag, sourceUnitId, unitId,
                                         sourceUnitName, unitName)
-    local target = (unitName and unitName ~= "") and unitName or "?"
-    alerts:showAction("Sparking Curse a+' " .. target)
+    if IsUnitPlayer(unitTag) then
+        CA.alert(nil, "Curse incoming!", 0x44CCFFFF, SOUNDS.NONE, 3000)
+        alerts:showAction("Sparking Curse  -  on YOU!")
+    else
+        local target = (unitName and unitName ~= "") and unitName or "?"
+        alerts:showAction("Sparking Curse -> " .. target)
+    end
 end
 
 local function handleBlazingCurseCast(self, context, alerts, abilityId,
                                        unitTag, sourceUnitTag, sourceUnitId, unitId,
                                        sourceUnitName, unitName)
-    local target = (unitName and unitName ~= "") and unitName or "?"
-    alerts:showAction("Blazing Curse a+' " .. target)
+    if IsUnitPlayer(unitTag) then
+        CA.alert(nil, "Curse incoming!", 0xFF8844FF, SOUNDS.NONE, 3000)
+        alerts:showAction("Blazing Curse  -  on YOU!")
+    else
+        local target = (unitName and unitName ~= "") and unitName or "?"
+        alerts:showAction("Blazing Curse -> " .. target)
+    end
 end
 
 local function handleSparkingCurseDebuf(self, context, alerts, abilityId,
                                          unitTag, ...)
     if not IsUnitPlayer(unitTag) then return end
-    CA.alert(nil, "Sparking Curse! Swap to fire!", 0x44CCFFFF, SOUNDS.NONE, 4000)
-    alerts:showAction("Sparking Curse aEUR" swap to Valneer side!")
+    self.playerCurse = "sparking"
+    CA.border(true, 30000, "blue")
+    CA.alert(nil, "Sparking Curse  -  BLUE!", 0x44CCFFFF, SOUNDS.NONE, 4000)
+    alerts:showAction("Sparking Curse  -  swap to Valneer side!")
 end
 
 local function handleBlazingCurseDebuf(self, context, alerts, abilityId,
                                         unitTag, ...)
     if not IsUnitPlayer(unitTag) then return end
-    CA.alert(nil, "Blazing Curse! Swap to ice!", 0xFF8844FF, SOUNDS.NONE, 4000)
-    alerts:showAction("Blazing Curse aEUR" swap to Myrinax side!")
+    self.playerCurse = "blazing"
+    CA.border(true, 30000, "red")
+    CA.alert(nil, "Blazing Curse  -  RED!", 0xFF8844FF, SOUNDS.NONE, 4000)
+    alerts:showAction("Blazing Curse  -  swap to Myrinax side!")
 end
 
 local function handleColdflameSurge(self, context, alerts, abilityId,
                                      unitTag, ...)
     if not IsUnitPlayer(unitTag) then return end
-    CA.alert(nil, "Coldflame on YOU!", 0x44CCFFFF, SOUNDS.NONE, 3000)
+    CA.alert(nil, "Surge on YOU!", 0x44CCFFFF, SOUNDS.NONE, 3000)
     alerts:showAction("Coldflame Surge on you! MOVE!")
 end
 
 local function handleBrimstoneSurge(self, context, alerts, abilityId,
                                      unitTag, ...)
     if not IsUnitPlayer(unitTag) then return end
-    CA.alert(nil, "Brimstone on YOU!", 0xFF6600FF, SOUNDS.NONE, 3000)
+    CA.alert(nil, "Surge on YOU!", 0xFF6600FF, SOUNDS.NONE, 3000)
     alerts:showAction("Brimstone Surge on you! MOVE!")
 end
 
 local function handleColdflameStomp(self, context, alerts, abilityId, ...)
-    CA.alertCast(abilityId, "Coldflame Stomp!", 2000, COL_ICE)
+    CA.alertCast(abilityId, "DODGE  -  stomp!", 2000, COL_ICE)
 end
 
 local function handleBrimstoneStomp(self, context, alerts, abilityId, ...)
-    CA.alertCast(abilityId, "Brimstone Stomp!", 2000, COL_FIRE)
+    CA.alertCast(abilityId, "DODGE  -  stomp!", 2000, COL_FIRE)
+end
+
+local function handleHeatRay(self, context, alerts, abilityId, unitTag, ...)
+    if not IsUnitPlayer(unitTag) then return end
+    CA.alert(nil, "Heat Ray on YOU!", 0xFF6600FF, SOUNDS.NONE, 3000)
+    alerts:showAction("Heat Ray on you  -  move!")
 end
 
 local function handleMyrinaxBreath(self, context, alerts, abilityId,
                                     unitTag, ...)
     if not IsUnitPlayer(unitTag) then return end
-    CA.alert(nil, "BREATH aEUR" MOVE!", 0x44CCFFFF, SOUNDS.NONE, 2500)
+    CA.alert(nil, "BREATH  -  MOVE!", 0x44CCFFFF, SOUNDS.NONE, 2500)
     alerts:showAction("Myrinax Breath on you! MOVE!")
 end
 
 local function handleValneerBreath(self, context, alerts, abilityId,
                                     unitTag, ...)
     if not IsUnitPlayer(unitTag) then return end
-    CA.alert(nil, "BREATH aEUR" MOVE!", 0xFF8844FF, SOUNDS.NONE, 2500)
+    CA.alert(nil, "BREATH  -  MOVE!", 0xFF8844FF, SOUNDS.NONE, 2500)
     alerts:showAction("Valneer Breath on you! MOVE!")
 end
 
--- a"EURa"EUR Routing tables (C3) a"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EUR
+-- -- Routing tables (C3) ----------------------------------------------------------------------------
 
 -- Shared trash-mechanic handler (Skullstorm, Toxic Ire, borders, Detonate Soul,
 -- Life Drain, Caustic Carrion stacks).
@@ -180,6 +220,9 @@ JynorahEncounter.common = OsseinCageCommon
 
 JynorahEncounter.combatRoutes = {
     [TITANIC_CLASH]       = { result = ACTION_RESULT_BEGIN,                  fn = handleTitanicClash },
+    -- Titanic Clash hits (which dragon was struck)
+    [TITANIC_CLASH_HIT_V] = { result = ACTION_RESULT_BEGIN,                  fn = handleTitanicClashHitV },
+    [TITANIC_CLASH_HIT_M] = { result = ACTION_RESULT_BEGIN,                  fn = handleTitanicClashHitM },
     -- Titanic Leap (6 variants)
     [TITANIC_LEAP_1]      = { result = ACTION_RESULT_BEGIN,                  fn = handleLeap },
     [TITANIC_LEAP_2]      = { result = ACTION_RESULT_BEGIN,                  fn = handleLeap },
@@ -190,7 +233,7 @@ JynorahEncounter.combatRoutes = {
     -- Curse casts
     [SPARKING_CURSE_CAST]  = { result = ACTION_RESULT_BEGIN,                 fn = handleSparkingCurseCast },
     [BLAZING_CURSE_CAST]   = { result = ACTION_RESULT_BEGIN,                 fn = handleBlazingCurseCast },
-    -- Curse debuffs on player (swap sides)
+    -- Curse debuffs on player (border + swap sides)
     [SPARKING_CURSE_DEBUF] = { result = ACTION_RESULT_EFFECT_GAINED_DURATION, fn = handleSparkingCurseDebuf },
     [BLAZING_CURSE_DEBUF]  = { result = ACTION_RESULT_EFFECT_GAINED_DURATION, fn = handleBlazingCurseDebuf },
     -- AoE surges (player targeted)
@@ -198,18 +241,21 @@ JynorahEncounter.combatRoutes = {
     [BRIMSTONE_SURGE]      = { result = ACTION_RESULT_BEGIN,                 fn = handleBrimstoneSurge },
     [COLDFLAME_STOMP]      = { result = ACTION_RESULT_BEGIN,                 fn = handleColdflameStomp },
     [BRIMSTONE_STOMP]      = { result = ACTION_RESULT_BEGIN,                 fn = handleBrimstoneStomp },
+    -- Heat Rays (dragon summon breath  -  alerts only if player is targeted)
+    [JYN_HEAT_RAY]         = { result = ACTION_RESULT_BEGIN,                 fn = handleHeatRay },
+    [SKOR_HEAT_RAY]        = { result = ACTION_RESULT_BEGIN,                 fn = handleHeatRay },
     -- Dragon breaths (player targeted)
     [MYRINAX_BREATH]       = { result = ACTION_RESULT_BEGIN,                 fn = handleMyrinaxBreath },
     [VALNEER_BREATH]       = { result = ACTION_RESULT_BEGIN,                 fn = handleValneerBreath },
-    -- Reflective Scales (wrong side)
-    [REFLECTIVE_1]         = { result = ACTION_RESULT_EFFECT_GAINED,         fn = handleReflective },
-    [REFLECTIVE_2]         = { result = ACTION_RESULT_EFFECT_GAINED,         fn = handleReflective },
+    -- Reflective Scales: plain fn handles EFFECT_GAINED (border on) and EFFECT_FADED (border off).
+    [REFLECTIVE_1]         = handleReflective,
+    [REFLECTIVE_2]         = handleReflective,
     -- Tail Slam (caAlertCast)
     [TAIL_SLAM_1]          = { result = ACTION_RESULT_EFFECT_GAINED,         fn = handleTailSlam },
     [TAIL_SLAM_2]          = { result = ACTION_RESULT_EFFECT_GAINED,         fn = handleTailSlam },
 }
 
--- a"EURa"EUR Info-line renderers a"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EUR
+-- -- Info-line renderers ----------------------------------------------------------------------------
 
 -- Line 1: Titanic Clash active phase countdown; auto-clears when expired.
 local function showClashLine(self, alerts)
@@ -239,6 +285,10 @@ end
 function JynorahEncounter:onWipe()
     self.leapTimer:clear(); self.clashTimer:clear()
     self.firstLeap  = true; self.clashActive = false
+    self.playerCurse = nil
+    CA.border(false, 0, "blue")
+    CA.border(false, 0, "red")
+    CA.border(false, 0, "yellow")
 end
 
 function JynorahEncounter:onUpdate(context, alerts)
