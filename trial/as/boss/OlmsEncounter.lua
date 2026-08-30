@@ -79,17 +79,36 @@ end
 
 -- â”€â”€ Lifecycle â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 function OlmsEncounter:onLeave(context)
-    for _, cid in pairs(self.alertList) do CA.castAlertsStop(cid) end
+    self:cleanupAlertList()
+end
+
+function OlmsEncounter:onWipe()
+    self:cleanupAlertList()
+    self.stormTimer:clear()
+    self.steamTimer:clear()
+    self.chargesTimer:clear()
+    self.fireTimer:clear()
+    self.blastTimer:clear()
+    self.boltsTimer:clear()
+    self.jumpTimer:clear()
+    self.llothisActive     = false
+    self.felmsActive       = false
+    self.protectorUp       = false
+    self.nextJumpThreshold = 1
+    self.llothisSpawnGs    = nil
+    self.felmsSpawnGs      = nil
 end
 
 -- â”€â”€ Timer seeding helper â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 -- Seeds one timer accounting for the SPAWN_DELAY already elapsed since
--- BOSS_EVENT.  If spawnTime is nil or seed <= 0, falls back to the timer's
--- own full duration so it fires at the next ordinary interval.
-local function seedTimer(t, spawnTime)
+-- referenceGs (game-clock seconds at spawn or wake-up).  Passing the
+-- current game clock as referenceGs seeds with the full SPAWN_DELAY,
+-- which is correct for a fresh spawn or a dormancy wake-up.
+-- If referenceGs is nil, falls back to the timer's own full duration.
+local function seedTimer(t, referenceGs)
     local seed = 0
-    if spawnTime then
-        seed = math.max(0, SPAWN_DELAY - (os.time() - spawnTime))
+    if referenceGs then
+        seed = math.max(0, SPAWN_DELAY - (GetGameTimeMilliseconds() / 1000 - referenceGs))
     end
     t:reset(seed > 0 and seed or t.duration)
 end
@@ -135,14 +154,14 @@ local function handleBossEvent(self, context, alerts, abilityId,
                                 unitTag, sourceUnitTag, sourceUnitId, unitId,
                                 sourceUnitName, unitName)
     if unitName and unitName:find("Llothis") then
-        self.llothisSpawnTime = os.time()
-        self.llothisActive    = true
-        seedTimer(self.blastTimer, self.llothisSpawnTime)
-        seedTimer(self.boltsTimer, self.llothisSpawnTime)
+        self.llothisSpawnGs = GetGameTimeMilliseconds() / 1000
+        self.llothisActive  = true
+        seedTimer(self.blastTimer, self.llothisSpawnGs)
+        seedTimer(self.boltsTimer, self.llothisSpawnGs)
     elseif unitName and unitName:find("Felms") then
-        self.felmsSpawnTime = os.time()
-        self.felmsActive    = true
-        seedTimer(self.jumpTimer, self.felmsSpawnTime)
+        self.felmsSpawnGs = GetGameTimeMilliseconds() / 1000
+        self.felmsActive  = true
+        seedTimer(self.jumpTimer, self.felmsSpawnGs)
     end
 end
 
@@ -185,9 +204,12 @@ local function handleDormant(self, context, alerts, changeType, abilityId,
             self.blastTimer:clear()
             self.boltsTimer:clear()
         elseif changeType == EFFECT_RESULT_FADED then
+            -- Seed from wake-up time (not original spawn) so the SPAWN_DELAY
+            -- window resets correctly after each dormancy cycle.
             self.llothisActive = true
-            seedTimer(self.blastTimer, self.llothisSpawnTime)
-            seedTimer(self.boltsTimer, self.llothisSpawnTime)
+            local wakeGs = GetGameTimeMilliseconds() / 1000
+            seedTimer(self.blastTimer, wakeGs)
+            seedTimer(self.boltsTimer, wakeGs)
         end
     elseif unitName and unitName:find("Felms") then
         if changeType == EFFECT_RESULT_GAINED then
@@ -195,7 +217,8 @@ local function handleDormant(self, context, alerts, changeType, abilityId,
             self.jumpTimer:clear()
         elseif changeType == EFFECT_RESULT_FADED then
             self.felmsActive = true
-            seedTimer(self.jumpTimer, self.felmsSpawnTime)
+            local wakeGs = GetGameTimeMilliseconds() / 1000
+            seedTimer(self.jumpTimer, wakeGs)
         end
     end
 end
@@ -259,7 +282,7 @@ end
 
 -- Line 5: Llothis â€” not yet spawned, dormant, or blast timer.
 local function showLlothisLine(self, alerts)
-    if self.llothisSpawnTime == nil then
+    if self.llothisSpawnGs == nil then
         alerts:showInfo(5, "")
     elseif not self.llothisActive then
         alerts:showInfo(5, "Llothis: DORMANT")
@@ -281,7 +304,7 @@ end
 
 -- Line 7: Felms â€” not yet spawned, dormant, or strike timer.
 local function showFelmsLine(self, alerts)
-    if self.felmsSpawnTime == nil then
+    if self.felmsSpawnGs == nil then
         alerts:showInfo(7, "")
     elseif not self.felmsActive then
         alerts:showInfo(7, "Felms:   DORMANT")
