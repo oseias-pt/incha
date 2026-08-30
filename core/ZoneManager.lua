@@ -1,19 +1,26 @@
-local Settings    = require("core.Settings")
+local Settings     = require("core.Settings")
+local ModuleLoader = require("core.ModuleLoader")
 
 local ZoneManager = {}
 
-local trials = {}
-local activeZoneId = nil
-local activeTrial = nil
+local trials      = {}
+local activeZoneId  = nil
+local activeTrial   = nil
+local activeEntry   = nil   -- the trials[] entry currently enabled
 
 --- Register a trial module for a zone.
---- @param zoneId      number  ESO zone ID
---- @param trialModule table   Must expose enable() / disable().
---- @param trialId     string  Optional.  When provided, the trial's Settings entry
----                            is checked at zone-enter time; if .enabled == false
----                            the trial stays inactive even while the player is in zone.
-function ZoneManager.registerTrial(zoneId, trialModule, trialId)
-    trials[zoneId] = { module = trialModule, trialId = trialId }
+--- @param zoneId      number   ESO zone ID
+--- @param trialModule table    Must expose enable() / disable().
+--- @param trialId     string   Optional.  When provided, the trial's Settings entry
+---                             is checked at zone-enter time; if .enabled == false
+---                             the trial stays inactive even while the player is in zone.
+--- @param unloadList  table    Optional.  List of package.loaded keys to nil on zone exit
+---                             so entries do not persist across the whole session.
+---                             The Trial object itself is kept alive in trials[]; only
+---                             the cache entries are cleared.  Auto-derived in incha.lua
+---                             via the trialModules() helper.
+function ZoneManager.registerTrial(zoneId, trialModule, trialId, unloadList)
+    trials[zoneId] = { module = trialModule, trialId = trialId, unloadList = unloadList }
 end
 
 local function getPlayerZoneId()
@@ -25,8 +32,16 @@ local function disableCurrentTrial()
         activeTrial:disable()
     end
 
-    activeTrial = nil
+    -- Clear package.loaded entries for the outgoing trial.  The Trial object
+    -- itself remains alive in trials[zoneId].module so re-entering the zone
+    -- works without re-requiring anything at runtime.
+    if activeEntry and activeEntry.unloadList then
+        ModuleLoader.unload(activeEntry.unloadList)
+    end
+
+    activeTrial  = nil
     activeZoneId = nil
+    activeEntry  = nil
 end
 
 local function enableTrialForZone(zoneId)
@@ -53,7 +68,8 @@ local function enableTrialForZone(zoneId)
     end
 
     activeZoneId = zoneId
-    activeTrial = entry.module
+    activeEntry  = entry
+    activeTrial  = entry.module
     entry.module:enable()
 end
 
