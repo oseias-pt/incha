@@ -591,6 +591,24 @@ local function showSpikeLine(self, alerts, now, isHM)
     end
 end
 
+function Lylanar:onWipe()
+    self.fireImminent:clear();  self.fireFragility:clear()
+    self.iceImminent:clear();   self.iceFragility:clear()
+    self.cinderSurgeActive      = false
+    self.lastMagmaSpike         = 0;    self.lastIncendiaryAxe    = 0
+    self.destructiveEmberStacks = 0;    self.lastDestructiveEmber = 0
+    self.destructiveEmberName   = false
+    self.firebrandTracker       = {};   self.lastBrandMatchFire   = 0
+    self.flameHounds            = 0
+    self.numbingShardsActive    = false
+    self.lastGlacialSpike       = 0;    self.lastCalamitousSword  = 0
+    self.piercingHailstacks     = 0;    self.lastPiercingHail     = 0
+    self.piercingHailName       = false
+    self.frostbrandTracker      = {};   self.lastBrandMatchIce    = 0
+    self.frostHounds            = 0
+    self.lastBrandMatch         = 0
+end
+
 -- ── 200 ms display loop ───────────────────────────────────────────────────
 function Lylanar:onUpdate(context, alerts)
     local now  = GetGameTimeMilliseconds() / 1000
