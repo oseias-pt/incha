@@ -235,10 +235,10 @@ local function showLightningStacksLine(self, alerts, now)
         local warn = (stacks >= 7) and " |cff0000!|r" or ""
         if self.playerSheltered
            or (now - self.lastShelteredTime < SHELTERED_WINDOW) then
-            alerts:showInfo(1, "|cFFD666(zap) CLEANSED|r")
+            alerts:showInfo(1, "|cFFD666⚡ CLEANSED|r")
         else
             alerts:showInfo(1,
-                "|cFFD666(zap) " .. stacks .. " stack" ..
+                "|cFFD666⚡ " .. stacks .. " stack" ..
                 (stacks ~= 1 and "s" or "") .. warn .. "|r")
         end
     else
@@ -253,10 +253,10 @@ local function showPoisonStacksLine(self, alerts, now)
         local warn = (vstacks >= 7) and " |cff0000!|r" or ""
         if self.playerSheltered
            or (now - self.lastShelteredTime < SHELTERED_WINDOW) then
-            alerts:showInfo(2, "|c66CC66(bio) CLEANSED|r")
+            alerts:showInfo(2, "|c66CC66☣ CLEANSED|r")
         else
             alerts:showInfo(2,
-                "|c66CC66(bio) " .. vstacks .. " stack" ..
+                "|c66CC66☣ " .. vstacks .. " stack" ..
                 (vstacks ~= 1 and "s" or "") .. warn .. "|r")
         end
     else

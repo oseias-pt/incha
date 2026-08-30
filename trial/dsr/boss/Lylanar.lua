@@ -503,11 +503,11 @@ local function showFireBubbleLine(self, alerts, now, isHM)
         local suffix = "  -  " .. stks .. " stack" .. (stks ~= 1 and "s" or "")
         if T > 0 then
             alerts:showInfo(1,
-                "|cFF5733(fire) " .. name .. "|r" .. suffix ..
+                "|cFF5733🔥 " .. name .. "|r" .. suffix ..
                 " (" .. string.format("%.0f", T) .. "s)")
         else
             alerts:showInfo(1,
-                "|cFF5733(fire) " .. name .. "|r" .. suffix .. " |cff0000DROP!|r")
+                "|cFF5733🔥 " .. name .. "|r" .. suffix .. " |cff0000DROP!|r")
         end
     else
         alerts:showInfo(1, "")
@@ -524,11 +524,11 @@ local function showIceBubbleLine(self, alerts, now, isHM)
         local suffix = "  -  " .. stks .. " stack" .. (stks ~= 1 and "s" or "")
         if T > 0 then
             alerts:showInfo(2,
-                "|c99CCff(snow) " .. name .. "|r" .. suffix ..
+                "|c99CCff❄ " .. name .. "|r" .. suffix ..
                 " (" .. string.format("%.0f", T) .. "s)")
         else
             alerts:showInfo(2,
-                "|c99CCff(snow) " .. name .. "|r" .. suffix .. " |cff0000DROP!|r")
+                "|c99CCff❄ " .. name .. "|r" .. suffix .. " |cff0000DROP!|r")
         end
     else
         alerts:showInfo(2, "")
