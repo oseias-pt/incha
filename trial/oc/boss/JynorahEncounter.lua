@@ -1,8 +1,9 @@
 local Timer    = require("lib.Timer")
 
-local CA = require("lib.CA")
-local BossBase = require("lib.BossBase")
-local CastDur = require("lib.CastDur")
+local CA               = require("lib.CA")
+local BossBase         = require("lib.BossBase")
+local CastDur          = require("lib.CastDur")
+local OsseinCageCommon = require("trial.oc.OsseinCageCommon")
 
 -- â”€â”€ Ability IDs (from OsseinCageHelper) â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 -- Dragons (Valneer = fire/orange, Myrinax = lightning/blue)
@@ -173,6 +174,10 @@ end
 
 -- â”€â”€ Routing tables (C3) â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
+-- Shared trash-mechanic handler (Skullstorm, Toxic Ire, borders, Detonate Soul,
+-- Life Drain, Caustic Carrion stacks).
+JynorahEncounter.common = OsseinCageCommon
+
 JynorahEncounter.combatRoutes = {
     [TITANIC_CLASH]       = { result = ACTION_RESULT_BEGIN,                  fn = handleTitanicClash },
     -- Titanic Leap (6 variants)
@@ -239,7 +244,7 @@ end
 function JynorahEncounter:onUpdate(context, alerts)
     showClashLine(self, alerts)
     showLeapLine(self, alerts)
-    alerts:showInfo(3, "")
+    OsseinCageCommon.showCarrionInfo(alerts)
     alerts:showInfo(4, "")
     alerts:showInfo(5, "")
     alerts:showInfo(6, "")

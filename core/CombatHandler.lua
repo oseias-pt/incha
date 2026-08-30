@@ -133,8 +133,10 @@ function CombatHandler.onEffectChanged(trial, eventCode,
     local context, alerts = trial.context, trial.alerts
 
     -- 1. Shared common effect handler (optional; not all common modules expose it).
+    --    stackCount is passed as a 5th arg so common modules can read debuff stacks
+    --    (e.g. OsseinCageCommon Caustic Carrion) without routing through effectRoutes.
     if boss.common and boss.common.handleEffect
-    and boss.common.handleEffect(alerts, changeType, abilityId, unitTag) then
+    and boss.common.handleEffect(alerts, changeType, abilityId, unitTag, stackCount) then
         return
     end
 
