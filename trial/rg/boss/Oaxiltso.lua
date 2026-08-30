@@ -59,6 +59,8 @@ Oaxiltso.stateSchema = {
     lastSludge         = 0,
     lastPoisonTracker  = 0,
     sludgeTracker1     = 0,
+    sludgeTracker1Tag  = nil,   -- unitTag of the first sludge target (nil = none)
+    sludgeTracker1Name = nil,   -- display name cache for sludge alert text
     bossEnraged        = false,
     miniEnraged        = false,
     -- zo_callLater handle for the 2.5 s Sunburst delayed meteor alert.

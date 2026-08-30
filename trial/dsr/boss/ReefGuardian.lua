@@ -74,6 +74,8 @@ ReefGuardian.stateSchema = {
     reefPortals   = function() return {} end,
     reefNum       = 0,
     acidicVulnLast  = 0,
+    -- CA cast-bar handle for Acid Reflux; false = no bar active.
+    acidRefluxBarId = false,
 }
 
 function ReefGuardian.new()

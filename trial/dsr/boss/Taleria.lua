@@ -99,6 +99,8 @@ Taleria.stateSchema = {
     bridgeOpen      = function() return { false, false, false } end,
     bridgeWipeStart = function() return { 0, 0, 0 } end,
     bridgeDone      = function() return { false, false, false } end,
+    -- CA cast-bar handle for Lure of the Deep; false = no bar active.
+    lureBarId       = false,
 }
 
 function Taleria.new()
