@@ -5,7 +5,7 @@ local EventPipeline = require("core.EventPipeline")
 local HealthRules  = require("core.HealthRules")
 local Throttle     = require("lib.Throttle")
 local TrialContext = require("core.TrialContext")
-local BridgeBase   = require("ui.Bridge")
+local BridgeBase   = require("core.Bridge")
 
 local Trial = {}
 Trial.__index = Trial

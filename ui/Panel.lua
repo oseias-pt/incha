@@ -15,7 +15,7 @@
 ---
 --- Used by ka/rg/dsr.
 
-local BridgeBase = require("ui.Bridge")
+local BridgeBase = require("core.Bridge")
 local Settings   = require("core.Settings")
 
 local Panel = {}
