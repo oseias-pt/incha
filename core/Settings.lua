@@ -36,14 +36,14 @@ local DEFAULTS = {
             portalIconVrol   = true,   -- show floor icon on Vrol portal spawn
             posIconsFalgravn = true,   -- connection-node / blood-ball / torturer floor markers
         },
-        ss  = { enabled = true },
-        rg  = { enabled = true },
-        dsr = { enabled = true },
-        as  = { enabled = true, showPercent = true },  -- showPercent: Olms jump-threshold pre-warnings
-        cr  = { enabled = true },
-        se  = { enabled = true, showPercent = true },  -- showPercent: Yaseyla phase / add-wave milestones
-        lc  = { enabled = true },
-        oc  = { enabled = true },
+        ss  = { enabled = true, showBossUI = true },
+        rg  = { enabled = true, showBossUI = true },
+        dsr = { enabled = true, showBossUI = true },
+        as  = { enabled = true, showBossUI = true, showPercent = true },  -- showPercent: Olms jump-threshold pre-warnings
+        cr  = { enabled = true, showBossUI = true, posIconsZmaja = true },  -- posIconsZmaja: OSI Frost/Gale mechanic icons
+        se  = { enabled = true, showBossUI = true, showPercent = true },  -- showPercent: Yaseyla phase / add-wave milestones
+        lc  = { enabled = true, showBossUI = true },
+        oc  = { enabled = true, showBossUI = true },
     },
 
     -- Set true once we've attempted a one-time import from BSCHTKA.SV_ACC.
