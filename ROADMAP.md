@@ -8,13 +8,20 @@ Checked items are **shipped** (committed). Unchecked items are pending.
 ## Architecture phases
 
 ### Phase 0 — Memory foundation
-- [ ] Make `modulesToUnload` exhaustive per trial, or auto-derive it (walk what
-      `Factory` actually `require`s). Today only the Factory itself is unloaded
-      for `ka` — boss modules leak for the whole session.
-- [ ] Verify the `require` shim frees GC roots: `collectgarbage("count")`
-      before/after entering and leaving a trial zone; confirm it returns to baseline.
-- [ ] `core/Throttle.lua` — bucket `Trial:onPowerUpdate` so full rule evaluation
-      only fires when `healthPercent` crosses a rounded boundary.
+- [x] Auto-derive `modulesToUnload` per trial via `trialModules(prefix)` in `incha.lua`;
+      `ZoneManager` calls `ModuleLoader.unload(entry.unloadList)` on zone exit so
+      `package.loaded` entries are cleared between zone visits.
+      **Architectural note**: ESO's `require` shim is lookup-only (no file I/O); all
+      modules are executed at startup via `incha.txt`.  `package.loaded` can be cleared
+      between zone visits, but the Trial objects and their boss-class references stay
+      alive in `trials[]` so re-entry never re-requires anything at runtime.  True
+      GC of module tables would require restructuring Factory to create fresh Trial
+      instances on each zone entry — deferred.
+- [ ] Verify GC baseline: `collectgarbage("count")` before/after entering and leaving
+      a trial zone; confirm `package.loaded` sweep returns to pre-enter size.
+- [x] `lib/Throttle.lua` — `Trial:onPowerUpdate` is bucket-gated (1% granularity)
+      so health-rule evaluation and UI updates only fire when `healthPercent` changes
+      meaningfully.  `Throttle:reset()` is called on boss transitions.
 - [ ] Reduce hot-path allocation in `HealthRules.evaluate` / `AlertSink:emit`
       (reuse scratch table; skip `gsub`/`format` when bucketed value hasn't changed).
 
@@ -22,7 +29,7 @@ Checked items are **shipped** (committed). Unchecked items are pending.
 - [x] `lib/Timer.lua` — `Timer.new(duration)`, `:remaining()`, `:isExpired()`, `:reset()`.
       Used by all KA bosses.
 - [x] `lib/Log.lua` — debug output gated behind a settings flag.
-- [ ] Formalize `lib/Throttle.lua` from Phase 0 so `rg`/`dsr` and new trials get it for free.
+- [x] `lib/Throttle.lua` — formalized and in use via `Trial.healthThrottle`.
 
 ### Phase 2 — Settings foundation
 - [x] `core/Settings.lua` — `ZO_SavedVars:NewAccountWide`-backed namespace (`Incha_SV`),
