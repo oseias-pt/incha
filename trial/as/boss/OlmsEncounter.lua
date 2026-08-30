@@ -70,6 +70,7 @@ OlmsEncounter.stateSchema = {
     felmsActive        = false,
     protectorUp        = false,
     nextJumpThreshold  = 1,
+    stormPreWarned     = false,
     alertList          = function() return {} end,
 }
 
@@ -95,6 +96,7 @@ function OlmsEncounter:onWipe()
     self.felmsActive       = false
     self.protectorUp       = false
     self.nextJumpThreshold = 1
+    self.stormPreWarned    = false
     self.llothisSpawnGs    = nil
     self.felmsSpawnGs      = nil
 end
@@ -120,6 +122,7 @@ local function handleStormTheHeavens(self, context, alerts, abilityId, ...)
     alerts:showAction("Kite! (Storm the Heavens)")
     CA.alert(nil, "KITE!", 0xFF4400FF, SOUNDS.NONE, 3000)
     self.stormTimer:reset()
+    self.stormPreWarned = false
 end
 
 local function handleScaldingRoar(self, context, alerts, abilityId,
@@ -261,13 +264,20 @@ OlmsEncounter.effectRoutes = {
 -- a"EURa"EUR Info-line renderers a"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EUR
 
 -- Line 1: Storm timer, displaced by Protector warning when the shield is active.
+-- Fires a one-shot CA pre-warning when the countdown drops into the 6 s window.
 local function showStormLine(self, alerts)
     if self.protectorUp then
-        alerts:showInfo(1, "|cffcc00as  PROTECTOR ACTIVE|r")
-    else
-        local t = self.stormTimer:remaining()
-        alerts:showInfo(1, "Storm:   " .. (t > 0 and ZO_FormatCountdownTimer(t) or "ready"))
+        alerts:showInfo(1, "|cffcc00[!] PROTECTOR ACTIVE|r")
+        return
     end
+    local t = self.stormTimer:remaining()
+    if t > 0 and t <= 6 and not self.stormPreWarned then
+        self.stormPreWarned = true
+        CA.alert(nil, "Storm soon!", 0xFF6600FF, SOUNDS.NONE, 3000)
+    elseif t > 6 then
+        self.stormPreWarned = false
+    end
+    alerts:showInfo(1, "Storm:   " .. (t > 0 and ZO_FormatCountdownTimer(t) or "ready"))
 end
 
 -- Lines 2-4: Olms core timers (always visible).
