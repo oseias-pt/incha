@@ -683,6 +683,11 @@ Split HP tracking: all three clones named "Ansuul the Tormentor" — differentia
 - [ ] dragon_max_hp on non-HM vet (242,176,464 confirmed for HM from OCH)
 - [ ] Portal-phase ability IDs for Jynorah
 
+### SS
+- [ ] Recalibrate `isGroupMemberNearby` threshold for Yolna (was 2.8 on old normalised scale) — [#29](https://github.com/oseias-pt/incha/issues/29)
+- [ ] Recalibrate `isGroupMemberNearby` threshold for Lokke (was 4.5 on old normalised scale) — [#30](https://github.com/oseias-pt/incha/issues/30)
+- [ ] Recalibrate `isGroupMemberNearby` threshold for Nahvii (was 7.0 on old normalised scale) — [#31](https://github.com/oseias-pt/incha/issues/31)
+
 ### SE
 - [ ] Breakdown split-clone ability IDs
 - [ ] Chimera crystal icon coordinates (normal + HM)
