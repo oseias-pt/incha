@@ -172,7 +172,7 @@ end
 
 -- â”€â”€ Lifecycle â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 function ZmajaEncounter:onLeave(context)
-    for _, cid in pairs(self.alertList) do CA.castAlertsStop(cid) end
+    self:cleanupAlertList()
 end
 
 -- â”€â”€ Handlers â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
@@ -248,6 +248,17 @@ local function handlePortalClose(self, context, alerts, abilityId, ...)
     self.portalTimer:clear()
     self.portalNextTimer:reset(PORTAL_NEXT_CD)
     self.coreAlert = false
+end
+
+-- Portal reset: Z'Maja re-engages after all three minis are shackled.
+-- Resets portal group counter to 0 so the next PORTAL_OPEN starts at 1 again.
+local function handlePortalReset(self, context, alerts, abilityId, ...)
+    self.portalGroup    = 0
+    self.portalActive   = false
+    self.portalTimer:clear()
+    self.portalNextTimer:clear()
+    self.coreAlert      = false
+    alerts:showAction("Z'Maja re-engaged -- portal counter reset")
 end
 
 -- Crushing Darkness: shared handler for 3 variants.
@@ -482,6 +493,7 @@ ZmajaEncounter.combatRoutes = {
     [PORTAL_OPEN]     = { result = ACTION_RESULT_BEGIN, fn = handlePortalOpen },
     [PORTAL_CLOSE_1]  = { result = ACTION_RESULT_BEGIN, fn = handlePortalClose },
     [PORTAL_CLOSE_2]  = { result = ACTION_RESULT_BEGIN, fn = handlePortalClose },
+    [PORTAL_RESET]    = { result = ACTION_RESULT_BEGIN, fn = handlePortalReset },
 
     -- â”€â”€ Z'Maja â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
     [ZMAJA_JUMP]      = { result = ACTION_RESULT_BEGIN, fn = handleZmajaJump },
@@ -576,6 +588,18 @@ local function showGaleLine(self, alerts)
 end
 
 -- â”€â”€ 200 ms display update â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+function ZmajaEncounter:onWipe()
+    self:cleanupAlertList()
+    self.siroJumpTimer:clear();   self.siroBannerTimer:clear()
+    self.releJumpTimer:clear();   self.releBashTimer:clear();  self.releJoltTimer:clear()
+    self.galeJumpTimer:clear();   self.galeBashTimer:clear();  self.galeDonutTimer:clear()
+    self.portalTimer:clear();     self.portalNextTimer:clear()
+    self.siroActive   = false;    self.releActive   = false;   self.galeActive = false
+    self.portalGroup  = 0;        self.portalActive = false
+    self.executePhase = false;    self.spearCount   = 0
+    self.coreAlert    = false
+end
+
 function ZmajaEncounter:onUpdate(context, alerts)
     showPortalStatusLine(self, alerts)
     showPortalGroupLine(self, alerts)
