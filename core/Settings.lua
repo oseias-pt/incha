@@ -39,9 +39,9 @@ local DEFAULTS = {
         ss  = { enabled = true },
         rg  = { enabled = true },
         dsr = { enabled = true },
-        as  = { enabled = true },
+        as  = { enabled = true, showPercent = true },  -- showPercent: Olms jump-threshold pre-warnings
         cr  = { enabled = true },
-        se  = { enabled = true },
+        se  = { enabled = true, showPercent = true },  -- showPercent: Yaseyla phase / add-wave milestones
         lc  = { enabled = true },
         oc  = { enabled = true },
     },
