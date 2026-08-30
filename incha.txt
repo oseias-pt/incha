@@ -75,6 +75,7 @@ trial/lc/boss/XynizataEncounter.lua
 trial/lc/boss/XorynEncounter.lua
 trial/lc/Factory.lua
 
+trial/oc/OsseinCageCommon.lua
 trial/oc/boss/JynorahEncounter.lua
 trial/oc/boss/KazpianEncounter.lua
 trial/oc/boss/ShaperEncounter.lua

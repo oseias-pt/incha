@@ -1,7 +1,8 @@
 
-local CA = require("lib.CA")
-local BossBase = require("lib.BossBase")
-local CastDur = require("lib.CastDur")
+local CA               = require("lib.CA")
+local BossBase         = require("lib.BossBase")
+local CastDur          = require("lib.CastDur")
+local OsseinCageCommon = require("trial.oc.OsseinCageCommon")
 
 -- â”€â”€ Ability IDs (from OsseinCageHelper) â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 local OGRIM_CHARGE     = 236496   -- combatRoute: ACTION_RESULT_BEGIN â†’ MOVE caAlertCast (player)
@@ -68,6 +69,9 @@ end
 
 -- â”€â”€ Routing tables (C3) â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
+-- Shared trash-mechanic handler.
+ShaperEncounter.common = OsseinCageCommon
+
 ShaperEncounter.combatRoutes = {
     [OGRIM_CHARGE]     = { result = ACTION_RESULT_BEGIN,         fn = handleOgrimCharge },
     [SHAPER_SHIELD]    = handleShaperShield,
@@ -86,7 +90,7 @@ function ShaperEncounter:onUpdate(context, alerts)
         alerts:showInfo(1, "")
     end
     alerts:showInfo(2, "")
-    alerts:showInfo(3, "")
+    OsseinCageCommon.showCarrionInfo(alerts)
     alerts:showInfo(4, "")
     alerts:showInfo(5, "")
     alerts:showInfo(6, "")
