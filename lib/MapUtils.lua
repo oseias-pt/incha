@@ -8,10 +8,7 @@ local MapUtils = {}
 ---
 --- Threshold values are in ESO world units (same scale as GetUnitWorldPosition).
 --- Existing call-sites that relied on the old normalised * 1000 scale must be
---- recalibrated in-game.
---- TODO(ss): recalibrate Yolna threshold (currently 2.8 -- Shadowfen Shipwreck)
---- TODO(ss): recalibrate Lokke threshold (currently 4.5 -- Shadowfen Shipwreck)
---- TODO(ss): recalibrate Nahvii threshold (currently 7.0 -- Shadowfen Shipwreck)
+--- recalibrated in-game (see GitHub issues #29, #30, #31).
 function MapUtils.isGroupMemberNearby(unitTag, threshold)
     local x1, _, z1 = GetUnitWorldPosition("player")
     local x2, _, z2 = GetUnitWorldPosition(unitTag)
