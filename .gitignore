@@ -14,3 +14,7 @@ Thumbs.db
 
 # Integration test live data — log files are large; keep them local only
 test/live-data/
+
+# Local review reports — kept out of the repo to avoid accidental commits
+.review/
+.plan/
