@@ -37,9 +37,11 @@ function CA.castAlertsStart(...)
 end
 
 --- Show or hide the screen-edge danger border.
---- @param active boolean — true = show, false = hide
---- @param dur    number  — duration in ms
---- @param color  table   — {r, g, b, a}
+--- @param active boolean      — true = show, false = hide
+--- @param dur    number       — duration in ms
+--- @param color  table|string — {r, g, b, a} colour table, or a named-colour
+---                              string accepted by CombatAlerts (e.g. "yellow",
+---                              "blue", "red", "green").
 function CA.border(active, dur, color)
     if CombatAlerts then CombatAlerts.AlertBorder(active, dur, color) end
 end

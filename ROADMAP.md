@@ -716,3 +716,65 @@ Split HP tracking: all three clones named "Ansuul the Tormentor" — differentia
 
 4. **OSI dependency**: SE and LC use OSI extensively. Ensure `## OptionalDependsOn: OdySupportIcons`
    remains in `incha.txt` (already present) and all OSI calls are nil-guarded.
+
+---
+
+## HM thresholds — shipped trials  (in-game measurement required)
+
+The following bosses are implemented (mechanics complete) but `hmHealthThreshold` is
+still `math.huge` or a placeholder `100000001`.  Until the correct value is supplied,
+`detectDifficulty()` always returns `NORMAL`, silently skipping HM-specific alerts.
+
+**How to measure:**  Pull on Vet HM → `/script d(GetUnitPower("boss1", POWERTYPE_HEALTH))`
+
+| Boss file | Current value | Trial |
+|---|---|---|
+| `trial/cr/boss/ZmajaEncounter.lua` | `math.huge` | Cloudrest — Z'Maja |
+| `trial/as/boss/OlmsEncounter.lua` | `math.huge` | Asylum Sanctorium — Saint Olms |
+| `trial/dsr/boss/Lylanar.lua` | `100000001` (placeholder) | Dreadsail Reef boss 1 |
+| `trial/dsr/boss/Taleria.lua` | `100000001` (placeholder) | Dreadsail Reef boss 3 |
+| `trial/dsr/boss/ReefGuardian.lua` | `100000001` (placeholder) | Dreadsail Reef boss 2 |
+| `trial/lc/boss/DarielEncounter.lua` | `math.huge` | Lucent Citadel — Dariel |
+| `trial/lc/boss/XynizataEncounter.lua` | `math.huge` | Lucent Citadel — Xynizata |
+| `trial/oc/boss/JynorahEncounter.lua` | `math.huge` | Oathsworn Pit — Jynorah |
+| `trial/oc/boss/KazpianEncounter.lua` | `math.huge` | Oathsworn Pit — Kazpian |
+| `trial/oc/boss/ShaperEncounter.lua` | `math.huge` | Oathsworn Pit — Shaper of Flesh |
+
+---
+
+## Proximity threshold recalibration  (in-game measurement required)
+
+`lib/MapUtils.lua` was rewritten in `fix/maputils-world-position` to use
+`GetUnitWorldPosition` instead of the normalised-map-coordinate API.  The threshold
+values in the three callers below were calibrated for the old `normalised-map × 1000`
+scale and **must be recalibrated** in world units before the new implementation is
+production-ready:
+
+| Caller | Old threshold |
+|---|---|
+| `trial/ss/boss/Yolna.lua` | 2.8 |
+| `trial/ss/boss/Lokke.lua` | 4.5 |
+| `trial/ss/boss/Nahvii.lua` | 7.0 |
+
+---
+
+## Settings granularity  (design + implementation)
+
+The current settings panel exposes a single global on/off toggle.  Finer control
+would let players enable only the trials or bosses they care about:
+- Per-trial toggles (disable all CR alerts while progging elsewhere)
+- Per-boss toggles within a trial
+- Per-mechanic category toggles (disable HM-only alerts in normal mode)
+
+## Panel flexible line count  (UI)
+
+The info panel renders a fixed number of lines regardless of content.  A
+variable-height panel that shows only populated lines would reduce clutter for bosses
+with few active timers.
+
+## i18n / Localisation layer  (architecture)
+
+All user-visible strings are hard-coded in English.  To support other locales:
+- Extract alert labels and action strings into `lang/en.lua`
+- Load the appropriate file at startup via `GetCVar("Language.2")`
+- Fall back to `en` for any missing key
