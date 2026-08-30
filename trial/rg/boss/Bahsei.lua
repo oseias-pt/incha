@@ -112,6 +112,7 @@ function Bahsei:onWipe(context, alerts)
     self.nextMtExplosion    = 0
     self.nextSickle         = 0
     self.mtUnitId           = false
+    self.lastPortalCW       = true
 end
 
 -- ── Combat state ──────────────────────────────────────────────────────────
