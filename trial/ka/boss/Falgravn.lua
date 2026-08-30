@@ -18,6 +18,49 @@ local COL_PRISON      = { 0.8, 0.3, 1.0 }   -- lavender
 local COL_INSTABILITY = { 1.0, 0.6, 0.0 }   -- amber
 local COL_SYNERGY     = { 0.9, 0.1, 0.2 }   -- crimson
 
+-- -- Instability animated head-icon ------------------------------------------
+-- 40 DDS frames exported to resources/instability/; cycled at 50 ms/frame
+-- (2s loop) via a single RegisterForUpdate event that runs only while at
+-- least one player carries the debuff.
+local INST_ANIM_FRAMES   = 40
+local INST_ANIM_INTERVAL = 50   -- ms per frame
+local INST_ANIM_KEY      = "Incha_FalgravnInstAnim"
+
+-- Module-level so the state survives boss-instance re-creation on wipe.
+local _instAnim   = {}   -- [unitTag] = { dn = displayName, frame = 0 }
+local _instActive = false
+
+local function instAnimTick()
+    if not OSI then return end
+    local sz = OSI.GetIconSize and (2 * OSI.GetIconSize()) or nil
+    for _, state in pairs(_instAnim) do
+        state.frame = (state.frame % INST_ANIM_FRAMES) + 1
+        local tex = string.format("Incha/resources/instability/frame_%02d.dds",
+                                  state.frame)
+        OSI.SetMechanicIconForUnit(state.dn, tex, sz, COL_INSTABILITY, nil, nil)
+    end
+end
+
+local function startInstAnim(unitTag, displayName)
+    _instAnim[unitTag] = { dn = displayName, frame = 0 }
+    if not _instActive then
+        EVENT_MANAGER:RegisterForUpdate(INST_ANIM_KEY, INST_ANIM_INTERVAL,
+                                        instAnimTick)
+        _instActive = true
+    end
+end
+
+-- Stops the frame-cycle for unitTag and clears its entry.
+-- Does NOT call osiRemove - callers are responsible for icon removal so
+-- this function stays above the osiRemove/osiSet local declarations.
+local function stopInstAnim(unitTag)
+    _instAnim[unitTag] = nil
+    if next(_instAnim) == nil and _instActive then
+        EVENT_MANAGER:UnregisterForUpdate(INST_ANIM_KEY)
+        _instActive = false
+    end
+end
+
 -- -- OSI world-coordinate position icons -----------------------------------
 -- Connection node positions: 4 lines x 5 nodes (wall=1 -> boss=5).
 -- Shown when Lightning fires (90%/80% connect), hidden when Pulse fades.
@@ -273,9 +316,12 @@ function Falgravn:onLeave(context)
     CA.castAlertsStop(self.prisonBarId)
     self.prisonBarId = false
     -- Remove any OSI mechanic icons.
-    for _, dn in pairs(self.osiPrison)      do osiRemove(dn) end
-    for _, dn in pairs(self.osiInstability) do osiRemove(dn) end
-    for _, dn in pairs(self.osiSynergy)     do osiRemove(dn) end
+    for _, dn in pairs(self.osiPrison)  do osiRemove(dn) end
+    for unitTag, dn in pairs(self.osiInstability) do
+        stopInstAnim(unitTag)
+        osiRemove(dn)
+    end
+    for _, dn in pairs(self.osiSynergy) do osiRemove(dn) end
     -- Discard world-coordinate position icons (zone exit  -  module handles reset).
     discardPosIcons(_posIconConn)
     discardPosIcons(_posIconBlood)
@@ -309,9 +355,12 @@ function Falgravn:onWipe(context, alerts)
     end
 
     -- Remove per-player OSI mechanic icons that were showing during the pull.
-    for _, dn in pairs(self.osiPrison)      do osiRemove(dn) end
-    for _, dn in pairs(self.osiInstability) do osiRemove(dn) end
-    for _, dn in pairs(self.osiSynergy)     do osiRemove(dn) end
+    for _, dn in pairs(self.osiPrison)  do osiRemove(dn) end
+    for unitTag, dn in pairs(self.osiInstability) do
+        stopInstAnim(unitTag)
+        osiRemove(dn)
+    end
+    for _, dn in pairs(self.osiSynergy) do osiRemove(dn) end
     -- Wipe the tracking tables so stale EFFECT_RESULT_FADED events fired
     -- after the wipe don't try to double-remove already-cleared icons.
     self.osiPrison      = {}
@@ -616,15 +665,19 @@ local function handleTorturerLa(self, context, alerts, abilityId, unitTag, ...)
     end
 end
 
--- Instability OSI: shared handler for both HM (140944) and non-HM (140941) variants.
+-- Instability animated icon: shared handler for HM (140944) and non-HM (140941).
+-- Starts the 40-frame animation cycle on EFFECT_GAINED; stops it on EFFECT_FADED.
 local function handleInstabilityEffect(self, context, alerts, changeType, abilityId,
                                         unitTag, unitId, unitName, stackCount)
     if not IsUnitPlayer(unitTag) then return end
     if changeType == EFFECT_RESULT_GAINED then
         local dn = GetUnitDisplayName(unitTag)
-        osiSet(dn, ICON_INSTABILITY, COL_INSTABILITY)
-        if dn and dn ~= "" then self.osiInstability[unitTag] = dn end
+        if dn and dn ~= "" then
+            self.osiInstability[unitTag] = dn
+            startInstAnim(unitTag, dn)
+        end
     elseif changeType == EFFECT_RESULT_FADED then
+        stopInstAnim(unitTag)
         osiRemove(self.osiInstability[unitTag])
         self.osiInstability[unitTag] = nil
     end
