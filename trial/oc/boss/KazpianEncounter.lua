@@ -214,6 +214,12 @@ KazpianEncounter.combatRoutes = {
     [CHANNELER_RITUAL] = { result = ACTION_RESULT_EFFECT_FADED,        fn = handleChannelerRitual },
 }
 
+function KazpianEncounter:onWipe()
+    self.bombDebounce:clear()
+    self.portalPhase    = 0; self.channelersDead = 0
+    self.chainedA       = nil; self.chainedB = nil
+end
+
 function KazpianEncounter:onUpdate(context, alerts)
     -- Line 1: portal phase
     if self.portalPhase > 0 then

@@ -74,6 +74,10 @@ ShaperEncounter.combatRoutes = {
     [CHANNELER_SHIELD] = { result = ACTION_RESULT_EFFECT_GAINED, fn = handleChannelerShield },
 }
 
+function ShaperEncounter:onWipe()
+    self.shaperShielded = false
+end
+
 function ShaperEncounter:onUpdate(context, alerts)
     -- Line 1: Shaper shield status
     if self.shaperShielded then

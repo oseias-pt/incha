@@ -231,6 +231,11 @@ local function showLeapLine(self, alerts)
     end
 end
 
+function JynorahEncounter:onWipe()
+    self.leapTimer:clear(); self.clashTimer:clear()
+    self.firstLeap  = true; self.clashActive = false
+end
+
 function JynorahEncounter:onUpdate(context, alerts)
     showClashLine(self, alerts)
     showLeapLine(self, alerts)
