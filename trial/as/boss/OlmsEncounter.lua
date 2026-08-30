@@ -1,8 +1,9 @@
 local Timer    = require("lib.Timer")
 
-local CA = require("lib.CA")
+local CA       = require("lib.CA")
 local BossBase = require("lib.BossBase")
-local CastDur = require("lib.CastDur")
+local CastDur  = require("lib.CastDur")
+local Settings = require("core.Settings")
 
 -- a"EURa"EUR Ability IDs (from AsylumTracker / AsylumPriorityTarget) a"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EUR
 -- Olms
@@ -335,6 +336,7 @@ end
 
 -- a"EURa"EUR HP milestone pre-warning a"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EUR
 function OlmsEncounter:onPowerUpdate(context, healthPercent, alerts)
+    if not Settings.trial("as").showPercent then return end
     if self.nextJumpThreshold > #JUMP_THRESHOLDS then return end
     local threshold = JUMP_THRESHOLDS[self.nextJumpThreshold]
     if healthPercent <= threshold + 3 and healthPercent > threshold then

@@ -29,8 +29,8 @@ local hudVisible = true
 
 -- Panel dimensions (points, scales with ctrl.panel:SetScale).
 -- H=200 accommodates the info lines (each 18 px) + header (26 px) + action (38 px bottom).
-local INFO_LINE_COUNT = 7
-local W, H = 320, 200
+local INFO_LINE_COUNT = 10
+local W, H = 320, 260
 
 -- Show or hide the panel based on two independent gates:
 --   ctrl.active    -  trial/boss content should be on screen

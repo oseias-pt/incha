@@ -1,8 +1,9 @@
 local Timer    = require("lib.Timer")
 
-local CA = require("lib.CA")
+local CA       = require("lib.CA")
 local BossBase = require("lib.BossBase")
-local CastDur = require("lib.CastDur")
+local CastDur  = require("lib.CastDur")
+local Settings = require("core.Settings")
 
 -- -- Ability IDs (from SanitysEdgeHelper / SSEA data) ------------------------------
 local DEFLECT         = 184823   -- combatRoute: ACTION_RESULT_BEGIN -> Shrapnel stack counter
@@ -284,7 +285,8 @@ function YaseylaEncounter:onPowerUpdate(context, healthPercent, alerts)
     end
 
     -- HP milestone pre-warnings (Wamasu+Archers at 90/70/50/30/20/10%;
-    -- portal at 60/35%; Shrapnel at 80/55/25/20/10%)
+    -- portal at 60/35%; Shrapnel at 80/55/25/20/10%; gated by showPercent toggle)
+    if not Settings.trial("se").showPercent then return end
     if not self.m90 and healthPercent < 90 then
         self.m90 = true
         alerts:showAction("90% - Wamasu + Archers incoming!")

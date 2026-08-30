@@ -161,6 +161,13 @@ local OPTIONS = {
         getFunc = function() return Settings.get().trials.as.enabled end,
         setFunc = function(v) Settings.get().trials.as.enabled = v end,
     },
+    {
+        type    = "checkbox",
+        name    = "Show % milestones",
+        tooltip = "Pre-warn at each Olms health threshold where Gusts of Steam (Jump!) is expected.",
+        getFunc = function() return Settings.get().trials.as.showPercent end,
+        setFunc = function(v) Settings.get().trials.as.showPercent = v end,
+    },
 
     -- Section: Cloudrest
     {
@@ -186,6 +193,13 @@ local OPTIONS = {
         tooltip = "Track Yaseyla bomb timers, Chimera despawn/chain lightning, and Ansuul calamity/phase alerts.",
         getFunc = function() return Settings.get().trials.se.enabled end,
         setFunc = function(v) Settings.get().trials.se.enabled = v end,
+    },
+    {
+        type    = "checkbox",
+        name    = "Show % milestones",
+        tooltip = "Alert at Yaseyla health thresholds when Wamasu, Archer, portal, and Shrapnel waves are expected.",
+        getFunc = function() return Settings.get().trials.se.showPercent end,
+        setFunc = function(v) Settings.get().trials.se.showPercent = v end,
     },
 
     -- Section: Lucent Citadel
