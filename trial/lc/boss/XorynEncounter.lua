@@ -4,7 +4,7 @@ local CA = require("lib.CA")
 local BossBase = require("lib.BossBase")
 local CastDur = require("lib.CastDur")
 
--- a"EURa"EUR Ability IDs a"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EUR
+-- ── Ability IDs ───────────────────────────────────────────────────────────
 local ARCANE_KNOT         = 213477   -- combatRoute: ACTION_RESULT_EFFECT_GAINED_DURATION / FADED a+' carry knot
 local ARCANE_CONV_DEBUFF  = 223060   -- combatRoute: ACTION_RESULT_EFFECT_GAINED_DURATION a+' tether on player
 local FLUCTUATING_CURRENT = 214597   -- combatRoute: ACTION_RESULT_EFFECT_GAINED_DURATION / FADED a+' hold (15s max)
@@ -15,15 +15,15 @@ local TEMPEST             = 215107   -- combatRoute: ACTION_RESULT_BEGIN a+' MOV
 local GLASS_STOMP_CAST    = 219797   -- combatRoute: ACTION_RESULT_BEGIN a+' Crystal Atronach AOE on tank
 local LUSTROUS_JAVELIN    = 223546   -- combatRoute: ACTION_RESULT_BEGIN a+' javelin on player
 
--- a"EURa"EUR Constants a"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EUR
+-- ── Constants ─────────────────────────────────────────────────────────────
 local CURRENT_MAX_DUR = 15.0   -- holding Fluctuating Current beyond this = death
 
--- a"EURa"EUR CA colour palettes a"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EUR
+-- ── CA colour palettes ────────────────────────────────────────────────────
 local COL_NECROTIC  = { -3, 0, false, { 0.5, 0,   0.9, 0.4 }, { 0.5, 0,   0.9, 0.8 } }
 local COL_TEMPEST   = { -3, 0, false, { 0.2, 0.8, 1.0, 0.4 }, { 0.2, 0.8, 1.0, 0.8 } }
 local COL_ATRONACH  = { -3, 0, false, { 1,   0.4, 0,   0.4 }, { 1,   0.4, 0,   0.8 } }
 
--- a"EURa"EUR Fallback durations (empirical; replace if GetAbilityCastInfo becomes reliable) a"EUR
+-- ── Fallback durations (empirical; replace if GetAbilityCastInfo becomes reliable) ─
 local FALLBACK_BARRAGE_DUR = 3000   -- NecroticBarrage: empirical
 local FALLBACK_DUR         = 2000   -- Tempest / GlassStomp: empirical
 
@@ -47,7 +47,7 @@ function XorynEncounter.new()
     return BossBase.fromSchema(XorynEncounter)
 end
 
--- a"EURa"EUR Handlers a"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EUR
+-- ── Handlers ────────────────────────────────────────────────────────────
 
 local function handleNecroticBarrage(self, context, alerts, abilityId, ...)
     local dur = CastDur.get(abilityId, FALLBACK_BARRAGE_DUR)
@@ -118,7 +118,7 @@ local function handleOverloadedCurrent(self, context, alerts, abilityId, unitTag
     alerts:showAction("Overloaded aEUR" DROP the current!")
 end
 
--- a"EURa"EUR Routing tables (C3) a"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EUR
+-- ── Routing tables (C3) ──────────────────────────────────────────────────
 XorynEncounter.combatRoutes = {
     [NECROTIC_BARRAGE]    = { result = ACTION_RESULT_BEGIN,                    fn = handleNecroticBarrage },
     [ACCELERATING_CHARGE] = { result = ACTION_RESULT_BEGIN,                    fn = handleAcceleratingCharge },
@@ -131,7 +131,7 @@ XorynEncounter.combatRoutes = {
     [OVERLOADED_CURRENT]  = { result = ACTION_RESULT_EFFECT_GAINED_DURATION,   fn = handleOverloadedCurrent },
 }
 
--- a"EURa"EUR Info-line renderers a"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EUR
+-- ── Info-line renderers ───────────────────────────────────────────────────
 
 -- Line 1: Fluctuating Current countdown; "DROP NOW!" when the 15 s window expires.
 local function showCurrentLine(self, alerts)

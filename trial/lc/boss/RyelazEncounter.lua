@@ -3,16 +3,16 @@ local CA = require("lib.CA")
 local BossBase = require("lib.BossBase")
 local CastDur = require("lib.CastDur")
 
--- a"EURa"EUR Ability IDs a"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EUR
+-- ── Ability IDs ───────────────────────────────────────────────────────────
 local BRILLIANT_ANNIHILATION = 214187   -- combatRoute: ACTION_RESULT_BEGIN a+' light side room wipe; STACK
 local BLEAK_ANNIHILATION     = 214203   -- combatRoute: ACTION_RESULT_BEGIN a+' dark side room wipe; STACK
 local PORCIN_LIGHT           = 219329   -- combatRoute: ACTION_RESULT_EFFECT_GAINED_DURATION / FADED a+' player on Ryelaz (dark) side
 local PORCIN_DARK            = 219330   -- combatRoute: ACTION_RESULT_EFFECT_GAINED_DURATION / FADED a+' player on Zilyesset (light) side
 
--- a"EURa"EUR CA colour palettes a"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EUR
+-- ── CA colour palettes ────────────────────────────────────────────────────
 local COL_ANNIHIL = { -3, 0, false, { 1, 0.65, 0, 0.4 }, { 1, 0.65, 0, 0.8 } }
 
--- a"EURa"EUR Fallback durations (empirical; replace if GetAbilityCastInfo becomes reliable) a"EUR
+-- ── Fallback durations (empirical; replace if GetAbilityCastInfo becomes reliable) ─
 local FALLBACK_DUR = 3000   -- Annihilation channel: empirical
 
 local RyelazEncounter = {}
@@ -25,7 +25,7 @@ RyelazEncounter.hmHealthThreshold = 40000000
 -- Detection falls back to nameAliases (name-based, may fail on non-EN clients).
 -- To calibrate: stand in arena, run /script d(GetUnitWorldPosition("boss1"))
 
--- a"EURa"EUR State a"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EUR
+-- ── State ─────────────────────────────────────────────────────────────────
 -- "ryelaz"    = player on Ryelaz dark side
 -- "zilyesset" = player on Zilyesset light side
 -- nil         = assignment unknown (split hasn't happened or effect not yet seen)
@@ -35,7 +35,7 @@ function RyelazEncounter.new()
     return BossBase.fromSchema(RyelazEncounter)
 end
 
--- a"EURa"EUR Routing tables (C3) a"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EUR
+-- ── Routing tables (C3) ──────────────────────────────────────────────────
 
 -- Annihilation: shared alertCast, different showAction label.
 local function makeAnnihilHandler(label)

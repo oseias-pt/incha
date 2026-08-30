@@ -5,7 +5,7 @@ local BossBase         = require("lib.BossBase")
 local CastDur          = require("lib.CastDur")
 local OsseinCageCommon = require("trial.oc.OsseinCageCommon")
 
--- a"EURa"EUR Ability IDs (from OsseinCageHelper) a"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EUR
+-- ── Ability IDs (from OsseinCageHelper) ──────────────────────────────────
 -- Chains
 local CHAINS_1        = 232773   -- combatRoute: ACTION_RESULT_EFFECT_GAINED_DURATION a+' chain pair detection + alert
 local CHAINS_2        = 232775   -- combatRoute: ACTION_RESULT_EFFECT_GAINED_DURATION a+' chain pair detection + alert
@@ -36,13 +36,13 @@ local STRICKEN        = 235594   -- combatRoute: ACTION_RESULT_EFFECT_GAINED_DUR
 local FIREBOMB_DEBUF  = 245264   -- combatRoute: ACTION_RESULT_EFFECT_GAINED_DURATION a+' Firebomb alert (player)
 local IMMOLATING_SPHERE= 237011   -- combatRoute: ACTION_RESULT_BEGIN a+' Immolating Sphere alert (player)
 
--- a"EURa"EUR CA colour palettes a"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EUR
+-- ── CA colour palettes ────────────────────────────────────────────────────
 local COL_LEAP     = { -3, 0, false, { 0.6, 0,   0.9, 0.4 }, { 0.6, 0,   0.9, 0.8 } }
 local COL_LEAP_RED = { -3, 0, false, { 1,   0.1, 0.1, 0.4 }, { 1,   0.1, 0.1, 0.8 } }
 local COL_SLAM     = { -3, 0, false, { 1,   0.7, 0,   0.4 }, { 1,   0.7, 0,   0.8 } }
 local COL_SURGE    = { -3, 0, false, { 0.9, 0.9, 0.1, 0.4 }, { 0.9, 0.9, 0.1, 0.8 } }
 
--- a"EURa"EUR Fallback durations (empirical; replace if GetAbilityCastInfo becomes reliable) a"EUR
+-- ── Fallback durations (empirical; replace if GetAbilityCastInfo becomes reliable) ─
 local FALLBACK_DUR = 2000   -- GiantPulse / VileLeap / SeethingLeap / StormSlam / StormSurge: empirical
 
 local KazpianEncounter = {}
@@ -67,7 +67,7 @@ function KazpianEncounter.new()
     return BossBase.fromSchema(KazpianEncounter)
 end
 
--- a"EURa"EUR Handlers a"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EUR
+-- ── Handlers ────────────────────────────────────────────────────────────
 
 -- Chains: pairs two chained players and alerts when the pair is formed.
 local function handleChains(self, context, alerts, abilityId,
@@ -185,7 +185,7 @@ local function handleChannelerRitual(self, context, alerts, abilityId, ...)
     alerts:showAction("Channeler down! (" .. self.channelersDead .. " dead)")
 end
 
--- a"EURa"EUR Routing tables (C3) a"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EUR
+-- ── Routing tables (C3) ──────────────────────────────────────────────────
 
 -- Shared trash-mechanic handler.
 KazpianEncounter.common = OsseinCageCommon

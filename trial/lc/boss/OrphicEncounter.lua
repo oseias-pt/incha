@@ -4,7 +4,7 @@ local CA = require("lib.CA")
 local BossBase = require("lib.BossBase")
 local CastDur = require("lib.CastDur")
 
--- a"EURa"EUR Ability IDs a"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EUR
+-- ── Ability IDs ───────────────────────────────────────────────────────────
 local THUNDER_THRALL  = 214383   -- combatRoute: ACTION_RESULT_BEGIN a+' Xoryn jump; timer 25.5s / 8s first
 local LIGHTNING_FLOOD = 214355   -- combatRoute: ACTION_RESULT_BEGIN a+' Xoryn cone; timer 21.5s / 3s first
 local COLOR_CHANGE    = 213913   -- combatRoute: ACTION_RESULT_EFFECT_GAINED a+' mirror switch alert
@@ -13,17 +13,17 @@ local SHIELD_THROW    = 221945   -- combatRoute: ACTION_RESULT_BEGIN a+' Crystal
 local XORYN_IMMUNE_1  = 217987   -- combatRoute: ACTION_RESULT_EFFECT_GAINED / FADED a+' Xoryn away / returned
 local XORYN_IMMUNE_2  = 219545   -- combatRoute: ACTION_RESULT_EFFECT_GAINED / FADED a+' Xoryn away variant
 
--- a"EURa"EUR Timer durations (seconds) a"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EUR
+-- ── Timer durations (seconds) ─────────────────────────────────────────────
 local THRALL_FIRST_CD =  8.0    -- first Thrall after Xoryn returns
 local THRALL_CD       = 25.5   -- steady-state Thrall CD
 local FLOOD_FIRST_CD  =  3.0    -- first Flood after Xoryn returns
 local FLOOD_CD        = 21.5   -- steady-state Flood CD
 
--- a"EURa"EUR CA colour palettes a"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EUR
+-- ── CA colour palettes ────────────────────────────────────────────────────
 local COL_LIGHTNING = { -3, 0, false, { 0.9, 0.9, 0.1, 0.4 }, { 0.9, 0.9, 0.1, 0.8 } }
 local COL_CRYSTAL   = { -3, 0, false, { 0.7, 0.3, 1.0, 0.4 }, { 0.7, 0.3, 1.0, 0.8 } }
 
--- a"EURa"EUR Fallback durations (empirical; replace if GetAbilityCastInfo becomes reliable) a"EUR
+-- ── Fallback durations (empirical; replace if GetAbilityCastInfo becomes reliable) ─
 local FALLBACK_DUR = 2000   -- Shield Throw: empirical
 
 local OrphicEncounter = {}
@@ -48,7 +48,7 @@ function OrphicEncounter.new()
     return BossBase.fromSchema(OrphicEncounter)
 end
 
--- a"EURa"EUR Handlers a"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EUR
+-- ── Handlers ────────────────────────────────────────────────────────────
 
 -- Xoryn immune: shared handler for both variants (GAINED = away, FADED = returned).
 local function handleXorynImmune(self, context, alerts, result, abilityId, ...)
@@ -99,7 +99,7 @@ local function handleColorChange(self, context, alerts, abilityId, ...)
     alerts:showAction("Color change! Switch mirror!")
 end
 
--- a"EURa"EUR Routing tables (C3) a"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EUR
+-- ── Routing tables (C3) ──────────────────────────────────────────────────
 
 OrphicEncounter.combatRoutes = {
     [THUNDER_THRALL]  = { result = ACTION_RESULT_BEGIN,         fn = handleThunderThrall },
