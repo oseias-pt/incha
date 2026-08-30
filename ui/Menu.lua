@@ -14,7 +14,7 @@ local Menu = {}
 
 local PANEL_ID = ADDON_LAM
 
--- ── LAM panel descriptor ───────────────────────────────────────────────────
+-- -- LAM panel descriptor ---------------------------------------------------
 local PANEL = {
     type                = "panel",
     name                = ADDON_TITLE,
@@ -26,7 +26,7 @@ local PANEL = {
     registerForDefaults = false,
 }
 
--- ── Options schema ─────────────────────────────────────────────────────────
+-- -- Options schema ---------------------------------------------------------
 -- Each entry is a LAM control descriptor.  getFunc/setFunc read and write
 -- directly into the live Settings table so no extra glue is needed.
 -- Keep in sync with the defaults in core/Settings.lua.
@@ -215,14 +215,14 @@ local OPTIONS = {
     },
 }
 
--- ── Slash command fallback ────────────────────────────────────────────────
+-- -- Slash command fallback ------------------------------------------------
 
 local function printHelp()
     d(ADDON_TAG .. " Commands:")
-    d("  " .. ADDON_SLASH .. " debug         — toggle debug logging")
-    d("  " .. ADDON_SLASH .. " lock          — toggle overlay drag lock")
-    d("  " .. ADDON_SLASH .. " scale <n>     — set overlay scale (0.5 – 3.0)")
-    d("  " .. ADDON_SLASH .. " reset         — reset overlay to default position")
+    d("  " .. ADDON_SLASH .. " debug          -  toggle debug logging")
+    d("  " .. ADDON_SLASH .. " lock           -  toggle overlay drag lock")
+    d("  " .. ADDON_SLASH .. " scale <n>      -  set overlay scale (0.5 - 3.0)")
+    d("  " .. ADDON_SLASH .. " reset          -  reset overlay to default position")
 end
 
 local function handleSlash(text)
@@ -244,9 +244,9 @@ local function handleSlash(text)
         if n and n >= 0.5 and n <= 3.0 then
             sv.overlay.scale = n
             Panel.refresh()
-            d("|cFFD700[Incha]|r Scale → " .. n)
+            d("|cFFD700[Incha]|r Scale -> " .. n)
         else
-            d(ADDON_TAG .. " Usage: " .. ADDON_SLASH .. " scale <0.5 – 3.0>")
+            d(ADDON_TAG .. " Usage: " .. ADDON_SLASH .. " scale <0.5 - 3.0>")
         end
 
     elseif cmd == "reset" then
@@ -261,10 +261,10 @@ local function handleSlash(text)
     end
 end
 
--- ── Public API ─────────────────────────────────────────────────────────────
+-- -- Public API -------------------------------------------------------------
 
 function Menu.init()
-    -- Always register the slash command — useful even when LAM is present
+    -- Always register the slash command  -  useful even when LAM is present
     -- and essential when it is not installed.
     SLASH_COMMANDS[ADDON_SLASH] = handleSlash
 

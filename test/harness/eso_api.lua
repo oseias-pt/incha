@@ -13,7 +13,7 @@
 
 local EsoApi = {}
 
--- ── Internal mutable state ────────────────────────────────────────────────
+-- -- Internal mutable state ------------------------------------------------
 local _currentMs = 0
 local _zoneId    = 0
 local _tracker   = nil  -- UnitTracker; set by test runner before replay
@@ -23,7 +23,7 @@ function EsoApi.setZoneId(id)      _zoneId    = id  end
 function EsoApi.setTracker(t)      _tracker   = t   end
 function EsoApi.getCurrentTime()   return _currentMs end
 
--- ── ESO action-result constants ───────────────────────────────────────────
+-- -- ESO action-result constants -------------------------------------------
 -- Values chosen to match ESO's actual enum so log result strings map
 -- to the same integers the boss routing tables compare against.
 ACTION_RESULT_BEGIN                  = 4
@@ -33,21 +33,21 @@ ACTION_RESULT_EFFECT_GAINED          = 6
 ACTION_RESULT_EFFECT_GAINED_DURATION = 7
 ACTION_RESULT_INTERRUPT              = 65
 
--- ── ESO effect-change constants ───────────────────────────────────────────
+-- -- ESO effect-change constants -------------------------------------------
 EFFECT_RESULT_GAINED  = 1
 EFFECT_RESULT_FADED   = 2
 EFFECT_RESULT_UPDATED = 3
 
--- ── Power-type constants ──────────────────────────────────────────────────
+-- -- Power-type constants --------------------------------------------------
 POWERTYPE_HEALTH  = 0
 POWERTYPE_MAGICKA = 1
 POWERTYPE_STAMINA = 2
 
--- ── Event filter constants ────────────────────────────────────────────────
+-- -- Event filter constants ------------------------------------------------
 REGISTER_FILTER_POWER_TYPE      = 1
 REGISTER_FILTER_UNIT_TAG_PREFIX = 2
 
--- ── ESO event-code constants (arbitrary unique values used as map keys) ───
+-- -- ESO event-code constants (arbitrary unique values used as map keys) ---
 EVENT_BOSSES_CHANGED        = 100
 EVENT_POWER_UPDATE          = 101
 EVENT_PLAYER_COMBAT_STATE   = 102
@@ -57,7 +57,7 @@ EVENT_ADD_ON_LOADED         = 105
 EVENT_PLAYER_ACTIVATED      = 106
 EVENT_ZONE_CHANGED          = 107
 
--- ── EVENT_MANAGER stub ────────────────────────────────────────────────────
+-- -- EVENT_MANAGER stub ----------------------------------------------------
 EVENT_MANAGER = {
     RegisterForEvent   = function(self, prefix, eventType, handler) end,
     UnregisterForEvent = function(self, prefix, eventType) end,
@@ -66,21 +66,21 @@ EVENT_MANAGER = {
     UnregisterForUpdate = function(self, prefix) end,
 }
 
--- ── Time ──────────────────────────────────────────────────────────────────
+-- -- Time ------------------------------------------------------------------
 function GetGameTimeMilliseconds() return _currentMs end
 
--- ── Zone / position ───────────────────────────────────────────────────────
+-- -- Zone / position -------------------------------------------------------
 function GetUnitZoneIndex(unitTag)  return 1 end
 function GetZoneId(zoneIndex)       return _zoneId end
 
 function GetUnitWorldPosition(unitTag)
     -- Returns mapId, x, y, z (local game coords).
     -- Position-based boss detection (Location:contains) uses x,y,z.
-    -- Return (0,0,0,0) — name-based detection takes over in the harness.
+    -- Return (0,0,0,0)  -  name-based detection takes over in the harness.
     return 0, 0, 0, 0
 end
 
--- ── Unit queries ──────────────────────────────────────────────────────────
+-- -- Unit queries ----------------------------------------------------------
 function DoesUnitExist(unitTag)
     if not _tracker then return false end
     return _tracker:getByTag(unitTag) ~= nil
@@ -119,19 +119,19 @@ end
 
 function GetLocalPlayerGroupUnitTag() return "player" end
 
--- ── Map utilities (used by MapUtils module) ───────────────────────────────
+-- -- Map utilities (used by MapUtils module) -------------------------------
 function SetMapToPlayerLocation() end
 function GetMapPlayerPosition(unitTag) return 0.5, 0.5 end
 
--- ── Ability info ──────────────────────────────────────────────────────────
+-- -- Ability info ----------------------------------------------------------
 function GetAbilityCastInfo(abilityId) return 2000 end
 function GetAbilityName(abilityId)     return "" end
 function GetAbilityIcon(abilityId)     return "" end
 
--- ── Deferred calls ────────────────────────────────────────────────────────
+-- -- Deferred calls --------------------------------------------------------
 -- zo_callLater returns a handle; Phase 1 does not execute the callback
 -- (the callback fires long after the event that schedules it, and the
--- boss guards inside it — IsUnitInCombat, poisonTotemId checks — would
+-- boss guards inside it  -  IsUnitInCombat, poisonTotemId checks  -  would
 -- produce misleading output when executed out-of-sequence).
 local _nextHandle = 1
 function zo_callLater(fn, ms)
@@ -141,8 +141,8 @@ function zo_callLater(fn, ms)
 end
 function zo_removeCallLater(handle) end
 
--- ── Formatting ────────────────────────────────────────────────────────────
--- zo_strformat — ESO's format-string helper.  Tokens <<1>>..<<N>> are
+-- -- Formatting ------------------------------------------------------------
+-- zo_strformat  -  ESO's format-string helper.  Tokens <<1>>..<<N>> are
 -- replaced by the corresponding positional argument.  For Phase 1 the
 -- only production use is zo_strformat("<<1>>", name) to normalize a name,
 -- so a simple indexed-token replacement covers all real cases.
@@ -158,18 +158,18 @@ function ZO_FormatCountdownTimer(seconds)
     return string.format("%d:%02d", math.floor(s / 60), s % 60)
 end
 
--- ── Sound stubs ───────────────────────────────────────────────────────────
+-- -- Sound stubs -----------------------------------------------------------
 SOUNDS = setmetatable({}, { __index = function() return 0 end })
 
--- ── Optional external addons — keep nil so guard expressions fire cleanly ─
+-- -- Optional external addons  -  keep nil so guard expressions fire cleanly -
 CombatAlerts = nil
 OSI          = nil
 BSCHTKA      = nil
 
--- ── ESO debug print ───────────────────────────────────────────────────────
+-- -- ESO debug print -------------------------------------------------------
 function d(msg) io.stderr:write("[ESO-d] " .. tostring(msg) .. "\n") end
 
--- ── ZO_SavedVars stub (used by core.Settings) ────────────────────────────
+-- -- ZO_SavedVars stub (used by core.Settings) ----------------------------
 ZO_SavedVars = {
     NewAccountWide = function(self, name, version, displayName, defaults)
         -- Return the defaults table directly; Settings.get() will return it.
@@ -179,11 +179,11 @@ ZO_SavedVars = {
     end,
 }
 
--- ── Pre-stub modules that require ESO UI globals ─────────────────────────
+-- -- Pre-stub modules that require ESO UI globals -------------------------
 -- These are set in package.loaded so require() returns the stub without
--- executing the real file (which references CreateControl, WINDOW_MANAGER, …).
+-- executing the real file (which references CreateControl, WINDOW_MANAGER, ...).
 
--- ui.Panel — Trial factories access Panel.bridge and Panel.alerts.
+-- ui.Panel  -  Trial factories access Panel.bridge and Panel.alerts.
 -- Provide no-op stubs; run_log.lua overrides the alerts after building the trial.
 local _panelBridge = {
     onEnable      = function() end,
@@ -201,10 +201,10 @@ local _panelAlerts = {
 }
 package.loaded["ui.Panel"] = { bridge = _panelBridge, alerts = _panelAlerts }
 
--- ui.Menu — only init() is called; it is a no-op outside the game.
+-- ui.Menu  -  only init() is called; it is a no-op outside the game.
 package.loaded["ui.Menu"] = { init = function() end }
 
--- core.Settings — return all options enabled so boss handlers that read
+-- core.Settings  -  return all options enabled so boss handlers that read
 -- Settings.trial("ka").showPercent etc. get sensible defaults.
 package.loaded["core.Settings"] = {
     init  = function() end,
@@ -214,13 +214,13 @@ package.loaded["core.Settings"] = {
             enabled          = true,
             showBossUI       = true,
             showPercent      = true,
-            portalIconVrol   = true,   -- Vrol portal icon — OSI nil so creation is a no-op
-            posIconsFalgravn = true,   -- Falgravn nodes   — OSI nil so creation is a no-op
+            portalIconVrol   = true,   -- Vrol portal icon  -  OSI nil so creation is a no-op
+            posIconsFalgravn = true,   -- Falgravn nodes    -  OSI nil so creation is a no-op
         }
     end,
 }
 
--- lib.Log — pass-through to print(); level-gated by Log.isEnabled().
+-- lib.Log  -  pass-through to print(); level-gated by Log.isEnabled().
 package.loaded["lib.Log"] = {
     setEnabled = function(v) end,
     isEnabled  = function()  return false end,

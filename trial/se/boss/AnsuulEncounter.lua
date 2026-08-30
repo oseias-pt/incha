@@ -4,42 +4,42 @@ local CA = require("lib.CA")
 local BossBase = require("lib.BossBase")
 local CastDur = require("lib.CastDur")
 
--- ── Ability IDs ────────────────────────────────────────────────────────────────────
-local SUNBURST         = 199344   -- combatRoute: ACTION_RESULT_BEGIN → Dodge alert (player only)
-local WRACK            = 184621   -- combatRoute: ACTION_RESULT_BEGIN → Kite alert
-local WRATHSTORM       = 198759   -- combatRoute: ACTION_RESULT_BEGIN → caAlertCast
-local CALAMITY         = 186728   -- combatRoute: ACTION_RESULT_BEGIN → Calamity Stack alert
-local EXECUTE          = 198797   -- combatRoute: ACTION_RESULT_BEGIN → INTERRUPT alert
--- Poisoned Mind — 4 variants (+184710 kept for safety)
-local POISONED_MIND_1  = 184707   -- combatRoute: ACTION_RESULT_EFFECT_GAINED_DURATION → green border
-local POISONED_MIND_2  = 184709   -- combatRoute: ACTION_RESULT_EFFECT_GAINED_DURATION → green border
-local POISONED_MIND_3  = 199644   -- combatRoute: ACTION_RESULT_EFFECT_GAINED_DURATION → green border
-local POISONED_MIND_4  = 184711   -- combatRoute: ACTION_RESULT_EFFECT_GAINED_DURATION → green border
-local POISONED_MIND_5  = 184710   -- combatRoute: ACTION_RESULT_EFFECT_GAINED_DURATION → green border (extra variant)
--- Manic Phobia — 4 variants
-local MANIC_PHOBIA_1   = 185117   -- combatRoute: ACTION_RESULT_EFFECT_GAINED_DURATION → fear marker alert
-local MANIC_PHOBIA_2   = 185123   -- combatRoute: ACTION_RESULT_EFFECT_GAINED_DURATION → fear marker alert
-local MANIC_PHOBIA_3   = 185171   -- combatRoute: ACTION_RESULT_EFFECT_GAINED_DURATION → fear marker alert
-local MANIC_PHOBIA_4   = 185251   -- combatRoute: ACTION_RESULT_EFFECT_GAINED_DURATION → fear marker alert
+-- -- Ability IDs --------------------------------------------------------------------
+local SUNBURST         = 199344   -- combatRoute: ACTION_RESULT_BEGIN -> Dodge alert (player only)
+local WRACK            = 184621   -- combatRoute: ACTION_RESULT_BEGIN -> Kite alert
+local WRATHSTORM       = 198759   -- combatRoute: ACTION_RESULT_BEGIN -> caAlertCast
+local CALAMITY         = 186728   -- combatRoute: ACTION_RESULT_BEGIN -> Calamity Stack alert
+local EXECUTE          = 198797   -- combatRoute: ACTION_RESULT_BEGIN -> INTERRUPT alert
+-- Poisoned Mind  -  4 variants (+184710 kept for safety)
+local POISONED_MIND_1  = 184707   -- combatRoute: ACTION_RESULT_EFFECT_GAINED_DURATION -> green border
+local POISONED_MIND_2  = 184709   -- combatRoute: ACTION_RESULT_EFFECT_GAINED_DURATION -> green border
+local POISONED_MIND_3  = 199644   -- combatRoute: ACTION_RESULT_EFFECT_GAINED_DURATION -> green border
+local POISONED_MIND_4  = 184711   -- combatRoute: ACTION_RESULT_EFFECT_GAINED_DURATION -> green border
+local POISONED_MIND_5  = 184710   -- combatRoute: ACTION_RESULT_EFFECT_GAINED_DURATION -> green border (extra variant)
+-- Manic Phobia  -  4 variants
+local MANIC_PHOBIA_1   = 185117   -- combatRoute: ACTION_RESULT_EFFECT_GAINED_DURATION -> fear marker alert
+local MANIC_PHOBIA_2   = 185123   -- combatRoute: ACTION_RESULT_EFFECT_GAINED_DURATION -> fear marker alert
+local MANIC_PHOBIA_3   = 185171   -- combatRoute: ACTION_RESULT_EFFECT_GAINED_DURATION -> fear marker alert
+local MANIC_PHOBIA_4   = 185251   -- combatRoute: ACTION_RESULT_EFFECT_GAINED_DURATION -> fear marker alert
 -- Enraged Atronachs
-local ENRAGED_INFERNO  = 183778   -- combatRoute: ACTION_RESULT_BEGIN → Interrupt! alert
-local ENRAGED_FLARE    = 183784   -- combatRoute: ACTION_RESULT_BEGIN → alert
+local ENRAGED_INFERNO  = 183778   -- combatRoute: ACTION_RESULT_BEGIN -> Interrupt! alert
+local ENRAGED_FLARE    = 183784   -- combatRoute: ACTION_RESULT_BEGIN -> alert
 -- Phase transitions
-local THE_RITUAL       = 183855   -- combatRoute: multi-result → maze phase
-local BREAKDOWN_RED    = 188766   -- combatRoute: multi-result → split phase
-local BREAKDOWN_BLUE   = 188768   -- combatRoute: multi-result → split phase
-local BREAKDOWN_GREEN  = 188769   -- combatRoute: multi-result → split phase
+local THE_RITUAL       = 183855   -- combatRoute: multi-result -> maze phase
+local BREAKDOWN_RED    = 188766   -- combatRoute: multi-result -> split phase
+local BREAKDOWN_BLUE   = 188768   -- combatRoute: multi-result -> split phase
+local BREAKDOWN_GREEN  = 188769   -- combatRoute: multi-result -> split phase
 
--- ── Timer durations (seconds) ─────────────────────────────────────────────────────
+-- -- Timer durations (seconds) -----------------------------------------------------
 local CALAMITY_FIRST_CD = 9    -- first calamity after combat start / maze end
 local CALAMITY_CD       = 25   -- subsequent calamity CD
 
--- ── CA colour palettes ────────────────────────────────────────────────────────────
+-- -- CA colour palettes ------------------------------------------------------------
 local COL_VOID   = { -3, 0, false, { 0.5, 0, 0.7, 0.4 }, { 0.5, 0, 0.7, 0.8 } }   -- purple
 local COL_GREEN  = { -3, 0, false, { 0.2, 0.8, 0.2, 0.4 }, { 0.2, 0.8, 0.2, 0.8 } } -- green
 local COL_RED    = { -3, 0, false, { 1, 0.1, 0.1, 0.4 }, { 1, 0.1, 0.1, 0.8 } }    -- red
 
--- ── Fallback durations (empirical; replace if GetAbilityCastInfo becomes reliable) ─
+-- -- Fallback durations (empirical; replace if GetAbilityCastInfo becomes reliable) -
 local FALLBACK_SUNBURST_DUR   = 2000   -- Sunburst: empirical
 local FALLBACK_WRATHSTORM_DUR = 4000   -- Wrathstorm: empirical
 
@@ -49,7 +49,7 @@ AnsuulEncounter.__index = AnsuulEncounter
 AnsuulEncounter.key               = "ansuul"
 AnsuulEncounter.nameAliases       = { "Ansuul the Tormentor" }
 AnsuulEncounter.hmHealthThreshold = 100000000  -- vet ~69M, HM ~160.7M
--- location: placeholder – Sunken Elder arena AABB not yet captured.
+-- location: placeholder - Sunken Elder arena AABB not yet captured.
 -- Detection falls back to nameAliases (name-based, may fail on non-EN clients).
 -- To calibrate: stand in arena, run /script d(GetUnitWorldPosition("boss1"))
 
@@ -65,7 +65,7 @@ function AnsuulEncounter.new()
     return BossBase.fromSchema(AnsuulEncounter)
 end
 
--- ── Routing tables (C3) ───────────────────────────────────────────────────────────
+-- -- Routing tables (C3) -----------------------------------------------------------
 
 -- Breakdown (split phase): shared handler for red/blue/green clones.
 local function handleBreakdown(self, context, alerts, result, abilityId, ...)
@@ -123,22 +123,22 @@ local function handleManicPhobia(self, context, alerts, abilityId,
                                    unitTag, sourceUnitTag, sourceUnitId, unitId,
                                    sourceUnitName, unitName)
     local name = IsUnitPlayer(unitTag) and "YOU" or (unitName or "?")
-    alerts:showAction("Manic Phobia → " .. name)
+    alerts:showAction("Manic Phobia -> " .. name)
     if IsUnitPlayer(unitTag) then
-        CA.alert(nil, "MANIC PHOBIA – fear!", 0xFF44FFFF, SOUNDS.NONE, 5000)
+        CA.alert(nil, "MANIC PHOBIA - fear!", 0xFF44FFFF, SOUNDS.NONE, 5000)
     end
 end
 
 local function handleEnragedInferno(self, context, alerts, abilityId, ...)
     alerts:showAction("INTERRUPT! Enraged Inferno!")
-    CA.alert(nil, "INTERRUPT – Inferno!", 0xFF0033FF, SOUNDS.NONE, 2500)
+    CA.alert(nil, "INTERRUPT - Inferno!", 0xFF0033FF, SOUNDS.NONE, 2500)
 end
 
 local function handleEnragedFlare(self, context, alerts, abilityId,
                                    unitTag, sourceUnitTag, sourceUnitId, unitId,
                                    sourceUnitName, unitName)
     local target = (unitName and unitName ~= "") and unitName or "?"
-    alerts:showAction("Enraged Flare → " .. target)
+    alerts:showAction("Enraged Flare -> " .. target)
     CA.alert(nil, "ENRAGED FLARE", 0xFF6600FF, SOUNDS.NONE, 2500)
 end
 
@@ -181,15 +181,15 @@ AnsuulEncounter.combatRoutes = {
     [BREAKDOWN_GREEN]  = handleBreakdown,
 }
 
--- ── Info-line renderers ───────────────────────────────────────────────────────────
+-- -- Info-line renderers -----------------------------------------------------------
 
--- Line 1: Calamity countdown – context-aware: maze suppression, triplet urgency, or normal CD.
+-- Line 1: Calamity countdown - context-aware: maze suppression, triplet urgency, or normal CD.
 local function showCalamityLine(self, alerts)
     if self.inMaze then
         alerts:showInfo(1, "Maze phase (no Calamity)")
     elseif self.inTriplet then
         local r = self.calamityTimer:remaining()
-        alerts:showInfo(1, "TRIPLET – Calamity: " .. (r > 0 and ZO_FormatCountdownTimer(r) or "now!"))
+        alerts:showInfo(1, "TRIPLET - Calamity: " .. (r > 0 and ZO_FormatCountdownTimer(r) or "now!"))
     elseif self.firstCalamity then
         alerts:showInfo(1, "Calamity: first ~9s")
     else
@@ -201,7 +201,7 @@ end
 -- Line 2: Current phase label (triplet split or maze navigation).
 local function showPhaseLine(self, alerts)
     if self.inTriplet then
-        alerts:showInfo(2, "Split phase – equalize HP!")
+        alerts:showInfo(2, "Split phase - equalize HP!")
     elseif self.inMaze then
         alerts:showInfo(2, "Navigate the maze")
     else

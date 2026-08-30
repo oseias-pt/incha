@@ -1,25 +1,25 @@
---- Bahsei (Flame-Herald Bahsei) — Rockgrove boss 2
+--- Bahsei (Flame-Herald Bahsei)  -  Rockgrove boss 2
 ---
---- Phase RG-2: RockgroveCommon.handle() (trash mechanics) ✓
+--- Phase RG-2: RockgroveCommon.handle() (trash mechanics) (done)
 --- Phase RG-4: Bahsei-specific mechanics
 ---
 --- onCombatEvent:
----   CursedGround    (152475): BEGIN → Alert; 28 s cycle
----   Salvo2/Interrupt(152463): BEGIN, tank-only → AlertCast + "Interrupt!" Alert
----   Sickle          (150067): BEGIN → nextSickle +15 s; if targeted → AlertCast
----   Hemorrhage      (150008): targeted player → "Bleeding" Alert 9 s
----   RancidHammer    (149922): BEGIN, tank-only → AlertCast
----   MT detection: carve/slice/rendflesh (150047/150048/150065) target → mtUnitId
----   MeteorSwarm     (155357): EFFECT_GAINED_DURATION → CastAlertsStart 13.5 s (HM)
----   EyeCW/CCW       (153517/153518): EFFECT_GAINED → track portal direction (HM)
+---   CursedGround    (152475): BEGIN -> Alert; 28 s cycle
+---   Salvo2/Interrupt(152463): BEGIN, tank-only -> AlertCast + "Interrupt!" Alert
+---   Sickle          (150067): BEGIN -> nextSickle +15 s; if targeted -> AlertCast
+---   Hemorrhage      (150008): targeted player -> "Bleeding" Alert 9 s
+---   RancidHammer    (149922): BEGIN, tank-only -> AlertCast
+---   MT detection: carve/slice/rendflesh (150047/150048/150065) target -> mtUnitId
+---   MeteorSwarm     (155357): EFFECT_GAINED_DURATION -> CastAlertsStart 13.5 s (HM)
+---   EyeCW/CCW       (153517/153518): EFFECT_GAINED -> track portal direction (HM)
 ---
 --- onEffectChanged:
----   DeathTouch (150078): GAINED on self → AlertBorder blue 9 s;
----                        GAINED on mtUnitId → nextMtExplosion +9 s
----   MalignantMarrow (153421): GAINED → nextPortal +50 s, flip portalNumber;
----                             self GAINED → selfDoNotPortalTime +120 s;
----                             self FADED  → clear selfDoNotPortalTime
----   BitterMarrow (153423): GAINED → numPlayersInPortal++; FADED → --
+---   DeathTouch (150078): GAINED on self -> AlertBorder blue 9 s;
+---                        GAINED on mtUnitId -> nextMtExplosion +9 s
+---   MalignantMarrow (153421): GAINED -> nextPortal +50 s, flip portalNumber;
+---                             self GAINED -> selfDoNotPortalTime +120 s;
+---                             self FADED  -> clear selfDoNotPortalTime
+---   BitterMarrow (153423): GAINED -> numPlayersInPortal++; FADED -> --
 ---
 --- Note: Scalding (153175) on Fire Behemoth add is handled by RockgroveCommon.
 ---
@@ -29,44 +29,44 @@
 
 local RockgroveCommon = require("trial.rg.RockgroveCommon")
 
--- ── Ability IDs ────────────────────────────────────────────────────────────
-local CURSED_GROUND    = 152475   -- combatRoute: ACTION_RESULT_BEGIN → Cursed Ground alert
-local SALVO2           = 152463   -- combatRoute: ACTION_RESULT_BEGIN → interrupt prompt (tanks)
-local SICKLE           = 150067   -- combatRoute: ACTION_RESULT_BEGIN → nextSickle +15s; player alert
-local HEMORRHAGE       = 150008   -- combatRoute: ACTION_RESULT_BEGIN → Bleeding alert (player)
-local RANCID_HAMMER    = 149922   -- combatRoute: ACTION_RESULT_BEGIN → caAlertCast (tanks)
+-- -- Ability IDs ------------------------------------------------------------
+local CURSED_GROUND    = 152475   -- combatRoute: ACTION_RESULT_BEGIN -> Cursed Ground alert
+local SALVO2           = 152463   -- combatRoute: ACTION_RESULT_BEGIN -> interrupt prompt (tanks)
+local SICKLE           = 150067   -- combatRoute: ACTION_RESULT_BEGIN -> nextSickle +15s; player alert
+local HEMORRHAGE       = 150008   -- combatRoute: ACTION_RESULT_BEGIN -> Bleeding alert (player)
+local RANCID_HAMMER    = 149922   -- combatRoute: ACTION_RESULT_BEGIN -> caAlertCast (tanks)
 local MT_ATTACK_IDS    = { [150047]=true, [150048]=true, [150065]=true }
-                                   -- combatRoute: plain → Bahsei carve/slice/rendflesh MT detection
-local DEATH_TOUCH      = 150078   -- effectRoute: EFFECT_RESULT_GAINED → blue border + MT explosion
-local MALIGNANT_MARROW = 153421   -- effectRoute: EFFECT_RESULT_GAINED / FADED → nextPortal +50s
-local BITTER_MARROW    = 153423   -- effectRoute: EFFECT_RESULT_GAINED / FADED → numPlayersInPortal
-local METEOR_SWARM     = 155357   -- combatRoute: ACTION_RESULT_EFFECT_GAINED_DURATION → 13.5s bar (HM)
-local EYE_CW           = 153517   -- combatRoute: ACTION_RESULT_EFFECT_GAINED → CW portal direction
-local EYE_CCW          = 153518   -- combatRoute: ACTION_RESULT_EFFECT_GAINED → CCW portal direction
+                                   -- combatRoute: plain -> Bahsei carve/slice/rendflesh MT detection
+local DEATH_TOUCH      = 150078   -- effectRoute: EFFECT_RESULT_GAINED -> blue border + MT explosion
+local MALIGNANT_MARROW = 153421   -- effectRoute: EFFECT_RESULT_GAINED / FADED -> nextPortal +50s
+local BITTER_MARROW    = 153423   -- effectRoute: EFFECT_RESULT_GAINED / FADED -> numPlayersInPortal
+local METEOR_SWARM     = 155357   -- combatRoute: ACTION_RESULT_EFFECT_GAINED_DURATION -> 13.5s bar (HM)
+local EYE_CW           = 153517   -- combatRoute: ACTION_RESULT_EFFECT_GAINED -> CW portal direction
+local EYE_CCW          = 153518   -- combatRoute: ACTION_RESULT_EFFECT_GAINED -> CCW portal direction
 
 local CA = require("lib.CA")
 local BossBase = require("lib.BossBase")
 local CastDur = require("lib.CastDur")
 
--- ── CA colour palettes ─────────────────────────────────────────────────────
+-- -- CA colour palettes -----------------------------------------------------
 local COL_INTERRUPT = { -2, 0, true,  { 0.3, 0.6, 1.0, 0.4 }, { 0.3, 0.6, 1.0, 0.8 } }
 local COL_SICKLE    = { -2, 0, false, { 0.7, 0.2, 0.9, 0.4 }, { 0.7, 0.2, 0.9, 0.8 } }
 local COL_HAMMER    = { -2, 0, false, { 1.0, 0.5, 0.1, 0.4 }, { 1.0, 0.5, 0.1, 0.8 } }
 local COL_METEOR    = { 1.0, 0.70, 0.0, 0.5 }
 local ACT_METEOR    = { 10000, "KILL SUN!", 0.8, 0.0, 0.0, 0.9, nil }
 
--- ── Fallback durations (empirical; replace if GetAbilityCastInfo becomes reliable) ─
+-- -- Fallback durations (empirical; replace if GetAbilityCastInfo becomes reliable) -
 local FALLBACK_SALVO_DUR  = 2500   -- Salvo2 (interrupt): empirical
 local FALLBACK_SICKLE_DUR = 1500   -- Sickle: empirical
 local FALLBACK_HAMMER_DUR = 2000   -- RancidHammer: empirical
 
--- ── Boss definition ───────────────────────────────────────────────────────
+-- -- Boss definition -------------------------------------------------------
 local Bahsei = {}
 Bahsei.__index = Bahsei
 
 Bahsei.key               = "bahsei"
 Bahsei.name              = "Bahsei"      -- TODO: verify; may be "Flame-Herald Bahsei"
--- location: arena AABB not yet captured — detection is name-based.
+-- location: arena AABB not yet captured  -  detection is name-based.
 -- To add AABB: stand in arena, run /script d(GetUnitWorldPosition("boss1"))
 Bahsei.hmHealthThreshold = 100000001     -- TODO: verify exact HM health pool in-game
 
@@ -91,7 +91,7 @@ function Bahsei.new()
     return BossBase.fromSchema(Bahsei)
 end
 
--- ── Lifecycle ─────────────────────────────────────────────────────────────
+-- -- Lifecycle -------------------------------------------------------------
 function Bahsei:onLeave(context)
     CA.castAlertsStop(self.sunBarId)
     self.sunBarId = false
@@ -115,16 +115,16 @@ function Bahsei:onWipe(context, alerts)
     self.lastPortalCW       = true
 end
 
--- ── Combat state ──────────────────────────────────────────────────────────
+-- -- Combat state ----------------------------------------------------------
 function Bahsei:onCombatState(context, inCombat, alerts)
     if inCombat then
         -- First portal opens ~20 s into the fight.
-        -- HM only — nextPortal is displayed only when context.difficulty == HARDMODE.
+        -- HM only  -  nextPortal is displayed only when context.difficulty == HARDMODE.
         self.nextPortal = GetGameTimeMilliseconds() / 1000 + 20
     end
 end
 
--- ── Routing tables (C3) ──────────────────────────────────────────────────
+-- -- Routing tables (C3) --------------------------------------------------
 -- Shared trash mechanic handler.
 Bahsei.common = RockgroveCommon
 
@@ -140,7 +140,7 @@ function Bahsei:onDied(context, alerts,
     end
 end
 
--- MT_ATTACK_IDS (carve/slice/rendflesh): player hit → update mtUnitId.
+-- MT_ATTACK_IDS (carve/slice/rendflesh): player hit -> update mtUnitId.
 local function handleMtDetect(self, context, alerts, result, abilityId,
                                unitTag, sourceUnitTag, sourceUnitId, unitId, ...)
     if IsUnitPlayer(unitTag) then self.mtUnitId = unitId end
@@ -237,12 +237,12 @@ end
 local function handleMalignantMarrow(self, context, alerts, changeType, abilityId,
                                       unitTag, unitId, unitName, stackCount)
     if changeType == EFFECT_RESULT_GAINED then
-        -- Event fires up to 3 times — accept only once per 5 s window.
+        -- Event fires up to 3 times  -  accept only once per 5 s window.
         local now = GetGameTimeMilliseconds() / 1000
         local newPortalTime = now + 50
         if newPortalTime > self.nextPortal + 5 then
             self.nextPortal         = newPortalTime
-            self.portalNumber       = 3 - self.portalNumber   -- 1↔2
+            self.portalNumber       = 3 - self.portalNumber   -- 1<->2
             self.numPlayersInPortal = 0
             self.portalTracker      = {}
         end
@@ -275,7 +275,7 @@ Bahsei.effectRoutes = {
     [BITTER_MARROW]    = handleBitterMarrow,
 }
 
--- ── Info-line renderers ───────────────────────────────────────────────────
+-- -- Info-line renderers ---------------------------------------------------
 
 -- Info 1: Next Cursed Ground (28 s cycle).
 local function showCursedGroundLine(self, alerts, now)
@@ -291,7 +291,7 @@ local function showCursedGroundLine(self, alerts, now)
     end
 end
 
--- Info 2 (HM): Next Portal — countdown before opening, or direction + in-progress count.
+-- Info 2 (HM): Next Portal  -  countdown before opening, or direction + in-progress count.
 local function showPortalLine(self, alerts, now, isHM)
     if isHM then
         local delta = self.nextPortal - now
@@ -311,7 +311,7 @@ local function showPortalLine(self, alerts, now, isHM)
     end
 end
 
--- Info 3: Tank Exploding (≤ 3 s) > Death Touch personal > No Portal cooldown.
+-- Info 3: Tank Exploding (<= 3 s) > Death Touch personal > No Portal cooldown.
 -- Kept on info3 (not showAction) so reactive event alerts (Block!, Dodge!) keep their slot.
 local function showDeathTouchLine(self, alerts, now, isHM)
     local explodeDelta = (self.nextMtExplosion > 0) and (self.nextMtExplosion - now) or -1
@@ -335,7 +335,7 @@ local function showDeathTouchLine(self, alerts, now, isHM)
     end
 end
 
--- Info 4 (HM): Next Sickle — displayed only within the 15 s window before the cast.
+-- Info 4 (HM): Next Sickle  -  displayed only within the 15 s window before the cast.
 local function showSickleLine(self, alerts, now, isHM)
     if isHM and self.nextSickle > 0 then
         local T = self.nextSickle - now
@@ -351,7 +351,7 @@ local function showSickleLine(self, alerts, now, isHM)
     end
 end
 
--- ── 200 ms display loop ───────────────────────────────────────────────────
+-- -- 200 ms display loop ---------------------------------------------------
 function Bahsei:onUpdate(context, alerts)
     local now  = GetGameTimeMilliseconds() / 1000
     local isHM = context.isHM

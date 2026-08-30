@@ -14,8 +14,8 @@ UnitTracker.__index = UnitTracker
 
 function UnitTracker.new()
     return setmetatable({
-        byId    = {},  -- [unitId]  → info
-        byTag   = {},  -- [tag]     → info
+        byId    = {},  -- [unitId]  -> info
+        byTag   = {},  -- [tag]     -> info
         bossSlot = 0,  -- next boss slot index (1-4)
     }, UnitTracker)
 end
@@ -34,7 +34,7 @@ function UnitTracker:addUnit(e)
         self.bossSlot = math.min(self.bossSlot + 1, 4)
         tag = "boss" .. self.bossSlot
     else
-        -- Generic NPC / companion — use a unique synthetic tag.
+        -- Generic NPC / companion  -  use a unique synthetic tag.
         tag = "npc_" .. e.unitId
     end
 
@@ -73,7 +73,7 @@ function UnitTracker:getById(unitId)
     return self.byId[unitId]
 end
 
---- Look up a unit by its ESO tag ("player", "boss1", "group3", …).
+--- Look up a unit by its ESO tag ("player", "boss1", "group3", ...).
 function UnitTracker:getByTag(tag)
     return self.byTag[tag]
 end

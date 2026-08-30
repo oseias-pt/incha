@@ -1,25 +1,25 @@
---- Xalvakka — Rockgrove boss 3
+--- Xalvakka  -  Rockgrove boss 3
 ---
 --- Three-floor fight:
----   Floor 1: HP 100–70%  (boss escapes at 70%)
----   Floor 2: HP  70–40%  (boss escapes at 40%)
----   Floor 3: HP   0–40%
+---   Floor 1: HP 100-70%  (boss escapes at 70%)
+---   Floor 2: HP  70-40%  (boss escapes at 40%)
+---   Floor 3: HP   0-40%
 ---
---- Phase RG-2: RockgroveCommon.handle() (trash mechanics) ✓
---- Phase RG-5: Xalvakka-specific mechanics ✓
----   ScathingEvisceration (149180/153448/153450): targeted player → AlertCast
----   Deadstar (149386/149075): BEGIN → Alert("Deadstar!")
----   FlamingPortal/Jump (157390): BEGIN → nextJump +35 s, numJumps++ (HM)
----   SoulResonance (152993): EFFECT_GAINED self → Alert("Purge!"), start timer
----   UnstableCharge/Blob (153164): EFFECT_GAINED/FADED self → AlertBorder green; info4
----   VolatileShell shield: EVENT_UNIT_ATTRIBUTE_VISUAL_* on "reticleover" → shellShield
----   Run timer: HP 70–75% and 40–45% → info4 countdown
---- Phase RG-6: ManifoldDebuff (157290) ✓
----   EFFECT_GAINED self   → AlertBorder purple + "Manifold Curse!" caAlert
----   EFFECT_GAINED others → name tracked in manifoldOthers[]
----   EFFECT_FADED self    → border cleared, selfManifold = false
----   EFFECT_FADED others  → removed from manifoldOthers[]
----   onUpdate info3       → manifold list (priority) > shell shield value
+--- Phase RG-2: RockgroveCommon.handle() (trash mechanics) (done)
+--- Phase RG-5: Xalvakka-specific mechanics (done)
+---   ScathingEvisceration (149180/153448/153450): targeted player -> AlertCast
+---   Deadstar (149386/149075): BEGIN -> Alert("Deadstar!")
+---   FlamingPortal/Jump (157390): BEGIN -> nextJump +35 s, numJumps++ (HM)
+---   SoulResonance (152993): EFFECT_GAINED self -> Alert("Purge!"), start timer
+---   UnstableCharge/Blob (153164): EFFECT_GAINED/FADED self -> AlertBorder green; info4
+---   VolatileShell shield: EVENT_UNIT_ATTRIBUTE_VISUAL_* on "reticleover" -> shellShield
+---   Run timer: HP 70-75% and 40-45% -> info4 countdown
+--- Phase RG-6: ManifoldDebuff (157290) (done)
+---   EFFECT_GAINED self   -> AlertBorder purple + "Manifold Curse!" caAlert
+---   EFFECT_GAINED others -> name tracked in manifoldOthers[]
+---   EFFECT_FADED self    -> border cleared, selfManifold = false
+---   EFFECT_FADED others  -> removed from manifoldOthers[]
+---   onUpdate info3       -> manifold list (priority) > shell shield value
 ---
 --- Shield tracking (Volatile Shell):
 ---   Registered in onEnter (scoped to the encounter), cleaned up in onLeave().
@@ -37,16 +37,16 @@ local RockgroveCommon = require("trial.rg.RockgroveCommon")
 
 local SHIELD_EVENT_KEY = ADDON_PREFIX .. "RG_XalvakkaShield"
 
--- ── Ability IDs ────────────────────────────────────────────────────────────
-local SCATHING1       = 149180   -- combatRoute: ACTION_RESULT_BEGIN → player-targeted alert
-local SCATHING2       = 153448   -- combatRoute: ACTION_RESULT_BEGIN → player-targeted alert (HM)
-local SCATHING3       = 153450   -- combatRoute: ACTION_RESULT_BEGIN → player-targeted alert (HM)
-local DEADSTAR1       = 149386   -- combatRoute: ACTION_RESULT_BEGIN → Deadstar alert
-local DEADSTAR2       = 149075   -- combatRoute: ACTION_RESULT_BEGIN → Deadstar alert
-local FLAMING_PORTAL  = 157390   -- combatRoute: ACTION_RESULT_BEGIN → nextJump +35s (HM)
-local SOUL_RESONANCE  = 152993   -- effectRoute: EFFECT_RESULT_GAINED / FADED → purge alert
-local UNSTABLE_CHARGE = 153164   -- effectRoute: EFFECT_RESULT_GAINED / FADED → green border (blob)
-local MANIFOLD_DEBUFF = 157290   -- effectRoute: EFFECT_RESULT_GAINED / FADED → purple border + tracker
+-- -- Ability IDs ------------------------------------------------------------
+local SCATHING1       = 149180   -- combatRoute: ACTION_RESULT_BEGIN -> player-targeted alert
+local SCATHING2       = 153448   -- combatRoute: ACTION_RESULT_BEGIN -> player-targeted alert (HM)
+local SCATHING3       = 153450   -- combatRoute: ACTION_RESULT_BEGIN -> player-targeted alert (HM)
+local DEADSTAR1       = 149386   -- combatRoute: ACTION_RESULT_BEGIN -> Deadstar alert
+local DEADSTAR2       = 149075   -- combatRoute: ACTION_RESULT_BEGIN -> Deadstar alert
+local FLAMING_PORTAL  = 157390   -- combatRoute: ACTION_RESULT_BEGIN -> nextJump +35s (HM)
+local SOUL_RESONANCE  = 152993   -- effectRoute: EFFECT_RESULT_GAINED / FADED -> purge alert
+local UNSTABLE_CHARGE = 153164   -- effectRoute: EFFECT_RESULT_GAINED / FADED -> green border (blob)
+local MANIFOLD_DEBUFF = 157290   -- effectRoute: EFFECT_RESULT_GAINED / FADED -> purple border + tracker
 
 local SCATHING_IDS = { [149180]=true, [153448]=true, [153450]=true }
 local DEADSTAR_IDS = { [149386]=true, [149075]=true }
@@ -64,13 +64,13 @@ local CA = require("lib.CA")
 local BossBase = require("lib.BossBase")
 local CastDur = require("lib.CastDur")
 
--- ── CA colour palettes ─────────────────────────────────────────────────────
+-- -- CA colour palettes -----------------------------------------------------
 local COL_SCATHING = { -2, 0, false, { 0.9, 0.2, 0.9, 0.4 }, { 0.9, 0.2, 0.9, 0.8 } }
 
--- ── Fallback durations (empirical; replace if GetAbilityCastInfo becomes reliable) ─
+-- -- Fallback durations (empirical; replace if GetAbilityCastInfo becomes reliable) -
 local FALLBACK_SCATHING_DUR = 1500   -- ScathingEvisceration: empirical
 
--- ── Shield value formatter ─────────────────────────────────────────────────
+-- -- Shield value formatter -------------------------------------------------
 local function fmtShield(v)
     if v >= 1000000 then
         return string.format("%.2fM", v / 1000000)
@@ -81,14 +81,14 @@ local function fmtShield(v)
     end
 end
 
--- ── Boss definition ───────────────────────────────────────────────────────
+-- -- Boss definition -------------------------------------------------------
 local Xalvakka = {}
 Xalvakka.__index = Xalvakka
 Xalvakka.common = RockgroveCommon   -- C3: common mechanic dispatch
 
 Xalvakka.key               = "xalvakka"
 Xalvakka.name              = "Xalvakka"     -- TODO: verify exact unit name via GetUnitName("boss1")
--- location: arena AABB not yet captured — detection is name-based.
+-- location: arena AABB not yet captured  -  detection is name-based.
 -- To add AABB: stand in arena, run /script d(GetUnitWorldPosition("boss1"))
 Xalvakka.hmHealthThreshold = 100000001      -- TODO: verify exact HM health pool
 
@@ -106,14 +106,14 @@ function Xalvakka.new()
     return BossBase.fromSchema(Xalvakka)
 end
 
--- ── Lifecycle ─────────────────────────────────────────────────────────────
+-- -- Lifecycle -------------------------------------------------------------
 function Xalvakka:onLeave(context)
     EVENT_MANAGER:UnregisterForEvent(SHIELD_EVENT_KEY, EVENT_UNIT_ATTRIBUTE_VISUAL_ADDED)
     EVENT_MANAGER:UnregisterForEvent(SHIELD_EVENT_KEY, EVENT_UNIT_ATTRIBUTE_VISUAL_UPDATED)
     EVENT_MANAGER:UnregisterForEvent(SHIELD_EVENT_KEY, EVENT_UNIT_ATTRIBUTE_VISUAL_REMOVED)
 end
 
--- ── Boss enter ────────────────────────────────────────────────────────────
+-- -- Boss enter ------------------------------------------------------------
 -- Called by Trial:onBossesChanged when Xalvakka becomes the active boss.
 -- Self-registers Volatile Shell shield tracking so it is encounter-scoped.
 function Xalvakka:onEnter(context, alerts)
@@ -163,7 +163,7 @@ function Xalvakka:onWipe(context, alerts)
     self.manifoldOthers = {}
 end
 
--- ── Combat state ──────────────────────────────────────────────────────────
+-- -- Combat state ----------------------------------------------------------
 function Xalvakka:onCombatState(context, inCombat, alerts)
     if inCombat then
         -- First jump expected ~35 s after pull in HM; same interval as subsequent jumps.
@@ -173,8 +173,8 @@ function Xalvakka:onCombatState(context, inCombat, alerts)
     end
 end
 
--- ── Routing tables (C3) ──────────────────────────────────────────────────
--- (No onDied needed — Xalvakka has no alertList.)
+-- -- Routing tables (C3) --------------------------------------------------
+-- (No onDied needed  -  Xalvakka has no alertList.)
 
 -- ScathingEvisceration: player-targeted frontal heavy (3 IDs, shared handler).
 local function handleScathing(self, context, alerts, abilityId,
@@ -240,7 +240,7 @@ local function handleManifoldDebuff(self, context, alerts, changeType, abilityId
         if AreUnitsEqual("player", unitTag) then
             self.selfManifold = true
             CA.border(true, 20000, "purple")
-            CA.alert(nil, "|cAA44ffManifold Curse|r on YOU — spread!",
+            CA.alert(nil, "|cAA44ffManifold Curse|r on YOU  -  spread!",
                 0xAA44FFD9, SOUNDS.DUEL_START, 5000)
             PlaySound(SOUNDS.DUEL_START)
         elseif IsUnitPlayer(unitTag) then
@@ -263,9 +263,9 @@ Xalvakka.effectRoutes = {
     [MANIFOLD_DEBUFF] = handleManifoldDebuff,
 }
 
--- ── Info-line renderers ───────────────────────────────────────────────────
+-- -- Info-line renderers ---------------------------------------------------
 
--- Info 1 (HM): Next jump timer; hidden once numJumps ≥ 4 (pattern established).
+-- Info 1 (HM): Next jump timer; hidden once numJumps >= 4 (pattern established).
 local function showJumpLine(self, alerts, now, isHM)
     if isHM and self.nextJump > 0 and self.numJumps < 4 then
         local T = self.nextJump - now
@@ -326,13 +326,13 @@ local function showRunLine(self, alerts, context)
         alerts:showInfo(4, "|cffdd00RUN IN|r: " ..
             string.format("%.1f%%", hp - RUN2_BOT))
     elseif self.onBlob then
-        alerts:showInfo(4, "|c66ff66ON BLOB|r — stand still!")
+        alerts:showInfo(4, "|c66ff66ON BLOB|r  -  stand still!")
     else
         alerts:showInfo(4, "")
     end
 end
 
--- ── 200 ms display loop ───────────────────────────────────────────────────
+-- -- 200 ms display loop ---------------------------------------------------
 function Xalvakka:onUpdate(context, alerts)
     local now  = GetGameTimeMilliseconds() / 1000
     local isHM = context.isHM

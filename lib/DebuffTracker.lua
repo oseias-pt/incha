@@ -1,4 +1,4 @@
---- DebuffTracker — timed debuff window with optional player-name tracking.
+--- DebuffTracker  -  timed debuff window with optional player-name tracking.
 ---
 --- Wraps a Timer and an optional display name so callers do not have to
 --- manage a raw timestamp and a name field separately.

@@ -1,8 +1,8 @@
---- test/run_log.lua — ESO encounter-log integration test runner (Phase 1)
+--- test/run_log.lua  -  ESO encounter-log integration test runner (Phase 1)
 ---
 --- Replays every event in an ESO encounter log through the live Incha boss
 --- modules and prints every alert the addon would have shown.  No assertions
---- yet — Phase 1 proves the code runs without errors on real data.
+--- yet  -  Phase 1 proves the code runs without errors on real data.
 ---
 --- Usage:
 ---   luajit test/run_log.lua  <log_file>  [zone_id]
@@ -16,7 +16,7 @@
 ---   Run from the repository root:
 ---     luajit test/run_log.lua "path/to/Encounter.log"
 
--- ── Resolve the addon root (two levels up from test/) ────────────────────
+-- -- Resolve the addon root (two levels up from test/) --------------------
 local SCRIPT_DIR  = debug.getinfo(1, "S").source:match("@?(.+[\\/])") or "./"
 local ADDON_ROOT  = SCRIPT_DIR .. "../"
 local HARNESS_DIR = SCRIPT_DIR
@@ -28,15 +28,15 @@ package.path = ADDON_ROOT .. "?.lua;"
             .. HARNESS_DIR .. "?.lua;"
             .. package.path
 
--- ── Load ESO API stubs (must be first — sets all globals) ─────────────────
+-- -- Load ESO API stubs (must be first  -  sets all globals) -----------------
 local EsoApi     = require("harness.eso_api")
 local UnitTracker = require("harness.unit_tracker")
 local LogReader  = require("harness.log_reader")
 
--- ── Zone → trial configuration ────────────────────────────────────────────
+-- -- Zone -> trial configuration --------------------------------------------
 -- bosses: ordered list of module paths matching the Factory order exactly
 --         (BossRegistry assigns IDs 1..N from this order).
--- hints:  log unit-name → boss key for trials whose boss classes use location-
+-- hints:  log unit-name -> boss key for trials whose boss classes use location-
 --         based detection (no .name field) and therefore can't be found by
 --         BossRegistry:findByName.
 local TRIAL_CONFIG = {
@@ -105,7 +105,7 @@ local TRIAL_CONFIG = {
     },
 }
 
--- ── Captured alerts ───────────────────────────────────────────────────────
+-- -- Captured alerts -------------------------------------------------------
 local capturedAlerts  = {}
 local currentMs = 0
 
@@ -128,7 +128,7 @@ local function makeAlertHandlers()
     }
 end
 
--- ── Helper: inject an active boss directly (bypass ESO event discovery) ───
+-- -- Helper: inject an active boss directly (bypass ESO event discovery) ---
 local function injectBoss(trial, bossClass)
     if trial.activeBoss and trial.activeBoss.onLeave then
         pcall(trial.activeBoss.onLeave, trial.activeBoss, trial.context)
@@ -154,7 +154,7 @@ local function clearBoss(trial)
     trial.bridge.onBossExit()
 end
 
--- ── Build a trial instance with test handlers ─────────────────────────────
+-- -- Build a trial instance with test handlers -----------------------------
 local function buildTrial(cfg)
     local Trial         = require("core.Trial")
     local CombatHandler = require("core.CombatHandler")
@@ -174,7 +174,7 @@ local function buildTrial(cfg)
         id              = cfg.id,
         zoneId          = cfg.zoneId,
         bosses          = bossClasses,
-        -- No bridge — falls back to BridgeBase (all no-ops).
+        -- No bridge  -  falls back to BridgeBase (all no-ops).
         alerts          = makeAlertHandlers(),
         onCombatEvent   = CombatHandler.onCombatEvent,
         onEffectChanged = CombatHandler.onEffectChanged,
@@ -184,7 +184,7 @@ local function buildTrial(cfg)
     return trial, CombatHandler
 end
 
--- ── Replay loop ───────────────────────────────────────────────────────────
+-- -- Replay loop -----------------------------------------------------------
 local function replayTrial(cfg, entries, tracker)
     local trial, CombatHandler = buildTrial(cfg)
     local hints = cfg.hints or {}
@@ -214,7 +214,7 @@ local function replayTrial(cfg, entries, tracker)
 
         local et = e.type
 
-        -- ── Zone bookkeeping ────────────────────────────────────────────
+        -- -- Zone bookkeeping --------------------------------------------
         if et == "BEGIN_LOG" then
             -- New log session: reset tracker and boss state.
             tracker:clear()
@@ -231,7 +231,7 @@ local function replayTrial(cfg, entries, tracker)
                 tracker:clear()
             end
 
-        -- ── Unit tracking ───────────────────────────────────────────────
+        -- -- Unit tracking -----------------------------------------------
         elseif et == "UNIT_ADDED" and e.unitId then
             local info = tracker:addUnit(e)
 
@@ -258,7 +258,7 @@ local function replayTrial(cfg, entries, tracker)
                     print(string.format("[%9dms] BOSS    %s activated (key=%s)",
                         e.ms, e.name, bossClass.key or "?"))
                 else
-                    -- Boss unit not in this trial's registry — skip silently.
+                    -- Boss unit not in this trial's registry  -  skip silently.
                     -- (Sea Adder, companion mobs, etc. are boss-flagged adds.)
                 end
             end
@@ -278,7 +278,7 @@ local function replayTrial(cfg, entries, tracker)
             end
             tracker:removeUnit(e.unitId)
 
-        -- ── Combat events ───────────────────────────────────────────────
+        -- -- Combat events -----------------------------------------------
         elseif et == "COMBAT_EVENT" and trial.activeBoss then
             if e.abilityId then
                 -- Update source unit health in tracker (for GetUnitPower stubs).
@@ -312,7 +312,7 @@ local function replayTrial(cfg, entries, tracker)
                 end
             end
 
-        -- ── Effect events ────────────────────────────────────────────────
+        -- -- Effect events ------------------------------------------------
         elseif et == "EFFECT_CHANGED" and trial.activeBoss then
             if e.abilityId and e.changeType ~= 0 then
                 local unitTag  = tracker:tagById(e.unitId)
@@ -345,7 +345,7 @@ local function replayTrial(cfg, entries, tracker)
     return stats
 end
 
--- ── Entry point ───────────────────────────────────────────────────────────
+-- -- Entry point -----------------------------------------------------------
 local function main(args)
     local logPath    = args[1]
     local forceZone  = args[2] and tonumber(args[2])
@@ -393,7 +393,7 @@ local function main(args)
 
     local cfg = TRIAL_CONFIG[targetZone]
     if not cfg then
-        -- Explicit zone arg that isn't in config — show what's actually in the log.
+        -- Explicit zone arg that isn't in config  -  show what's actually in the log.
         local found = #zonesInLog > 0
             and table.concat(zonesInLog, ", ")
             or  "(none)"

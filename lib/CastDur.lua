@@ -1,4 +1,4 @@
---- CastDur — thin wrapper around GetAbilityCastInfo with a per-callsite fallback.
+--- CastDur  -  thin wrapper around GetAbilityCastInfo with a per-callsite fallback.
 ---
 --- GetAbilityCastInfo returns 0 for instant-cast or unknown abilities.  Every
 --- handler that needs a bar duration supplies its own empirical fallback; this

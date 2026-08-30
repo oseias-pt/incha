@@ -4,20 +4,20 @@ local CA = require("lib.CA")
 local BossBase = require("lib.BossBase")
 local CastDur = require("lib.CastDur")
 
--- â”€â”€ Ability IDs â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
-local PIERCING_BEAM = 219165   -- combatRoute: ACTION_RESULT_BEGIN â†’ INTERRUPT; CD 14s first / 32s steady
-local VITRIFY       = 219083   -- combatRoute: ACTION_RESULT_BEGIN â†’ INTERRUPT; CD  9s first / 20s steady
+-- a"EURa"EUR Ability IDs a"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EUR
+local PIERCING_BEAM = 219165   -- combatRoute: ACTION_RESULT_BEGIN a+' INTERRUPT; CD 14s first / 32s steady
+local VITRIFY       = 219083   -- combatRoute: ACTION_RESULT_BEGIN a+' INTERRUPT; CD  9s first / 20s steady
 
--- â”€â”€ Timer durations (seconds) â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+-- a"EURa"EUR Timer durations (seconds) a"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EUR
 local BEAM_FIRST_CD    = 14.0
 local BEAM_CD          = 32.0
 local VITRIFY_FIRST_CD =  9.0
 local VITRIFY_CD       = 20.0
 
--- â”€â”€ CA colour palettes â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+-- a"EURa"EUR CA colour palettes a"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EUR
 local COL_INTERRUPT = { -3, 0, false, { 1, 0.1, 0.1, 0.4 }, { 1, 0.1, 0.1, 0.8 } }
 
--- â”€â”€ Fallback durations (empirical; replace if GetAbilityCastInfo becomes reliable) â”€
+-- a"EURa"EUR Fallback durations (empirical; replace if GetAbilityCastInfo becomes reliable) a"EUR
 local FALLBACK_BEAM_DUR    = 2500   -- PiercingBeam: empirical
 local FALLBACK_VITRIFY_DUR = 2000   -- Vitrify: empirical
 
@@ -29,7 +29,7 @@ XynizataEncounter.nameAliases       = { "Xynizata" }
 -- hmHealthThreshold: math.huge until measured in-game on vet HM.
 -- (0 would make detectDifficulty always return HARDMODE.)
 XynizataEncounter.hmHealthThreshold = math.huge
--- location: placeholder â€” Lucent Citadel arena AABB not yet captured.
+-- location: placeholder aEUR" Lucent Citadel arena AABB not yet captured.
 -- Detection falls back to nameAliases (name-based, may fail on non-EN clients).
 -- To calibrate: stand in arena, run /script d(GetUnitWorldPosition("boss1"))
 
@@ -44,25 +44,25 @@ function XynizataEncounter.new()
     return BossBase.fromSchema(XynizataEncounter)
 end
 
--- â”€â”€ Handlers â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+-- a"EURa"EUR Handlers a"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EUR
 
 local function handlePiercingBeam(self, context, alerts, abilityId, ...)
     self.firstBeam = false
     self.piercingBeamTimer:reset(BEAM_CD)
     local dur = CastDur.get(abilityId, FALLBACK_BEAM_DUR)
-    CA.alertCast(abilityId, "INTERRUPT â€” Beam!", dur, COL_INTERRUPT)
-    alerts:showAction("INTERRUPT â€” Piercing Beam!")
+    CA.alertCast(abilityId, "INTERRUPT aEUR" Beam!", dur, COL_INTERRUPT)
+    alerts:showAction("INTERRUPT aEUR" Piercing Beam!")
 end
 
 local function handleVitrify(self, context, alerts, abilityId, ...)
     self.firstVitrify = false
     self.vitrifyTimer:reset(VITRIFY_CD)
     local dur = CastDur.get(abilityId, FALLBACK_VITRIFY_DUR)
-    CA.alertCast(abilityId, "INTERRUPT â€” Vitrify!", dur, COL_INTERRUPT)
-    alerts:showAction("INTERRUPT â€” Vitrify!")
+    CA.alertCast(abilityId, "INTERRUPT aEUR" Vitrify!", dur, COL_INTERRUPT)
+    alerts:showAction("INTERRUPT aEUR" Vitrify!")
 end
 
--- â”€â”€ Routing tables (C3) â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+-- a"EURa"EUR Routing tables (C3) a"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EUR
 
 XynizataEncounter.combatRoutes = {
     [PIERCING_BEAM] = { result = ACTION_RESULT_BEGIN, fn = handlePiercingBeam },

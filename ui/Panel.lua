@@ -1,4 +1,4 @@
---- Default overlay panel — implements the AlertSink handler vocabulary
+--- Default overlay panel  -  implements the AlertSink handler vocabulary
 --- using plain WINDOW_MANAGER controls owned entirely by Incha.
 ---
 --- Design rules (from Phase 0 analysis):
@@ -7,11 +7,11 @@
 ---   - No per-tick allocations anywhere in this file.
 ---
 --- Alert vocabulary:
----   header(text)    — boss name / HM status, small gold line at top
----   info(n, text)   — timer countdown lines (grey, small)
----   action(text)    — prominent mid-fight call-out (orange, bold)
----   hideAction()    — clears action without hiding panel
----   clear()         — clears all text and hides the panel
+---   header(text)     -  boss name / HM status, small gold line at top
+---   info(n, text)    -  timer countdown lines (grey, small)
+---   action(text)     -  prominent mid-fight call-out (orange, bold)
+---   hideAction()     -  clears action without hiding panel
+---   clear()          -  clears all text and hides the panel
 ---
 --- Used by ka/rg/dsr.
 
@@ -20,7 +20,7 @@ local Settings   = require("core.Settings")
 
 local Panel = {}
 
--- Control bundle — nil until first build(), populated exactly once.
+-- Control bundle  -  nil until first build(), populated exactly once.
 local ctrl = nil
 
 -- Whether the HUD scene is currently in the "showing" state.
@@ -33,8 +33,8 @@ local INFO_LINE_COUNT = 7
 local W, H = 320, 200
 
 -- Show or hide the panel based on two independent gates:
---   ctrl.active   — trial/boss content should be on screen
---   hudVisible    — the hud/hudui scene allows it
+--   ctrl.active    -  trial/boss content should be on screen
+--   hudVisible     -  the hud/hudui scene allows it
 -- Call this instead of SetHidden directly so both gates stay in sync.
 local function applyVisibility()
     if not ctrl then return end
@@ -70,7 +70,7 @@ local function build()
 
     local sv = Settings.get().overlay
 
-    -- Outer container — the draggable root.
+    -- Outer container  -  the draggable root.
     local panel = WINDOW_MANAGER:CreateControl("InchPanel", GuiRoot, CT_CONTROL)
     panel:SetDimensions(W, H)
     panel:SetClampedToScreen(true)
@@ -93,7 +93,7 @@ local function build()
     bg:SetCenterColor(0.04, 0.04, 0.04, 0.82)
     bg:SetEdgeColor(0.35, 0.35, 0.35, 0.9)
 
-    -- Header — boss name / HM status.  Small, gold.
+    -- Header  -  boss name / HM status.  Small, gold.
     local header = WINDOW_MANAGER:CreateControl(nil, panel, CT_LABEL)
     header:SetFont("ZoFontGameSmall")
     header:SetColor(1, 0.82, 0.22, 1)
@@ -102,7 +102,7 @@ local function build()
     header:SetDimensions(W - 16, 18)
     header:SetText("")
 
-    -- Info lines — timer countdowns.  Small, grey.
+    -- Info lines  -  timer countdowns.  Small, grey.
     -- Stacked below the header with 2px gaps.
     local info = {}
     for i = 1, INFO_LINE_COUNT do
@@ -116,7 +116,7 @@ local function build()
         info[i] = lbl
     end
 
-    -- Action — the prominent mid-fight call-out.  Larger, orange.
+    -- Action  -  the prominent mid-fight call-out.  Larger, orange.
     local action = WINDOW_MANAGER:CreateControl(nil, panel, CT_LABEL)
     action:SetFont("ZoFontGameBold")
     action:SetColor(1, 0.42, 0.08, 1)
@@ -152,7 +152,7 @@ local function build()
     SCENE_MANAGER:GetScene("hudui"):RegisterCallback("StateChange", onHudStateChange)
 end
 
--- ── AlertSink handler table ────────────────────────────────────────────────
+-- -- AlertSink handler table ------------------------------------------------
 
 Panel.alerts = {
     header = function(text)
@@ -168,8 +168,8 @@ Panel.alerts = {
         end
     end,
 
-    -- info(n, text) — timer countdown for slot n (1–7).
-    -- Hot path: called up to 7× per 200 ms onUpdate tick.  Skip SetText when
+    -- info(n, text)  -  timer countdown for slot n (1-7).
+    -- Hot path: called up to 7x per 200 ms onUpdate tick.  Skip SetText when
     -- the string is unchanged (LuaJIT interns all strings, so ~= is a pointer
     -- compare).  Skip applyVisibility when the panel is already active.
     info = function(n, text)
@@ -203,7 +203,7 @@ Panel.alerts = {
     hideAction = function()
         if not ctrl then return end
         ctrl.action:SetText("")
-        -- leave panel visible — info lines may still carry timer data
+        -- leave panel visible  -  info lines may still carry timer data
     end,
 
     clear = function()
@@ -212,7 +212,7 @@ Panel.alerts = {
     end,
 }
 
--- ── Bridge lifecycle table ─────────────────────────────────────────────────
+-- -- Bridge lifecycle table -------------------------------------------------
 -- Wrapped with BridgeBase so checkHardmode (and any future hook) falls back
 -- to the documented no-op rather than silently being absent.
 
@@ -240,7 +240,7 @@ Panel.bridge = BridgeBase.extend({
     -- checkHardmode: inherited no-op from BridgeBase (Panel has no HM logic)
 })
 
--- ── Settings refresh ───────────────────────────────────────────────────────
+-- -- Settings refresh -------------------------------------------------------
 
 function Panel.refresh()
     if not ctrl then return end

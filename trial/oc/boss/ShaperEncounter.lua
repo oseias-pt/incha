@@ -4,15 +4,15 @@ local BossBase         = require("lib.BossBase")
 local CastDur          = require("lib.CastDur")
 local OsseinCageCommon = require("trial.oc.OsseinCageCommon")
 
--- â”€â”€ Ability IDs (from OsseinCageHelper) â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
-local OGRIM_CHARGE     = 236496   -- combatRoute: ACTION_RESULT_BEGIN â†’ MOVE caAlertCast (player)
-local SHAPER_SHIELD    = 232511   -- combatRoute: (plain) EFFECT_RESULT_GAINED/FADED â†’ shield state
-local CHANNELER_SHIELD = 232510   -- combatRoute: ACTION_RESULT_EFFECT_GAINED â†’ channelers alert
+-- a"EURa"EUR Ability IDs (from OsseinCageHelper) a"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EUR
+local OGRIM_CHARGE     = 236496   -- combatRoute: ACTION_RESULT_BEGIN a+' MOVE caAlertCast (player)
+local SHAPER_SHIELD    = 232511   -- combatRoute: (plain) EFFECT_RESULT_GAINED/FADED a+' shield state
+local CHANNELER_SHIELD = 232510   -- combatRoute: ACTION_RESULT_EFFECT_GAINED a+' channelers alert
 
--- â”€â”€ CA colour palettes â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+-- a"EURa"EUR CA colour palettes a"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EUR
 local COL_CHARGE = { -3, 0, false, { 1, 0.4, 0, 0.4 }, { 1, 0.4, 0, 0.8 } }
 
--- â”€â”€ Fallback durations (empirical; replace if GetAbilityCastInfo becomes reliable) â”€
+-- a"EURa"EUR Fallback durations (empirical; replace if GetAbilityCastInfo becomes reliable) a"EUR
 local FALLBACK_DUR = 2000   -- Ogrim Charge: empirical
 
 local ShaperEncounter = {}
@@ -23,7 +23,7 @@ ShaperEncounter.nameAliases       = { "Shaper of Flesh" }
 -- hmHealthThreshold: math.huge until measured in-game on vet HM.
 -- (0 would make detectDifficulty always return HARDMODE.)
 ShaperEncounter.hmHealthThreshold = math.huge
--- location: placeholder â€” Oathsworn Pit arena AABB not yet captured.
+-- location: placeholder aEUR" Oathsworn Pit arena AABB not yet captured.
 -- Detection falls back to nameAliases (name-based, may fail on non-EN clients).
 -- To calibrate: stand in arena, run /script d(GetUnitWorldPosition("boss1"))
 
@@ -35,39 +35,39 @@ function ShaperEncounter.new()
     return BossBase.fromSchema(ShaperEncounter)
 end
 
--- â”€â”€ Handlers â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+-- a"EURa"EUR Handlers a"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EUR
 
 local function handleOgrimCharge(self, context, alerts, abilityId,
                                   unitTag, sourceUnitTag, sourceUnitId, unitId,
                                   sourceUnitName, unitName)
     local target = (unitName and unitName ~= "") and unitName or "?"
     local dur = CastDur.get(abilityId, FALLBACK_DUR)
-    CA.alertCast(abilityId, "MOVE â€” Ogrim Charge!", dur, COL_CHARGE)
+    CA.alertCast(abilityId, "MOVE aEUR" Ogrim Charge!", dur, COL_CHARGE)
     if IsUnitPlayer(unitTag) then
         alerts:showAction("Ogrim Charge on YOU! Move!")
     else
-        alerts:showAction("Ogrim Charge â†’ " .. target)
+        alerts:showAction("Ogrim Charge a+' " .. target)
     end
 end
 
 local function handleShaperShield(self, context, alerts, result, abilityId, ...)
     if result == ACTION_RESULT_EFFECT_GAINED then
         self.shaperShielded = true
-        CA.alert(nil, "Shaper shielded â€” kill channelers!", 0xAA44FFFF, SOUNDS.NONE, 4000)
-        alerts:showAction("Shaper of Flesh shielded â€” kill channelers!")
+        CA.alert(nil, "Shaper shielded aEUR" kill channelers!", 0xAA44FFFF, SOUNDS.NONE, 4000)
+        alerts:showAction("Shaper of Flesh shielded aEUR" kill channelers!")
     elseif result == ACTION_RESULT_EFFECT_FADED then
         self.shaperShielded = false
         CA.alert(nil, "Shaper vulnerable!", 0x44FF88FF, SOUNDS.NONE, 3000)
-        alerts:showAction("Shaper vulnerable â€” BURN!")
+        alerts:showAction("Shaper vulnerable aEUR" BURN!")
     end
 end
 
 local function handleChannelerShield(self, context, alerts, abilityId, ...)
     self.shaperShielded = true
-    alerts:showAction("Channelers shielding Shaper â€” eliminate them!")
+    alerts:showAction("Channelers shielding Shaper aEUR" eliminate them!")
 end
 
--- â”€â”€ Routing tables (C3) â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+-- a"EURa"EUR Routing tables (C3) a"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EUR
 
 -- Shared trash-mechanic handler.
 ShaperEncounter.common = OsseinCageCommon

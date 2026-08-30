@@ -5,7 +5,7 @@
 --- per-trial copies that previously lived in trial/xx/CombatHandler.lua.
 ---
 --- Each function receives (trial, eventCode, <eso args...>), then delegates
---- to the currently active boss's handler — if it has one.
+--- to the currently active boss's handler  -  if it has one.
 ---
 --- ESO EVENT_COMBAT_EVENT signature (modern API):
 ---   eventCode, result, isError, abilityName, abilityGraphic, hitStatus,
@@ -28,8 +28,8 @@
 ---                          sourceUnitName, unitName) ... end
 ---
 ---   Boss.common = module   -- optional; must expose:
----       .handle(alerts, result, abilityId, unitTag, sourceUnitName) → bool
----       .handleEffect(alerts, changeType, abilityId, unitTag) → bool  (optional)
+---       .handle(alerts, result, abilityId, unitTag, sourceUnitName) -> bool
+---       .handleEffect(alerts, changeType, abilityId, unitTag) -> bool  (optional)
 ---
 --- Legacy Boss.onCombatEvent / Boss.onEffectChanged remain as fallback for
 --- bosses not yet migrated to routing tables.  A boss may have routing tables
@@ -39,7 +39,7 @@
 
 local CombatHandler = {}
 
--- ── D8: dispatch helpers ──────────────────────────────────────────────────
+-- -- D8: dispatch helpers --------------------------------------------------
 -- Extracted from the identical type(entry) branches in onCombatEvent and
 -- onEffectChanged.  Each helper calls the plain function or, for a D6
 -- shorthand table, pre-checks the filter value before calling fn.
@@ -86,7 +86,7 @@ function CombatHandler.onCombatEvent(trial, eventCode,
     if not boss then return end
     local context, alerts = trial.context, trial.alerts
 
-    -- 1. Shared common handler (SunspireCommon, RockgroveCommon, DreadsailCommon, …) —
+    -- 1. Shared common handler (SunspireCommon, RockgroveCommon, DreadsailCommon, ...)  - 
     --    runs before boss routing; returning true short-circuits everything.
     if boss.common and boss.common.handle(alerts, result, abilityId, unitTag, sourceUnitName) then
         return

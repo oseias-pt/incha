@@ -1,7 +1,7 @@
---- Bridge — documented no-op base for the five lifecycle hooks Trial uses.
+--- Bridge  -  documented no-op base for the five lifecycle hooks Trial uses.
 ---
 --- Trial.create defaults to BridgeBase when no bridge option is supplied,
---- so every hook can be called unconditionally — no nil-guard needed in
+--- so every hook can be called unconditionally  -  no nil-guard needed in
 --- Trial.lua.
 ---
 --- Panel.bridge is wrapped with BridgeBase.extend so it inherits the no-op
