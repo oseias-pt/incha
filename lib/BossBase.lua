@@ -1,4 +1,4 @@
---- BossBase — shared lifecycle mixin for boss classes that track CA cast bars.
+--- BossBase  -  shared lifecycle mixin for boss classes that track CA cast bars.
 ---
 --- Usage:
 ---   local BossBase = require("lib.BossBase")
@@ -21,7 +21,7 @@ BossBase.__index = BossBase
 --- (so Timer.new / DebuffTracker.new / table constructors run per-instance,
 --- not once at class load).  Static values are copied directly.
 --- Fields initialized to nil in the original new() are simply omitted from
---- the schema — they remain nil by default via the metatable lookup.
+--- the schema  -  they remain nil by default via the metatable lookup.
 function BossBase.fromSchema(class)
     local inst = {}
     for k, v in pairs(class.stateSchema or {}) do

@@ -4,46 +4,46 @@ local CA = require("lib.CA")
 local BossBase = require("lib.BossBase")
 local CastDur = require("lib.CastDur")
 
--- ── Ability IDs (from SanitysEdgeHelper / SSEA data) ──────────────────────────────
-local DEFLECT         = 184823   -- combatRoute: ACTION_RESULT_BEGIN → Shrapnel stack counter
-local SHRAPNEL        = 199131   -- combatRoute: ACTION_RESULT_BEGIN → Shrapnel alert (stack!)
-local FIRE_BOMBS      = 183660   -- combatRoute: ACTION_RESULT_BEGIN → caAlertCast (targeted)
-local KNIFE_BLAST_1   = 183803   -- combatRoute: ACTION_RESULT_BEGIN → caAlertCast
-local KNIFE_BLAST_2   = 183804   -- combatRoute: ACTION_RESULT_BEGIN → caAlertCast
-local VENGEFUL_STRIKE = 185071   -- combatRoute: ACTION_RESULT_BEGIN → alert
-local VANTONS_CLARITY = 184041   -- combatRoute: ACTION_RESULT_BEGIN → Portal synergy alert
-local SEETHE          = 162783   -- combatRoute: ACTION_RESULT_BEGIN → Enrage alert
-local CHAIN_PULL      = 184540   -- combatRoute: ACTION_RESULT_BEGIN → Chains alert
--- Frost Bombs (Tomb mechanic) — 10 variants
-local FROST_BOMB_1    = 185403   -- combatRoute: ACTION_RESULT_EFFECT_GAINED_DURATION → Frost bomb alert
-local FROST_BOMB_2    = 183783   -- combatRoute: ACTION_RESULT_EFFECT_GAINED_DURATION → Frost bomb alert
-local FROST_BOMB_3    = 183790   -- combatRoute: ACTION_RESULT_EFFECT_GAINED_DURATION → Frost bomb alert
-local FROST_BOMB_4    = 192304   -- combatRoute: ACTION_RESULT_EFFECT_GAINED_DURATION → Frost bomb alert
-local FROST_BOMB_5    = 191049   -- combatRoute: ACTION_RESULT_EFFECT_GAINED_DURATION → Frost bomb alert
-local FROST_BOMB_6    = 188065   -- combatRoute: ACTION_RESULT_EFFECT_GAINED_DURATION → Frost bomb alert
-local FROST_BOMB_7    = 199254   -- combatRoute: ACTION_RESULT_EFFECT_GAINED_DURATION → Frost bomb alert
-local FROST_BOMB_8    = 185406   -- combatRoute: ACTION_RESULT_EFFECT_GAINED_DURATION → Frost bomb alert
-local FROST_BOMB_9    = 183768   -- combatRoute: ACTION_RESULT_EFFECT_GAINED_DURATION → Frost bomb alert
-local FROST_BOMB_10   = 185392   -- combatRoute: ACTION_RESULT_EFFECT_GAINED_DURATION → Frost bomb alert
-local IGNITE          = 188188   -- combatRoute: ACTION_RESULT_EFFECT_GAINED_DURATION → Move alert (player)
--- Wamasu Charges — 6 variants
-local WAMASU_CHARGE_1 = 191133   -- combatRoute: ACTION_RESULT_BEGIN → caAlertCast
-local WAMASU_CHARGE_2 = 191139   -- combatRoute: ACTION_RESULT_BEGIN → caAlertCast
-local WAMASU_CHARGE_3 = 191134   -- combatRoute: ACTION_RESULT_BEGIN → caAlertCast
-local WAMASU_CHARGE_4 = 200544   -- combatRoute: ACTION_RESULT_BEGIN → caAlertCast
-local WAMASU_CHARGE_5 = 200558   -- combatRoute: ACTION_RESULT_BEGIN → caAlertCast
-local WAMASU_CHARGE_6 = 200559   -- combatRoute: ACTION_RESULT_BEGIN → caAlertCast
--- Wamasu Charged Headbutt — 3 variants
-local HEADBUTT_1      = 184999   -- combatRoute: ACTION_RESULT_BEGIN → Headbutt alert
-local HEADBUTT_2      = 185002   -- combatRoute: ACTION_RESULT_BEGIN → Headbutt alert
-local HEADBUTT_3      = 185000   -- combatRoute: ACTION_RESULT_BEGIN → Headbutt alert
--- Wamasu Overwhelming Lightning — 3 variants
-local OVW_LIGHTNING_1 = 183598   -- combatRoute: ACTION_RESULT_BEGIN → Lightning alert
-local OVW_LIGHTNING_2 = 198510   -- combatRoute: ACTION_RESULT_BEGIN → Lightning alert
-local OVW_LIGHTNING_3 = 183599   -- combatRoute: ACTION_RESULT_BEGIN → Lightning alert
-local ARCHER_TRUE_SHOT= 184802   -- (dead constant – no route registered)
+-- -- Ability IDs (from SanitysEdgeHelper / SSEA data) ------------------------------
+local DEFLECT         = 184823   -- combatRoute: ACTION_RESULT_BEGIN -> Shrapnel stack counter
+local SHRAPNEL        = 199131   -- combatRoute: ACTION_RESULT_BEGIN -> Shrapnel alert (stack!)
+local FIRE_BOMBS      = 183660   -- combatRoute: ACTION_RESULT_BEGIN -> caAlertCast (targeted)
+local KNIFE_BLAST_1   = 183803   -- combatRoute: ACTION_RESULT_BEGIN -> caAlertCast
+local KNIFE_BLAST_2   = 183804   -- combatRoute: ACTION_RESULT_BEGIN -> caAlertCast
+local VENGEFUL_STRIKE = 185071   -- combatRoute: ACTION_RESULT_BEGIN -> alert
+local VANTONS_CLARITY = 184041   -- combatRoute: ACTION_RESULT_BEGIN -> Portal synergy alert
+local SEETHE          = 162783   -- combatRoute: ACTION_RESULT_BEGIN -> Enrage alert
+local CHAIN_PULL      = 184540   -- combatRoute: ACTION_RESULT_BEGIN -> Chains alert
+-- Frost Bombs (Tomb mechanic)  -  10 variants
+local FROST_BOMB_1    = 185403   -- combatRoute: ACTION_RESULT_EFFECT_GAINED_DURATION -> Frost bomb alert
+local FROST_BOMB_2    = 183783   -- combatRoute: ACTION_RESULT_EFFECT_GAINED_DURATION -> Frost bomb alert
+local FROST_BOMB_3    = 183790   -- combatRoute: ACTION_RESULT_EFFECT_GAINED_DURATION -> Frost bomb alert
+local FROST_BOMB_4    = 192304   -- combatRoute: ACTION_RESULT_EFFECT_GAINED_DURATION -> Frost bomb alert
+local FROST_BOMB_5    = 191049   -- combatRoute: ACTION_RESULT_EFFECT_GAINED_DURATION -> Frost bomb alert
+local FROST_BOMB_6    = 188065   -- combatRoute: ACTION_RESULT_EFFECT_GAINED_DURATION -> Frost bomb alert
+local FROST_BOMB_7    = 199254   -- combatRoute: ACTION_RESULT_EFFECT_GAINED_DURATION -> Frost bomb alert
+local FROST_BOMB_8    = 185406   -- combatRoute: ACTION_RESULT_EFFECT_GAINED_DURATION -> Frost bomb alert
+local FROST_BOMB_9    = 183768   -- combatRoute: ACTION_RESULT_EFFECT_GAINED_DURATION -> Frost bomb alert
+local FROST_BOMB_10   = 185392   -- combatRoute: ACTION_RESULT_EFFECT_GAINED_DURATION -> Frost bomb alert
+local IGNITE          = 188188   -- combatRoute: ACTION_RESULT_EFFECT_GAINED_DURATION -> Move alert (player)
+-- Wamasu Charges  -  6 variants
+local WAMASU_CHARGE_1 = 191133   -- combatRoute: ACTION_RESULT_BEGIN -> caAlertCast
+local WAMASU_CHARGE_2 = 191139   -- combatRoute: ACTION_RESULT_BEGIN -> caAlertCast
+local WAMASU_CHARGE_3 = 191134   -- combatRoute: ACTION_RESULT_BEGIN -> caAlertCast
+local WAMASU_CHARGE_4 = 200544   -- combatRoute: ACTION_RESULT_BEGIN -> caAlertCast
+local WAMASU_CHARGE_5 = 200558   -- combatRoute: ACTION_RESULT_BEGIN -> caAlertCast
+local WAMASU_CHARGE_6 = 200559   -- combatRoute: ACTION_RESULT_BEGIN -> caAlertCast
+-- Wamasu Charged Headbutt  -  3 variants
+local HEADBUTT_1      = 184999   -- combatRoute: ACTION_RESULT_BEGIN -> Headbutt alert
+local HEADBUTT_2      = 185002   -- combatRoute: ACTION_RESULT_BEGIN -> Headbutt alert
+local HEADBUTT_3      = 185000   -- combatRoute: ACTION_RESULT_BEGIN -> Headbutt alert
+-- Wamasu Overwhelming Lightning  -  3 variants
+local OVW_LIGHTNING_1 = 183598   -- combatRoute: ACTION_RESULT_BEGIN -> Lightning alert
+local OVW_LIGHTNING_2 = 198510   -- combatRoute: ACTION_RESULT_BEGIN -> Lightning alert
+local OVW_LIGHTNING_3 = 183599   -- combatRoute: ACTION_RESULT_BEGIN -> Lightning alert
+local ARCHER_TRUE_SHOT= 184802   -- (dead constant - no route registered)
 
--- ── Timer durations (seconds) ─────────────────────────────────────────────────────
+-- -- Timer durations (seconds) -----------------------------------------------------
 local FIREBOMB_FIRST_CD  =  7.5   -- time to first firebombs from combat start
 local FIREBOMB_CD        = 23.5   -- pre-execute CD
 local FIREBOMB_EXEC_CD   = 11     -- execute-phase CD (after <26% HP)
@@ -52,13 +52,13 @@ local CHAIN_CD           = 32     -- chain pull CD
 local FROST_FIRST_CD     = 17     -- first frost bomb delay
 local FROST_CD           = 25     -- subsequent frost bomb CD
 
--- ── CA colour palettes ────────────────────────────────────────────────────────────
+-- -- CA colour palettes ------------------------------------------------------------
 local COL_FIRE  = { -3, 0, false, { 1, 0.34, 0, 0.4 }, { 1, 0.34, 0, 0.8 } }    -- orange-red
 local COL_ICE   = { -3, 0, false, { 0.6, 0.8, 1, 0.4 }, { 0.6, 0.8, 1, 0.8 } }  -- pale blue
 local COL_ELEC  = { -3, 0, false, { 1, 0.9, 0.2, 0.4 }, { 1, 0.9, 0.2, 0.8 } }  -- yellow
 local COL_BLADE = { -3, 0, false, { 0.9, 0.7, 0.3, 0.4 }, { 0.9, 0.7, 0.3, 0.8 } } -- gold
 
--- ── Fallback durations (empirical; replace if GetAbilityCastInfo becomes reliable) ─
+-- -- Fallback durations (empirical; replace if GetAbilityCastInfo becomes reliable) -
 local FALLBACK_DUR = 2000   -- FireBombs / WamasuCharge / KnifeBlast: empirical
 
 local YaseylaEncounter = {}
@@ -67,7 +67,7 @@ YaseylaEncounter.__index = YaseylaEncounter
 YaseylaEncounter.key               = "yaseyla"
 YaseylaEncounter.nameAliases       = { "Exarchanic Yaseyla" }
 YaseylaEncounter.hmHealthThreshold = 80000000   -- vet ~65M, HM ~97.8M
--- location: placeholder – Sunken Elder arena AABB not yet captured.
+-- location: placeholder - Sunken Elder arena AABB not yet captured.
 -- Detection falls back to nameAliases (name-based, may fail on non-EN clients).
 -- To calibrate: stand in arena, run /script d(GetUnitWorldPosition("boss1"))
 
@@ -90,7 +90,7 @@ function YaseylaEncounter.new()
     return BossBase.fromSchema(YaseylaEncounter)
 end
 
--- ── Lifecycle ─────────────────────────────────────────────────────────────────────
+-- -- Lifecycle ---------------------------------------------------------------------
 function YaseylaEncounter:onLeave(context)
     self:cleanupAlertList()
 end
@@ -105,7 +105,7 @@ function YaseylaEncounter:onWipe()
     self.m25 = false; self.m20 = false; self.m10 = false
 end
 
--- ── Routing tables (C3) ───────────────────────────────────────────────────────────
+-- -- Routing tables (C3) -----------------------------------------------------------
 
 -- Frost Bomb: shared handler for all ability IDs.
 local function handleFrostBomb(self, context, alerts, abilityId,
@@ -115,9 +115,9 @@ local function handleFrostBomb(self, context, alerts, abilityId,
     self.frostTimer:reset(FROST_CD)
     if IsUnitPlayer(unitTag) then
         alerts:showAction("Frost Bomb on you! Drop it!")
-        CA.alert(nil, "FROST BOMB – drop!", 0x99CCFFFF, SOUNDS.NONE, 3000)
+        CA.alert(nil, "FROST BOMB - drop!", 0x99CCFFFF, SOUNDS.NONE, 3000)
     elseif unitName and unitName ~= "" then
-        alerts:showAction("Frost Bomb → " .. unitName)
+        alerts:showAction("Frost Bomb -> " .. unitName)
     end
 end
 
@@ -128,7 +128,7 @@ local function handleFireBombs(self, context, alerts, abilityId,
     local cd = self.executePhase and FIREBOMB_EXEC_CD or FIREBOMB_CD
     self.firebombTimer:reset(cd)
     local target = (unitName and unitName ~= "") and unitName or "?"
-    alerts:showAction("Fire Bombs → " .. target)
+    alerts:showAction("Fire Bombs -> " .. target)
     local dur = CastDur.get(abilityId, FALLBACK_DUR)
     local cid = CA.alertCast(abilityId, "Fire Bombs!", dur, COL_FIRE)
     if cid and unitId then self.alertList[unitId] = cid end
@@ -152,7 +152,7 @@ end
 
 local function handleShrapnel(self, context, alerts, abilityId, ...)
     alerts:showAction("Shrapnel! Stack!")
-    CA.alert(nil, "SHRAPNEL – STACK!", 0xFF0033FF, SOUNDS.NONE, 3000)
+    CA.alert(nil, "SHRAPNEL - STACK!", 0xFF0033FF, SOUNDS.NONE, 3000)
 end
 
 local function handleKnifeBlast(self, context, alerts, abilityId,
@@ -160,8 +160,8 @@ local function handleKnifeBlast(self, context, alerts, abilityId,
                                  sourceUnitName, unitName)
     local target = (unitName and unitName ~= "") and unitName or "?"
     local dur = CastDur.get(abilityId, FALLBACK_DUR)
-    CA.alertCast(abilityId, "Knife Blast → " .. target, dur, COL_BLADE)
-    alerts:showAction("Knife Blast → " .. target)
+    CA.alertCast(abilityId, "Knife Blast -> " .. target, dur, COL_BLADE)
+    alerts:showAction("Knife Blast -> " .. target)
 end
 
 local function handleVengefulStrike(self, context, alerts, abilityId, ...)
@@ -171,7 +171,7 @@ end
 
 local function handleVantonsClarity(self, context, alerts, abilityId, ...)
     alerts:showAction("Portal! Vanton's Clarity")
-    CA.alert(nil, "PORTAL – synergy!", 0xAAFFAAFF, SOUNDS.NONE, 4000)
+    CA.alert(nil, "PORTAL - synergy!", 0xAAFFAAFF, SOUNDS.NONE, 4000)
 end
 
 local function handleSeethe(self, context, alerts, abilityId, ...)
@@ -184,15 +184,15 @@ local function handleWamasuCharge(self, context, alerts, abilityId,
                                    sourceUnitName, unitName)
     local target = (unitName and unitName ~= "") and unitName or "?"
     local dur = CastDur.get(abilityId, FALLBACK_DUR)
-    CA.alertCast(abilityId, "Charge → " .. target, dur, COL_FIRE)
+    CA.alertCast(abilityId, "Charge -> " .. target, dur, COL_FIRE)
 end
 
 local function handleHeadbutt(self, context, alerts, abilityId,
                                unitTag, sourceUnitTag, sourceUnitId, unitId,
                                sourceUnitName, unitName)
     local target = (unitName and unitName ~= "") and unitName or "?"
-    alerts:showAction("Headbutt → " .. target .. "! DODGE!")
-    CA.alert(nil, "HEADBUTT – DODGE!", 0xFF6600FF, SOUNDS.NONE, 2500)
+    alerts:showAction("Headbutt -> " .. target .. "! DODGE!")
+    CA.alert(nil, "HEADBUTT - DODGE!", 0xFF6600FF, SOUNDS.NONE, 2500)
 end
 
 local function handleOvwLightning(self, context, alerts, abilityId,
@@ -242,7 +242,7 @@ YaseylaEncounter.combatRoutes = {
     [IGNITE]          = { result = ACTION_RESULT_EFFECT_GAINED_DURATION, fn = handleIgnite },
 }
 
--- ── Info-line renderers ───────────────────────────────────────────────────────────
+-- -- Info-line renderers -----------------------------------------------------------
 
 -- Line 1: Fire Bombs CD; label switches to "Bombs (exec)" once execute phase begins.
 local function showFireBombLine(self, alerts)
@@ -287,39 +287,39 @@ function YaseylaEncounter:onPowerUpdate(context, healthPercent, alerts)
     -- portal at 60/35%; Shrapnel at 80/55/25/20/10%)
     if not self.m90 and healthPercent < 90 then
         self.m90 = true
-        alerts:showAction("90% – Wamasu + Archers incoming!")
+        alerts:showAction("90% - Wamasu + Archers incoming!")
     elseif not self.m80 and healthPercent < 80 then
         self.m80 = true
-        alerts:showAction("80% – Shrapnel incoming!")
+        alerts:showAction("80% - Shrapnel incoming!")
     elseif not self.m70 and healthPercent < 70 then
         self.m70 = true
-        alerts:showAction("70% – Wamasu + Archers incoming!")
+        alerts:showAction("70% - Wamasu + Archers incoming!")
     elseif not self.m60 and healthPercent < 60 then
         self.m60 = true
-        alerts:showAction("60% – Portal phase!")
+        alerts:showAction("60% - Portal phase!")
         CA.alert(nil, "PORTAL PHASE ~60%", 0xAAFFAAFF, SOUNDS.NONE, 4000)
     elseif not self.m55 and healthPercent < 55 then
         self.m55 = true
-        alerts:showAction("55% – Shrapnel incoming!")
+        alerts:showAction("55% - Shrapnel incoming!")
     elseif not self.m50 and healthPercent < 50 then
         self.m50 = true
-        alerts:showAction("50% – Wamasu + Archers incoming!")
+        alerts:showAction("50% - Wamasu + Archers incoming!")
     elseif not self.m35 and healthPercent < 35 then
         self.m35 = true
-        alerts:showAction("35% – Portal phase!")
+        alerts:showAction("35% - Portal phase!")
         CA.alert(nil, "PORTAL PHASE ~35%", 0xAAFFAAFF, SOUNDS.NONE, 4000)
     elseif not self.m30 and healthPercent < 30 then
         self.m30 = true
-        alerts:showAction("30% – Wamasu + Archers incoming!")
+        alerts:showAction("30% - Wamasu + Archers incoming!")
     elseif not self.m25 and healthPercent < 25 then
         self.m25 = true
-        alerts:showAction("25% – Shrapnel incoming!")
+        alerts:showAction("25% - Shrapnel incoming!")
     elseif not self.m20 and healthPercent < 20 then
         self.m20 = true
-        alerts:showAction("20% – Wamasu + Archers + Shrapnel!")
+        alerts:showAction("20% - Wamasu + Archers + Shrapnel!")
     elseif not self.m10 and healthPercent < 10 then
         self.m10 = true
-        alerts:showAction("10% – Wamasu + Archers + Shrapnel!")
+        alerts:showAction("10% - Wamasu + Archers + Shrapnel!")
     end
 end
 

@@ -4,26 +4,26 @@ local CA = require("lib.CA")
 local BossBase = require("lib.BossBase")
 local CastDur = require("lib.CastDur")
 
--- â”€â”€ Ability IDs â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
-local ARCANE_KNOT         = 213477   -- combatRoute: ACTION_RESULT_EFFECT_GAINED_DURATION / FADED â†’ carry knot
-local ARCANE_CONV_DEBUFF  = 223060   -- combatRoute: ACTION_RESULT_EFFECT_GAINED_DURATION â†’ tether on player
-local FLUCTUATING_CURRENT = 214597   -- combatRoute: ACTION_RESULT_EFFECT_GAINED_DURATION / FADED â†’ hold (15s max)
-local OVERLOADED_CURRENT  = 214745   -- combatRoute: ACTION_RESULT_EFFECT_GAINED_DURATION â†’ DROP current
-local NECROTIC_BARRAGE    = 223198   -- combatRoute: ACTION_RESULT_BEGIN â†’ caAlertCast
-local ACCELERATING_CHARGE = 214542   -- combatRoute: ACTION_RESULT_BEGIN â†’ chain lightning incoming
-local TEMPEST             = 215107   -- combatRoute: ACTION_RESULT_BEGIN â†’ MOVE from mirror line
-local GLASS_STOMP_CAST    = 219797   -- combatRoute: ACTION_RESULT_BEGIN â†’ Crystal Atronach AOE on tank
-local LUSTROUS_JAVELIN    = 223546   -- combatRoute: ACTION_RESULT_BEGIN â†’ javelin on player
+-- a"EURa"EUR Ability IDs a"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EUR
+local ARCANE_KNOT         = 213477   -- combatRoute: ACTION_RESULT_EFFECT_GAINED_DURATION / FADED a+' carry knot
+local ARCANE_CONV_DEBUFF  = 223060   -- combatRoute: ACTION_RESULT_EFFECT_GAINED_DURATION a+' tether on player
+local FLUCTUATING_CURRENT = 214597   -- combatRoute: ACTION_RESULT_EFFECT_GAINED_DURATION / FADED a+' hold (15s max)
+local OVERLOADED_CURRENT  = 214745   -- combatRoute: ACTION_RESULT_EFFECT_GAINED_DURATION a+' DROP current
+local NECROTIC_BARRAGE    = 223198   -- combatRoute: ACTION_RESULT_BEGIN a+' caAlertCast
+local ACCELERATING_CHARGE = 214542   -- combatRoute: ACTION_RESULT_BEGIN a+' chain lightning incoming
+local TEMPEST             = 215107   -- combatRoute: ACTION_RESULT_BEGIN a+' MOVE from mirror line
+local GLASS_STOMP_CAST    = 219797   -- combatRoute: ACTION_RESULT_BEGIN a+' Crystal Atronach AOE on tank
+local LUSTROUS_JAVELIN    = 223546   -- combatRoute: ACTION_RESULT_BEGIN a+' javelin on player
 
--- â”€â”€ Constants â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+-- a"EURa"EUR Constants a"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EUR
 local CURRENT_MAX_DUR = 15.0   -- holding Fluctuating Current beyond this = death
 
--- â”€â”€ CA colour palettes â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+-- a"EURa"EUR CA colour palettes a"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EUR
 local COL_NECROTIC  = { -3, 0, false, { 0.5, 0,   0.9, 0.4 }, { 0.5, 0,   0.9, 0.8 } }
 local COL_TEMPEST   = { -3, 0, false, { 0.2, 0.8, 1.0, 0.4 }, { 0.2, 0.8, 1.0, 0.8 } }
 local COL_ATRONACH  = { -3, 0, false, { 1,   0.4, 0,   0.4 }, { 1,   0.4, 0,   0.8 } }
 
--- â”€â”€ Fallback durations (empirical; replace if GetAbilityCastInfo becomes reliable) â”€
+-- a"EURa"EUR Fallback durations (empirical; replace if GetAbilityCastInfo becomes reliable) a"EUR
 local FALLBACK_BARRAGE_DUR = 3000   -- NecroticBarrage: empirical
 local FALLBACK_DUR         = 2000   -- Tempest / GlassStomp: empirical
 
@@ -33,7 +33,7 @@ XorynEncounter.__index = XorynEncounter
 XorynEncounter.key               = "xoryn"
 XorynEncounter.nameAliases       = { "Xoryn" }
 XorynEncounter.hmHealthThreshold = 100000000
--- location: placeholder â€” Lucent Citadel arena AABB not yet captured.
+-- location: placeholder aEUR" Lucent Citadel arena AABB not yet captured.
 -- Detection falls back to nameAliases (name-based, may fail on non-EN clients).
 -- To calibrate: stand in arena, run /script d(GetUnitWorldPosition("boss1"))
 
@@ -47,7 +47,7 @@ function XorynEncounter.new()
     return BossBase.fromSchema(XorynEncounter)
 end
 
--- â”€â”€ Handlers â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+-- a"EURa"EUR Handlers a"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EUR
 
 local function handleNecroticBarrage(self, context, alerts, abilityId, ...)
     local dur = CastDur.get(abilityId, FALLBACK_BARRAGE_DUR)
@@ -56,7 +56,7 @@ end
 
 local function handleAcceleratingCharge(self, context, alerts, abilityId, ...)
     CA.alert(nil, "Chain Lightning incoming!", 0xFFFF44FF, SOUNDS.NONE, 3000)
-    alerts:showAction("Accelerating Charge â†’ Chain Lightning!")
+    alerts:showAction("Accelerating Charge a+' Chain Lightning!")
 end
 
 local function handleTempest(self, context, alerts, abilityId, ...)
@@ -70,7 +70,7 @@ local function handleGlassStomp(self, context, alerts, abilityId,
                                  sourceUnitName, unitName)
     local target = (unitName and unitName ~= "") and unitName or "?"
     local dur = CastDur.get(abilityId, FALLBACK_DUR)
-    CA.alertCast(abilityId, "Atronach AOE â†’ " .. target, dur, COL_ATRONACH)
+    CA.alertCast(abilityId, "Atronach AOE a+' " .. target, dur, COL_ATRONACH)
     if IsUnitPlayer(unitTag) then
         alerts:showAction("Atronach AOE on YOU!")
     end
@@ -87,7 +87,7 @@ local function handleArcaneKnot(self, context, alerts, result, abilityId, unitTa
     if result == ACTION_RESULT_EFFECT_GAINED_DURATION then
         self.holdingKnot = true
         CA.alert(nil, "Carry knot! Pass it!", 0xFFAA44FF, SOUNDS.NONE, 4000)
-        alerts:showAction("Arcane Knot â€” carry and pass!")
+        alerts:showAction("Arcane Knot aEUR" carry and pass!")
     elseif result == ACTION_RESULT_EFFECT_FADED then
         self.holdingKnot = false
     end
@@ -105,7 +105,7 @@ local function handleFluctuatingCurrent(self, context, alerts, result, abilityId
         self.holdingCurrent = true
         self.currentTimer:reset(CURRENT_MAX_DUR)
         CA.alert(nil, "Hold current! Drop at edge!", 0x44CCFFFF, SOUNDS.NONE, 3000)
-        alerts:showAction("Fluctuating Current â€” hold, then drop!")
+        alerts:showAction("Fluctuating Current aEUR" hold, then drop!")
     elseif result == ACTION_RESULT_EFFECT_FADED then
         self.holdingCurrent = false
         self.currentTimer:clear()
@@ -115,10 +115,10 @@ end
 local function handleOverloadedCurrent(self, context, alerts, abilityId, unitTag, ...)
     if not IsUnitPlayer(unitTag) then return end
     CA.alert(nil, "DROP current!", 0xFF0000FF, SOUNDS.NONE, 2000)
-    alerts:showAction("Overloaded â€” DROP the current!")
+    alerts:showAction("Overloaded aEUR" DROP the current!")
 end
 
--- â”€â”€ Routing tables (C3) â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+-- a"EURa"EUR Routing tables (C3) a"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EUR
 XorynEncounter.combatRoutes = {
     [NECROTIC_BARRAGE]    = { result = ACTION_RESULT_BEGIN,                    fn = handleNecroticBarrage },
     [ACCELERATING_CHARGE] = { result = ACTION_RESULT_BEGIN,                    fn = handleAcceleratingCharge },
@@ -131,7 +131,7 @@ XorynEncounter.combatRoutes = {
     [OVERLOADED_CURRENT]  = { result = ACTION_RESULT_EFFECT_GAINED_DURATION,   fn = handleOverloadedCurrent },
 }
 
--- â”€â”€ Info-line renderers â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+-- a"EURa"EUR Info-line renderers a"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EUR
 
 -- Line 1: Fluctuating Current countdown; "DROP NOW!" when the 15 s window expires.
 local function showCurrentLine(self, alerts)

@@ -4,25 +4,25 @@ local CA = require("lib.CA")
 local BossBase = require("lib.BossBase")
 local CastDur = require("lib.CastDur")
 
--- â”€â”€ Ability IDs (from AsylumTracker / AsylumPriorityTarget) â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+-- a"EURa"EUR Ability IDs (from AsylumTracker / AsylumPriorityTarget) a"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EUR
 -- Olms
-local OLMS_STORM_THE_HEAVENS  = 98535  -- combatRoute: ACTION_RESULT_BEGIN â†’ Kite alert, reset stormTimer
-local OLMS_TRIAL_BY_FIRE      = 98582  -- combatRoute: ACTION_RESULT_BEGIN â†’ Trial by Fire alert, reset fireTimer
-local OLMS_SCALDING_ROAR      = 98683  -- combatRoute: ACTION_RESULT_BEGIN â†’ Steam Breath caAlertCast, reset steamTimer
-local OLMS_GUSTS_OF_STEAM     = 98868  -- combatRoute: ACTION_RESULT_BEGIN â†’ Jump! alert, advance jump threshold
-local OLMS_EXHAUSTIVE_CHARGES = 95482  -- combatRoute: ACTION_RESULT_BEGIN â†’ Charges! alert, reset chargesTimer
+local OLMS_STORM_THE_HEAVENS  = 98535  -- combatRoute: ACTION_RESULT_BEGIN a+' Kite alert, reset stormTimer
+local OLMS_TRIAL_BY_FIRE      = 98582  -- combatRoute: ACTION_RESULT_BEGIN a+' Trial by Fire alert, reset fireTimer
+local OLMS_SCALDING_ROAR      = 98683  -- combatRoute: ACTION_RESULT_BEGIN a+' Steam Breath caAlertCast, reset steamTimer
+local OLMS_GUSTS_OF_STEAM     = 98868  -- combatRoute: ACTION_RESULT_BEGIN a+' Jump! alert, advance jump threshold
+local OLMS_EXHAUSTIVE_CHARGES = 95482  -- combatRoute: ACTION_RESULT_BEGIN a+' Charges! alert, reset chargesTimer
 -- Protector
-local STATIC_SHIELD           = 96010  -- effectRoute: (plain) EFFECT_RESULT_GAINED/FADED â†’ protectorUp state + alert
+local STATIC_SHIELD           = 96010  -- effectRoute: (plain) EFFECT_RESULT_GAINED/FADED a+' protectorUp state + alert
 -- Llothis
-local LLOTHIS_DEFILING_BLAST   = 95545  -- combatRoute: ACTION_RESULT_BEGIN â†’ Blast caAlertCast (targeted), reset blastTimer
-local LLOTHIS_OPPRESSIVE_BOLTS = 95585  -- combatRoute: ACTION_RESULT_BEGIN â†’ Interrupt! alert, reset boltsTimer
+local LLOTHIS_DEFILING_BLAST   = 95545  -- combatRoute: ACTION_RESULT_BEGIN a+' Blast caAlertCast (targeted), reset blastTimer
+local LLOTHIS_OPPRESSIVE_BOLTS = 95585  -- combatRoute: ACTION_RESULT_BEGIN a+' Interrupt! alert, reset boltsTimer
 -- Felms
-local FELMS_TELEPORT_STRIKE   = 99138  -- combatRoute: ACTION_RESULT_BEGIN â†’ Strike caAlertCast (targeted), reset jumpTimer
+local FELMS_TELEPORT_STRIKE   = 99138  -- combatRoute: ACTION_RESULT_BEGIN a+' Strike caAlertCast (targeted), reset jumpTimer
 -- Mini-boss state
-local DORMANT                 = 99990  -- effectRoute: (plain) EFFECT_RESULT_GAINED/FADED â†’ mini-boss dormancy + reseed timers
-local BOSS_EVENT              = 10298  -- combatRoute: ACTION_RESULT_EFFECT_GAINED â†’ mini-boss spawn detection + timer seeding
+local DORMANT                 = 99990  -- effectRoute: (plain) EFFECT_RESULT_GAINED/FADED a+' mini-boss dormancy + reseed timers
+local BOSS_EVENT              = 10298  -- combatRoute: ACTION_RESULT_EFFECT_GAINED a+' mini-boss spawn detection + timer seeding
 
--- â”€â”€ Timer durations (seconds) â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+-- a"EURa"EUR Timer durations (seconds) a"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EUR
 local STORM_CD    = 41
 local FIRE_CD     = 27
 local STEAM_CD    = 28
@@ -33,10 +33,10 @@ local JUMP_CD     = 21   -- Felms Teleport Strike
 local DORMANT_CD  = 45   -- Mini-boss dormant phase duration
 local SPAWN_DELAY = 12   -- Seconds after BOSS_EVENT before first mini ability
 
--- â”€â”€ Jump milestone thresholds (%) â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+-- a"EURa"EUR Jump milestone thresholds (%) a"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EUR
 local JUMP_THRESHOLDS = { 90, 75, 50, 25 }
 
--- â”€â”€ Fallback durations (empirical; replace if GetAbilityCastInfo becomes reliable) â”€
+-- a"EURa"EUR Fallback durations (empirical; replace if GetAbilityCastInfo becomes reliable) a"EUR
 local FALLBACK_ROAR_DUR   = 2000   -- OlmsScaldingRoar (Steam Breath): empirical
 local FALLBACK_BLAST_DUR  = 1500   -- LlothisDefilingBlast: empirical
 local FALLBACK_STRIKE_DUR = 1000   -- FelmsTeleportStrike: empirical
@@ -50,7 +50,7 @@ OlmsEncounter.nameAliases       = { "Saint Olms the Just" }
 -- (0 would make detectDifficulty always return HARDMODE.)
 -- To calibrate: pull on vet HM, run /script d(GetUnitPower("boss1", POWERTYPE_HEALTH))
 OlmsEncounter.hmHealthThreshold = math.huge
--- location: placeholder â€” Asylum arena AABB not yet captured.
+-- location: placeholder aEUR" Asylum arena AABB not yet captured.
 -- Detection falls back to nameAliases (name-based, may fail on non-EN clients).
 -- To calibrate: stand in arena, run /script d(GetUnitWorldPosition("boss1"))
 
@@ -77,7 +77,7 @@ function OlmsEncounter.new()
     return BossBase.fromSchema(OlmsEncounter)
 end
 
--- â”€â”€ Lifecycle â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+-- a"EURa"EUR Lifecycle a"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EUR
 function OlmsEncounter:onLeave(context)
     self:cleanupAlertList()
 end
@@ -99,7 +99,7 @@ function OlmsEncounter:onWipe()
     self.felmsSpawnGs      = nil
 end
 
--- â”€â”€ Timer seeding helper â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+-- a"EURa"EUR Timer seeding helper a"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EUR
 -- Seeds one timer accounting for the SPAWN_DELAY already elapsed since
 -- referenceGs (game-clock seconds at spawn or wake-up).  Passing the
 -- current game clock as referenceGs seeds with the full SPAWN_DELAY,
@@ -113,7 +113,7 @@ local function seedTimer(t, referenceGs)
     t:reset(seed > 0 and seed or t.duration)
 end
 
--- â”€â”€ Handlers â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+-- a"EURa"EUR Handlers a"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EUR
 -- (Olms has no shared common module; no per-unit DIED cleanup needed.)
 
 local function handleStormTheHeavens(self, context, alerts, abilityId, ...)
@@ -169,9 +169,9 @@ local function handleDefilingBlast(self, context, alerts, abilityId,
                                     unitTag, sourceUnitTag, sourceUnitId, unitId,
                                     sourceUnitName, unitName)
     local target = (unitName and unitName ~= "") and unitName or "?"
-    alerts:showAction("Blast! â†’ " .. target)
+    alerts:showAction("Blast! a+' " .. target)
     local dur = CastDur.get(LLOTHIS_DEFILING_BLAST, FALLBACK_BLAST_DUR)
-    local cid = CA.alertCast(abilityId, "Blast â†’ " .. target, dur,
+    local cid = CA.alertCast(abilityId, "Blast a+' " .. target, dur,
         { -3, 0, false, { 0.6, 0, 0.8, 0.4 }, { 0.6, 0, 0.8, 0.8 } })
     if cid and unitId then self.alertList[unitId] = cid end
     self.blastTimer:reset()
@@ -187,9 +187,9 @@ local function handleTeleportStrike(self, context, alerts, abilityId,
                                      unitTag, sourceUnitTag, sourceUnitId, unitId,
                                      sourceUnitName, unitName)
     local target = (unitName and unitName ~= "") and unitName or "?"
-    alerts:showAction("Strike! â†’ " .. target)
+    alerts:showAction("Strike! a+' " .. target)
     local dur = CastDur.get(FELMS_TELEPORT_STRIKE, FALLBACK_STRIKE_DUR)
-    local cid = CA.alertCast(abilityId, "Strike â†’ " .. target, dur,
+    local cid = CA.alertCast(abilityId, "Strike a+' " .. target, dur,
         { -3, 0, false, { 0, 0.6, 0.8, 0.4 }, { 0, 0.6, 0.8, 0.8 } })
     if cid and unitId then self.alertList[unitId] = cid end
     self.jumpTimer:reset()
@@ -235,21 +235,21 @@ local function handleStaticShield(self, context, alerts, changeType, abilityId, 
     end
 end
 
--- â”€â”€ Routing tables (C3) â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+-- a"EURa"EUR Routing tables (C3) a"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EUR
 
 OlmsEncounter.combatRoutes = {
-    -- â”€â”€ Olms â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+    -- a"EURa"EUR Olms a"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EUR
     [OLMS_STORM_THE_HEAVENS]  = { result = ACTION_RESULT_BEGIN,         fn = handleStormTheHeavens },
     [OLMS_SCALDING_ROAR]      = { result = ACTION_RESULT_BEGIN,         fn = handleScaldingRoar },
     [OLMS_EXHAUSTIVE_CHARGES] = { result = ACTION_RESULT_BEGIN,         fn = handleExhaustiveCharges },
     [OLMS_TRIAL_BY_FIRE]      = { result = ACTION_RESULT_BEGIN,         fn = handleTrialByFire },
     [OLMS_GUSTS_OF_STEAM]     = { result = ACTION_RESULT_BEGIN,         fn = handleGustsOfSteam },
-    -- â”€â”€ Mini-boss spawn detection (Llothis and Felms share BOSS_EVENT ID) â”€
+    -- a"EURa"EUR Mini-boss spawn detection (Llothis and Felms share BOSS_EVENT ID) a"EUR
     [BOSS_EVENT]              = { result = ACTION_RESULT_EFFECT_GAINED,  fn = handleBossEvent },
-    -- â”€â”€ Llothis: combat abilities â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+    -- a"EURa"EUR Llothis: combat abilities a"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EUR
     [LLOTHIS_DEFILING_BLAST]   = { result = ACTION_RESULT_BEGIN,         fn = handleDefilingBlast },
     [LLOTHIS_OPPRESSIVE_BOLTS] = { result = ACTION_RESULT_BEGIN,         fn = handleOppressiveBolts },
-    -- â”€â”€ Felms: combat abilities â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+    -- a"EURa"EUR Felms: combat abilities a"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EUR
     [FELMS_TELEPORT_STRIKE]   = { result = ACTION_RESULT_BEGIN,         fn = handleTeleportStrike },
 }
 
@@ -258,12 +258,12 @@ OlmsEncounter.effectRoutes = {
     [STATIC_SHIELD] = handleStaticShield,
 }
 
--- â”€â”€ Info-line renderers â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+-- a"EURa"EUR Info-line renderers a"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EUR
 
 -- Line 1: Storm timer, displaced by Protector warning when the shield is active.
 local function showStormLine(self, alerts)
     if self.protectorUp then
-        alerts:showInfo(1, "|cffcc00âš  PROTECTOR ACTIVE|r")
+        alerts:showInfo(1, "|cffcc00as  PROTECTOR ACTIVE|r")
     else
         local t = self.stormTimer:remaining()
         alerts:showInfo(1, "Storm:   " .. (t > 0 and ZO_FormatCountdownTimer(t) or "ready"))
@@ -280,7 +280,7 @@ local function showOlmsLines(self, alerts)
     alerts:showInfo(4, t4 > 0 and ("Fire:    " .. ZO_FormatCountdownTimer(t4)) or "")
 end
 
--- Line 5: Llothis â€” not yet spawned, dormant, or blast timer.
+-- Line 5: Llothis aEUR" not yet spawned, dormant, or blast timer.
 local function showLlothisLine(self, alerts)
     if self.llothisSpawnGs == nil then
         alerts:showInfo(5, "")
@@ -302,7 +302,7 @@ local function showBoltsLine(self, alerts)
     end
 end
 
--- Line 7: Felms â€” not yet spawned, dormant, or strike timer.
+-- Line 7: Felms aEUR" not yet spawned, dormant, or strike timer.
 local function showFelmsLine(self, alerts)
     if self.felmsSpawnGs == nil then
         alerts:showInfo(7, "")
@@ -314,7 +314,7 @@ local function showFelmsLine(self, alerts)
     end
 end
 
--- â”€â”€ 200 ms display update â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+-- a"EURa"EUR 200 ms display update a"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EUR
 function OlmsEncounter:onUpdate(context, alerts)
     showStormLine(self, alerts)
     showOlmsLines(self, alerts)
@@ -323,7 +323,7 @@ function OlmsEncounter:onUpdate(context, alerts)
     showFelmsLine(self, alerts)
 end
 
--- â”€â”€ HP milestone pre-warning â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+-- a"EURa"EUR HP milestone pre-warning a"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EURa"EUR
 function OlmsEncounter:onPowerUpdate(context, healthPercent, alerts)
     if self.nextJumpThreshold > #JUMP_THRESHOLDS then return end
     local threshold = JUMP_THRESHOLDS[self.nextJumpThreshold]

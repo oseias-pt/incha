@@ -5,15 +5,15 @@ local CA = require("lib.CA")
 local BossBase = require("lib.BossBase")
 local Settings = require("core.Settings")
 
--- ── Ability IDs (from BSCHTKA_Vrol.lua) ───────────────────────────────────
-local VROL_PORTAL_CAST  = 133994  -- combatRoute: ACTION_RESULT_BEGIN → reset portal timer + alert
-local VROL_FOG_CAST     = 133808  -- combatRoute: ACTION_RESULT_BEGIN → starts fog duration countdown
-local VROL_FOG_INCREASE = 133756  -- combatRoute: ACTION_RESULT_BEGIN → extends fog +9s per 3 hits
-local VROL_PORTAL_KTIME = 134016  -- effectRoute: EFFECT_RESULT_GAINED / FADED → kill-time debuff
-local VROL_HARPOON      = 133913  -- combatRoute: ACTION_RESULT_BEGIN → reset conduit timer + alert
-local VROL_APOTHECARY   = 140255  -- combatRoute: ACTION_RESULT_BEGIN → Interrupt alert
+-- -- Ability IDs (from BSCHTKA_Vrol.lua) -----------------------------------
+local VROL_PORTAL_CAST  = 133994  -- combatRoute: ACTION_RESULT_BEGIN -> reset portal timer + alert
+local VROL_FOG_CAST     = 133808  -- combatRoute: ACTION_RESULT_BEGIN -> starts fog duration countdown
+local VROL_FOG_INCREASE = 133756  -- combatRoute: ACTION_RESULT_BEGIN -> extends fog +9s per 3 hits
+local VROL_PORTAL_KTIME = 134016  -- effectRoute: EFFECT_RESULT_GAINED / FADED -> kill-time debuff
+local VROL_HARPOON      = 133913  -- combatRoute: ACTION_RESULT_BEGIN -> reset conduit timer + alert
+local VROL_APOTHECARY   = 140255  -- combatRoute: ACTION_RESULT_BEGIN -> Interrupt alert
 
--- ── Timer durations ───────────────────────────────────────────────────────
+-- -- Timer durations -------------------------------------------------------
 local NEXT_PORTAL_TIME  = 45
 local NEXT_CONDUIT_TIME = 40
 local NEXT_FOG_TIME     = 30
@@ -51,7 +51,7 @@ Vrol.stateSchema = {
     portalKillExpires = 0,
     -- CA bar ID for the active portal kill-timer debuff (false when not in portal).
     portalKillBarId   = false,
-    -- [unitId] → CA cast bar ID; cleared on leave/death.
+    -- [unitId] -> CA cast bar ID; cleared on leave/death.
     alertList         = function() return {} end,
     -- Fog duration tracking: ms timestamp when fog clears (0 = no active fog).
     -- fogHitCount counts VROL_FOG_INCREASE pulses; resets every FOG_EXTEND_HITS.
@@ -63,7 +63,7 @@ function Vrol.new()
     return BossBase.fromSchema(Vrol)
 end
 
--- ── Lifecycle ─────────────────────────────────────────────────────────────
+-- -- Lifecycle -------------------------------------------------------------
 function Vrol:onEnter(context, alerts)
     if Settings.trial("ka").portalIconVrol and OSI and OSI.CreatePositionIcon then
         zo_callLater(function()
@@ -87,7 +87,7 @@ function Vrol:onLeave(context)
     end
 end
 
--- ── Combat state ──────────────────────────────────────────────────────────
+-- -- Combat state ----------------------------------------------------------
 function Vrol:onCombatState(context, inCombat, alerts)
     if inCombat then
         -- First portal always spawns sooner than the recurring interval.
@@ -113,7 +113,7 @@ function Vrol:onWipe(context, alerts)
 end
 
 
--- ── Routing tables (C3) ──────────────────────────────────────────────────
+-- -- Routing tables (C3) --------------------------------------------------
 -- DIED: clean up tracked CA cast bars for both the unit and its killer.
 function Vrol:onDied(context, alerts,
                       unitTag, sourceUnitTag, sourceUnitId, unitId,
@@ -188,8 +188,8 @@ Vrol.combatRoutes = {
 }
 
 -- Portal kill-timer debuff on the local player (EVENT_EFFECT_CHANGED).
--- GAINED = player entered portal → 20 s to kill the Conjurer.
--- FADED  = debuff removed → check if Conjurer was killed in time.
+-- GAINED = player entered portal -> 20 s to kill the Conjurer.
+-- FADED  = debuff removed -> check if Conjurer was killed in time.
 local function handlePortalKillTime(self, context, alerts, changeType, abilityId,
                                      unitTag, unitId, unitName, stackCount)
     -- Only react to the local player's portal debuff.
@@ -223,7 +223,7 @@ Vrol.effectRoutes = {
     [VROL_PORTAL_KTIME] = handlePortalKillTime,
 }
 
--- 200ms timer display — writes to info lines 1-3.
+-- 200ms timer display  -  writes to info lines 1-3.
 function Vrol:onUpdate(context, alerts)
     local now = GetGameTimeMilliseconds()
 

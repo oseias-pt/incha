@@ -7,7 +7,7 @@ local CA = require("lib.CA")
 local BossBase = require("lib.BossBase")
 local CastDur = require("lib.CastDur")
 
--- ── OSI helpers (OdySupportIcons, optional) ───────────────────────────────
+-- -- OSI helpers (OdySupportIcons, optional) -------------------------------
 -- Textures: pulled from the live ability data so they always match the
 -- icon players see in their buff bar.  Evaluated once at load time.
 local ICON_PRISON      = GetAbilityIcon(132473)   -- FALGRAVN_PRISON
@@ -18,8 +18,8 @@ local COL_PRISON      = { 0.8, 0.3, 1.0 }   -- lavender
 local COL_INSTABILITY = { 1.0, 0.6, 0.0 }   -- amber
 local COL_SYNERGY     = { 0.9, 0.1, 0.2 }   -- crimson
 
--- ── OSI world-coordinate position icons ───────────────────────────────────
--- Connection node positions: 4 lines × 5 nodes (wall=1 → boss=5).
+-- -- OSI world-coordinate position icons -----------------------------------
+-- Connection node positions: 4 lines x 5 nodes (wall=1 -> boss=5).
 -- Shown when Lightning fires (90%/80% connect), hidden when Pulse fades.
 local CONN_NODES = {
     LN1={ 23311, 21700,  8270 }, LN2={ 23647, 21672,  8594 },
@@ -69,7 +69,7 @@ local TORTURER_TEX = {
     red    = "odysupporticons/icons/squares/square_red.dds",
 }
 
--- ── Fallback durations (empirical; replace if GetAbilityCastInfo becomes reliable) ─
+-- -- Fallback durations (empirical; replace if GetAbilityCastInfo becomes reliable) -
 local FALLBACK_DUR = 2000   -- Cleave (FALGRAVN_M_CLEAVE): empirical
 
 -- World-coordinate position icon handles.  Stored at module level so they
@@ -81,7 +81,7 @@ local _posIconTorturer = false
 
 local function osiSet(displayName, texture, color)
     if OSI and displayName and displayName ~= "" then
-        -- BSCHTKA uses 2 × GetIconSize() for mechanic icons.  Guard the call
+        -- BSCHTKA uses 2 x GetIconSize() for mechanic icons.  Guard the call
         -- in case a future OSI version removes or renames GetIconSize.
         local sz = OSI.GetIconSize and (2 * OSI.GetIconSize()) or nil
         OSI.SetMechanicIconForUnit(displayName, texture, sz, color, nil, nil)
@@ -149,7 +149,7 @@ local function updateTorturerIcon(iconTable, name, tex, color)
     OSI.UpdateIconData(iconTable[name], tex, nil, color)
 end
 
--- ── Ability IDs (from BSCHTKA_Falgraven.lua) ──────────────────────────────
+-- -- Ability IDs (from BSCHTKA_Falgraven.lua) ------------------------------
 -- Combat event IDs
 local INFUSER_CASTS         = 137289  -- Trash infuser cast
 local INFUSER_BUFF          = 139961  -- Infuser buff gained by ally
@@ -158,16 +158,16 @@ local FALGRAVN_OPEN_DOOR    = 136693  -- Open the gates cast
 local FALGRAVN_TUT_FEED     = 137314  -- Torturer feeding prisoner
 local FALGRAVN_M_MOVE       = 136965  -- Njordal ground move AoE
 local FALGRAVN_M_BLOCK      = 136953  -- Njordal charge (triggers heavy; use 137499 for the bar)
-local FALGRAVN_M_BLOCK_HEAVY = 137499 -- "Bloody Frenzy" — the actual heavy-attack ability
+local FALGRAVN_M_BLOCK_HEAVY = 137499 -- "Bloody Frenzy"  -  the actual heavy-attack ability
 local FALGRAVN_M_CLEAVE     = 136976  -- Njordal blood cleave
 local FALGRAVN_BLOOD_FOUNT  = 140294  -- Blood Fountain cast
 local FALGRAVN_TORTURER_ESC = 139633  -- Torturer coming down
 local FALGRAVN_START_STAGE2 = 135271  -- Stage 2 start channel
-local FALGRAVN_SHATTER_MID  = 136727  -- Floor shatters → Stage 3
+local FALGRAVN_SHATTER_MID  = 136727  -- Floor shatters -> Stage 3
 local FALGRAVN_INSTABILITY  = 140944  -- Instability cast / effect
 local FALGRAVN_UNW_POWER    = 139378  -- Unwavering Power (Falgravn landing)
 local FALGRAVN_BLOOTBALL    = 136548  -- Blood Ball effect
-local FALGRAVN_PULSE        = 134854  -- Connection pulse (fades → clear icons)
+local FALGRAVN_PULSE        = 134854  -- Connection pulse (fades -> clear icons)
 local FALGRAVN_HM           = 137215  -- HM confirmation ability
 local FALGRAVN_SACRIFICE    = 139620  -- Prisoner saved
 local FALGRAVN_TORTURER_LA  = 136958  -- Torturer light attack (non-tank dodge)
@@ -178,7 +178,7 @@ local FALGRAVN_INSTABILITY2 = 140941  -- Instability (non-HM variant)
 local FALGRAVN_PRISONER_F   = 137315  -- Prisoner feeding stacks
 local FALGRAVN_BLOPSYNERGIE = 129936  -- Execration synergy on player
 
--- ── Timer durations ───────────────────────────────────────────────────────
+-- -- Timer durations -------------------------------------------------------
 local INSTABILITY_INITIAL_DELAY  = 10
 local NEXT_INSTABILITY           = 22
 local NEXT_BLOODBALL             = 45
@@ -187,7 +187,7 @@ local INITIAL_OPENGATE_TIME      = 40   -- from floor shatter to first gates
 local NEXT_OPENGATE_TIME         = 45   -- recurring between Open Door casts
 local NEXT_TORTURER_TP           = 25   -- torturer teleport countdown
 
--- ── Boss definition ───────────────────────────────────────────────────────
+-- -- Boss definition -------------------------------------------------------
 
 local Falgravn = {}
 Falgravn.__index = Falgravn
@@ -236,7 +236,7 @@ Falgravn.stateSchema = {
     -- Torturer encounter state.
     bStartTorturerCD = true,
     torturerCount    = 8,
-    -- [unitId] → CA cast bar ID; cleared on leave/death.
+    -- [unitId] -> CA cast bar ID; cleared on leave/death.
     alertList        = function() return {} end,
     -- CA bar ID for the Prison debuff (false when not active).
     prisonBarId      = false,
@@ -245,7 +245,7 @@ Falgravn.stateSchema = {
     openGatesDelayTimer = false,
     -- Name of the torturer whose feed icon was last turned yellow (false = none).
     activeFeedTorturer = false,
-    -- OSI mechanic icon tracking: [unitTag] → displayName.
+    -- OSI mechanic icon tracking: [unitTag] -> displayName.
     osiPrison      = function() return {} end,
     osiInstability = function() return {} end,
     osiSynergy     = function() return {} end,
@@ -265,7 +265,7 @@ function Falgravn.new()
     return BossBase.fromSchema(Falgravn)
 end
 
--- ── Lifecycle ─────────────────────────────────────────────────────────────
+-- -- Lifecycle -------------------------------------------------------------
 
 function Falgravn:onLeave(context)
     -- Stop all alertList bars via the BossBase helper, then any extra bars.
@@ -276,7 +276,7 @@ function Falgravn:onLeave(context)
     for _, dn in pairs(self.osiPrison)      do osiRemove(dn) end
     for _, dn in pairs(self.osiInstability) do osiRemove(dn) end
     for _, dn in pairs(self.osiSynergy)     do osiRemove(dn) end
-    -- Discard world-coordinate position icons (zone exit — module handles reset).
+    -- Discard world-coordinate position icons (zone exit  -  module handles reset).
     discardPosIcons(_posIconConn)
     discardPosIcons(_posIconBlood)
     discardPosIcons(_posIconTorturer)
@@ -285,7 +285,7 @@ function Falgravn:onLeave(context)
     _posIconTorturer = false
 end
 
--- ── Combat state ──────────────────────────────────────────────────────────
+-- -- Combat state ----------------------------------------------------------
 
 function Falgravn:onCombatState(context, inCombat, alerts)
     if inCombat then
@@ -318,7 +318,7 @@ function Falgravn:onWipe(context, alerts)
     self.osiInstability = {}
     self.osiSynergy     = {}
 
-    -- Hide world-coord position icons without discarding the handles —
+    -- Hide world-coord position icons without discarding the handles  - 
     -- they will be shown again when the relevant mechanics fire next pull.
     showPosIcons(_posIconConn,  false)
     showPosIcons(_posIconBlood, false)
@@ -355,11 +355,11 @@ function Falgravn:onEnter(context, alerts)
     end
 end
 
--- ── 200ms timer display ───────────────────────────────────────────────────
+-- -- 200ms timer display ---------------------------------------------------
 -- Layout matches BSCHTKA's Falg_UpdateUI:
---   Stage 1 → info1=Instability
---   Stage 2 → info1=Instability, info2=Blood Ball
---   Stage 3 → info1=Open Gates, info2=Torturer TP countdown
+--   Stage 1 -> info1=Instability
+--   Stage 2 -> info1=Instability, info2=Blood Ball
+--   Stage 3 -> info1=Open Gates, info2=Torturer TP countdown
 
 function Falgravn:onUpdate(context, alerts)
     local stage = self.CURRENT_STAGE
@@ -382,7 +382,7 @@ function Falgravn:onUpdate(context, alerts)
     end
 end
 
--- ── Handlers ────────────────────────────────────────────────────────────
+-- -- Handlers ------------------------------------------------------------
 -- (Falgravn has no shared common module.)
 
 -- DIED: stop CA bars for the dead unit and its killer.
@@ -477,7 +477,7 @@ local function handleBloodFountain(self, context, alerts, abilityId,
 end
 
 -- Lightning / connection (plain entry; deduped via bConnect flag).
--- BEGIN → show connection-node floor icons so players can see which nodes to stand on.
+-- BEGIN -> show connection-node floor icons so players can see which nodes to stand on.
 local function handleLightning(self, context, alerts, result, abilityId, ...)
     if result == ACTION_RESULT_BEGIN and self.bConnect then
         self.bConnect = false
@@ -487,7 +487,7 @@ local function handleLightning(self, context, alerts, result, abilityId, ...)
     end
 end
 
--- Pulse fades → clear connection-node info lines 2-4 and hide floor icons.
+-- Pulse fades -> clear connection-node info lines 2-4 and hide floor icons.
 local function handlePulse(self, context, alerts, result, abilityId, ...)
     if result == ACTION_RESULT_EFFECT_FADED then
         alerts:showInfo(2, ""); alerts:showInfo(3, ""); alerts:showInfo(4, "")
@@ -508,7 +508,7 @@ local function handleUnwPower(self, context, alerts, abilityId, ...)
 end
 
 -- Blood Ball (plain entry: updates Stage 2 state and bloodBallTimer).
--- EFFECT_GAINED_DURATION → show blood-node floor icons; ensure torturer icons are up too.
+-- EFFECT_GAINED_DURATION -> show blood-node floor icons; ensure torturer icons are up too.
 local function handleBloodBall(self, context, alerts, result, abilityId, ...)
     if self.CURRENT_STAGE ~= 2 then self.CURRENT_STAGE = 2 end
     if result == ACTION_RESULT_EFFECT_GAINED_DURATION then
@@ -560,7 +560,7 @@ local function handleOpenDoor(self, context, alerts, abilityId,
 end
 
 -- Torturer feeding: kill countdown (plain entry; deduped per feed cycle).
--- EFFECT_GAINED → mark the feeding torturer's floor icon yellow.
+-- EFFECT_GAINED -> mark the feeding torturer's floor icon yellow.
 local function handleTorturerFeed(self, context, alerts, result, abilityId,
                                    unitTag, sourceUnitTag, sourceUnitId, unitId,
                                    sourceUnitName, unitName)
@@ -590,7 +590,7 @@ end
 -- Prisoner saved (plain entry; decrements torturer count).
 -- Use unitName (the saved prisoner's name, which matches the torturer node
 -- key) directly from the event, rather than relying on activeFeedTorturer
--- state — this avoids the stale-name risk when two feeds overlap in Stage 3.
+-- state  -  this avoids the stale-name risk when two feeds overlap in Stage 3.
 local function handleSacrifice(self, context, alerts, result, abilityId,
                                 unitTag, sourceUnitTag, sourceUnitId, unitId,
                                 sourceUnitName, unitName)
@@ -677,39 +677,39 @@ local function handleBlopSynergie(self, context, alerts, changeType, abilityId,
     end
 end
 
--- ── Routing tables (C3) ──────────────────────────────────────────────────
+-- -- Routing tables (C3) --------------------------------------------------
 
 Falgravn.combatRoutes = {
-    -- ── Infuser trash ──────────────────────────────────────────────────────
+    -- -- Infuser trash ------------------------------------------------------
     [INFUSER_CASTS]        = { result = ACTION_RESULT_BEGIN,         fn = handleInfuserCasts },
     [INFUSER_BUFF]         = { result = ACTION_RESULT_EFFECT_GAINED, fn = handleInfuserBuff },
-    -- ── HM confirmation ability ────────────────────────────────────────────
+    -- -- HM confirmation ability --------------------------------------------
     [FALGRAVN_HM]          = handleFalgravnHm,
-    -- ── Njordal ────────────────────────────────────────────────────────────
+    -- -- Njordal ------------------------------------------------------------
     [FALGRAVN_M_MOVE]      = handleNjordalMove,
     [FALGRAVN_M_BLOCK]     = handleNjordalBlock,
     [FALGRAVN_M_CLEAVE]    = { result = ACTION_RESULT_BEGIN,         fn = handleBloodCleave },
     [FALGRAVN_BLOOD_FOUNT] = { result = ACTION_RESULT_BEGIN,         fn = handleBloodFountain },
-    -- ── Lightning / connection ─────────────────────────────────────────────
+    -- -- Lightning / connection ---------------------------------------------
     [FALGRAVN_LIGHTNING]   = handleLightning,
     [FALGRAVN_PULSE]       = handlePulse,
-    -- ── Instability ────────────────────────────────────────────────────────
+    -- -- Instability --------------------------------------------------------
     [FALGRAVN_INSTABILITY] = handleInstabilityCombat,
-    -- ── Stage 2 ────────────────────────────────────────────────────────────
+    -- -- Stage 2 ------------------------------------------------------------
     [FALGRAVN_UNW_POWER]   = { result = ACTION_RESULT_EFFECT_FADED,  fn = handleUnwPower },
     [FALGRAVN_BLOOTBALL]   = handleBloodBall,
     [FALGRAVN_START_STAGE2]= { result = ACTION_RESULT_BEGIN,         fn = handleStartStage2 },
-    -- ── Stage 3 ────────────────────────────────────────────────────────────
+    -- -- Stage 3 ------------------------------------------------------------
     [FALGRAVN_SHATTER_MID] = { result = ACTION_RESULT_BEGIN,         fn = handleShatterMid },
     [FALGRAVN_OPEN_DOOR]   = { result = ACTION_RESULT_BEGIN,         fn = handleOpenDoor },
-    -- ── Torturer ────────────────────────────────────────────────────────────
+    -- -- Torturer ------------------------------------------------------------
     [FALGRAVN_TUT_FEED]    = handleTorturerFeed,
     [FALGRAVN_SACRIFICE]   = handleSacrifice,
     [FALGRAVN_TORTURER_ESC]= { result = ACTION_RESULT_BEGIN,         fn = handleTorturerEsc },
     [FALGRAVN_TORTURER_LA] = { result = ACTION_RESULT_BEGIN,         fn = handleTorturerLa },
 }
 
--- ── Effect routing tables (C3) ───────────────────────────────────────────
+-- -- Effect routing tables (C3) -------------------------------------------
 
 Falgravn.effectRoutes = {
     [FALGRAVN_PRISON]       = handlePrisonEffect,

@@ -1,41 +1,41 @@
---- ReefGuardian — Dreadsail Reef boss 2
+--- ReefGuardian  -  Dreadsail Reef boss 2
 ---
 --- Phase DSR-4: full mechanics
----   BuildingStatic (163575 / 169688): GAINED/UPDATED/FADED → stack tracker
----   VolatileResidue (174835 / 174932): GAINED/UPDATED/FADED → stack tracker
----   Sheltered (163571): GAINED → playerSheltered = true; FADED → false
----   Heartburn (163692): BEGIN → portal opened (reef opening begins)
----   HeartburnEffect (166036): EFFECT_GAINED → 60 s wipe timer starts
----   AcidReflux (163702): BEGIN → CastAlertsStart 10 s + 5 acid pool bars
----   CrabMonstrousClaw (166582): BEGIN + player → AlertCast
----   Crush (166019) / Claw (166020): BEGIN + player → AlertCast
----   CoralDriftBearCrackdown (166586): BEGIN + player → AlertCast
----   KingOrnumFireDebuff (175832): EFFECT_GAINED + player → Alert
----   AcidicVulnerability (174659): GAINED/FADED → track for info4
+---   BuildingStatic (163575 / 169688): GAINED/UPDATED/FADED -> stack tracker
+---   VolatileResidue (174835 / 174932): GAINED/UPDATED/FADED -> stack tracker
+---   Sheltered (163571): GAINED -> playerSheltered = true; FADED -> false
+---   Heartburn (163692): BEGIN -> portal opened (reef opening begins)
+---   HeartburnEffect (166036): EFFECT_GAINED -> 60 s wipe timer starts
+---   AcidReflux (163702): BEGIN -> CastAlertsStart 10 s + 5 acid pool bars
+---   CrabMonstrousClaw (166582): BEGIN + player -> AlertCast
+---   Crush (166019) / Claw (166020): BEGIN + player -> AlertCast
+---   CoralDriftBearCrackdown (166586): BEGIN + player -> AlertCast
+---   KingOrnumFireDebuff (175832): EFFECT_GAINED + player -> Alert
+---   AcidicVulnerability (174659): GAINED/FADED -> track for info4
 
 local DreadsailCommon = require("trial.dsr.DreadsailCommon")
 local CastDur = require("lib.CastDur")
 
--- ── Ability IDs ───────────────────────────────────────────────────────────
-local BUILDING_STATIC_1    = 163575   -- effectRoute: EFFECT_RESULT_GAINED/UPDATED/FADED → lightning stack tracker
-local BUILDING_STATIC_2    = 169688   -- effectRoute: EFFECT_RESULT_GAINED/UPDATED/FADED → lightning stack tracker
-local VOLATILE_RESIDUE_1   = 174835   -- effectRoute: EFFECT_RESULT_GAINED/UPDATED/FADED → poison stack tracker
-local VOLATILE_RESIDUE_2   = 174932   -- effectRoute: EFFECT_RESULT_GAINED/UPDATED/FADED → poison stack tracker
-local SHELTERED            = 163571   -- effectRoute: EFFECT_RESULT_GAINED/FADED → playerSheltered + clear stacks
-local HEARTBURN            = 163692   -- combatRoute: ACTION_RESULT_BEGIN → reef portal opens (60 s wipe timer)
-local HEARTBURN_EFFECT     = 166036   -- effectRoute: EFFECT_RESULT_GAINED → start reef wipe timer
-local ACID_REFLUX          = 163702   -- combatRoute: ACTION_RESULT_BEGIN → caAlertCast 10 s + 5 pool alerts
-local ACID_POOL            = 165987   -- (unused in routes — placed by Acid Reflux; no route needed)
-local CRAB_MONSTROUS_CLAW  = 166582   -- combatRoute: ACTION_RESULT_BEGIN → handleHeavy (player caAlertCast)
-local CRAB_SWIPE           = 166584   -- combatRoute: ACTION_RESULT_BEGIN → handleHeavy (player caAlertCast)
-local CRUSH                = 166019   -- combatRoute: ACTION_RESULT_BEGIN → handleHeavy (player caAlertCast)
-local CLAW_ATTACK          = 166020   -- combatRoute: ACTION_RESULT_BEGIN → handleHeavy (player caAlertCast)
-local CRACKDOWN            = 166586   -- combatRoute: ACTION_RESULT_BEGIN → handleHeavy (player caAlertCast)
-local KING_ORGNUM_FIRE_DBF = 175832   -- effectRoute: EFFECT_RESULT_GAINED (player) → fire MOVE alert
-local ACIDIC_VULN          = 174659   -- effectRoute: EFFECT_RESULT_GAINED/FADED (player) → acidicVulnLast timer
-local REPLICATION          = 163701   -- combatRoute: ACTION_RESULT_BEGIN → Replication! alert
+-- -- Ability IDs -----------------------------------------------------------
+local BUILDING_STATIC_1    = 163575   -- effectRoute: EFFECT_RESULT_GAINED/UPDATED/FADED -> lightning stack tracker
+local BUILDING_STATIC_2    = 169688   -- effectRoute: EFFECT_RESULT_GAINED/UPDATED/FADED -> lightning stack tracker
+local VOLATILE_RESIDUE_1   = 174835   -- effectRoute: EFFECT_RESULT_GAINED/UPDATED/FADED -> poison stack tracker
+local VOLATILE_RESIDUE_2   = 174932   -- effectRoute: EFFECT_RESULT_GAINED/UPDATED/FADED -> poison stack tracker
+local SHELTERED            = 163571   -- effectRoute: EFFECT_RESULT_GAINED/FADED -> playerSheltered + clear stacks
+local HEARTBURN            = 163692   -- combatRoute: ACTION_RESULT_BEGIN -> reef portal opens (60 s wipe timer)
+local HEARTBURN_EFFECT     = 166036   -- effectRoute: EFFECT_RESULT_GAINED -> start reef wipe timer
+local ACID_REFLUX          = 163702   -- combatRoute: ACTION_RESULT_BEGIN -> caAlertCast 10 s + 5 pool alerts
+local ACID_POOL            = 165987   -- (unused in routes  -  placed by Acid Reflux; no route needed)
+local CRAB_MONSTROUS_CLAW  = 166582   -- combatRoute: ACTION_RESULT_BEGIN -> handleHeavy (player caAlertCast)
+local CRAB_SWIPE           = 166584   -- combatRoute: ACTION_RESULT_BEGIN -> handleHeavy (player caAlertCast)
+local CRUSH                = 166019   -- combatRoute: ACTION_RESULT_BEGIN -> handleHeavy (player caAlertCast)
+local CLAW_ATTACK          = 166020   -- combatRoute: ACTION_RESULT_BEGIN -> handleHeavy (player caAlertCast)
+local CRACKDOWN            = 166586   -- combatRoute: ACTION_RESULT_BEGIN -> handleHeavy (player caAlertCast)
+local KING_ORGNUM_FIRE_DBF = 175832   -- effectRoute: EFFECT_RESULT_GAINED (player) -> fire MOVE alert
+local ACIDIC_VULN          = 174659   -- effectRoute: EFFECT_RESULT_GAINED/FADED (player) -> acidicVulnLast timer
+local REPLICATION          = 163701   -- combatRoute: ACTION_RESULT_BEGIN -> Replication! alert
 
--- ── Timing constants ─────────────────────────────────────────────────────
+-- -- Timing constants -----------------------------------------------------
 local PORTAL_WIPE_TIME     = 60       -- s: portal wipe timer after opening
 local ACID_INTERVAL        = 1750     -- ms: acid pool spacing
 local ACID_COUNT           = 5        -- number of acid pools per Reflux
@@ -44,22 +44,22 @@ local SHELTERED_WINDOW     = 3        -- s: keep "CLEANSED" label brief
 local CA = require("lib.CA")
 local BossBase = require("lib.BossBase")
 
--- ── CA colour palettes ────────────────────────────────────────────────────
+-- -- CA colour palettes ----------------------------------------------------
 local COL_HEAVY   = { -2, 0, false, { 1.0, 0.35, 0.1, 0.4 }, { 1.0, 0.35, 0.1, 0.8 } }
 local COL_ACID    = { 0.4, 0.9, 0.2, 0.5 }
 local ACT_ACID    = { 8000, "MOVE OUT!", 0.3, 0.9, 0.1, 0.9, nil }
 
--- ── Fallback durations (empirical; replace if GetAbilityCastInfo becomes reliable) ─
+-- -- Fallback durations (empirical; replace if GetAbilityCastInfo becomes reliable) -
 local FALLBACK_DUR = 1500   -- heavy melee (Crush/Claw/Crackdown): empirical
 
--- ── Boss definition ───────────────────────────────────────────────────────
+-- -- Boss definition -------------------------------------------------------
 local ReefGuardian = {}
 ReefGuardian.__index = ReefGuardian
 ReefGuardian.common = DreadsailCommon   -- C3: common mechanic dispatch
 
 ReefGuardian.key              = "reef_guardian"
 ReefGuardian.name             = "Reef Guardian"   -- TODO: verify via GetUnitName("boss1") in-game
--- location: arena AABB not yet captured — detection is name-based.
+-- location: arena AABB not yet captured  -  detection is name-based.
 -- To add AABB: stand in arena, run /script d(GetUnitWorldPosition("boss1"))
 ReefGuardian.hmHealthThreshold = 100000001         -- TODO: verify
 
@@ -80,13 +80,13 @@ function ReefGuardian.new()
     return BossBase.fromSchema(ReefGuardian)
 end
 
--- ── Lifecycle ─────────────────────────────────────────────────────────────
+-- -- Lifecycle -------------------------------------------------------------
 function ReefGuardian:onLeave(context)
     CA.castAlertsStop(self.acidRefluxBarId)
 end
 
--- ── Routing tables (C3) ──────────────────────────────────────────────────
--- (No onDied needed — ReefGuardian has no alertList.)
+-- -- Routing tables (C3) --------------------------------------------------
+-- (No onDied needed  -  ReefGuardian has no alertList.)
 
 -- Heavy / player-targeted attacks: shared handler for 5 ability IDs.
 local function handleHeavy(self, context, alerts, abilityId,
@@ -103,7 +103,7 @@ local function handleHeartburn(self, context, alerts, abilityId, ...)
     local idx = self.reefNum
     self.reefPortals[idx] = { openTime = GetGameTimeMilliseconds() / 1000,
                               wipeActive = false }
-    CA.alert(nil, "Reef " .. idx .. ": OPEN — 60 s!",
+    CA.alert(nil, "Reef " .. idx .. ": OPEN  -  60 s!",
         0xFFD700D9, SOUNDS.DUEL_START, 5000)
     PlaySound(SOUNDS.DUEL_START)
 end
@@ -117,7 +117,7 @@ local function handleAcidReflux(self, context, alerts, abilityId, ...)
         local delay = i * ACID_INTERVAL
         zo_callLater(function()
             CA.alert(nil,
-                "Acid pool " .. i .. "/" .. ACID_COUNT .. " — MOVE!",
+                "Acid pool " .. i .. "/" .. ACID_COUNT .. "  -  MOVE!",
                 0x44DD22D9, SOUNDS.CHAMPION_POINTS_COMMITTED, 1500)
         end, delay)
     end
@@ -201,7 +201,7 @@ end
 local function handleKingOrgnumFireDbf(self, context, alerts, changeType, abilityId,
                                         unitTag, unitId, unitName, stackCount)
     if changeType == EFFECT_RESULT_GAINED and AreUnitsEqual("player", unitTag) then
-        CA.alert(nil, "|cFF5500King Orgnum fire — MOVE!|r",
+        CA.alert(nil, "|cFF5500King Orgnum fire  -  MOVE!|r",
             0xFF5500D9, SOUNDS.DUEL_START, 5000)
     end
 end
@@ -226,7 +226,7 @@ ReefGuardian.effectRoutes = {
     [ACIDIC_VULN]          = handleAcidicVuln,
 }
 
--- ── Info-line renderers ───────────────────────────────────────────────────
+-- -- Info-line renderers ---------------------------------------------------
 
 -- Info 1: Building Static (lightning) stacks; shows CLEANSED during shelter window.
 local function showLightningStacksLine(self, alerts, now)
@@ -235,10 +235,10 @@ local function showLightningStacksLine(self, alerts, now)
         local warn = (stacks >= 7) and " |cff0000!|r" or ""
         if self.playerSheltered
            or (now - self.lastShelteredTime < SHELTERED_WINDOW) then
-            alerts:showInfo(1, "|cFFD666⚡ CLEANSED|r")
+            alerts:showInfo(1, "|cFFD666(zap) CLEANSED|r")
         else
             alerts:showInfo(1,
-                "|cFFD666⚡ " .. stacks .. " stack" ..
+                "|cFFD666(zap) " .. stacks .. " stack" ..
                 (stacks ~= 1 and "s" or "") .. warn .. "|r")
         end
     else
@@ -253,10 +253,10 @@ local function showPoisonStacksLine(self, alerts, now)
         local warn = (vstacks >= 7) and " |cff0000!|r" or ""
         if self.playerSheltered
            or (now - self.lastShelteredTime < SHELTERED_WINDOW) then
-            alerts:showInfo(2, "|c66CC66☣ CLEANSED|r")
+            alerts:showInfo(2, "|c66CC66(bio) CLEANSED|r")
         else
             alerts:showInfo(2,
-                "|c66CC66☣ " .. vstacks .. " stack" ..
+                "|c66CC66(bio) " .. vstacks .. " stack" ..
                 (vstacks ~= 1 and "s" or "") .. warn .. "|r")
         end
     else
@@ -264,7 +264,7 @@ local function showPoisonStacksLine(self, alerts, now)
     end
 end
 
--- Info 3+4: Active reef wipe timers (red when ≤ 15 s); info4 falls back to Acidic Vuln window.
+-- Info 3+4: Active reef wipe timers (red when <= 15 s); info4 falls back to Acidic Vuln window.
 local function showReefWipeLines(self, alerts, now)
     local timers = {}
     for i = 1, self.reefNum do
@@ -319,7 +319,7 @@ function ReefGuardian:onWipe()
     self.acidicVulnLast         = 0
 end
 
--- ── 200 ms display loop ───────────────────────────────────────────────────
+-- -- 200 ms display loop ---------------------------------------------------
 function ReefGuardian:onUpdate(context, alerts)
     local now = GetGameTimeMilliseconds() / 1000
     showLightningStacksLine(self, alerts, now)

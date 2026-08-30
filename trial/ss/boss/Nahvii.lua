@@ -1,68 +1,68 @@
---- Nahviintaas — Sunspire boss 3 (Lightning / Portal)
+--- Nahviintaas  -  Sunspire boss 3 (Lightning / Portal)
 ---
 --- Phase SS-2: Cross-trial alerts via SunspireCommon
 --- Phase SS-5: Nahvii-specific mechanics
----   PowerfulSlam (120542): player or nearby (dist ≤ 7); CA countdown list
+---   PowerfulSlam (120542): player or nearby (dist <= 7); CA countdown list
 ---   Stonefist (120567): player-targeted; CA countdown list
 ---   SweepingBreath (120188 / 118743): directional caAlert
----   Thrash (118562): CA cast bar + nudge NextMeteor −1.5 s
+---   Thrash (118562): CA cast bar + nudge NextMeteor -1.5 s
 ---   SoulTear (117526): 2 s caAlert "SOUL TEAR"
 ---   FireStorm (118884): skip-first; stormTime +13.7 s, landing +6.6 s
----   NextMeteor (117251/123067 EFFECT_GAINED_DURATION → +14.5 s; 117308 BEGIN → +10.5 s)
+---   NextMeteor (117251/123067 EFFECT_GAINED_DURATION -> +14.5 s; 117308 BEGIN -> +10.5 s)
 ---   MarkForDeath (117938): nudge NextMeteor +1.5 s
 ---   Portal (121676): 14 s window + 98 s wipe countdown
----   PortalInterrupt (121436): interrupt countdown → 20 s pins after bash
+---   PortalInterrupt (121436): interrupt countdown -> 20 s pins after bash
 ---   PortalEnter/Exit (121213/121254): inPortal state; suppress HP display
 ---   WipeFinished (121216): EFFECT_FADED clears wipe timer
 ---   NegateField (121411): player-targeted 2.5 s banner
 ---   Meteor targets (117251/123067): display targeted players for 4 s
----   Boss HP thresholds: 80% / 60% / 40% → "Can Fly In X%" (suppressed in portal)
+---   Boss HP thresholds: 80% / 60% / 40% -> "Can Fly In X%" (suppressed in portal)
 
 local SunspireCommon = require("trial.ss.SunspireCommon")
 local BossBase       = require("lib.BossBase")
 local MapUtils       = require("lib.MapUtils")
 local Timer          = require("lib.Timer")
 
--- ── Ability IDs ────────────────────────────────────────────────────────────
-local POWERFUL_SLAM    = 120542   -- combatRoute: ACTION_RESULT_BEGIN → Block alert (player/nearby 7m)
-local STONEFIST        = 120567   -- combatRoute: ACTION_RESULT_BEGIN → Block alert (player only)
-local SWEEP_RIGHT      = 120188   -- combatRoute: ACTION_RESULT_BEGIN → >>> Sweep Breath alert
-local SWEEP_LEFT       = 118743   -- combatRoute: ACTION_RESULT_BEGIN → <<< Sweep Breath alert
-local THRASH           = 118562   -- combatRoute: ACTION_RESULT_BEGIN → caAlertCast; nextMeteor −1.5s
-local SOUL_TEAR        = 117526   -- combatRoute: ACTION_RESULT_BEGIN → SOUL TEAR alert
-local FIRE_STORM       = 118884   -- combatRoute: ACTION_RESULT_BEGIN → stormTime + 13.7s
-local NEXT_METEOR_A    = 117251   -- combatRoute: ACTION_RESULT_EFFECT_GAINED_DURATION → +14.5s
-local NEXT_METEOR_B    = 123067   -- combatRoute: ACTION_RESULT_EFFECT_GAINED_DURATION → +14.5s
-local NEXT_METEOR_C    = 117308   -- combatRoute: ACTION_RESULT_BEGIN → nextMeteor +10.5s
-local MARK_FOR_DEATH   = 117938   -- combatRoute: ACTION_RESULT_BEGIN → nextMeteor +1.5s
-local PORTAL           = 121676   -- combatRoute: ACTION_RESULT_BEGIN → portal 14s + wipe 98s
-local PORTAL_ENTER     = 121213   -- combatRoute: ACTION_RESULT_EFFECT_GAINED_DURATION → inPortal
-local PORTAL_EXIT      = 121254   -- combatRoute: ACTION_RESULT_EFFECT_GAINED_DURATION → exit portal
-local PORTAL_INTERRUPT = 121436   -- combatRoute: ACTION_RESULT_EFFECT_GAINED_DURATION → interrupt timer
-local WIPE_FINISHED    = 121216   -- combatRoute: ACTION_RESULT_EFFECT_FADED → clear wipeTime
-local NEGATE_FIELD     = 121411   -- combatRoute: ACTION_RESULT_BEGIN → Dodge alert (player only)
+-- -- Ability IDs ------------------------------------------------------------
+local POWERFUL_SLAM    = 120542   -- combatRoute: ACTION_RESULT_BEGIN -> Block alert (player/nearby 7m)
+local STONEFIST        = 120567   -- combatRoute: ACTION_RESULT_BEGIN -> Block alert (player only)
+local SWEEP_RIGHT      = 120188   -- combatRoute: ACTION_RESULT_BEGIN -> >>> Sweep Breath alert
+local SWEEP_LEFT       = 118743   -- combatRoute: ACTION_RESULT_BEGIN -> <<< Sweep Breath alert
+local THRASH           = 118562   -- combatRoute: ACTION_RESULT_BEGIN -> caAlertCast; nextMeteor -1.5s
+local SOUL_TEAR        = 117526   -- combatRoute: ACTION_RESULT_BEGIN -> SOUL TEAR alert
+local FIRE_STORM       = 118884   -- combatRoute: ACTION_RESULT_BEGIN -> stormTime + 13.7s
+local NEXT_METEOR_A    = 117251   -- combatRoute: ACTION_RESULT_EFFECT_GAINED_DURATION -> +14.5s
+local NEXT_METEOR_B    = 123067   -- combatRoute: ACTION_RESULT_EFFECT_GAINED_DURATION -> +14.5s
+local NEXT_METEOR_C    = 117308   -- combatRoute: ACTION_RESULT_BEGIN -> nextMeteor +10.5s
+local MARK_FOR_DEATH   = 117938   -- combatRoute: ACTION_RESULT_BEGIN -> nextMeteor +1.5s
+local PORTAL           = 121676   -- combatRoute: ACTION_RESULT_BEGIN -> portal 14s + wipe 98s
+local PORTAL_ENTER     = 121213   -- combatRoute: ACTION_RESULT_EFFECT_GAINED_DURATION -> inPortal
+local PORTAL_EXIT      = 121254   -- combatRoute: ACTION_RESULT_EFFECT_GAINED_DURATION -> exit portal
+local PORTAL_INTERRUPT = 121436   -- combatRoute: ACTION_RESULT_EFFECT_GAINED_DURATION -> interrupt timer
+local WIPE_FINISHED    = 121216   -- combatRoute: ACTION_RESULT_EFFECT_FADED -> clear wipeTime
+local NEGATE_FIELD     = 121411   -- combatRoute: ACTION_RESULT_BEGIN -> Dodge alert (player only)
 
 local CA = require("lib.CA")
 local CastDur = require("lib.CastDur")
 
--- ── CA colour palettes ─────────────────────────────────────────────────────
+-- -- CA colour palettes -----------------------------------------------------
 local COL_SLAM   = { -2, 0, false, { 1.0, 0.27, 0.0, 0.4 }, { 1.0, 0.27, 0.0, 0.8 } }
 local COL_STONE  = { -2, 0, false, { 0.7, 0.52, 0.0, 0.4 }, { 0.7, 0.52, 0.0, 0.8 } }
 local COL_THRASH = { -2, 0, false, { 0.9, 0.1,  0.1, 0.4 }, { 0.9, 0.1,  0.1, 0.8 } }
 
--- ── Fallback durations (empirical; replace if GetAbilityCastInfo becomes reliable) ─
+-- -- Fallback durations (empirical; replace if GetAbilityCastInfo becomes reliable) -
 local FALLBACK_SLAM_DUR      = 2000   -- PowerfulSlam / Stonefist: empirical
 local FALLBACK_THRASH_DUR    = 2500   -- Thrash: empirical
 local FALLBACK_INTERRUPT_DUR = 6000   -- PortalInterrupt: empirical
 
--- ── Boss definition ───────────────────────────────────────────────────────
+-- -- Boss definition -------------------------------------------------------
 local Nahvii = {}
 Nahvii.__index = Nahvii
 setmetatable(Nahvii, {__index = BossBase})
 
 Nahvii.key  = "nahvii"
 Nahvii.name = "Nahviintaas"
--- location: Sunspire arena is one shared room for all three bosses — a single AABB
+-- location: Sunspire arena is one shared room for all three bosses  -  a single AABB
 -- would be ambiguous.  Name-based detection is intentional; name is well-established
 -- EN string (same client since Elsweyr launch), non-EN risk is low.
 
@@ -94,7 +94,7 @@ function Nahvii.new()
     return BossBase.fromSchema(Nahvii)
 end
 
--- ── Lifecycle ─────────────────────────────────────────────────────────────
+-- -- Lifecycle -------------------------------------------------------------
 
 local function nahvii_cleanup(self)
     self:cleanupAlertList()
@@ -125,12 +125,12 @@ function Nahvii:onWipe(context, alerts)
     self.meteorDisplayEnd_ms = 0
 end
 
--- ── Routing tables (C3) ──────────────────────────────────────────────────
+-- -- Routing tables (C3) --------------------------------------------------
 -- Shared cross-trial mechanic handler.
 Nahvii.common = SunspireCommon
 
--- NextMeteor A+B share: EFFECT_GAINED_DURATION → timer + target tracking;
--- EFFECT_FADED → remove target entry.
+-- NextMeteor A+B share: EFFECT_GAINED_DURATION -> timer + target tracking;
+-- EFFECT_FADED -> remove target entry.
 local function handleNextMeteor(self, context, alerts, result, abilityId,
                                   unitTag, sourceUnitTag, sourceUnitId, unitId,
                                   sourceUnitName, unitName)
@@ -145,7 +145,7 @@ local function handleNextMeteor(self, context, alerts, result, abilityId,
             self.meteorTargets[unitTag] = name
             self.meteorDisplayEnd_ms = GetGameTimeMilliseconds() + 4000
             if AreUnitsEqual("player", unitTag) then
-                alerts:showAction("YOU → Meteor!")
+                alerts:showAction("YOU -> Meteor!")
                 CA.alert(nil, "Meteor on YOU!", 0xFF2200FF, SOUNDS.NONE, 4000)
             end
         end
@@ -312,7 +312,7 @@ function Nahvii:onCombatEvent(context, alerts, result, abilityId,
     end
 end
 
--- ── Info-line renderers ───────────────────────────────────────────────────
+-- -- Info-line renderers ---------------------------------------------------
 
 -- Info 1: NextMeteor countdown.
 local function showNextMeteorLine(self, alerts, now)
@@ -328,7 +328,7 @@ local function showNextMeteorLine(self, alerts, now)
     end
 end
 
--- Info 2: Portal window → Interrupt countdown → Pins countdown.
+-- Info 2: Portal window -> Interrupt countdown -> Pins countdown.
 local function showPortalInterruptLine(self, alerts, now)
     local portalLeft = self.portalTime - now
     local interLeft  = self.interruptTimer:remaining()
@@ -376,7 +376,7 @@ local function showMeteorOrStormLine(self, alerts, now, now_ms)
     end
 end
 
--- Info 4: Landing countdown → Portal Wipe → HP "can fly" threshold.
+-- Info 4: Landing countdown -> Portal Wipe -> HP "can fly" threshold.
 local function showLandingWipeLine(self, alerts, now, context)
     local landing  = self.landingTime - now
     local wipeLeft = self.wipeTime    - now
@@ -407,7 +407,7 @@ local function showLandingWipeLine(self, alerts, now, context)
     end
 end
 
--- ── 200 ms display loop ───────────────────────────────────────────────────
+-- -- 200 ms display loop ---------------------------------------------------
 function Nahvii:onUpdate(context, alerts)
     local now_ms = GetGameTimeMilliseconds()
     local now    = now_ms / 1000

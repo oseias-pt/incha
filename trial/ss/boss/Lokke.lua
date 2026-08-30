@@ -1,24 +1,24 @@
---- Lokkestiiz — Sunspire boss 1 (Ice)
+--- Lokkestiiz  -  Sunspire boss 1 (Ice)
 ---
 --- Phase SS-2: Cross-trial alerts via SunspireCommon
 --- Phase SS-3: Lokke-specific mechanics
----   GlacialFist · IceTomb state machine · LokkeLaser / landing · HP fly thresholds
+---   GlacialFist . IceTomb state machine . LokkeLaser / landing . HP fly thresholds
 
 local SunspireCommon = require("trial.ss.SunspireCommon")
 local BossBase       = require("lib.BossBase")
 local MapUtils       = require("lib.MapUtils")
 
--- ── Ability IDs ────────────────────────────────────────────────────────────
-local GLACIAL_FIST    = 120838   -- combatRoute: ACTION_RESULT_BEGIN → Block alert (player/nearby 4.5m)
-local ICE_TOMB        = 119632   -- combatRoute: ACTION_RESULT_BEGIN → start tomb cycle
-local IN_ICE          = 116044   -- combatRoute: ACTION_RESULT_EFFECT_GAINED / FADED → player in/out tomb
-local LASER_1         = 122820   -- combatRoute: ACTION_RESULT_BEGIN → laser 40s + landing 12.8s
-local LASER_2         = 122821   -- combatRoute: ACTION_RESULT_BEGIN → laser 10s + landing 54.6s
-local LASER_3         = 122822   -- combatRoute: ACTION_RESULT_BEGIN → laser 32s + landing 32.1s
-local ICE_EFFECT_CAST = 124687   -- effectRoute: EFFECT_RESULT_GAINED → TombCast signal
-local ICE_EFFECT_ARM  = 119638   -- effectRoute: EFFECT_RESULT_GAINED / FADED → TombArmed / TombFaded
+-- -- Ability IDs ------------------------------------------------------------
+local GLACIAL_FIST    = 120838   -- combatRoute: ACTION_RESULT_BEGIN -> Block alert (player/nearby 4.5m)
+local ICE_TOMB        = 119632   -- combatRoute: ACTION_RESULT_BEGIN -> start tomb cycle
+local IN_ICE          = 116044   -- combatRoute: ACTION_RESULT_EFFECT_GAINED / FADED -> player in/out tomb
+local LASER_1         = 122820   -- combatRoute: ACTION_RESULT_BEGIN -> laser 40s + landing 12.8s
+local LASER_2         = 122821   -- combatRoute: ACTION_RESULT_BEGIN -> laser 10s + landing 54.6s
+local LASER_3         = 122822   -- combatRoute: ACTION_RESULT_BEGIN -> laser 32s + landing 32.1s
+local ICE_EFFECT_CAST = 124687   -- effectRoute: EFFECT_RESULT_GAINED -> TombCast signal
+local ICE_EFFECT_ARM  = 119638   -- effectRoute: EFFECT_RESULT_GAINED / FADED -> TombArmed / TombFaded
 
--- ── IceTomb display strings (match HTS palette) ───────────────────────────
+-- -- IceTomb display strings (match HTS palette) ---------------------------
 local sA    = "[|c00ff00A|r]: "
 local sB    = "[|c00ff00B|r]: "
 local sTake = "|cd92626Take|r "
@@ -26,7 +26,7 @@ local sHeal = "|c00ffffHeal|r "
 local sDone = "|c00FF00Done|r"
 local sInc  = "|c00ffffinc|r"
 
-local NEXT_TOMB = { [0]=1, [1]=2, [2]=3, [3]=1 }   -- iceNumber → next label
+local NEXT_TOMB = { [0]=1, [1]=2, [2]=3, [3]=1 }   -- iceNumber -> next label
 
 local CA = require("lib.CA")
 local CastDur = require("lib.CastDur")
@@ -49,7 +49,7 @@ local function formatTombLabel(slot, prefix, now)
     return prefix .. sInc
 end
 
--- ── IceTomb state-machine transitions (take self explicitly) ─────────────
+-- -- IceTomb state-machine transitions (take self explicitly) -------------
 local function clearTombs(self)
     self.tCast       = 0
     self.tArmed      = 0
@@ -118,23 +118,23 @@ local function iceFaded(self, unitId)
     end
 end
 
--- ── Fallback durations (empirical; replace if GetAbilityCastInfo becomes reliable) ─
+-- -- Fallback durations (empirical; replace if GetAbilityCastInfo becomes reliable) -
 local FALLBACK_FIST_DUR = 1500   -- GlacialFist: empirical
 
--- ── Boss definition ───────────────────────────────────────────────────────
+-- -- Boss definition -------------------------------------------------------
 local Lokke = {}
 Lokke.__index = Lokke
 setmetatable(Lokke, {__index = BossBase})
 
 Lokke.key  = "lokke"
 Lokke.name = "Lokkestiiz"
--- location: Sunspire arena is one shared room for all three bosses — a single AABB
+-- location: Sunspire arena is one shared room for all three bosses  -  a single AABB
 -- would be ambiguous.  Name-based detection is intentional; name is well-established
 -- EN string (same client since Elsweyr launch), non-EN risk is low.
 -- hmHealthThreshold: measure in-game
 
 Lokke.stateSchema = {
-    -- alertList: [sourceUnitId] → CA bar ID
+    -- alertList: [sourceUnitId] -> CA bar ID
     alertList    = function() return {} end,
     -- IceTomb machine
     iceNumber    = 0,
@@ -162,7 +162,7 @@ function Lokke.new()
     return BossBase.fromSchema(Lokke)
 end
 
--- ── Lifecycle ─────────────────────────────────────────────────────────────
+-- -- Lifecycle -------------------------------------------------------------
 
 local function lokke_cleanup(self)
     self:cleanupAlertList()
@@ -189,7 +189,7 @@ function Lokke:onWipe(context, alerts)
     clearTombs(self)
 end
 
--- ── Routing tables (C3) ──────────────────────────────────────────────────
+-- -- Routing tables (C3) --------------------------------------------------
 -- Shared cross-trial mechanic handler.
 Lokke.common = SunspireCommon
 
@@ -288,9 +288,9 @@ Lokke.effectRoutes = {
     [ICE_EFFECT_ARM]  = handleIceEffectArm,
 }
 
--- ── Info-line renderers ───────────────────────────────────────────────────
+-- -- Info-line renderers ---------------------------------------------------
 
--- Info 4: Laser countdown → landing → HP "can fly" threshold.
+-- Info 4: Laser countdown -> landing -> HP "can fly" threshold.
 local function showLaserLandingLine(self, alerts, now, context)
     local laser   = self.laserTime   - now
     local landing = self.landingTime - now
@@ -318,7 +318,7 @@ local function showLaserLandingLine(self, alerts, now, context)
     end
 end
 
--- Info 1-3: IceTomb display — flying suppression, waiting-for-tomb header, or active slot labels.
+-- Info 1-3: IceTomb display  -  flying suppression, waiting-for-tomb header, or active slot labels.
 local function showIceTombLines(self, alerts, now)
     local isFlying = (self.iceNumber == 0)
         or (self.laserTime   > 0 and now < self.laserTime)
@@ -354,7 +354,7 @@ local function showIceTombLines(self, alerts, now)
     end
 end
 
--- ── 200 ms display loop ───────────────────────────────────────────────────
+-- -- 200 ms display loop ---------------------------------------------------
 function Lokke:onUpdate(context, alerts)
     local now = GetGameTimeMilliseconds() / 1000
     showLaserLandingLine(self, alerts, now, context)

@@ -10,20 +10,20 @@ local BridgeBase   = require("core.Bridge")
 local Trial = {}
 Trial.__index = Trial
 
---- Boss interface — all methods are optional unless marked REQUIRED.
+--- Boss interface  -  all methods are optional unless marked REQUIRED.
 --- Each boss is a table with __index pointing at the class (prototype).
 --- Trial checks for each method before calling; missing methods are no-ops.
 ---
----   REQUIRED: key (string)          — unique identifier, matches BossRegistry key
----   REQUIRED: name (string)         — display name returned by GetUnitName("bossN"),
+---   REQUIRED: key (string)           -  unique identifier, matches BossRegistry key
+---   REQUIRED: name (string)          -  display name returned by GetUnitName("bossN"),
 ---                                     OR nameAliases table listing all unit names
----   REQUIRED: new() → instance      — returns a fresh table, NO carried-over state
+---   REQUIRED: new() -> instance       -  returns a fresh table, NO carried-over state
 ---
----   onLeave(context)                — full teardown on zone exit: stop bars,
+---   onLeave(context)                 -  full teardown on zone exit: stop bars,
 ---                                     discard position icons, unregister events
----   onEnter(context, alerts)        — boss became active (called after context:setBoss)
+---   onEnter(context, alerts)         -  boss became active (called after context:setBoss)
 ---   onCombatState(ctx, inCombat, alerts)
----   onWipe(ctx, alerts)             — soft reset on wipe while still in zone:
+---   onWipe(ctx, alerts)              -  soft reset on wipe while still in zone:
 ---                                     stop active bars, clear per-pull flags and
 ---                                     OSI mechanic icons; keep long-lived position
 ---                                     icons so they survive into the next pull
@@ -32,14 +32,14 @@ Trial.__index = Trial
 ---                 sourceUnitName, unitName)
 ---   onEffectChanged(ctx, alerts, changeType, abilityId,
 ---                   unitTag, unitId, unitName)
----   onUpdate(ctx, alerts)           — 200 ms tick while boss is active
+---   onUpdate(ctx, alerts)            -  200 ms tick while boss is active
 ---   onPowerUpdate(ctx, healthPct, alerts)
 ---
----   hmHealthThreshold (number)      — max HP above which difficulty = HARDMODE
----   healthRules (table)             — HealthRules table for phase-change callouts
----   hideActionWhenNoRule (boolean)  — clear action slot when no health rule fires
----   location (Location)             — AABB for position-based boss detection
----   stage (number)                  — initial context.stage value (default 1)
+---   hmHealthThreshold (number)       -  max HP above which difficulty = HARDMODE
+---   healthRules (table)              -  HealthRules table for phase-change callouts
+---   hideActionWhenNoRule (boolean)   -  clear action slot when no health rule fires
+---   location (Location)              -  AABB for position-based boss detection
+---   stage (number)                   -  initial context.stage value (default 1)
 ---
 function Trial.create(options)
     local self = setmetatable({
@@ -54,7 +54,7 @@ function Trial.create(options)
         alerts = AlertSink.new(options.alerts),
         enabled = false,
         -- The live boss instance for the current encounter; nil between bosses.
-        -- Always a fresh object created by the boss class's new() factory —
+        -- Always a fresh object created by the boss class's new() factory  - 
         -- never the class prototype itself.
         activeBoss = nil,
         -- Only gates the cosmetic health-rule text (and the AlertSink calls
@@ -71,7 +71,7 @@ function Trial.create(options)
         onPowerUpdate = function(eventCode, unitTag, powerIndex, powerType, powerValue, powerMax, powerEffectiveMax)
             self:onPowerUpdate(powerValue, powerMax)
         end,
-        -- Always registered — Trial:onCombatState delegates to the active boss
+        -- Always registered  -  Trial:onCombatState delegates to the active boss
         -- if it has the callback, so no trial-level conditional is needed.
         onCombatState = function(eventCode, inCombat)
             self:onCombatState(inCombat)
@@ -118,7 +118,7 @@ function Trial:onBossesChanged(forceReset)
 
     -- Fallback: name-based detection for trials whose bosses carry a `name`
     -- field instead of (or in addition to) a location bounding box.
-    -- Check boss1–boss4 so concurrent-boss encounters (e.g. Ryelaz+Zilyesset)
+    -- Check boss1-boss4 so concurrent-boss encounters (e.g. Ryelaz+Zilyesset)
     -- are detected correctly regardless of which slot the engine assigns first.
     if not bossClass then
         for _, slot in ipairs({"boss1", "boss2", "boss3", "boss4"}) do
@@ -133,7 +133,7 @@ function Trial:onBossesChanged(forceReset)
     end
 
     if bossClass then
-        -- Create a fresh instance — no state carried over from previous pulls.
+        -- Create a fresh instance  -  no state carried over from previous pulls.
         local instance = bossClass.new()
         self.activeBoss = instance
         self.context:setBoss(instance)
@@ -193,7 +193,7 @@ function Trial:onPowerUpdate(powerValue, powerMax)
     end
 
     -- Use the context flag maintained by onCombatState rather than calling the
-    -- ESO API on every tick — avoids one C→Lua round-trip per power update.
+    -- ESO API on every tick  -  avoids one C->Lua round-trip per power update.
     if not self.context.inCombat then
         self.bridge.checkHardmode(self.context)
     end
@@ -216,7 +216,7 @@ function Trial:onCombatState(inCombat)
 
     -- On wipe (inCombat = false, boss still active), give the boss a chance
     -- to soft-reset without a full zone-exit teardown: stop active cast bars,
-    -- clear per-pull flags, hide position icons — but keep long-lived icons
+    -- clear per-pull flags, hide position icons  -  but keep long-lived icons
     -- created in onEnter so they're still visible at the start of the next pull.
     if not inCombat and boss and boss.onWipe then
         boss:onWipe(self.context, self.alerts)

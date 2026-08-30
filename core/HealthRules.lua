@@ -22,7 +22,7 @@ end
 
 -- Sort rules by priority descending at registration time so evaluate()
 -- can stay a simple first-match scan.  Call once per boss class, not
--- per encounter — the sorted order is shared across all instances.
+-- per encounter  -  the sorted order is shared across all instances.
 -- Rules with no priority field default to 0; table.sort is stable in
 -- LuaJIT so equal-priority rules keep their declaration order.
 --
@@ -46,7 +46,7 @@ end
 -- boss-health hot path and Lua multiple-return doesn't allocate.
 -- Assumes rules were sorted by HealthRules.register at class load time.
 -- For rules pre-compiled by register() (_staticText set), the cached
--- string is returned directly — no allocation occurs on the hot path.
+-- string is returned directly  -  no allocation occurs on the hot path.
 -- Returns nil immediately when rules is nil/absent (avoids the `or {}`
 -- empty-table allocation that would otherwise occur on every throttled tick).
 function HealthRules.evaluate(rules, healthPercent, context, boss)

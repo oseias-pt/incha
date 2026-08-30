@@ -1,43 +1,43 @@
---- Yolnahkriin — Sunspire boss 2 (Fire)
+--- Yolnahkriin  -  Sunspire boss 2 (Fire)
 ---
 --- Phase SS-2: Cross-trial alerts via SunspireCommon
 --- Phase SS-4: Yolna-specific mechanics
----   AtroSpawn (119549): BEGIN → "Kill Atro!" banner, 4.5 s
----   LavaGeyser (124546): player or nearby group (dist < 2.8) → Dodge! bar
+---   AtroSpawn (119549): BEGIN -> "Kill Atro!" banner, 4.5 s
+---   LavaGeyser (124546): player or nearby group (dist < 2.8) -> Dodge! bar
 ---   NextFlare (121722 / 121459): fight-start +6s / BEGIN +32s / EFFECT_FADED +30s
 ---   Cataclysm (122598): cast duration CA bar + landing = cataEnd + 6.8 s
----   Boss HP thresholds: 76% / 51% / 26% → "Can Fly In X%"
+---   Boss HP thresholds: 76% / 51% / 26% -> "Can Fly In X%"
 
 local SunspireCommon = require("trial.ss.SunspireCommon")
 local BossBase       = require("lib.BossBase")
 local MapUtils       = require("lib.MapUtils")
 local Timer          = require("lib.Timer")
 
--- ── Ability IDs ────────────────────────────────────────────────────────────
-local ATRO_SPAWN    = 119549   -- combatRoute: ACTION_RESULT_BEGIN → Kill Atro alert
-local LAVA_GEYSER   = 124546   -- combatRoute: ACTION_RESULT_BEGIN → Dodge alert (player/nearby)
-local NEXT_FLARE_A  = 121722   -- combatRoute: ACTION_RESULT_BEGIN → nextFlareTime +32s
-local NEXT_FLARE_B  = 121459   -- combatRoute: ACTION_RESULT_EFFECT_FADED → nextFlareTime +30s
-local CATACLYSM     = 122598   -- combatRoute: ACTION_RESULT_BEGIN → caAlertCast + landing timer
+-- -- Ability IDs ------------------------------------------------------------
+local ATRO_SPAWN    = 119549   -- combatRoute: ACTION_RESULT_BEGIN -> Kill Atro alert
+local LAVA_GEYSER   = 124546   -- combatRoute: ACTION_RESULT_BEGIN -> Dodge alert (player/nearby)
+local NEXT_FLARE_A  = 121722   -- combatRoute: ACTION_RESULT_BEGIN -> nextFlareTime +32s
+local NEXT_FLARE_B  = 121459   -- combatRoute: ACTION_RESULT_EFFECT_FADED -> nextFlareTime +30s
+local CATACLYSM     = 122598   -- combatRoute: ACTION_RESULT_BEGIN -> caAlertCast + landing timer
 
 local CA = require("lib.CA")
 local CastDur = require("lib.CastDur")
 
--- ── CA colour palettes ─────────────────────────────────────────────────────
+-- -- CA colour palettes -----------------------------------------------------
 local COL_GEYSER = { -2, 0, false, { 1.0, 0.4, 0.0, 0.4 }, { 1.0, 0.4, 0.0, 0.8 } }
 
--- ── Fallback durations (empirical; replace if GetAbilityCastInfo becomes reliable) ─
+-- -- Fallback durations (empirical; replace if GetAbilityCastInfo becomes reliable) -
 local FALLBACK_GEYSER_DUR = 2500   -- LavaGeyser: empirical
 local FALLBACK_CATA_DUR   = 4600   -- Cataclysm: empirical (~4.6 s)
 
--- ── Boss definition ───────────────────────────────────────────────────────
+-- -- Boss definition -------------------------------------------------------
 local Yolna = {}
 Yolna.__index = Yolna
 setmetatable(Yolna, {__index = BossBase})
 
 Yolna.key  = "yolna"
 Yolna.name = "Yolnahkriin"
--- location: Sunspire arena is one shared room for all three bosses — a single AABB
+-- location: Sunspire arena is one shared room for all three bosses  -  a single AABB
 -- would be ambiguous.  Name-based detection is intentional; name is well-established
 -- EN string (same client since Elsweyr launch), non-EN risk is low.
 
@@ -54,7 +54,7 @@ function Yolna.new()
     return BossBase.fromSchema(Yolna)
 end
 
--- ── Lifecycle ─────────────────────────────────────────────────────────────
+-- -- Lifecycle -------------------------------------------------------------
 
 local function yolna_cleanup(self)
     self:cleanupAlertList()
@@ -75,7 +75,7 @@ function Yolna:onWipe(context, alerts)
     self.landingTimer:clear()
 end
 
--- ── Combat state (fight start / wipe) ─────────────────────────────────────
+-- -- Combat state (fight start / wipe) -------------------------------------
 -- Called when EVENT_PLAYER_COMBAT_STATE changes.
 -- On fight start (inCombat=true) set the first NextFlare at +6 s (HTS empirical).
 function Yolna:onCombatState(context, inCombat, alerts)
@@ -84,11 +84,11 @@ function Yolna:onCombatState(context, inCombat, alerts)
     end
 end
 
--- ── Routing tables (C3) ──────────────────────────────────────────────────
+-- -- Routing tables (C3) --------------------------------------------------
 -- Shared cross-trial mechanic handler.
 Yolna.common = SunspireCommon
 
--- ── Handlers ────────────────────────────────────────────────────────────
+-- -- Handlers ------------------------------------------------------------
 
 local function handleAtroSpawn(self, context, alerts, abilityId, ...)
     alerts:showAction("Kill Atro!")
@@ -113,7 +113,7 @@ local function handleLavaGeyser(self, context, alerts, abilityId,
     end
 end
 
--- NextFlare: BEGIN → +32 s; EFFECT_FADED → +30 s.
+-- NextFlare: BEGIN -> +32 s; EFFECT_FADED -> +30 s.
 local function handleNextFlareA(self, context, alerts, abilityId, ...)
     self.nextFlareTime = GetGameTimeMilliseconds() / 1000 + 32
 end
@@ -142,7 +142,7 @@ Yolna.combatRoutes = {
     [CATACLYSM]    = { result = ACTION_RESULT_BEGIN,          fn = handleCataclysm },
 }
 
--- ── Info-line renderers ───────────────────────────────────────────────────
+-- -- Info-line renderers ---------------------------------------------------
 
 -- Info 1: NextFlare countdown.
 local function showFlareLine(self, alerts, now)
@@ -158,7 +158,7 @@ local function showFlareLine(self, alerts, now)
     end
 end
 
--- Info 2: Cataclysm channel — time remaining until channel ends.
+-- Info 2: Cataclysm channel  -  time remaining until channel ends.
 local function showCataLine(self, alerts)
     local cataLeft = self.cataTimer:remaining()
     if cataLeft > 0 then
@@ -169,7 +169,7 @@ local function showCataLine(self, alerts)
     end
 end
 
--- Info 4: Landing countdown → HP "can fly" threshold.
+-- Info 4: Landing countdown -> HP "can fly" threshold.
 local function showLandingOrFlyLine(self, alerts, context)
     local landing = self.landingTimer:remaining()
     if landing > 0 then
@@ -194,7 +194,7 @@ local function showLandingOrFlyLine(self, alerts, context)
     end
 end
 
--- ── 200 ms display loop ───────────────────────────────────────────────────
+-- -- 200 ms display loop ---------------------------------------------------
 function Yolna:onUpdate(context, alerts)
     local now = GetGameTimeMilliseconds() / 1000
     showFlareLine(self, alerts, now)

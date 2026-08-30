@@ -11,11 +11,11 @@
 ---   Columns 3+: type-specific fields, comma-separated; string fields quoted
 ---
 --- The first line of an archive file may carry a "vvvvvvvvv" garbage
---- prefix written by the ESO log-rotation mechanism — it is stripped.
+--- prefix written by the ESO log-rotation mechanism  -  it is stripped.
 
 local LogReader = {}
 
--- ── ESO result-string → numeric constant mappings ─────────────────────────
+-- -- ESO result-string -> numeric constant mappings -------------------------
 -- Values must stay in sync with eso_api.lua assignments so equality checks
 -- inside boss routing tables fire correctly.
 local COMBAT_RESULT = {
@@ -34,7 +34,7 @@ local EFFECT_CHANGE = {
     UPDATED = 3,
 }
 
--- ── CSV parser ─────────────────────────────────────────────────────────────
+-- -- CSV parser -------------------------------------------------------------
 -- Handles quoted strings (which may contain commas) and unquoted fields.
 -- Quoted strings in the ESO log never contain escaped quotes, so a single
 -- closing-quote scan is sufficient.
@@ -51,7 +51,7 @@ local function splitFields(line)
                 fields[#fields + 1] = line:sub(i + 1, j - 1)
                 i = j + 2  -- skip closing " and the following comma
             else
-                -- Unterminated quote — take the rest of the line.
+                -- Unterminated quote  -  take the rest of the line.
                 fields[#fields + 1] = line:sub(i + 1)
                 break
             end
@@ -71,13 +71,13 @@ local function splitFields(line)
     return fields
 end
 
--- ── X/Y health field parser ────────────────────────────────────────────────
+-- -- X/Y health field parser ------------------------------------------------
 local function parseSlashPair(s)
     local a, b = s:match("^(%d+)/(%d+)$")
     return tonumber(a) or 0, tonumber(b) or 0
 end
 
--- ── Per-type parsers ───────────────────────────────────────────────────────
+-- -- Per-type parsers -------------------------------------------------------
 
 local function parseBeginLog(f, ms)
     return {
@@ -193,7 +193,7 @@ local function parseEffectChanged(f, ms)
     }
 end
 
--- ── Entry dispatch ─────────────────────────────────────────────────────────
+-- -- Entry dispatch ---------------------------------------------------------
 
 local PARSERS = {
     BEGIN_LOG      = parseBeginLog,
@@ -205,7 +205,7 @@ local PARSERS = {
     EFFECT_CHANGED = parseEffectChanged,
 }
 
--- ── Public API ─────────────────────────────────────────────────────────────
+-- -- Public API -------------------------------------------------------------
 
 --- Read an ESO encounter log file and return a list of parsed event tables.
 --- Unknown entry types are silently skipped; malformed lines are skipped and

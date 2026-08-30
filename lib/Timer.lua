@@ -2,7 +2,7 @@ local Timer = {}
 Timer.__index = Timer
 
 --- Creates a new countdown timer with a default duration in seconds.
---- The timer starts in an expired state — call :reset() to arm it.
+--- The timer starts in an expired state  -  call :reset() to arm it.
 function Timer.new(duration)
     return setmetatable({
         duration = duration,
@@ -17,12 +17,12 @@ function Timer:reset(duration)
     self.expiresAt = GetGameTimeMilliseconds() / 1000 + (duration or self.duration)
 end
 
---- Alias for reset() — preferred name in new boss code.
+--- Alias for reset()  -  preferred name in new boss code.
 Timer.start = Timer.reset
 
 --- Seconds remaining until the timer fires.  Returns 0 (not negative)
 --- once the timer has expired, so callers can safely display the value.
---- Returns a float — ZO_FormatCountdownTimer and string.format("%.0f") both
+--- Returns a float  -  ZO_FormatCountdownTimer and string.format("%.0f") both
 --- accept fractional seconds, giving sub-second accuracy for urgent timers.
 function Timer:remaining()
     local r = self.expiresAt - GetGameTimeMilliseconds() / 1000
@@ -46,9 +46,9 @@ end
 
 --- True when the timer has never been started or was explicitly cleared.
 --- Useful to distinguish "not yet armed" from "expired" in display loops:
----   isIdle()    → expiresAt == 0 (unarmed, never seen an event)
----   isActive()  → armed and countdown is still running
----   isExpired() → was armed but time has passed (note: also true when idle)
+---   isIdle()    -> expiresAt == 0 (unarmed, never seen an event)
+---   isActive()  -> armed and countdown is still running
+---   isExpired() -> was armed but time has passed (note: also true when idle)
 function Timer:isIdle()
     return self.expiresAt == 0
 end
@@ -62,7 +62,7 @@ end
 --- Raw game-time second at which this timer fires (fractional).
 --- Exposed for legacy syncing where callers need the raw timestamp
 --- (e.g. BSCHTKA.GRYPHON_TIME).  Prefer :remaining()/:isExpired() in
---- new code — they're clearer and don't need caller-side arithmetic.
+--- new code  -  they're clearer and don't need caller-side arithmetic.
 function Timer:getExpiresAt()
     return self.expiresAt
 end

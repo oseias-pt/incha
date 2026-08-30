@@ -4,7 +4,7 @@ local Settings    = require("core.Settings")
 local ZoneManager = require("core.ZoneManager")
 
 -- Pre-load ui modules at startup so they are never captured as part of a
--- trial's dependency set — the panel must outlive any single trial.
+-- trial's dependency set  -  the panel must outlive any single trial.
 local Panel = require("ui.Panel")
 local Menu  = require("ui.Menu")
 
@@ -39,7 +39,7 @@ local function OnAddOnLoaded(event, addonName)
 
     EVENT_MANAGER:UnregisterForEvent(ADDON_NAME, EVENT_ADD_ON_LOADED)
 
-    -- Settings must come first — other systems (Log, UI) read from it.
+    -- Settings must come first  -  other systems (Log, UI) read from it.
     Settings.init()
     Menu.init()
 
@@ -48,7 +48,7 @@ local function OnAddOnLoaded(event, addonName)
 
     ZoneManager.onZoneChanged()
 
-    d(ADDON_TAG .. " v0.1.0 loaded — " .. ADDON_SLASH .. " for commands")
+    d(ADDON_TAG .. " v0.1.0 loaded  -  " .. ADDON_SLASH .. " for commands")
 end
 
 EVENT_MANAGER:RegisterForEvent(ADDON_NAME, EVENT_ADD_ON_LOADED, OnAddOnLoaded)

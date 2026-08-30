@@ -51,7 +51,7 @@ function EventPipeline:enable()
         EVENT_MANAGER:RegisterForEvent(prefix, EVENT_EFFECT_CHANGED, safe(handlers.onEffectChanged))
     end
 
-    -- 200ms UI refresh loop — drives timer countdowns in boss modules.
+    -- 200ms UI refresh loop  -  drives timer countdowns in boss modules.
     -- UnregisterForUpdate in disable() already handles cleanup unconditionally.
     if handlers.onUpdate then
         EVENT_MANAGER:RegisterForUpdate(prefix, handlers.updateInterval or 200, safe(handlers.onUpdate))

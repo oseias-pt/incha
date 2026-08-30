@@ -5,22 +5,22 @@ local CA = require("lib.CA")
 local BossBase = require("lib.BossBase")
 local CastDur = require("lib.CastDur")
 
--- ── Ability IDs (from BSCHTKA_Yandir.lua) ─────────────────────────────────
-local TOTEM_POISON       = 133515  -- combatRoute: ACTION_RESULT_BEGIN → resets timer + Dodge alert
-local TOTEM_POISON_CP    = 133559  -- combatRoute: ACTION_RESULT_EFFECT_GAINED → delayed 26.8s CA bar
-local TOTEM_HARPY_SPWN   = 133510  -- combatRoute: ACTION_RESULT_BEGIN → resets totem timer
-local TOTEM_DRAGON_SPWN  = 133045  -- combatRoute: ACTION_RESULT_BEGIN → resets totem timer
-local TOTEM_GARGYL_SPWN  = 133513  -- combatRoute: ACTION_RESULT_BEGIN → resets totem timer
-local TOTEM_GARGYL       = 133546  -- combatRoute: ACTION_RESULT_BEGIN → Block alert + caAlertCast
-local YANDIR_HEALING     = 133242  -- combatRoute: ACTION_RESULT_BEGIN → Healing alert
-local YANDIR_JUMP        = 132571  -- combatRoute: ACTION_RESULT_BEGIN → Block alert + caAlertCast
-local SEA_ADDER_BILE_SPRAY = 136591  -- combatRoute: ACTION_RESULT_BEGIN → Dodge alert (player-targeted)
+-- -- Ability IDs (from BSCHTKA_Yandir.lua) ---------------------------------
+local TOTEM_POISON       = 133515  -- combatRoute: ACTION_RESULT_BEGIN -> resets timer + Dodge alert
+local TOTEM_POISON_CP    = 133559  -- combatRoute: ACTION_RESULT_EFFECT_GAINED -> delayed 26.8s CA bar
+local TOTEM_HARPY_SPWN   = 133510  -- combatRoute: ACTION_RESULT_BEGIN -> resets totem timer
+local TOTEM_DRAGON_SPWN  = 133045  -- combatRoute: ACTION_RESULT_BEGIN -> resets totem timer
+local TOTEM_GARGYL_SPWN  = 133513  -- combatRoute: ACTION_RESULT_BEGIN -> resets totem timer
+local TOTEM_GARGYL       = 133546  -- combatRoute: ACTION_RESULT_BEGIN -> Block alert + caAlertCast
+local YANDIR_HEALING     = 133242  -- combatRoute: ACTION_RESULT_BEGIN -> Healing alert
+local YANDIR_JUMP        = 132571  -- combatRoute: ACTION_RESULT_BEGIN -> Block alert + caAlertCast
+local SEA_ADDER_BILE_SPRAY = 136591  -- combatRoute: ACTION_RESULT_BEGIN -> Dodge alert (player-targeted)
 
--- ── Spawn/cast durations ──────────────────────────────────────────────────
+-- -- Spawn/cast durations --------------------------------------------------
 local TOTEM_SPAWN_TIME  = 20
 local GRYPHON_SPAWN_TIME = 60
 
--- ── Fallback durations (empirical; replace if GetAbilityCastInfo becomes reliable) ─
+-- -- Fallback durations (empirical; replace if GetAbilityCastInfo becomes reliable) -
 local FALLBACK_DUR = 5000   -- TOTEM_GARGYL (Gargoyle Totem cast): empirical
 
 local Yandir = {}
@@ -36,7 +36,7 @@ Yandir.stateSchema = {
     gryphonTimer         = function() return Timer.new(GRYPHON_SPAWN_TIME) end,
     bGRYPHON_SKIP        = false,
     -- Seconds remaining on the gryphon timer at the moment the skip was
-    -- detected — displayed as "(Xs early)" so raiders see the margin.
+    -- detected  -  displayed as "(Xs early)" so raiders see the margin.
     bGRYPHON_SKIP_TIME   = 0,
     bGRYPHON_SKIP_FAILHP = 0,
     poisonTotemId        = -1,   -- unitId of the currently targeted poison totem
@@ -44,7 +44,7 @@ Yandir.stateSchema = {
     -- zo_callLater handle for the 26.8 s delayed second-poison bar.
     -- Stored so it can be cancelled on wipe or zone exit.
     poisonTotemTimer     = false,
-    -- [unitId] → CA cast bar ID; cleared and stopped on leave/death.
+    -- [unitId] -> CA cast bar ID; cleared and stopped on leave/death.
     alertList            = function() return {} end,
 }
 
@@ -52,7 +52,7 @@ function Yandir.new()
     return BossBase.fromSchema(Yandir)
 end
 
--- ── Lifecycle ─────────────────────────────────────────────────────────────
+-- -- Lifecycle -------------------------------------------------------------
 
 -- Cancel any pending delayed poison-totem CA bar and stop all alert bars.
 -- Called from both onLeave (zone exit) and onWipe so neither path leaks.
@@ -81,7 +81,7 @@ function Yandir:onWipe(context, alerts)
     self.BTotemCall           = false
 end
 
--- ── Combat state (fight start / wipe) ─────────────────────────────────────
+-- -- Combat state (fight start / wipe) -------------------------------------
 -- Arms both timers when the pull starts.  Timer.new() leaves expiresAt = 0,
 -- so isExpired() would return true immediately without this reset.
 function Yandir:onCombatState(context, inCombat, alerts)
@@ -91,7 +91,7 @@ function Yandir:onCombatState(context, inCombat, alerts)
     end
 end
 
--- 200ms timer display — writes to info lines 1-2.
+-- 200ms timer display  -  writes to info lines 1-2.
 -- No-op when sink has no info handler (e.g. LegacyUI during the KA transition).
 function Yandir:onUpdate(context, alerts)
     local t1 = self.totemTimer:remaining()
@@ -112,7 +112,7 @@ function Yandir:onUpdate(context, alerts)
     alerts:showInfo(2, line2)
 end
 
--- ── Routing tables (C3) ──────────────────────────────────────────────────
+-- -- Routing tables (C3) --------------------------------------------------
 -- DIED: delegate alertList cleanup to BossBase, then handle totem-specific state.
 function Yandir:onDied(context, alerts,
                         unitTag, sourceUnitTag, sourceUnitId, unitId,

@@ -12,7 +12,7 @@ local Settings = {}
 -- way that requires a clean reset (ZO_SavedVars will wipe and re-apply).
 local SCHEMA_VERSION = 1
 
--- Full default schema — defines every key the rest of the addon may read.
+-- Full default schema  -  defines every key the rest of the addon may read.
 -- ZO_SavedVars deep-merges this, so adding new keys here is safe without
 -- a schema version bump as long as you don't need to remove old ones.
 local DEFAULTS = {

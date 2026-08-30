@@ -1,48 +1,48 @@
---- Taleria (Tideborn Taleria) — Dreadsail Reef boss 3
+--- Taleria (Tideborn Taleria)  -  Dreadsail Reef boss 3
 ---
 --- Phase DSR-5: full mechanics
----   RapidDeluge (174959/174960/174961 HM): EFFECT_GAINED + player → Alert "Move bubble!"
----   CrashingWave (166353 / 174943): BEGIN + player → AlertCast
----   CoralSlam (163987): BEGIN + player → AlertCast (heavy)
----   BarnaclesBlade (163901): BEGIN + player → AlertCast
----   MaelstromCast (166292): BEGIN → lastMaelstrom; 35 s cycle
----   BehemothSummon (166928): BEGIN → behemoth summon tracker; 60 s / 45 s HM
----   ArcticAnnihilation (165827): BEGIN → behemoth slam timer (17 s next)
----   StormWall CW (175447): EFFECT_GAINED → wind direction CW
----   StormWall CCW (174866): EFFECT_GAINED → wind direction CCW
----   LureOfTheSea (163952): BEGIN → CastAlertsStart 4 s + "Break free!" action
----   AspectsOfTerror (174697): BEGIN + player → AlertCast (fear)
+---   RapidDeluge (174959/174960/174961 HM): EFFECT_GAINED + player -> Alert "Move bubble!"
+---   CrashingWave (166353 / 174943): BEGIN + player -> AlertCast
+---   CoralSlam (163987): BEGIN + player -> AlertCast (heavy)
+---   BarnaclesBlade (163901): BEGIN + player -> AlertCast
+---   MaelstromCast (166292): BEGIN -> lastMaelstrom; 35 s cycle
+---   BehemothSummon (166928): BEGIN -> behemoth summon tracker; 60 s / 45 s HM
+---   ArcticAnnihilation (165827): BEGIN -> behemoth slam timer (17 s next)
+---   StormWall CW (175447): EFFECT_GAINED -> wind direction CW
+---   StormWall CCW (174866): EFFECT_GAINED -> wind direction CCW
+---   LureOfTheSea (163952): BEGIN -> CastAlertsStart 4 s + "Break free!" action
+---   AspectsOfTerror (174697): BEGIN + player -> AlertCast (fear)
 ---   Portal opens: VenomEvoker (175132), SeaBoiler (175134), TidalMage (175136)
----   Bridge starts: 166479 / 175279 / 175291 → 60 s wipe timers
----   Whirlpool (163896): EFFECT_GAINED + player → AlertBorder green
+---   Bridge starts: 166479 / 175279 / 175291 -> 60 s wipe timers
+---   Whirlpool (163896): EFFECT_GAINED + player -> AlertBorder green
 ---   Portal debuffs: nematocyst (174679/169938), sweltering (174689/169936),
----                   suffocating (174691/169935) → tracked per player
+---                   suffocating (174691/169935) -> tracked per player
 
 local DreadsailCommon = require("trial.dsr.DreadsailCommon")
 local CastDur = require("lib.CastDur")
 
--- ── Ability IDs ───────────────────────────────────────────────────────────
-local RAPID_DELUGE_N   = 174959   -- effectRoute: EFFECT_RESULT_GAINED + player → Move bubble alert
-local RAPID_DELUGE_V   = 174960   -- effectRoute: EFFECT_RESULT_GAINED + player → Move bubble alert
-local RAPID_DELUGE_HM  = 174961   -- effectRoute: EFFECT_RESULT_GAINED + player → Move bubble alert
-local CRASHING_WAVE_1  = 166353   -- combatRoute: ACTION_RESULT_BEGIN + player → caAlertCast
-local CRASHING_WAVE_2  = 174943   -- combatRoute: ACTION_RESULT_BEGIN + player → caAlertCast
-local CORAL_SLAM       = 163987   -- combatRoute: ACTION_RESULT_BEGIN + player → caAlertCast (heavy)
-local BARNACLE_BLADE   = 163901   -- combatRoute: ACTION_RESULT_BEGIN + player → caAlertCast
-local MAELSTROM_CAST   = 166292   -- combatRoute: ACTION_RESULT_BEGIN → Maelstrom heal 6s
-local BEHEMOTH_SUMMON  = 166928   -- combatRoute: ACTION_RESULT_BEGIN → behemoth summon tracker
-local ARCTIC_ANNIH     = 165827   -- combatRoute: ACTION_RESULT_BEGIN → slam timer +17s
-local STORM_WALL_CW    = 175447   -- effectRoute: EFFECT_RESULT_GAINED → stormWallCW = true
-local STORM_WALL_CCW   = 174866   -- effectRoute: EFFECT_RESULT_GAINED → stormWallCW = false
-local LURE_OF_SEA      = 163952   -- combatRoute: ACTION_RESULT_BEGIN → CastAlertsStart 4s + Break free
-local ASPECT_TERROR    = 174697   -- combatRoute: ACTION_RESULT_BEGIN + player → caAlertCast (fear)
-local VENOM_EVOKER_P   = 175132   -- effectRoute: EFFECT_RESULT_GAINED → green portal 60s  (makePortalEffectHandler 1)
-local SEA_BOILER_P     = 175134   -- effectRoute: EFFECT_RESULT_GAINED → yellow portal 60s (makePortalEffectHandler 2)
-local TIDAL_MAGE_P     = 175136   -- effectRoute: EFFECT_RESULT_GAINED → purple portal 60s (makePortalEffectHandler 3)
-local BRIDGE_1         = 166479   -- combatRoute: ACTION_RESULT_BEGIN → bridge wipe 60s
-local BRIDGE_2         = 175279   -- combatRoute: ACTION_RESULT_BEGIN → bridge wipe 60s
-local BRIDGE_3         = 175291   -- combatRoute: ACTION_RESULT_BEGIN → bridge wipe 60s
-local WHIRLPOOL        = 163896   -- effectRoute: EFFECT_RESULT_GAINED / FADED + player → green border
+-- -- Ability IDs -----------------------------------------------------------
+local RAPID_DELUGE_N   = 174959   -- effectRoute: EFFECT_RESULT_GAINED + player -> Move bubble alert
+local RAPID_DELUGE_V   = 174960   -- effectRoute: EFFECT_RESULT_GAINED + player -> Move bubble alert
+local RAPID_DELUGE_HM  = 174961   -- effectRoute: EFFECT_RESULT_GAINED + player -> Move bubble alert
+local CRASHING_WAVE_1  = 166353   -- combatRoute: ACTION_RESULT_BEGIN + player -> caAlertCast
+local CRASHING_WAVE_2  = 174943   -- combatRoute: ACTION_RESULT_BEGIN + player -> caAlertCast
+local CORAL_SLAM       = 163987   -- combatRoute: ACTION_RESULT_BEGIN + player -> caAlertCast (heavy)
+local BARNACLE_BLADE   = 163901   -- combatRoute: ACTION_RESULT_BEGIN + player -> caAlertCast
+local MAELSTROM_CAST   = 166292   -- combatRoute: ACTION_RESULT_BEGIN -> Maelstrom heal 6s
+local BEHEMOTH_SUMMON  = 166928   -- combatRoute: ACTION_RESULT_BEGIN -> behemoth summon tracker
+local ARCTIC_ANNIH     = 165827   -- combatRoute: ACTION_RESULT_BEGIN -> slam timer +17s
+local STORM_WALL_CW    = 175447   -- effectRoute: EFFECT_RESULT_GAINED -> stormWallCW = true
+local STORM_WALL_CCW   = 174866   -- effectRoute: EFFECT_RESULT_GAINED -> stormWallCW = false
+local LURE_OF_SEA      = 163952   -- combatRoute: ACTION_RESULT_BEGIN -> CastAlertsStart 4s + Break free
+local ASPECT_TERROR    = 174697   -- combatRoute: ACTION_RESULT_BEGIN + player -> caAlertCast (fear)
+local VENOM_EVOKER_P   = 175132   -- effectRoute: EFFECT_RESULT_GAINED -> green portal 60s  (makePortalEffectHandler 1)
+local SEA_BOILER_P     = 175134   -- effectRoute: EFFECT_RESULT_GAINED -> yellow portal 60s (makePortalEffectHandler 2)
+local TIDAL_MAGE_P     = 175136   -- effectRoute: EFFECT_RESULT_GAINED -> purple portal 60s (makePortalEffectHandler 3)
+local BRIDGE_1         = 166479   -- combatRoute: ACTION_RESULT_BEGIN -> bridge wipe 60s
+local BRIDGE_2         = 175279   -- combatRoute: ACTION_RESULT_BEGIN -> bridge wipe 60s
+local BRIDGE_3         = 175291   -- combatRoute: ACTION_RESULT_BEGIN -> bridge wipe 60s
+local WHIRLPOOL        = 163896   -- effectRoute: EFFECT_RESULT_GAINED / FADED + player -> green border
 -- Portal / aoe debuffs
 local NEMATOCYST_P     = 174679   -- green portal debuff
 local NEMATOCYST_AOE   = 169938
@@ -51,7 +51,7 @@ local SWELTERING_AOE   = 169936
 local SUFFOCATING_P    = 174691   -- purple portal debuff
 local SUFFOCATING_AOE  = 169935
 
--- ── Timing constants ─────────────────────────────────────────────────────
+-- -- Timing constants -----------------------------------------------------
 local MAELSTROM_CD     = 35    -- s: maelstrom cycle
 local MAELSTROM_DUR    = 6     -- s: heal window
 local BEHEMOTH_CD_NORM = 60    -- s: behemoth respawn (normal)
@@ -67,24 +67,24 @@ local BRIDGE_HP = { 50.9, 35.9, 20.9 }
 local CA = require("lib.CA")
 local BossBase = require("lib.BossBase")
 
--- ── CA colour palettes ────────────────────────────────────────────────────
+-- -- CA colour palettes ----------------------------------------------------
 local COL_HEAVY  = { -2, 0, false, { 1.0, 0.35, 0.1, 0.4 }, { 1.0, 0.35, 0.1, 0.8 } }
 local COL_FEAR   = { 0.6, 0.0, 0.9, 0.5 }
 local ACT_BREAK  = { 4000, "Break free!", 0.9, 0.1, 0.1, 0.9, nil }
 
--- ── Fallback durations (empirical; replace if GetAbilityCastInfo becomes reliable) ─
+-- -- Fallback durations (empirical; replace if GetAbilityCastInfo becomes reliable) -
 local FALLBACK_WAVE_DUR  = 2000   -- CrashingWave: empirical
 local FALLBACK_SLAM_DUR  = 1500   -- CoralSlam (heavy): empirical
 local FALLBACK_BLADE_DUR = 1000   -- BarnacleBlade: empirical
 local FALLBACK_FEAR_DUR  = 2000   -- AspectsOfTerror: empirical
 
--- ── Boss definition ───────────────────────────────────────────────────────
+-- -- Boss definition -------------------------------------------------------
 local Taleria = {}
 Taleria.__index = Taleria
 
 Taleria.key              = "taleria"
 Taleria.name             = "Tideborn Taleria"   -- TODO: verify via GetUnitName("boss1") in-game
--- location: arena AABB not yet captured — detection is name-based.
+-- location: arena AABB not yet captured  -  detection is name-based.
 -- To add AABB: stand in arena, run /script d(GetUnitWorldPosition("boss1"))
 Taleria.hmHealthThreshold = 100000001            -- TODO: verify
 
@@ -105,12 +105,12 @@ function Taleria.new()
     return BossBase.fromSchema(Taleria)
 end
 
--- ── Lifecycle ─────────────────────────────────────────────────────────────
+-- -- Lifecycle -------------------------------------------------------------
 function Taleria:onLeave(context)
     CA.castAlertsStop(self.lureBarId)
 end
 
--- ── Routing tables (C3) ──────────────────────────────────────────────────
+-- -- Routing tables (C3) --------------------------------------------------
 -- Shared trash mechanic handler.
 Taleria.common = DreadsailCommon
 
@@ -132,7 +132,7 @@ local function makeBridgeHandler(bridgeIdx)
         self.lastPlatformFall           = now
         self.bridgeWipeStart[bridgeIdx] = now
         CA.alert(nil,
-            "Bridge " .. bridgeIdx .. " open — " .. BRIDGE_WIPE .. " s!",
+            "Bridge " .. bridgeIdx .. " open  -  " .. BRIDGE_WIPE .. " s!",
             0xFF8800D9, SOUNDS.DUEL_START, 5000)
         PlaySound(SOUNDS.DUEL_START)
     end }
@@ -156,7 +156,7 @@ end
 
 local function handleMaelstromCast(self, context, alerts, abilityId, ...)
     self.lastMaelstrom = GetGameTimeMilliseconds() / 1000
-    CA.alert(nil, "|c66CC66Maelstrom — HEAL!|r (6 s)",
+    CA.alert(nil, "|c66CC66Maelstrom  -  HEAL!|r (6 s)",
         0x66CC66D9, SOUNDS.CHAMPION_POINTS_COMMITTED, 6000)
 end
 
@@ -207,7 +207,7 @@ Taleria.combatRoutes = {
 local function handleRapidDeluge(self, context, alerts, changeType, abilityId,
                                   unitTag, unitId, unitName, stackCount)
     if changeType == EFFECT_RESULT_GAINED and AreUnitsEqual("player", unitTag) then
-        CA.alert(nil, "|c66AAffMove bubble!|r — don't stack",
+        CA.alert(nil, "|c66AAffMove bubble!|r  -  don't stack",
             0x66AAffD9, SOUNDS.CHAMPION_POINTS_COMMITTED, 5000)
     end
 end
@@ -229,9 +229,9 @@ end
 -- Portal open: factory for the three portal-effect handlers (E6).
 -- Each differs only in bridge index, display label, and alert colour.
 local PORTAL_LABELS = {
-    "|c22CC22Green portal open|r — 60 s!",
-    "|cDDCC00Yellow portal open|r — 60 s!",
-    "|c8822DDPurple portal open|r — 60 s!",
+    "|c22CC22Green portal open|r  -  60 s!",
+    "|cDDCC00Yellow portal open|r  -  60 s!",
+    "|c8822DDPurple portal open|r  -  60 s!",
 }
 local PORTAL_COLORS = { 0x22CC22D9, 0xDDCC00D9, 0x8822DDD9 }
 
@@ -266,9 +266,9 @@ Taleria.effectRoutes = {
     [WHIRLPOOL]       = handleWhirlpool,
 }
 
--- ── Info-line renderers ───────────────────────────────────────────────────
+-- -- Info-line renderers ---------------------------------------------------
 
--- Info 1: Maelstrom — active heal window (dodge cue near end) or countdown to next cast.
+-- Info 1: Maelstrom  -  active heal window (dodge cue near end) or countdown to next cast.
 local function showMaelstromLine(self, alerts, now)
     if self.lastMaelstrom > 0 then
         local elapsed = now - self.lastMaelstrom
@@ -294,7 +294,7 @@ local function showMaelstromLine(self, alerts, now)
     end
 end
 
--- Info 2: Next Behemoth summon countdown, or imminent slam alert (≤ 3 s).
+-- Info 2: Next Behemoth summon countdown, or imminent slam alert (<= 3 s).
 local function showBehemothLine(self, alerts, now, isHM)
     local behCD = isHM and BEHEMOTH_CD_HM or BEHEMOTH_CD_NORM
     if self.lastBehemothSumm > 0 then
@@ -321,9 +321,9 @@ local function showStormWallLine(self, alerts, now)
     if self.lastStormWall > 0 and not suppressStorm then
         local T = STORM_WALL_DUR - (now - self.lastStormWall)
         if T > 0 then
-            local dir = self.stormWallCW and "CW ↻" or "CCW ↺"
+            local dir = self.stormWallCW and "CW ->" or "CCW <-"
             alerts:showInfo(3,
-                "|cD672F7Storm " .. dir .. "|r — " ..
+                "|cD672F7Storm " .. dir .. "|r  -  " ..
                 string.format("%.0f", T) .. "s")
         else
             alerts:showInfo(3, "")
@@ -333,7 +333,7 @@ local function showStormWallLine(self, alerts, now)
     end
 end
 
--- Info 4: Active bridge wipe timers (red when ≤ 15 s); or next bridge HP threshold.
+-- Info 4: Active bridge wipe timers (red when <= 15 s); or next bridge HP threshold.
 local function showBridgeLine(self, alerts, now, context)
     local bridgeLabels = {}
     local names = { "|c22CC22G|r", "|cDDCC00Y|r", "|c8822DDPu|r" }
@@ -384,7 +384,7 @@ function Taleria:onWipe()
     self.bridgeDone       = { false, false, false }
 end
 
--- ── 200 ms display loop ───────────────────────────────────────────────────
+-- -- 200 ms display loop ---------------------------------------------------
 function Taleria:onUpdate(context, alerts)
     local now  = GetGameTimeMilliseconds() / 1000
     local isHM = context.isHM

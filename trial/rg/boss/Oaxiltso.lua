@@ -1,57 +1,57 @@
---- Oaxiltso — Rockgrove boss 1
+--- Oaxiltso  -  Rockgrove boss 1
 ---
---- Phase RG-2: RockgroveCommon.handle() (trash mechanics) ✓
+--- Phase RG-2: RockgroveCommon.handle() (trash mechanics) (done)
 --- Phase RG-3: Oaxiltso-specific mechanics
----   SavageBlitz  (149414 / 157932 HM): BEGIN → CastAlertsStart 2750 ms; 36 s cycle
----   NoxiousSludge (149190):  BEGIN → Alert; 28 s cycle
----   PoisonedPlayers (157860): EFFECT_GAINED → track 2 players, assign side via
+---   SavageBlitz  (149414 / 157932 HM): BEGIN -> CastAlertsStart 2750 ms; 36 s cycle
+---   NoxiousSludge (149190):  BEGIN -> Alert; 28 s cycle
+---   PoisonedPlayers (157860): EFFECT_GAINED -> track 2 players, assign side via
 ---                             distance to exit-left pool; alert "<< L || R >>"
----   AnnihilatorSunburst (153181): BEGIN → zo_callLater 2500 ms → "Meteor. BLOCK!"
----   CinderCleave (152688): targeted player → AlertCast 2000 ms (hardcoded; QRH note)
----   EmberChains  (152699): targeted player → AlertCast 750 ms, projectile-adjusted
----   AddSpawn     (152365): EFFECT_GAINED → showAction "ADD SPAWNING!"
+---   AnnihilatorSunburst (153181): BEGIN -> zo_callLater 2500 ms -> "Meteor. BLOCK!"
+---   CinderCleave (152688): targeted player -> AlertCast 2000 ms (hardcoded; QRH note)
+---   EmberChains  (152699): targeted player -> AlertCast 750 ms, projectile-adjusted
+---   AddSpawn     (152365): EFFECT_GAINED -> showAction "ADD SPAWNING!"
 ---   BossEnrage   (152502) / MiniEnrage (152503): EFFECT_GAINED/FADED flags
 
 local RockgroveCommon = require("trial.rg.RockgroveCommon")
 
--- ── Ability IDs ────────────────────────────────────────────────────────────
-local SAVAGE_BLITZ    = 149414   -- combatRoute: ACTION_RESULT_BEGIN → Savage Blitz caAlertCast
-local SAVAGE_BLITZ_HM = 157932   -- combatRoute: ACTION_RESULT_BEGIN → Savage Blitz HM (< 50% HP)
-local NOXIOUS_SLUDGE  = 149190   -- combatRoute: ACTION_RESULT_BEGIN → Noxious Sludge alert
-local SLUDGE_DEBUFF   = 157860   -- effectRoute: EFFECT_RESULT_GAINED → left/right side assignment
-local SUNBURST        = 153181   -- combatRoute: ACTION_RESULT_BEGIN → meteor Block alert 2.5s later
-local CINDER_CLEAVE   = 152688   -- combatRoute: ACTION_RESULT_BEGIN → Dodge alert (player-targeted)
-local EMBER_CHAINS    = 152699   -- combatRoute: ACTION_RESULT_BEGIN → caAlertCast (player-targeted)
-local ADD_SPAWN       = 152365   -- combatRoute: ACTION_RESULT_EFFECT_GAINED → ADD SPAWNING alert
-local BOSS_ENRAGE     = 152502   -- effectRoute: EFFECT_RESULT_GAINED / FADED → bossEnraged flag
-local MINI_ENRAGE     = 152503   -- effectRoute: EFFECT_RESULT_GAINED / FADED → miniEnraged flag
+-- -- Ability IDs ------------------------------------------------------------
+local SAVAGE_BLITZ    = 149414   -- combatRoute: ACTION_RESULT_BEGIN -> Savage Blitz caAlertCast
+local SAVAGE_BLITZ_HM = 157932   -- combatRoute: ACTION_RESULT_BEGIN -> Savage Blitz HM (< 50% HP)
+local NOXIOUS_SLUDGE  = 149190   -- combatRoute: ACTION_RESULT_BEGIN -> Noxious Sludge alert
+local SLUDGE_DEBUFF   = 157860   -- effectRoute: EFFECT_RESULT_GAINED -> left/right side assignment
+local SUNBURST        = 153181   -- combatRoute: ACTION_RESULT_BEGIN -> meteor Block alert 2.5s later
+local CINDER_CLEAVE   = 152688   -- combatRoute: ACTION_RESULT_BEGIN -> Dodge alert (player-targeted)
+local EMBER_CHAINS    = 152699   -- combatRoute: ACTION_RESULT_BEGIN -> caAlertCast (player-targeted)
+local ADD_SPAWN       = 152365   -- combatRoute: ACTION_RESULT_EFFECT_GAINED -> ADD SPAWNING alert
+local BOSS_ENRAGE     = 152502   -- effectRoute: EFFECT_RESULT_GAINED / FADED -> bossEnraged flag
+local MINI_ENRAGE     = 152503   -- effectRoute: EFFECT_RESULT_GAINED / FADED -> miniEnraged flag
 
--- ── Pool reference position (world coords) ────────────────────────────────
--- Exit-left pool — used to assign left/right side to poisoned players.
--- Closer to this point → left cleanse; farther → right cleanse.
+-- -- Pool reference position (world coords) --------------------------------
+-- Exit-left pool  -  used to assign left/right side to poisoned players.
+-- Closer to this point -> left cleanse; farther -> right cleanse.
 local POOL_EX_LEFT = { 91973, 35751, 81764 }
 
 local CA = require("lib.CA")
 local BossBase = require("lib.BossBase")
 
--- ── CA colour palettes ─────────────────────────────────────────────────────
+-- -- CA colour palettes -----------------------------------------------------
 local COL_BLITZ  = { 0.8, 0.0, 0.0, 0.4 }   -- red fill, no action text (mirrors QRH)
 local COL_CONE   = { -2, 0, false, { 1.0, 0.55, 0.0, 0.4 }, { 1.0, 0.55, 0.0, 0.8 } }
 local COL_CHAINS = { -3, 0, false, { 0.7, 0.3,  1.0, 0.4 }, { 0.7, 0.3,  1.0, 0.8 } }
 
--- ── Distance helper (squared, world coords — no sqrt needed for comparison) ─
+-- -- Distance helper (squared, world coords  -  no sqrt needed for comparison) -
 local function distSq(x1, y1, z1, x2, y2, z2)
     local dx, dy, dz = x1 - x2, y1 - y2, z1 - z2
     return dx*dx + dy*dy + dz*dz
 end
 
--- ── Boss definition ───────────────────────────────────────────────────────
+-- -- Boss definition -------------------------------------------------------
 local Oaxiltso = {}
 Oaxiltso.__index = Oaxiltso
 
 Oaxiltso.key  = "oaxiltso"
 Oaxiltso.name = "Oaxiltso"   -- TODO: verify exact unit name via GetUnitName("boss1") in-game
--- location: arena AABB not yet captured — detection is name-based.
+-- location: arena AABB not yet captured  -  detection is name-based.
 -- To add AABB: stand in arena, run /script d(GetUnitWorldPosition("boss1"))
 
 Oaxiltso.stateSchema = {
@@ -70,7 +70,7 @@ function Oaxiltso.new()
     return BossBase.fromSchema(Oaxiltso)
 end
 
--- ── Lifecycle ─────────────────────────────────────────────────────────────
+-- -- Lifecycle -------------------------------------------------------------
 function Oaxiltso:onLeave(context)
     if self.sunburstTimer then
         zo_removeCallLater(self.sunburstTimer)
@@ -95,7 +95,7 @@ function Oaxiltso:onWipe(context, alerts)
     self.miniEnraged       = false
 end
 
--- ── Routing tables (C3) ──────────────────────────────────────────────────
+-- -- Routing tables (C3) --------------------------------------------------
 -- Shared trash mechanic handler (interrupt, execute, HA, etc.).
 Oaxiltso.common = RockgroveCommon
 
@@ -151,7 +151,7 @@ Oaxiltso.combatRoutes = {
 }
 
 -- Track first poisoned player; alert with left/right side assignment when pair is complete.
--- The EFFECT_RESULT_GAINED event fires up to 3× per cast when the local player is hit,
+-- The EFFECT_RESULT_GAINED event fires up to 3x per cast when the local player is hit,
 -- so a 10 s dedup gate collapses those duplicates into a single slot-1 registration.
 local function handleSludgeDebuff(self, context, alerts, abilityId,
                                    unitTag, unitId, unitName, stackCount)
@@ -209,7 +209,7 @@ Oaxiltso.effectRoutes = {
     [MINI_ENRAGE]   = handleMiniEnrage,
 }
 
--- ── Info-line renderers ───────────────────────────────────────────────────
+-- -- Info-line renderers ---------------------------------------------------
 
 -- Info 1: Next Savage Blitz (36 s cycle).
 local function showBlitzLine(self, alerts, now)
@@ -239,7 +239,7 @@ local function showSludgeLine(self, alerts, now)
     end
 end
 
--- Info 3: Enrage state — boss enraged, add enraged, or both.
+-- Info 3: Enrage state  -  boss enraged, add enraged, or both.
 local function showEnrageLine(self, alerts)
     if self.bossEnraged and self.miniEnraged then
         alerts:showInfo(3, "|cff2020BOSS + ADD ENRAGED|r")
@@ -252,7 +252,7 @@ local function showEnrageLine(self, alerts)
     end
 end
 
--- ── 200 ms display loop ───────────────────────────────────────────────────
+-- -- 200 ms display loop ---------------------------------------------------
 function Oaxiltso:onUpdate(context, alerts)
     local now = GetGameTimeMilliseconds() / 1000
     showBlitzLine(self, alerts, now)
