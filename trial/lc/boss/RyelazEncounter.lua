@@ -70,6 +70,10 @@ RyelazEncounter.combatRoutes = {
     [PORCIN_DARK]            = handlePorcinDark,
 }
 
+function RyelazEncounter:onWipe()
+    self.playerSide = nil
+end
+
 function RyelazEncounter:onUpdate(context, alerts)
     if self.playerSide == "ryelaz" then
         alerts:showInfo(1, "|cFFAA44Ryelaz side (dark)|r")
