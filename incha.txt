@@ -27,8 +27,8 @@ core/EventPipeline.lua
 core/Settings.lua
 core/ModuleLoader.lua
 core/CombatHandler.lua
+core/Bridge.lua
 
-ui/Bridge.lua
 ui/Panel.lua
 ui/Menu.lua
 core/Trial.lua
