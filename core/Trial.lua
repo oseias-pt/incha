@@ -192,7 +192,9 @@ function Trial:onPowerUpdate(powerValue, powerMax)
         end
     end
 
-    if not IsUnitInCombat("player") then
+    -- Use the context flag maintained by onCombatState rather than calling the
+    -- ESO API on every tick — avoids one C→Lua round-trip per power update.
+    if not self.context.inCombat then
         self.bridge.checkHardmode(self.context)
     end
 end

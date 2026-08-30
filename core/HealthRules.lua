@@ -47,13 +47,15 @@ end
 -- Assumes rules were sorted by HealthRules.register at class load time.
 -- For rules pre-compiled by register() (_staticText set), the cached
 -- string is returned directly — no allocation occurs on the hot path.
+-- Returns nil immediately when rules is nil/absent (avoids the `or {}`
+-- empty-table allocation that would otherwise occur on every throttled tick).
 function HealthRules.evaluate(rules, healthPercent, context, boss)
-    for _, rule in ipairs(rules or {}) do
+    if not rules then return nil end
+    for _, rule in ipairs(rules) do
         if HealthRules.matches(rule, healthPercent, context, boss) then
             return rule.id, rule._staticText or formatText(rule.text, healthPercent)
         end
     end
-
     return nil
 end
 
