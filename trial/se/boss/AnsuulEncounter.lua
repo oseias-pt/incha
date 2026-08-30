@@ -157,6 +157,18 @@ local function showPhaseLine(self, alerts)
     end
 end
 
+function AnsuulEncounter:onLeave(context)
+    self:cleanupAlertList()
+end
+
+function AnsuulEncounter:onWipe()
+    self:cleanupAlertList()
+    self.calamityTimer:clear()
+    self.firstCalamity = true
+    self.inMaze        = false
+    self.inTriplet     = false
+end
+
 function AnsuulEncounter:onUpdate(context, alerts)
     showCalamityLine(self, alerts)
     showPhaseLine(self, alerts)

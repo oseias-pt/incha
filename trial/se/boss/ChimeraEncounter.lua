@@ -54,7 +54,13 @@ end
 
 -- â”€â”€ Lifecycle â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 function ChimeraEncounter:onLeave(context)
-    for _, cid in pairs(self.alertList) do CA.castAlertsStop(cid) end
+    self:cleanupAlertList()
+end
+
+function ChimeraEncounter:onWipe()
+    self:cleanupAlertList()
+    self.despawnTimer:clear(); self.chainTimer:clear()
+    self.chimeraActive = false; self.firstChain = true
 end
 
 -- â”€â”€ Handlers â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
