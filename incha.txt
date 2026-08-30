@@ -68,6 +68,7 @@ trial/se/boss/ChimeraEncounter.lua
 trial/se/boss/AnsuulEncounter.lua
 trial/se/Factory.lua
 
+trial/lc/LCCommon.lua
 trial/lc/boss/RyelazEncounter.lua
 trial/lc/boss/DarielEncounter.lua
 trial/lc/boss/OrphicEncounter.lua

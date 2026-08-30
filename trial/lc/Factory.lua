@@ -1,11 +1,18 @@
 local Trial             = require("core.Trial")
 local Panel             = require("ui.Panel")
 local CombatHandler     = require("core.CombatHandler")
+local LCCommon          = require("trial.lc.LCCommon")
 local RyelazEncounter   = require("trial.lc.boss.RyelazEncounter")
 local DarielEncounter   = require("trial.lc.boss.DarielEncounter")
 local OrphicEncounter   = require("trial.lc.boss.OrphicEncounter")
 local XynizataEncounter = require("trial.lc.boss.XynizataEncounter")
 local XorynEncounter    = require("trial.lc.boss.XorynEncounter")
+
+RyelazEncounter.common   = LCCommon
+DarielEncounter.common   = LCCommon
+OrphicEncounter.common   = LCCommon
+XynizataEncounter.common = LCCommon
+XorynEncounter.common    = LCCommon
 
 local lcTrial = Trial.create({
     id              = "lc",
