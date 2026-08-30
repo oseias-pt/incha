@@ -86,7 +86,8 @@ local CRUSHING_DARK_2  = 105172
 local CRUSHING_DARK_3  = 105239
 local SHADOW_SPLASH    = 105123  -- BEGIN â†’ Shadow Splash! Interrupt!
 local BANEFUL_MARK     = 107196  -- BEGIN (execute) â†’ Baneful Mark!
-local ZMAJA_SHACKLE    = 107490  -- EFFECT_GAINED â†’ mini shackled / dies
+local ZMAJA_SHACKLE    = 107490  -- EFFECT_GAINED → mini shackled / dies
+local ZMAJA_RESET_PORT = 107478  -- Z’Maja portal-phase reset (all portals close)
 
 -- â”€â”€ Malevolent Cores / misc â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 local CORE_EXPOSED     = 103980
@@ -126,6 +127,7 @@ local FALLBACK_HA_DUR   = 1500   -- Siroria/Relequen/Galenwe HeavyAttack: empiri
 
 local ZmajaEncounter = {}
 ZmajaEncounter.__index = ZmajaEncounter
+setmetatable(ZmajaEncounter, {__index = BossBase})  -- inherit cleanupAlertList, onDied
 
 ZmajaEncounter.key               = "zmaja"
 ZmajaEncounter.nameAliases       = { "Z'Maja" }
@@ -207,18 +209,29 @@ local function handleSiroFlare(self, context, alerts, result, abilityId,
     if cid and unitId then self.alertList[unitId] = cid end
 end
 
--- Hoarfrost: EFFECT_GAINED on player (carrier) or non-player (announce name).
+-- Hoarfrost: EFFECT_GAINED → OSI icon + alert; EFFECT_FADED → remove icon.
 local function handleGaleHoarfrost(self, context, alerts, result, abilityId,
                                     unitTag, sourceUnitTag, sourceUnitId, unitId,
                                     sourceUnitName, unitName)
     if not self.galeActive then self.galeActive = true end
-    if result ~= ACTION_RESULT_EFFECT_GAINED then return end
-    if IsUnitPlayer(unitTag) then
-        local carrier = GetUnitDisplayName("player") or "you"
-        alerts:showAction("Frost! Drop in 6s (" .. carrier .. ")")
-        CA.alert(nil, "FROST â€” drop in 6s", 0x00EEEEff, SOUNDS.NONE, 4000)
-    elseif unitName and unitName ~= "" then
-        alerts:showAction("Frost â†’ " .. unitName)
+    if result == ACTION_RESULT_EFFECT_GAINED then
+        local dname = GetUnitDisplayName and GetUnitDisplayName(unitTag) or nil
+        if OSI and dname and dname ~= “” then
+            local sz = OSI.GetIconSize and (2 * OSI.GetIconSize()) or nil
+            OSI.SetMechanicIconForUnit(dname, GetAbilityIcon(abilityId), sz,
+                                       {0, 0.87, 0.87}, nil, nil)
+        end
+        if IsUnitPlayer(unitTag) then
+            alerts:showAction(“Frost! Drop in 6s”)
+            CA.alert(nil, “FROST -- drop in 6s”, 0x00EEEEff, SOUNDS.NONE, 4000)
+        elseif unitName and unitName ~= “” then
+            alerts:showAction(“Frost -> “ .. unitName)
+        end
+    elseif result == ACTION_RESULT_EFFECT_FADED then
+        local dname = GetUnitDisplayName and GetUnitDisplayName(unitTag) or nil
+        if OSI and dname and dname ~= “” then
+            OSI.RemoveMechanicIconForUnit(dname)
+        end
     end
 end
 
@@ -422,8 +435,12 @@ local function handleZmajaHideJump(self, context, alerts, abilityId, ...)
     alerts:showAction("Z'Maja retreating to shadow!")
 end
 
+local FALLBACK_SPLASH_DUR = 3000  -- Shadow Splash cast duration: empirical
+
 local function handleShadowSplash(self, context, alerts, abilityId, ...)
     alerts:showAction("Shadow Splash! Interrupt!")
+    local dur = CastDur.get(abilityId, FALLBACK_SPLASH_DUR)
+    CA.alertCast(abilityId, "INTERRUPT! Shadow Splash", dur, COL_ZMAJA)
     CA.alert(nil, "INTERRUPT!", 0xFF0000FF, SOUNDS.NONE, 2500)
 end
 
@@ -490,10 +507,12 @@ ZmajaEncounter.combatRoutes = {
     [RAZOR_THORNS]    = { result = ACTION_RESULT_EFFECT_GAINED, fn = handleRazorThorns },
 
     -- â”€â”€ Portal â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
-    [PORTAL_OPEN]     = { result = ACTION_RESULT_BEGIN, fn = handlePortalOpen },
-    [PORTAL_CLOSE_1]  = { result = ACTION_RESULT_BEGIN, fn = handlePortalClose },
-    [PORTAL_CLOSE_2]  = { result = ACTION_RESULT_BEGIN, fn = handlePortalClose },
-    [PORTAL_RESET]    = { result = ACTION_RESULT_BEGIN, fn = handlePortalReset },
+    [PORTAL_OPEN]      = { result = ACTION_RESULT_BEGIN, fn = handlePortalOpen },
+    [PORTAL_CLOSE_1]   = { result = ACTION_RESULT_BEGIN, fn = handlePortalClose },
+    [PORTAL_CLOSE_2]   = { result = ACTION_RESULT_BEGIN, fn = handlePortalClose },
+    [PLAYER_EXIT]      = { result = ACTION_RESULT_BEGIN, fn = handlePortalClose },
+    [PORTAL_RESET]     = { result = ACTION_RESULT_BEGIN, fn = handlePortalReset },
+    [ZMAJA_RESET_PORT] = { result = ACTION_RESULT_BEGIN, fn = handlePortalReset },
 
     -- â”€â”€ Z'Maja â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
     [ZMAJA_JUMP]      = { result = ACTION_RESULT_BEGIN, fn = handleZmajaJump },
