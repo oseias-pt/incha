@@ -373,6 +373,17 @@ local function showBridgeLine(self, alerts, now, context)
     end
 end
 
+function Taleria:onWipe()
+    CA.castAlertsStop(self.lureBarId)
+    self.lureBarId        = nil
+    self.lastMaelstrom    = 0;    self.lastBehemothSumm = 0
+    self.behemothSlam     = 0;    self.lastStormWall    = 0
+    self.stormWallCW      = true; self.lastPlatformFall = 0
+    self.bridgeOpen       = { false, false, false }
+    self.bridgeWipeStart  = { 0, 0, 0 }
+    self.bridgeDone       = { false, false, false }
+end
+
 -- ── 200 ms display loop ───────────────────────────────────────────────────
 function Taleria:onUpdate(context, alerts)
     local now  = GetGameTimeMilliseconds() / 1000

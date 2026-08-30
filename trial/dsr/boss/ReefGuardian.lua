@@ -309,6 +309,16 @@ local function showReefWipeLines(self, alerts, now)
     end
 end
 
+function ReefGuardian:onWipe()
+    CA.castAlertsStop(self.acidRefluxBarId)
+    self.acidRefluxBarId        = nil
+    self.buildingStaticStacks   = 0;    self.buildingStaticEndTime  = 0
+    self.volatileResidueStacks  = 0;    self.volatileResidueEndTime = 0
+    self.playerSheltered        = false; self.lastShelteredTime      = 0
+    self.reefPortals            = {};   self.reefNum                = 0
+    self.acidicVulnLast         = 0
+end
+
 -- ── 200 ms display loop ───────────────────────────────────────────────────
 function ReefGuardian:onUpdate(context, alerts)
     local now = GetGameTimeMilliseconds() / 1000
