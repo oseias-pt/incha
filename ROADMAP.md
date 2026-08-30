@@ -22,8 +22,11 @@ Checked items are **shipped** (committed). Unchecked items are pending.
 - [x] `lib/Throttle.lua` — `Trial:onPowerUpdate` is bucket-gated (1% granularity)
       so health-rule evaluation and UI updates only fire when `healthPercent` changes
       meaningfully.  `Throttle:reset()` is called on boss transitions.
-- [ ] Reduce hot-path allocation in `HealthRules.evaluate` / `AlertSink:emit`
-      (reuse scratch table; skip `gsub`/`format` when bucketed value hasn't changed).
+- [x] Reduce hot-path allocation in `HealthRules.evaluate` / `Panel` handlers:
+      `HealthRules.evaluate` early-returns on nil rules (no `or {}` allocation);
+      `Panel` info/action/header handlers skip `SetText` + `applyVisibility` when
+      value is unchanged; `Trial:onPowerUpdate` uses `context.inCombat` instead of
+      the `IsUnitInCombat` ESO API call.
 
 ### Phase 1 — `lib/` primitives
 - [x] `lib/Timer.lua` — `Timer.new(duration)`, `:remaining()`, `:isExpired()`, `:reset()`.

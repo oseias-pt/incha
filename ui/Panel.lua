@@ -55,9 +55,12 @@ end
 -- Clear all panel text and deactivate.
 -- Callers must guard with `if not ctrl then return end` before calling.
 local function panel_clear()
-    ctrl.header:SetText("")
-    ctrl.action:SetText("")
-    for i = 1, INFO_LINE_COUNT do ctrl.info[i]:SetText("") end
+    ctrl.header:SetText("") ; ctrl.headerText = ""
+    ctrl.action:SetText("") ; ctrl.actionText = ""
+    for i = 1, INFO_LINE_COUNT do
+        ctrl.info[i]:SetText("")
+        ctrl.infoText[i] = ""
+    end
     ctrl.active = false
     applyVisibility()
 end
@@ -122,12 +125,21 @@ local function build()
     action:SetDimensions(W - 16, 28)
     action:SetText("")
 
+    -- Text caches: last string passed to each SetText call.
+    -- Compared on every hot-path tick to skip redundant SetText + applyVisibility
+    -- calls when the displayed value hasn't changed.
+    local infoText = {}
+    for i = 1, INFO_LINE_COUNT do infoText[i] = "" end
+
     ctrl = {
-        panel  = panel,
-        header = header,
-        info   = info,
-        action = action,
-        active = false,  -- gates applyVisibility()
+        panel      = panel,
+        header     = header,
+        info       = info,
+        action     = action,
+        active     = false,  -- gates applyVisibility()
+        infoText   = infoText,
+        actionText = "",
+        headerText = "",
     }
 
     -- Hide the panel whenever we leave the HUD (menu, crafting, etc.) and
@@ -145,17 +157,31 @@ end
 Panel.alerts = {
     header = function(text)
         if not ctrl then return end
-        ctrl.header:SetText(text or "")
-        ctrl.active = true
-        applyVisibility()
+        local s = text or ""
+        if ctrl.headerText ~= s then
+            ctrl.headerText = s
+            ctrl.header:SetText(s)
+        end
+        if not ctrl.active then
+            ctrl.active = true
+            applyVisibility()
+        end
     end,
 
     -- info(n, text) — timer countdown for slot n (1–7).
+    -- Hot path: called up to 7× per 200 ms onUpdate tick.  Skip SetText when
+    -- the string is unchanged (LuaJIT interns all strings, so ~= is a pointer
+    -- compare).  Skip applyVisibility when the panel is already active.
     info = function(n, text)
         if not ctrl then return end
         local lbl = ctrl.info[n]
-        if lbl then
-            lbl:SetText(text or "")
+        if not lbl then return end
+        local s = text or ""
+        if ctrl.infoText[n] ~= s then
+            ctrl.infoText[n] = s
+            lbl:SetText(s)
+        end
+        if not ctrl.active then
             ctrl.active = true
             applyVisibility()
         end
@@ -163,9 +189,15 @@ Panel.alerts = {
 
     action = function(text)
         if not ctrl then return end
-        ctrl.action:SetText(text or "")
-        ctrl.active = true
-        applyVisibility()
+        local s = text or ""
+        if ctrl.actionText ~= s then
+            ctrl.actionText = s
+            ctrl.action:SetText(s)
+        end
+        if not ctrl.active then
+            ctrl.active = true
+            applyVisibility()
+        end
     end,
 
     hideAction = function()
