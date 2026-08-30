@@ -61,6 +61,10 @@ KazpianEncounter.stateSchema = {
     bombDebounce   = function() return Timer.new(5.0) end,
     portalPhase    = 0,
     channelersDead = 0,
+    -- Chain targets: populated on first/second DOMINATORS_CHAINS event,
+    -- cleared after the alert fires. nil = no chain holder tracked yet.
+    chainedA       = nil,
+    chainedB       = nil,
 }
 
 function KazpianEncounter.new()

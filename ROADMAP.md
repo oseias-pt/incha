@@ -17,19 +17,14 @@ Checked items are **shipped** (committed). Unchecked items are pending.
       **Fix:** swap the 4th and 5th parameter names.
 
 ### P1 — state correctness bugs
-- [ ] **DSR / ReefGuardian — `acidRefluxBarId` missing from `stateSchema`.**
-      `trial/dsr/boss/ReefGuardian.lua` — `onLeave` calls `CA.castAlertsStop(self.acidRefluxBarId)`
-      but the field is nil on first encounter entry; cleanup silently does nothing.
-      **Fix:** add `acidRefluxBarId = false` to `stateSchema`.
-- [ ] **DSR / Taleria — `lureBarId` missing from `stateSchema`.**
-      `trial/dsr/boss/Taleria.lua` — same pattern.
-      **Fix:** add `lureBarId = false` to `stateSchema`.
-- [ ] **RG / Oaxiltso — `sludgeTracker1Tag` / `sludgeTracker1Name` missing from `stateSchema`.**
-      `trial/rg/boss/Oaxiltso.lua` — fields set in `onWipe` but never declared.
-      **Fix:** add both with `nil` value to `stateSchema`.
-- [ ] **OC / KazpianEncounter — `chainedA` / `chainedB` not in `stateSchema`.**
-      `trial/oc/boss/KazpianEncounter.lua` — reset to nil in `onWipe` but not declared.
-      **Fix:** add `chainedA = nil`, `chainedB = nil` to `stateSchema` for consistency.
+- [x] **DSR / ReefGuardian — `acidRefluxBarId` missing from `stateSchema`.**
+      Added `acidRefluxBarId = false` to `stateSchema`.
+- [x] **DSR / Taleria — `lureBarId` missing from `stateSchema`.**
+      Added `lureBarId = false` to `stateSchema`.
+- [x] **RG / Oaxiltso — `sludgeTracker1Tag` / `sludgeTracker1Name` missing from `stateSchema`.**
+      Added both with `nil` value and doc comments to `stateSchema`.
+- [x] **OC / KazpianEncounter — `chainedA` / `chainedB` not in `stateSchema`.**
+      Added `chainedA = nil`, `chainedB = nil` to `stateSchema`.
 - [ ] **OC / OsseinCageCommon — `_carrionStacks` not reset on wipe.**
       Module-level upvalue survives encounter wipes; the stack count shown after a wipe
       reflects the pre-wipe value until the next `EFFECT_FADED` fires.
