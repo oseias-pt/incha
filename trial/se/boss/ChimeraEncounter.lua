@@ -4,31 +4,53 @@ local CA = require("lib.CA")
 local BossBase = require("lib.BossBase")
 local CastDur = require("lib.CastDur")
 
--- â”€â”€ Ability IDs â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
-local VIVIFY           = 186000   -- combatRoute: ACTION_RESULT_EFFECT_FADED â†’ Chimera spawned, reset timers
-local PETRIFY          = 185039   -- combatRoute: ACTION_RESULT_EFFECT_GAINED_DURATION â†’ despawning, clear timers
-local CHAIN_LIGHTNING  = 183858   -- combatRoute: ACTION_RESULT_BEGIN â†’ Chain Lightning alert, reset chainTimer
-local CIRCUIT_CHARGE   = 199235   -- (dead constant â€” no route registered)
-local CHIMERA_BOLT     = 186960   -- combatRoute: ACTION_RESULT_BEGIN â†’ Bolt caAlertCast (targeted)
-local CHIMERA_MAUL     = 186937   -- (dead constant â€” no route registered)
-local CHIMERA_INFERNO  = 186948   -- (dead constant â€” no route registered)
-local GRYPHON_WIND_LANCE = 199132 -- combatRoute: ACTION_RESULT_BEGIN â†’ Wind Lance alert
-local WAMASU_STORM     = 199119   -- (dead constant â€” no route registered)
-local WAMASU_REPULSION = 186995   -- (dead constant â€” no route registered)
-local MANTLE_WAMASU    = 184984   -- combatRoute: ACTION_RESULT_EFFECT_GAINED â†’ Wamasu portal (makePortalHandler)
-local MANTLE_LION      = 184983   -- combatRoute: ACTION_RESULT_EFFECT_GAINED â†’ Lion portal (makePortalHandler)
-local MANTLE_GRYPHON   = 183640   -- combatRoute: ACTION_RESULT_EFFECT_GAINED â†’ Gryphon portal (makePortalHandler)
+-- ── Ability IDs ────────────────────────────────────────────────────────────────────
+local VIVIFY           = 186000   -- combatRoute: ACTION_RESULT_EFFECT_FADED → Chimera spawned, reset timers
+local PETRIFY          = 185039   -- combatRoute: ACTION_RESULT_EFFECT_GAINED_DURATION → despawning, clear timers
+-- Chain Lightning — 14 variants
+local CHAIN_LIGHTNING_1  = 183858  -- combatRoute: ACTION_RESULT_BEGIN → Chain Lightning alert, reset chainTimer
+local CHAIN_LIGHTNING_2  = 183898
+local CHAIN_LIGHTNING_3  = 183911
+local CHAIN_LIGHTNING_4  = 183913
+local CHAIN_LIGHTNING_5  = 184033
+local CHAIN_LIGHTNING_6  = 184028
+local CHAIN_LIGHTNING_7  = 184036
+local CHAIN_LIGHTNING_8  = 184032
+local CHAIN_LIGHTNING_9  = 184029
+local CHAIN_LIGHTNING_10 = 184030
+local CHAIN_LIGHTNING_11 = 183915
+local CHAIN_LIGHTNING_12 = 183917
+local CHAIN_LIGHTNING_13 = 183885
+-- Chain Circuit debuffs on players — 4 variants
+local CHAIN_CIRCUIT_1  = 184063   -- combatRoute: ACTION_RESULT_EFFECT_GAINED_DURATION → player alert
+local CHAIN_CIRCUIT_2  = 184068   -- combatRoute: ACTION_RESULT_EFFECT_GAINED_DURATION → player alert
+local CHAIN_CIRCUIT_3  = 184066   -- combatRoute: ACTION_RESULT_EFFECT_GAINED_DURATION → player alert
+local CHAIN_CIRCUIT_4  = 184067   -- combatRoute: ACTION_RESULT_EFFECT_GAINED_DURATION → player alert
+-- Arctic Shred (~5.5 s cooldown)
+local ARCTIC_SHRED     = 184275   -- combatRoute: ACTION_RESULT_BEGIN → alert
+-- Sub-boss abilities
+local LION_DOUBLE_STRIKE = 186969  -- combatRoute: ACTION_RESULT_BEGIN → caAlertCast (Ascendant Lion)
+local GRYPHON_PECK       = 187002  -- combatRoute: ACTION_RESULT_BEGIN → caAlertCast (Ascendant Gryphon)
+local CHIMERA_BOLT     = 186960   -- combatRoute: ACTION_RESULT_BEGIN → Bolt caAlertCast (targeted)
+local GRYPHON_WIND_LANCE = 199132 -- combatRoute: ACTION_RESULT_BEGIN → Wind Lance alert
+-- Portal mantle buffs (assigned portal type on player)
+local MANTLE_WAMASU    = 184984   -- combatRoute: ACTION_RESULT_EFFECT_GAINED → Wamasu portal (makePortalHandler)
+local MANTLE_LION      = 184983   -- combatRoute: ACTION_RESULT_EFFECT_GAINED → Lion portal (makePortalHandler)
+local MANTLE_GRYPHON   = 183640   -- combatRoute: ACTION_RESULT_EFFECT_GAINED → Gryphon portal (makePortalHandler)
 
--- â”€â”€ Timer durations (seconds) â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+-- ── Timer durations (seconds) ─────────────────────────────────────────────────────
 local DESPAWN_CD           = 92   -- Chimera despawns ~92s after spawn
 local CHAIN_FIRST_CD       =  5   -- first chain lightning after spawn
 local CHAIN_CD             = 20   -- subsequent chain lightning CD
 
--- â”€â”€ CA colour palettes â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+-- ── CA colour palettes ────────────────────────────────────────────────────────────
 local COL_LIGHTNING = { -3, 0, false, { 1, 0.84, 0.4, 0.4 }, { 1, 0.84, 0.4, 0.8 } }  -- yellow
+local COL_SHRED     = { -3, 0, false, { 0.4, 0.8, 1, 0.4 }, { 0.4, 0.8, 1, 0.8 } }    -- cyan-blue
+local COL_STRIKE    = { -3, 0, false, { 1, 0.5, 0.1, 0.4 }, { 1, 0.5, 0.1, 0.8 } }    -- orange
 
--- â”€â”€ Fallback durations (empirical; replace if GetAbilityCastInfo becomes reliable) â”€
-local FALLBACK_DUR = 2000   -- Lightning Bolt: empirical
+-- ── Fallback durations (empirical; replace if GetAbilityCastInfo becomes reliable) ─
+local FALLBACK_DUR      = 2000   -- Lightning Bolt / Lion / Gryphon: empirical
+local FALLBACK_SHRED_DUR = 1500  -- Arctic Shred: empirical
 
 local ChimeraEncounter = {}
 ChimeraEncounter.__index = ChimeraEncounter
@@ -36,7 +58,7 @@ ChimeraEncounter.__index = ChimeraEncounter
 ChimeraEncounter.key               = "chimera"
 ChimeraEncounter.nameAliases       = { "Chimera" }
 ChimeraEncounter.hmHealthThreshold = 70000000   -- vet ~46.5M, HM ~93.1M
--- location: placeholder â€” Sunken Elder arena AABB not yet captured.
+-- location: placeholder – Sunken Elder arena AABB not yet captured.
 -- Detection falls back to nameAliases (name-based, may fail on non-EN clients).
 -- To calibrate: stand in arena, run /script d(GetUnitWorldPosition("boss1"))
 
@@ -52,7 +74,7 @@ function ChimeraEncounter.new()
     return BossBase.fromSchema(ChimeraEncounter)
 end
 
--- â”€â”€ Lifecycle â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+-- ── Lifecycle ─────────────────────────────────────────────────────────────────────
 function ChimeraEncounter:onLeave(context)
     self:cleanupAlertList()
 end
@@ -63,7 +85,7 @@ function ChimeraEncounter:onWipe()
     self.chimeraActive = false; self.firstChain = true
 end
 
--- â”€â”€ Handlers â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+-- ── Handlers ──────────────────────────────────────────────────────────────────────
 
 -- Portal mantle: personal alert when assigned to a portal.
 local function makePortalHandler(color, label, colorHex)
@@ -87,7 +109,7 @@ local function handlePetrify(self, context, alerts, abilityId, ...)
     self.chimeraActive = false
     self.despawnTimer:clear()
     self.chainTimer:clear()
-    alerts:showAction("Chimera despawningâ€¦")
+    alerts:showAction("Chimera despawning…")
 end
 
 local function handleChainLightning(self, context, alerts, abilityId, ...)
@@ -97,11 +119,39 @@ local function handleChainLightning(self, context, alerts, abilityId, ...)
     CA.alert(nil, "CHAIN LIGHTNING", 0xFFD666FF, SOUNDS.NONE, 2500)
 end
 
+local function handleChainCircuit(self, context, alerts, abilityId,
+                                   unitTag, ...)
+    if not IsUnitPlayer(unitTag) then return end
+    alerts:showAction("Chain Circuit on you!")
+    CA.alert(nil, "CHAIN CIRCUIT", 0xFFD666FF, SOUNDS.NONE, 3000)
+end
+
+local function handleArcticShred(self, context, alerts, abilityId,
+                                   unitTag, sourceUnitTag, sourceUnitId, unitId,
+                                   sourceUnitName, unitName)
+    local target = (unitName and unitName ~= "") and unitName or "?"
+    alerts:showAction("Arctic Shred → " .. target)
+    local dur = CastDur.get(abilityId, FALLBACK_SHRED_DUR)
+    CA.alertCast(abilityId, "Arctic Shred!", dur, COL_SHRED)
+end
+
+local function handleLionDoubleStrike(self, context, alerts, abilityId, ...)
+    local dur = CastDur.get(abilityId, FALLBACK_DUR)
+    CA.alertCast(abilityId, "Lion Double Strike!", dur, COL_STRIKE)
+    alerts:showAction("Lion Double Strike!")
+end
+
+local function handleGryphonPeck(self, context, alerts, abilityId, ...)
+    local dur = CastDur.get(abilityId, FALLBACK_DUR)
+    CA.alertCast(abilityId, "Gryphon Peck!", dur, COL_SHRED)
+    alerts:showAction("Gryphon Peck!")
+end
+
 local function handleChimeraBolt(self, context, alerts, abilityId,
                                   unitTag, sourceUnitTag, sourceUnitId, unitId,
                                   sourceUnitName, unitName)
     local target = (unitName and unitName ~= "") and unitName or "?"
-    alerts:showAction("Lightning Bolt â†’ " .. target)
+    alerts:showAction("Lightning Bolt → " .. target)
     local dur = CastDur.get(abilityId, FALLBACK_DUR)
     local cid = CA.alertCast(abilityId, "Bolt!", dur, COL_LIGHTNING)
     if cid and unitId then self.alertList[unitId] = cid end
@@ -112,21 +162,43 @@ local function handleGryphonWindLance(self, context, alerts, abilityId, ...)
     CA.alert(nil, "WIND LANCE", 0xD1F1F9FF, SOUNDS.NONE, 2000)
 end
 
--- â”€â”€ Routing tables (C3) â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+-- ── Routing tables (C3) ───────────────────────────────────────────────────────────
 
 ChimeraEncounter.combatRoutes = {
-    [VIVIFY]             = { result = ACTION_RESULT_EFFECT_FADED,          fn = handleVivify },
-    [PETRIFY]            = { result = ACTION_RESULT_EFFECT_GAINED_DURATION, fn = handlePetrify },
-    [CHAIN_LIGHTNING]    = { result = ACTION_RESULT_BEGIN,                  fn = handleChainLightning },
-    [CHIMERA_BOLT]       = { result = ACTION_RESULT_BEGIN,                  fn = handleChimeraBolt },
-    [GRYPHON_WIND_LANCE] = { result = ACTION_RESULT_BEGIN,                  fn = handleGryphonWindLance },
-    -- Portal mantle buffs (factory entries â€” EXEMPT from D7)
+    [VIVIFY]             = { result = ACTION_RESULT_EFFECT_FADED,           fn = handleVivify },
+    [PETRIFY]            = { result = ACTION_RESULT_EFFECT_GAINED_DURATION,  fn = handlePetrify },
+    -- Chain Lightning (14 variants)
+    [CHAIN_LIGHTNING_1]  = { result = ACTION_RESULT_BEGIN,                   fn = handleChainLightning },
+    [CHAIN_LIGHTNING_2]  = { result = ACTION_RESULT_BEGIN,                   fn = handleChainLightning },
+    [CHAIN_LIGHTNING_3]  = { result = ACTION_RESULT_BEGIN,                   fn = handleChainLightning },
+    [CHAIN_LIGHTNING_4]  = { result = ACTION_RESULT_BEGIN,                   fn = handleChainLightning },
+    [CHAIN_LIGHTNING_5]  = { result = ACTION_RESULT_BEGIN,                   fn = handleChainLightning },
+    [CHAIN_LIGHTNING_6]  = { result = ACTION_RESULT_BEGIN,                   fn = handleChainLightning },
+    [CHAIN_LIGHTNING_7]  = { result = ACTION_RESULT_BEGIN,                   fn = handleChainLightning },
+    [CHAIN_LIGHTNING_8]  = { result = ACTION_RESULT_BEGIN,                   fn = handleChainLightning },
+    [CHAIN_LIGHTNING_9]  = { result = ACTION_RESULT_BEGIN,                   fn = handleChainLightning },
+    [CHAIN_LIGHTNING_10] = { result = ACTION_RESULT_BEGIN,                   fn = handleChainLightning },
+    [CHAIN_LIGHTNING_11] = { result = ACTION_RESULT_BEGIN,                   fn = handleChainLightning },
+    [CHAIN_LIGHTNING_12] = { result = ACTION_RESULT_BEGIN,                   fn = handleChainLightning },
+    [CHAIN_LIGHTNING_13] = { result = ACTION_RESULT_BEGIN,                   fn = handleChainLightning },
+    -- Chain Circuit debuffs (4 variants, player-targeted)
+    [CHAIN_CIRCUIT_1]    = { result = ACTION_RESULT_EFFECT_GAINED_DURATION,  fn = handleChainCircuit },
+    [CHAIN_CIRCUIT_2]    = { result = ACTION_RESULT_EFFECT_GAINED_DURATION,  fn = handleChainCircuit },
+    [CHAIN_CIRCUIT_3]    = { result = ACTION_RESULT_EFFECT_GAINED_DURATION,  fn = handleChainCircuit },
+    [CHAIN_CIRCUIT_4]    = { result = ACTION_RESULT_EFFECT_GAINED_DURATION,  fn = handleChainCircuit },
+    -- Sub-boss abilities
+    [ARCTIC_SHRED]         = { result = ACTION_RESULT_BEGIN,                 fn = handleArcticShred },
+    [LION_DOUBLE_STRIKE]   = { result = ACTION_RESULT_BEGIN,                 fn = handleLionDoubleStrike },
+    [GRYPHON_PECK]         = { result = ACTION_RESULT_BEGIN,                 fn = handleGryphonPeck },
+    [CHIMERA_BOLT]         = { result = ACTION_RESULT_BEGIN,                 fn = handleChimeraBolt },
+    [GRYPHON_WIND_LANCE]   = { result = ACTION_RESULT_BEGIN,                 fn = handleGryphonWindLance },
+    -- Portal mantle buffs (factory entries – EXEMPT from D7)
     [MANTLE_WAMASU]  = makePortalHandler("green", "Wamasu Portal (Green)", 0x02FF00FF),
     [MANTLE_LION]    = makePortalHandler("red",   "Lion Portal (Red)",     0xFF0000FF),
     [MANTLE_GRYPHON] = makePortalHandler("blue",  "Gryphon Portal (Blue)", 0x0044FFFF),
 }
 
--- â”€â”€ Info-line renderers â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+-- ── Info-line renderers ───────────────────────────────────────────────────────────
 
 -- Lines 1-2: Chimera despawn countdown and Chain Lightning CD; cleared when inactive.
 local function showChimeraLines(self, alerts)
