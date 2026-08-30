@@ -216,7 +216,7 @@ local function handleGaleHoarfrost(self, context, alerts, result, abilityId,
     if not self.galeActive then self.galeActive = true end
     if result == ACTION_RESULT_EFFECT_GAINED then
         local dname = GetUnitDisplayName and GetUnitDisplayName(unitTag) or nil
-        if OSI and dname and dname ~= "" then
+        if OSI and dname and dname ~= "" and Settings.trial("cr").posIconsZmaja then
             local sz = OSI.GetIconSize and (2 * OSI.GetIconSize()) or nil
             OSI.SetMechanicIconForUnit(dname, GetAbilityIcon(abilityId), sz,
                                        {0, 0.87, 0.87}, nil, nil)
@@ -229,7 +229,7 @@ local function handleGaleHoarfrost(self, context, alerts, result, abilityId,
         end
     elseif result == ACTION_RESULT_EFFECT_FADED then
         local dname = GetUnitDisplayName and GetUnitDisplayName(unitTag) or nil
-        if OSI and dname and dname ~= "" then
+        if OSI and dname and dname ~= "" and Settings.trial("cr").posIconsZmaja then
             OSI.RemoveMechanicIconForUnit(dname)
         end
     end

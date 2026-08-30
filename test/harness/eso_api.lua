@@ -216,6 +216,7 @@ package.loaded["core.Settings"] = {
             showPercent      = true,
             portalIconVrol   = true,   -- Vrol portal icon  -  OSI nil so creation is a no-op
             posIconsFalgravn = true,   -- Falgravn nodes    -  OSI nil so creation is a no-op
+            posIconsZmaja    = true,   -- Z'Maja Frost/Gale -  OSI nil so creation is a no-op
         }
     end,
 }

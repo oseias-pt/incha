@@ -124,6 +124,13 @@ local OPTIONS = {
         getFunc = function() return Settings.get().trials.ss.enabled end,
         setFunc = function(v) Settings.get().trials.ss.enabled = v end,
     },
+    {
+        type    = "checkbox",
+        name    = "Show boss panel",
+        tooltip = "Display boss name and hardmode status on enter.",
+        getFunc = function() return Settings.get().trials.ss.showBossUI end,
+        setFunc = function(v) Settings.get().trials.ss.showBossUI = v end,
+    },
 
     -- Section: Rockgrove
     {
@@ -135,6 +142,13 @@ local OPTIONS = {
         name    = "Enable",
         getFunc = function() return Settings.get().trials.rg.enabled end,
         setFunc = function(v) Settings.get().trials.rg.enabled = v end,
+    },
+    {
+        type    = "checkbox",
+        name    = "Show boss panel",
+        tooltip = "Display boss name and hardmode status on enter.",
+        getFunc = function() return Settings.get().trials.rg.showBossUI end,
+        setFunc = function(v) Settings.get().trials.rg.showBossUI = v end,
     },
 
     -- Section: Dreadsail Reef
@@ -148,6 +162,13 @@ local OPTIONS = {
         getFunc = function() return Settings.get().trials.dsr.enabled end,
         setFunc = function(v) Settings.get().trials.dsr.enabled = v end,
     },
+    {
+        type    = "checkbox",
+        name    = "Show boss panel",
+        tooltip = "Display boss name and hardmode status on enter.",
+        getFunc = function() return Settings.get().trials.dsr.showBossUI end,
+        setFunc = function(v) Settings.get().trials.dsr.showBossUI = v end,
+    },
 
     -- Section: Asylum Sanctorium
     {
@@ -160,6 +181,13 @@ local OPTIONS = {
         tooltip = "Track Olms timers, Llothis/Felms dormant state, and Protector shield.",
         getFunc = function() return Settings.get().trials.as.enabled end,
         setFunc = function(v) Settings.get().trials.as.enabled = v end,
+    },
+    {
+        type    = "checkbox",
+        name    = "Show boss panel",
+        tooltip = "Display boss name and hardmode status on enter.",
+        getFunc = function() return Settings.get().trials.as.showBossUI end,
+        setFunc = function(v) Settings.get().trials.as.showBossUI = v end,
     },
     {
         type    = "checkbox",
@@ -181,6 +209,20 @@ local OPTIONS = {
         getFunc = function() return Settings.get().trials.cr.enabled end,
         setFunc = function(v) Settings.get().trials.cr.enabled = v end,
     },
+    {
+        type    = "checkbox",
+        name    = "Show boss panel",
+        tooltip = "Display boss name and hardmode status on enter.",
+        getFunc = function() return Settings.get().trials.cr.showBossUI end,
+        setFunc = function(v) Settings.get().trials.cr.showBossUI = v end,
+    },
+    {
+        type    = "checkbox",
+        name    = "Show mechanic icons",
+        tooltip = "Show OdySupportIcons player markers for Frost/Gale debuffs on Z'Maja (requires OdySupportIcons).",
+        getFunc = function() return Settings.get().trials.cr.posIconsZmaja end,
+        setFunc = function(v) Settings.get().trials.cr.posIconsZmaja = v end,
+    },
 
     -- Section: Sanity's Edge
     {
@@ -193,6 +235,13 @@ local OPTIONS = {
         tooltip = "Track Yaseyla bomb timers, Chimera despawn/chain lightning, and Ansuul calamity/phase alerts.",
         getFunc = function() return Settings.get().trials.se.enabled end,
         setFunc = function(v) Settings.get().trials.se.enabled = v end,
+    },
+    {
+        type    = "checkbox",
+        name    = "Show boss panel",
+        tooltip = "Display boss name and hardmode status on enter.",
+        getFunc = function() return Settings.get().trials.se.showBossUI end,
+        setFunc = function(v) Settings.get().trials.se.showBossUI = v end,
     },
     {
         type    = "checkbox",
@@ -214,6 +263,13 @@ local OPTIONS = {
         getFunc = function() return Settings.get().trials.lc.enabled end,
         setFunc = function(v) Settings.get().trials.lc.enabled = v end,
     },
+    {
+        type    = "checkbox",
+        name    = "Show boss panel",
+        tooltip = "Display boss name and hardmode status on enter.",
+        getFunc = function() return Settings.get().trials.lc.showBossUI end,
+        setFunc = function(v) Settings.get().trials.lc.showBossUI = v end,
+    },
 
     -- Section: Ossein Cage
     {
@@ -226,6 +282,13 @@ local OPTIONS = {
         tooltip = "Track Jynorah dragon leap/clash phases, Kazpian chain/portal/channeler alerts, and Shaper of Flesh shield status.",
         getFunc = function() return Settings.get().trials.oc.enabled end,
         setFunc = function(v) Settings.get().trials.oc.enabled = v end,
+    },
+    {
+        type    = "checkbox",
+        name    = "Show boss panel",
+        tooltip = "Display boss name and hardmode status on enter.",
+        getFunc = function() return Settings.get().trials.oc.showBossUI end,
+        setFunc = function(v) Settings.get().trials.oc.showBossUI = v end,
     },
 }
 
