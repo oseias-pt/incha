@@ -223,8 +223,7 @@ registers handlers for all entities, gated by which variant is active.
 
 **Reference addon:** `HowToCloudrest` (comprehensive tracker).
 
-**Zone ID:** Verify in-game — likely ~800–1000 range (Summerset, 2018). Use `GetUnitZoneByIndex`
-or search for constant in ESO data files.
+**Zone ID:** 1051 — confirmed in-game.
 
 #### CR-1 — Infrastructure
 - [ ] Determine zone ID (in-game verification)
@@ -317,7 +316,7 @@ ZMAJA_SHACKLE_MINI = 107490  -- Mini dies → Z'Maja phase
 - [ ] Olorime Spear: flash alert on spear grant
 
 #### CR-4 — In-game verification
-- [ ] Zone ID constant
+- [x] Zone ID constant — 1051 ✓
 - [ ] Real Location bounds — stand at room corners: `/script local x,y,z,_ = GetUnitWorldPosition("player"); d(x..","..y)`
 - [ ] HM threshold for Z'Maja: `/script d(GetUnitMaxPower("boss1", POWERTYPE_HEALTH))`
 - [ ] Confirm portal assignments fire correctly with all group configurations
@@ -333,7 +332,7 @@ ArcaneKnot may be a sub-phase or trash encounter — verify in-game.
 
 **Reference addons:** `LucentCitadelHelper` (LCH), `LucentCitadel` (LC).
 
-**Zone ID:** Verify in-game (Gold Road chapter, 2024 — likely ~1490–1520 range).
+**Zone ID:** 1478 — confirmed in-game.
 
 #### LC-1 — Infrastructure
 - [ ] Determine zone ID
@@ -408,7 +407,8 @@ These modules exist in LC main but LCH doesn't cover them → mechanics unknown 
 - [ ] Implement once abilities are known
 
 #### LC-7 — In-game verification
-- [ ] Zone ID, boss name strings
+- [x] Zone ID — 1478 ✓
+- [ ] Boss name strings
 - [ ] Real Location bounds — stand at room corners: `/script local x,y,z,_ = GetUnitWorldPosition("player"); d(x..","..y)`
 - [ ] HM thresholds for all bosses: `/script d(GetUnitMaxPower("boss1", POWERTYPE_HEALTH))`
 - [ ] Pad icon coordinate accuracy (LCH coords pre-measured but verify they match)
@@ -422,7 +422,7 @@ Boss 1: Jynorah (with Skorkhif mini). Boss 2: Kazpian. Boss 3: Shaper of Flesh.
 
 **Reference addons:** `OsseinCageHelper` (OCH), `AsquartOsseinCageHelper` (Asquart).
 
-**Zone ID:** Verify in-game (Fallen Banners DLC, 2025 — likely ~1600+ range).
+**Zone ID:** 1548 — confirmed in-game.
 
 #### OC-0 — Immediate bugs (see Known Bugs section above)
 - [x] Fix `handleReflective` parameter order in JynorahEncounter (P0 — mechanic completely broken)
@@ -575,7 +575,8 @@ IMMOLATING_SPHERE    = 237011   -- Incinerator
 - [ ] Implement once abilities are known
 
 #### OC-6 — In-game verification
-- [ ] Zone ID, boss name strings
+- [x] Zone ID — 1548 ✓
+- [ ] Boss name strings
 - [ ] Real Location bounds — stand at room corners: `/script local x,y,z,_ = GetUnitWorldPosition("player"); d(x..","..y)`
 - [ ] HM thresholds (Jynorah/Skorkhif dragon_max_hp=242176464 on vet HM confirmed; verify Kazpian + Shaper): `/script d(GetUnitMaxPower("boss1", POWERTYPE_HEALTH))`
 - [ ] Portal color assignment logic (Jynorah) — verify curse tracking accuracy
@@ -760,7 +761,10 @@ Split HP tracking: all three clones named "Ansuul the Tormentor" — differentia
 (Items requiring a live ESO session)
 
 ### All new trials
-- [ ] Zone IDs for CR, LC, OC (AS=1000 confirmed, SE=1427 confirmed)
+- [x] Zone ID for CR — 1051 ✓ confirmed in-game
+- [x] Zone ID for LC — 1478 ✓ confirmed in-game
+- [x] Zone ID for OC — 1548 ✓ confirmed in-game
+- (AS=1000, SE=1427, KA=1196, RG=1263, DSR=1344, SS=1121 — vintage-plausible, treat as confirmed until a misfire is reported)
 - [ ] Boss name strings for `BossRegistry.nameAliases` in each trial's Factory
 - [ ] Real Location bounds for AS, CR, LC, OC, SE — stand at boss room corners and run:
       `/script local x,y,z,_ = GetUnitWorldPosition("player"); d(x..","..y)`
@@ -819,11 +823,15 @@ Split HP tracking: all three clones named "Ansuul the Tormentor" — differentia
 2. **`modulesToUnload` drift**: each new trial added without updating this list extends
    the session-lifetime leak. Consider auto-deriving from Factory `require` calls (Phase 0).
 
-3. **Zone ID discovery**: for trials without a known ID, use:
-   ```lua
-   d(GetUnitZoneByIndex(GetZoneId()))
+3. **Zone ID discovery**: for trials without a known ID, stand inside the trial
+   zone and run:
    ```
-   inside the trial zone. Zone IDs are decimal integers.
+   /script d(GetZoneId(GetUnitZoneIndex("player")))
+   ```
+   The result is the zone **ID** (decimal integer) that goes in the Factory
+   `zoneId` field — this is what `ZoneManager.getPlayerZoneId()` compares
+   against.  Note: `GetCurrentMapZoneIndex()` returns a different number (the
+   zone *index*, not the ID); do not use that for Factory values.
 
 4. **OSI dependency**: SE and LC use OSI extensively. Ensure `## OptionalDependsOn: OdySupportIcons`
    remains in `incha.txt` (already present) and all OSI calls are nil-guarded.
