@@ -413,6 +413,7 @@ local function handlePreviewSlash(text)
                      or sub == "alert" or sub == "clear" then
         d(ADDON_TAG .. " /ip " .. sub)
         zo_callLater(function()
+            d(ADDON_TAG .. " [zo_callLater fired: " .. sub .. "]")
             if     sub == "panel"  then Preview.showPanel()
             elseif sub == "inst"   then Preview.showInstability()
             elseif sub == "border" then Preview.showCaBorder()

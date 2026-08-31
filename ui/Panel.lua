@@ -51,6 +51,9 @@ end
 local function applyVisibility()
     if not ctrl then return end
     local hudVisible = isActive(hudState) or isActive(hudUiState)
+    d("|cFFD700[Incha:Panel]|r active=" .. tostring(ctrl.active)
+      .. " hud=" .. hudState .. " hudui=" .. hudUiState
+      .. " → hidden=" .. tostring(not (ctrl.active and hudVisible)))
     ctrl.panel:SetHidden(not (ctrl.active and hudVisible))
 end
 
