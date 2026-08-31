@@ -402,11 +402,24 @@ end
 
 local function handlePreviewSlash(text)
     local sub = (text or ""):lower():match("^%s*(%S*)")
-    if     sub == "panel"  then Preview.showPanel()
-    elseif sub == "inst"   then Preview.showInstability()
-    elseif sub == "border" then Preview.showCaBorder()
-    elseif sub == "alert"  then Preview.showCaAlert()
-    elseif sub == "clear"  then Preview.clear()
+    -- Confirm the command was received immediately (visible in chat).
+    -- The actual effect is deferred 200 ms so the HUD scene has time to
+    -- return to "showing" after the chat input closes before we call
+    -- applyVisibility() inside Panel.alerts / Preview.  Without the
+    -- delay the command runs while the chat "hudui" overlay is still
+    -- transitioning and hudVisible may still be false, which hides the
+    -- panel immediately after showing it.
+    if sub == "panel" or sub == "inst" or sub == "border"
+                     or sub == "alert" or sub == "clear" then
+        d(ADDON_TAG .. " /ip " .. sub)
+        zo_callLater(function()
+            if     sub == "panel"  then Preview.showPanel()
+            elseif sub == "inst"   then Preview.showInstability()
+            elseif sub == "border" then Preview.showCaBorder()
+            elseif sub == "alert"  then Preview.showCaAlert()
+            elseif sub == "clear"  then Preview.clear()
+            end
+        end, 200)
     else
         d(ADDON_TAG .. " /ip  panel | inst | border | alert | clear")
     end
