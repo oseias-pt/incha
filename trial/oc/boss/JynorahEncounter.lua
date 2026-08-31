@@ -94,7 +94,7 @@ end
 -- Reflective Scales: yellow border while the dragon buff is active.
 -- Uses plain-function routing so it receives the result code and handles both
 -- ACTION_RESULT_EFFECT_GAINED (border on) and ACTION_RESULT_EFFECT_FADED (border off).
-local function handleReflective(self, context, alerts, abilityId, result,
+local function handleReflective(self, context, alerts, result, abilityId,
                                   unitTag, ...)
     if result == ACTION_RESULT_EFFECT_GAINED then
         CA.border(true, 6000, "yellow")
