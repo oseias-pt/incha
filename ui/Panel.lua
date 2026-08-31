@@ -1,5 +1,5 @@
 --- Default overlay panel  -  implements the AlertSink handler vocabulary
---- using plain WINDOW_MANAGER controls owned entirely by Incha.
+--- using controls defined in ui/Panel.xml.
 ---
 --- Design rules (from Phase 0 analysis):
 ---   - Controls are built ONCE on first enable, never per event.
@@ -92,16 +92,22 @@ end
 local function build()
     if ctrl then return end
 
-    local sv = Settings.get().overlay
+    -- Controls are defined in ui/Panel.xml; ESO creates them during the
+    -- loading sequence before any Lua runs.  Grab the globals by name.
+    local panel = InchPanel
+    if not panel then
+        -- XML wasn't loaded — shouldn't happen, but guard so the rest of
+        -- the addon still loads without a nil-access error.
+        d("[Incha] ERROR: InchPanel XML control missing — /reloadui and check incha.txt")
+        return
+    end
 
-    -- Outer container  -  the draggable root.
-    local panel = WINDOW_MANAGER:CreateControl("InchPanel", GuiRoot, CT_CONTROL)
-    panel:SetDimensions(W, H)
+    -- Belt-and-suspenders: ensure the panel renders above all HUD elements.
     panel:SetDrawLayer(DL_OVERLAY)
-    panel:SetClampedToScreen(true)
+
+    local sv = Settings.get().overlay
     panel:SetMouseEnabled(not sv.locked)
     panel:SetMovable(not sv.locked)
-    panel:SetHidden(true)
     panel:SetScale(sv.scale)
     applyPosition(panel)
 
@@ -112,58 +118,21 @@ local function build()
         applyPosition(c)
     end)
 
-    -- Semi-transparent dark background.
-    -- SetEdgeTexture("",…) is required for CT_BACKDROP to render at all;
-    -- without it the control silently produces no output.
-    local bg = WINDOW_MANAGER:CreateControl(nil, panel, CT_BACKDROP)
-    bg:SetAnchorFill()
-    bg:SetEdgeTexture("", 8, 8, 8)
-    bg:SetCenterColor(0.04, 0.04, 0.04, 0.82)
-    bg:SetEdgeColor(0.35, 0.35, 0.35, 0.9)
-
-    -- Header  -  boss name / HM status.  Small, gold.
-    local header = WINDOW_MANAGER:CreateControl(nil, panel, CT_LABEL)
-    header:SetFont("ZoFontGameSmall")
-    header:SetColor(1, 0.82, 0.22, 1)
-    header:SetHorizontalAlignment(TEXT_ALIGN_CENTER)
-    header:SetAnchor(TOPLEFT, panel, TOPLEFT, 8, 8)
-    header:SetDimensions(W - 16, 18)
-    header:SetText("")
-
-    -- Info lines  -  timer countdowns.  Small, grey.
-    -- Stacked below the header with 2px gaps.
+    -- Collect info-line references from the XML globals.
     local info = {}
     for i = 1, INFO_LINE_COUNT do
-        local lbl = WINDOW_MANAGER:CreateControl(nil, panel, CT_LABEL)
-        lbl:SetFont("ZoFontGameSmall")
-        lbl:SetColor(0.75, 0.75, 0.75, 1)
-        lbl:SetHorizontalAlignment(TEXT_ALIGN_CENTER)
-        lbl:SetAnchor(TOPLEFT, panel, TOPLEFT, 8, 28 + (i - 1) * 18)
-        lbl:SetDimensions(W - 16, 16)
-        lbl:SetText("")
-        info[i] = lbl
+        info[i] = _G[string.format("InchPanelInfo%02d", i)]
     end
 
-    -- Action  -  the prominent mid-fight call-out.  Larger, orange.
-    local action = WINDOW_MANAGER:CreateControl(nil, panel, CT_LABEL)
-    action:SetFont("ZoFontGameBold")
-    action:SetColor(1, 0.42, 0.08, 1)
-    action:SetHorizontalAlignment(TEXT_ALIGN_CENTER)
-    action:SetAnchor(BOTTOM, panel, BOTTOM, 0, -10)
-    action:SetDimensions(W - 16, 28)
-    action:SetText("")
-
     -- Text caches: last string passed to each SetText call.
-    -- Compared on every hot-path tick to skip redundant SetText + applyVisibility
-    -- calls when the displayed value hasn't changed.
     local infoText = {}
     for i = 1, INFO_LINE_COUNT do infoText[i] = "" end
 
     ctrl = {
         panel      = panel,
-        header     = header,
+        header     = InchPanelHeader,
         info       = info,
-        action     = action,
+        action     = InchPanelAction,
         active     = false,  -- gates applyVisibility()
         infoText   = infoText,
         actionText = "",
@@ -172,10 +141,6 @@ local function build()
 
     -- Hide the panel when neither HUD scene is active (escape menu, loading
     -- screen, etc.) and restore it when either returns to "showing".
-    -- Separate callbacks per scene so each updates only its own state variable;
-    -- a shared callback would let the last-firing scene overwrite the result of
-    -- the first, causing spurious hide when callback order is "hud→showing"
-    -- then "hudui→hiding" (which leaves hudVisible false while HUD is visible).
     SCENE_MANAGER:GetScene("hud"):RegisterCallback("StateChange", function(_, newState)
         hudState = newState
         applyVisibility()

@@ -1,0 +1,105 @@
+<GuiXml>
+  <Controls>
+    <!--
+      InchPanel — Incha trial overlay.
+      Defined in XML so ESO creates the controls during the loading sequence;
+      dynamic WINDOW_MANAGER:CreateControl is unreliable on some client setups.
+      Panel.lua grabs these globals and manages visibility/text at runtime.
+    -->
+    <TopLevelControl name="InchPanel" hidden="true"
+                     clampedToScreen="true" movable="true" mouseEnabled="true">
+      <Dimensions x="320" y="260"/>
+      <!-- initial anchor is overridden by applyPosition() in Panel.lua -->
+      <Anchor point="TOPLEFT" relativeTo="GuiRoot" relativePoint="TOPLEFT"
+              offsetX="800" offsetY="150"/>
+
+      <!-- semi-transparent dark background -->
+      <Backdrop name="$(parent)Bg">
+        <AnchorFill/>
+        <Edge edgeTexture="" edgeSize="8" tileCorner="false" tileEdge="false"/>
+        <Center centerTexture=""/>
+        <BackgroundColor r="0.04" g="0.04" b="0.04" a="0.82"/>
+        <EdgeColor r="0.35" g="0.35" b="0.35" a="0.9"/>
+      </Backdrop>
+
+      <!-- header: boss name / HM status (gold, small) -->
+      <Label name="$(parent)Header" font="ZoFontGameSmall"
+             color="1 0.82 0.22 1" horizontalAlignment="CENTER">
+        <Dimensions x="304" y="18"/>
+        <Anchor point="TOPLEFT" relativeTo="$(parent)" relativePoint="TOPLEFT"
+                offsetX="8" offsetY="8"/>
+      </Label>
+
+      <!-- info lines 1-10: timer countdowns (grey, small, 18 px pitch) -->
+      <Label name="$(parent)Info01" font="ZoFontGameSmall"
+             color="0.75 0.75 0.75 1" horizontalAlignment="CENTER">
+        <Dimensions x="304" y="16"/>
+        <Anchor point="TOPLEFT" relativeTo="$(parent)" relativePoint="TOPLEFT"
+                offsetX="8" offsetY="28"/>
+      </Label>
+      <Label name="$(parent)Info02" font="ZoFontGameSmall"
+             color="0.75 0.75 0.75 1" horizontalAlignment="CENTER">
+        <Dimensions x="304" y="16"/>
+        <Anchor point="TOPLEFT" relativeTo="$(parent)" relativePoint="TOPLEFT"
+                offsetX="8" offsetY="46"/>
+      </Label>
+      <Label name="$(parent)Info03" font="ZoFontGameSmall"
+             color="0.75 0.75 0.75 1" horizontalAlignment="CENTER">
+        <Dimensions x="304" y="16"/>
+        <Anchor point="TOPLEFT" relativeTo="$(parent)" relativePoint="TOPLEFT"
+                offsetX="8" offsetY="64"/>
+      </Label>
+      <Label name="$(parent)Info04" font="ZoFontGameSmall"
+             color="0.75 0.75 0.75 1" horizontalAlignment="CENTER">
+        <Dimensions x="304" y="16"/>
+        <Anchor point="TOPLEFT" relativeTo="$(parent)" relativePoint="TOPLEFT"
+                offsetX="8" offsetY="82"/>
+      </Label>
+      <Label name="$(parent)Info05" font="ZoFontGameSmall"
+             color="0.75 0.75 0.75 1" horizontalAlignment="CENTER">
+        <Dimensions x="304" y="16"/>
+        <Anchor point="TOPLEFT" relativeTo="$(parent)" relativePoint="TOPLEFT"
+                offsetX="8" offsetY="100"/>
+      </Label>
+      <Label name="$(parent)Info06" font="ZoFontGameSmall"
+             color="0.75 0.75 0.75 1" horizontalAlignment="CENTER">
+        <Dimensions x="304" y="16"/>
+        <Anchor point="TOPLEFT" relativeTo="$(parent)" relativePoint="TOPLEFT"
+                offsetX="8" offsetY="118"/>
+      </Label>
+      <Label name="$(parent)Info07" font="ZoFontGameSmall"
+             color="0.75 0.75 0.75 1" horizontalAlignment="CENTER">
+        <Dimensions x="304" y="16"/>
+        <Anchor point="TOPLEFT" relativeTo="$(parent)" relativePoint="TOPLEFT"
+                offsetX="8" offsetY="136"/>
+      </Label>
+      <Label name="$(parent)Info08" font="ZoFontGameSmall"
+             color="0.75 0.75 0.75 1" horizontalAlignment="CENTER">
+        <Dimensions x="304" y="16"/>
+        <Anchor point="TOPLEFT" relativeTo="$(parent)" relativePoint="TOPLEFT"
+                offsetX="8" offsetY="154"/>
+      </Label>
+      <Label name="$(parent)Info09" font="ZoFontGameSmall"
+             color="0.75 0.75 0.75 1" horizontalAlignment="CENTER">
+        <Dimensions x="304" y="16"/>
+        <Anchor point="TOPLEFT" relativeTo="$(parent)" relativePoint="TOPLEFT"
+                offsetX="8" offsetY="172"/>
+      </Label>
+      <Label name="$(parent)Info10" font="ZoFontGameSmall"
+             color="0.75 0.75 0.75 1" horizontalAlignment="CENTER">
+        <Dimensions x="304" y="16"/>
+        <Anchor point="TOPLEFT" relativeTo="$(parent)" relativePoint="TOPLEFT"
+                offsetX="8" offsetY="190"/>
+      </Label>
+
+      <!-- action: prominent mid-fight call-out (orange, bold) -->
+      <Label name="$(parent)Action" font="ZoFontGameBold"
+             color="1 0.42 0.08 1" horizontalAlignment="CENTER">
+        <Dimensions x="304" y="28"/>
+        <Anchor point="BOTTOM" relativeTo="$(parent)" relativePoint="BOTTOM"
+                offsetX="0" offsetY="-10"/>
+      </Label>
+
+    </TopLevelControl>
+  </Controls>
+</GuiXml>

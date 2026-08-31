@@ -29,6 +29,7 @@ core/ModuleLoader.lua
 core/CombatHandler.lua
 core/Bridge.lua
 
+ui/Panel.xml
 ui/Panel.lua
 ui/Preview.lua
 ui/Menu.lua
