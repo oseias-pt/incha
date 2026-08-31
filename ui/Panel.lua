@@ -23,9 +23,14 @@ local Panel = {}
 -- Control bundle  -  nil until first build(), populated exactly once.
 local ctrl = nil
 
--- Whether the HUD scene is currently in the "showing" state.
--- Shared by both hud and hudui scene callbacks.
-local hudVisible = true
+-- Track each HUD scene's state separately to avoid callback-order races.
+-- When chat/inventory closes, ESO fires both "hud → showing" and
+-- "hudui → hiding" in the same frame.  The one that fires last overwrites
+-- the shared variable, so the panel could end up hidden while the HUD is
+-- fully visible.  OR logic avoids the race: the panel is live whenever
+-- either scene is "showing".
+local hudState   = "showing"   -- most recent state of the "hud" scene
+local hudUiState = "showing"   -- most recent state of the "hudui" scene
 
 -- Panel dimensions (points, scales with ctrl.panel:SetScale).
 -- H=200 accommodates the info lines (each 18 px) + header (26 px) + action (38 px bottom).
@@ -38,6 +43,7 @@ local W, H = 320, 260
 -- Call this instead of SetHidden directly so both gates stay in sync.
 local function applyVisibility()
     if not ctrl then return end
+    local hudVisible = (hudState == "showing") or (hudUiState == "showing")
     ctrl.panel:SetHidden(not (ctrl.active and hudVisible))
 end
 
@@ -142,14 +148,20 @@ local function build()
         headerText = "",
     }
 
-    -- Hide the panel whenever we leave the HUD (menu, crafting, etc.) and
-    -- restore it when we return, without disturbing ctrl.active state.
-    local function onHudStateChange(_, newState)
-        hudVisible = (newState == "showing")
+    -- Hide the panel when neither HUD scene is active (escape menu, loading
+    -- screen, etc.) and restore it when either returns to "showing".
+    -- Separate callbacks per scene so each updates only its own state variable;
+    -- a shared callback would let the last-firing scene overwrite the result of
+    -- the first, causing spurious hide when callback order is "hud→showing"
+    -- then "hudui→hiding" (which leaves hudVisible false while HUD is visible).
+    SCENE_MANAGER:GetScene("hud"):RegisterCallback("StateChange", function(_, newState)
+        hudState = newState
         applyVisibility()
-    end
-    SCENE_MANAGER:GetScene("hud"):RegisterCallback("StateChange", onHudStateChange)
-    SCENE_MANAGER:GetScene("hudui"):RegisterCallback("StateChange", onHudStateChange)
+    end)
+    SCENE_MANAGER:GetScene("hudui"):RegisterCallback("StateChange", function(_, newState)
+        hudUiState = newState
+        applyVisibility()
+    end)
 end
 
 -- -- AlertSink handler table ------------------------------------------------
