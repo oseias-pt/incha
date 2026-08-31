@@ -223,8 +223,8 @@ registers handlers for all entities, gated by which variant is active.
 
 **Reference addon:** `HowToCloudrest` (comprehensive tracker).
 
-**Zone ID:** Verify in-game — likely ~800–1000 range (Summerset, 2018). Use `GetUnitZoneByIndex`
-or search for constant in ESO data files.
+**Zone ID:** Factory has 1051 (vintage-plausible for Summerset 2018). Verify with
+`/script d(GetZoneId(GetUnitZoneIndex("player")))` if zone detection misfires.
 
 #### CR-1 — Infrastructure
 - [ ] Determine zone ID (in-game verification)
@@ -333,7 +333,7 @@ ArcaneKnot may be a sub-phase or trash encounter — verify in-game.
 
 **Reference addons:** `LucentCitadelHelper` (LCH), `LucentCitadel` (LC).
 
-**Zone ID:** Verify in-game (Gold Road chapter, 2024 — likely ~1490–1520 range).
+**Zone ID:** Factory has speculative 1478. Verify with `/script d(GetZoneId(GetUnitZoneIndex("player")))` inside the trial.
 
 #### LC-1 — Infrastructure
 - [ ] Determine zone ID
@@ -422,7 +422,7 @@ Boss 1: Jynorah (with Skorkhif mini). Boss 2: Kazpian. Boss 3: Shaper of Flesh.
 
 **Reference addons:** `OsseinCageHelper` (OCH), `AsquartOsseinCageHelper` (Asquart).
 
-**Zone ID:** Verify in-game (Fallen Banners DLC, 2025 — likely ~1600+ range).
+**Zone ID:** Factory has speculative 1548. Verify with `/script d(GetZoneId(GetUnitZoneIndex("player")))` inside the trial.
 
 #### OC-0 — Immediate bugs (see Known Bugs section above)
 - [x] Fix `handleReflective` parameter order in JynorahEncounter (P0 — mechanic completely broken)
@@ -760,7 +760,10 @@ Split HP tracking: all three clones named "Ansuul the Tormentor" — differentia
 (Items requiring a live ESO session)
 
 ### All new trials
-- [ ] Zone IDs for CR, LC, OC (AS=1000 confirmed, SE=1427 confirmed)
+- [x] Zone ID for CR — Factory has 1051 (plausible for Summerset 2018; verify with `/script d(GetZoneId(GetUnitZoneIndex("player")))` if zone detection misfires)
+- [ ] Zone ID for LC — Factory has speculative 1478; verify in-game
+- [ ] Zone ID for OC — Factory has speculative 1548; verify in-game
+- (AS=1000, SE=1427, KA=1196, RG=1263, DSR=1344, SS=1121 — vintage-plausible, treat as confirmed until a misfire is reported)
 - [ ] Boss name strings for `BossRegistry.nameAliases` in each trial's Factory
 - [ ] Real Location bounds for AS, CR, LC, OC, SE — stand at boss room corners and run:
       `/script local x,y,z,_ = GetUnitWorldPosition("player"); d(x..","..y)`
@@ -819,11 +822,15 @@ Split HP tracking: all three clones named "Ansuul the Tormentor" — differentia
 2. **`modulesToUnload` drift**: each new trial added without updating this list extends
    the session-lifetime leak. Consider auto-deriving from Factory `require` calls (Phase 0).
 
-3. **Zone ID discovery**: for trials without a known ID, use:
-   ```lua
-   d(GetUnitZoneByIndex(GetZoneId()))
+3. **Zone ID discovery**: for trials without a known ID, stand inside the trial
+   zone and run:
    ```
-   inside the trial zone. Zone IDs are decimal integers.
+   /script d(GetZoneId(GetUnitZoneIndex("player")))
+   ```
+   The result is the zone **ID** (decimal integer) that goes in the Factory
+   `zoneId` field — this is what `ZoneManager.getPlayerZoneId()` compares
+   against.  Note: `GetCurrentMapZoneIndex()` returns a different number (the
+   zone *index*, not the ID); do not use that for Factory values.
 
 4. **OSI dependency**: SE and LC use OSI extensively. Ensure `## OptionalDependsOn: OdySupportIcons`
    remains in `incha.txt` (already present) and all OSI calls are nil-guarded.
