@@ -97,6 +97,7 @@ local function build()
     -- Outer container  -  the draggable root.
     local panel = WINDOW_MANAGER:CreateControl("InchPanel", GuiRoot, CT_CONTROL)
     panel:SetDimensions(W, H)
+    panel:SetDrawLayer(DL_OVERLAY)
     panel:SetClampedToScreen(true)
     panel:SetMouseEnabled(not sv.locked)
     panel:SetMovable(not sv.locked)
@@ -112,8 +113,11 @@ local function build()
     end)
 
     -- Semi-transparent dark background.
+    -- SetEdgeTexture("",…) is required for CT_BACKDROP to render at all;
+    -- without it the control silently produces no output.
     local bg = WINDOW_MANAGER:CreateControl(nil, panel, CT_BACKDROP)
     bg:SetAnchorFill()
+    bg:SetEdgeTexture("", 8, 8, 8)
     bg:SetCenterColor(0.04, 0.04, 0.04, 0.82)
     bg:SetEdgeColor(0.35, 0.35, 0.35, 0.9)
 
