@@ -56,6 +56,7 @@ end
 --- scale, and readability without entering combat.
 function Preview.showPanel()
     ensurePanel()
+    Panel.setPreviewMode(true)
     Panel.alerts.header("Falgravn [HM]")
     Panel.alerts.info(1, "Instability: 12s")
     Panel.alerts.info(2, "Blood Ball:   8s")
@@ -66,6 +67,7 @@ end
 --- Requires OdySupportIcons; silently no-ops if OSI is not installed.
 function Preview.showInstability()
     ensurePanel()
+    Panel.setPreviewMode(true)
     Panel.alerts.action("Instability!")
     if not OSI then return end
     local dn = GetUnitDisplayName and GetUnitDisplayName("player") or nil
@@ -92,6 +94,7 @@ end
 --- Reset all preview state: stop the animation, clear the overlay,
 --- and dismiss the CA border.
 function Preview.clear()
+    Panel.setPreviewMode(false)
     stopInstAnim()
     if Panel.bridge then Panel.bridge.onDisable() end
     CA.border(false, 0, "red")

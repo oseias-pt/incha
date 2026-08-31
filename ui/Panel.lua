@@ -28,9 +28,16 @@ local ctrl = nil
 -- "hudui → hiding" in the same frame.  The one that fires last overwrites
 -- the shared variable, so the panel could end up hidden while the HUD is
 -- fully visible.  OR logic avoids the race: the panel is live whenever
--- either scene is "showing".
+-- either scene is in its active half ("showing" or "shown").
 local hudState   = "showing"   -- most recent state of the "hud" scene
 local hudUiState = "showing"   -- most recent state of the "hudui" scene
+
+-- When true the panel is pinned visible regardless of HUD scene state.
+-- Set by Panel.setPreviewMode(true) when a preview command fires;
+-- cleared by Panel.setPreviewMode(false) on Preview.clear().
+-- Prevents rapid LAM-menu / settings-menu scene cycling from flickering
+-- the panel away before the player has a chance to see it.
+local previewMode = false
 
 -- Panel dimensions (points, scales with ctrl.panel:SetScale).
 -- H=200 accommodates the info lines (each 18 px) + header (26 px) + action (38 px bottom).
@@ -42,18 +49,19 @@ local W, H = 320, 260
 --   hudVisible     -  the hud/hudui scene allows it
 -- Call this instead of SetHidden directly so both gates stay in sync.
 -- ESO scene lifecycle: "showing" → "shown" → "hiding" → "hidden".
--- The panel is visible while either HUD scene is in the active half
--- ("showing" or "shown"); hidden only when both are in the inactive half.
+-- The panel is visible while either HUD scene is in the active half.
 local function isActive(state)
     return state == "showing" or state == "shown"
 end
 
 local function applyVisibility()
     if not ctrl then return end
+    -- previewMode pins the panel on screen regardless of scene state.
+    if previewMode then
+        ctrl.panel:SetHidden(false)
+        return
+    end
     local hudVisible = isActive(hudState) or isActive(hudUiState)
-    d("|cFFD700[Incha:Panel]|r active=" .. tostring(ctrl.active)
-      .. " hud=" .. hudState .. " hudui=" .. hudUiState
-      .. " → hidden=" .. tostring(not (ctrl.active and hudVisible)))
     ctrl.panel:SetHidden(not (ctrl.active and hudVisible))
 end
 
@@ -265,6 +273,20 @@ Panel.bridge = BridgeBase.extend({
     end,
     -- checkHardmode: inherited no-op from BridgeBase (Panel has no HM logic)
 })
+
+-- -- Preview mode -----------------------------------------------------------
+-- Called by ui/Preview.lua.  When enabled the panel ignores HUD scene
+-- transitions and stays pinned on screen until explicitly cleared.
+
+function Panel.setPreviewMode(enabled)
+    previewMode = enabled
+    if ctrl then
+        if enabled then
+            ctrl.active = true
+        end
+        applyVisibility()
+    end
+end
 
 -- -- Settings refresh -------------------------------------------------------
 
