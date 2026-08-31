@@ -283,6 +283,7 @@ local function showLeapLine(self, alerts)
 end
 
 function JynorahEncounter:onWipe()
+    OsseinCageCommon.reset()
     self.leapTimer:clear(); self.clashTimer:clear()
     self.firstLeap  = true; self.clashActive = false
     self.playerCurse = nil

@@ -79,6 +79,7 @@ ShaperEncounter.combatRoutes = {
 }
 
 function ShaperEncounter:onWipe()
+    OsseinCageCommon.reset()
     self.shaperShielded = false
 end
 

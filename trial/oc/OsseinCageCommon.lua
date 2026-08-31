@@ -62,6 +62,14 @@ local function carrionColorCode(n)
     end
 end
 
+-- -- Public: reset on wipe ---------------------------------------------------
+-- Call from every OC boss onWipe so module-level state doesn't bleed into
+-- the next pull.  Clears both _carrionStacks and the Toxic Ire debounce.
+function OsseinCageCommon.reset()
+    _carrionStacks    = 0
+    _toxicIreLastMs   = 0
+end
+
 -- -- Public: write Caustic Carrion info to panel line 3 --------------------
 -- Call from each OC boss's onUpdate in place of alerts:showInfo(3, "").
 function OsseinCageCommon.showCarrionInfo(alerts)
