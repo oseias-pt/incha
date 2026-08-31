@@ -1,12 +1,12 @@
-local Timer    = require("lib.Timer")
+﻿local Timer    = require("lib.Timer")
 
 local CA = require("lib.CA")
 local BossBase = require("lib.BossBase")
 local CastDur = require("lib.CastDur")
 
 -- ── Ability IDs ───────────────────────────────────────────────────────────
-local PIERCING_BEAM = 219165   -- combatRoute: ACTION_RESULT_BEGIN a+' INTERRUPT; CD 14s first / 32s steady
-local VITRIFY       = 219083   -- combatRoute: ACTION_RESULT_BEGIN a+' INTERRUPT; CD  9s first / 20s steady
+local PIERCING_BEAM = 219165   -- combatRoute: ACTION_RESULT_BEGIN → INTERRUPT; CD 14s first / 32s steady
+local VITRIFY       = 219083   -- combatRoute: ACTION_RESULT_BEGIN → INTERRUPT; CD  9s first / 20s steady
 
 -- ── Timer durations (seconds) ─────────────────────────────────────────────
 local BEAM_FIRST_CD    = 14.0
@@ -29,7 +29,7 @@ XynizataEncounter.nameAliases       = { "Xynizata" }
 -- hmHealthThreshold: math.huge until measured in-game on vet HM.
 -- (0 would make detectDifficulty always return HARDMODE.)
 XynizataEncounter.hmHealthThreshold = math.huge
--- location: placeholder aEUR" Lucent Citadel arena AABB not yet captured.
+-- location: placeholder — Lucent Citadel arena AABB not yet captured.
 -- Detection falls back to nameAliases (name-based, may fail on non-EN clients).
 -- To calibrate: stand in arena, run /script d(GetUnitWorldPosition("boss1"))
 
@@ -50,16 +50,16 @@ local function handlePiercingBeam(self, context, alerts, abilityId, ...)
     self.firstBeam = false
     self.piercingBeamTimer:reset(BEAM_CD)
     local dur = CastDur.get(abilityId, FALLBACK_BEAM_DUR)
-    CA.alertCast(abilityId, "INTERRUPT aEUR" Beam!", dur, COL_INTERRUPT)
-    alerts:showAction("INTERRUPT aEUR" Piercing Beam!")
+    CA.alertCast(abilityId, "INTERRUPT — Beam!", dur, COL_INTERRUPT)
+    alerts:showAction("INTERRUPT — Piercing Beam!")
 end
 
 local function handleVitrify(self, context, alerts, abilityId, ...)
     self.firstVitrify = false
     self.vitrifyTimer:reset(VITRIFY_CD)
     local dur = CastDur.get(abilityId, FALLBACK_VITRIFY_DUR)
-    CA.alertCast(abilityId, "INTERRUPT aEUR" Vitrify!", dur, COL_INTERRUPT)
-    alerts:showAction("INTERRUPT aEUR" Vitrify!")
+    CA.alertCast(abilityId, "INTERRUPT — Vitrify!", dur, COL_INTERRUPT)
+    alerts:showAction("INTERRUPT — Vitrify!")
 end
 
 -- ── Routing tables (C3) ──────────────────────────────────────────────────

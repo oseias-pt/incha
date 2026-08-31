@@ -1,13 +1,13 @@
-
+﻿
 local CA = require("lib.CA")
 local BossBase = require("lib.BossBase")
 local CastDur = require("lib.CastDur")
 
 -- ── Ability IDs ───────────────────────────────────────────────────────────
-local BRILLIANT_ANNIHILATION = 214187   -- combatRoute: ACTION_RESULT_BEGIN a+' light side room wipe; STACK
-local BLEAK_ANNIHILATION     = 214203   -- combatRoute: ACTION_RESULT_BEGIN a+' dark side room wipe; STACK
-local PORCIN_LIGHT           = 219329   -- combatRoute: ACTION_RESULT_EFFECT_GAINED_DURATION / FADED a+' player on Ryelaz (dark) side
-local PORCIN_DARK            = 219330   -- combatRoute: ACTION_RESULT_EFFECT_GAINED_DURATION / FADED a+' player on Zilyesset (light) side
+local BRILLIANT_ANNIHILATION = 214187   -- combatRoute: ACTION_RESULT_BEGIN → light side room wipe; STACK
+local BLEAK_ANNIHILATION     = 214203   -- combatRoute: ACTION_RESULT_BEGIN → dark side room wipe; STACK
+local PORCIN_LIGHT           = 219329   -- combatRoute: ACTION_RESULT_EFFECT_GAINED_DURATION / FADED → player on Ryelaz (dark) side
+local PORCIN_DARK            = 219330   -- combatRoute: ACTION_RESULT_EFFECT_GAINED_DURATION / FADED → player on Zilyesset (light) side
 
 -- ── CA colour palettes ────────────────────────────────────────────────────
 local COL_ANNIHIL = { -3, 0, false, { 1, 0.65, 0, 0.4 }, { 1, 0.65, 0, 0.8 } }
@@ -21,7 +21,7 @@ RyelazEncounter.__index = RyelazEncounter
 RyelazEncounter.key               = "ryelaz"
 RyelazEncounter.nameAliases       = { "Count Ryelaz", "Zilyesset" }
 RyelazEncounter.hmHealthThreshold = 40000000
--- location: placeholder aEUR" Lucent Citadel arena AABB not yet captured.
+-- location: placeholder — Lucent Citadel arena AABB not yet captured.
 -- Detection falls back to nameAliases (name-based, may fail on non-EN clients).
 -- To calibrate: stand in arena, run /script d(GetUnitWorldPosition("boss1"))
 
@@ -42,7 +42,7 @@ local function makeAnnihilHandler(label)
     return { result = ACTION_RESULT_BEGIN,
         fn = function(self, context, alerts, abilityId, ...)
         local dur = CastDur.get(abilityId, FALLBACK_DUR)
-        CA.alertCast(abilityId, "STACK aEUR" Annihilation!", dur, COL_ANNIHIL)
+        CA.alertCast(abilityId, "STACK — Annihilation!", dur, COL_ANNIHIL)
         alerts:showAction(label .. " STACK!")
     end }
 end

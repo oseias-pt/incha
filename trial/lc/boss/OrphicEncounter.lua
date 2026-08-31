@@ -1,17 +1,17 @@
-local Timer    = require("lib.Timer")
+﻿local Timer    = require("lib.Timer")
 
 local CA = require("lib.CA")
 local BossBase = require("lib.BossBase")
 local CastDur = require("lib.CastDur")
 
 -- ── Ability IDs ───────────────────────────────────────────────────────────
-local THUNDER_THRALL  = 214383   -- combatRoute: ACTION_RESULT_BEGIN a+' Xoryn jump; timer 25.5s / 8s first
-local LIGHTNING_FLOOD = 214355   -- combatRoute: ACTION_RESULT_BEGIN a+' Xoryn cone; timer 21.5s / 3s first
-local COLOR_CHANGE    = 213913   -- combatRoute: ACTION_RESULT_EFFECT_GAINED a+' mirror switch alert
-local BREAKOUT        = 220185   -- combatRoute: ACTION_RESULT_BEGIN a+' crystal prison on player
-local SHIELD_THROW    = 221945   -- combatRoute: ACTION_RESULT_BEGIN a+' Crystal Sentinel caAlertCast
-local XORYN_IMMUNE_1  = 217987   -- combatRoute: ACTION_RESULT_EFFECT_GAINED / FADED a+' Xoryn away / returned
-local XORYN_IMMUNE_2  = 219545   -- combatRoute: ACTION_RESULT_EFFECT_GAINED / FADED a+' Xoryn away variant
+local THUNDER_THRALL  = 214383   -- combatRoute: ACTION_RESULT_BEGIN → Xoryn jump; timer 25.5s / 8s first
+local LIGHTNING_FLOOD = 214355   -- combatRoute: ACTION_RESULT_BEGIN → Xoryn cone; timer 21.5s / 3s first
+local COLOR_CHANGE    = 213913   -- combatRoute: ACTION_RESULT_EFFECT_GAINED → mirror switch alert
+local BREAKOUT        = 220185   -- combatRoute: ACTION_RESULT_BEGIN → crystal prison on player
+local SHIELD_THROW    = 221945   -- combatRoute: ACTION_RESULT_BEGIN → Crystal Sentinel caAlertCast
+local XORYN_IMMUNE_1  = 217987   -- combatRoute: ACTION_RESULT_EFFECT_GAINED / FADED → Xoryn away / returned
+local XORYN_IMMUNE_2  = 219545   -- combatRoute: ACTION_RESULT_EFFECT_GAINED / FADED → Xoryn away variant
 
 -- ── Timer durations (seconds) ─────────────────────────────────────────────
 local THRALL_FIRST_CD =  8.0    -- first Thrall after Xoryn returns
@@ -32,7 +32,7 @@ OrphicEncounter.__index = OrphicEncounter
 OrphicEncounter.key               = "orphic"
 OrphicEncounter.nameAliases       = { "Orphic Shattered Shard" }
 OrphicEncounter.hmHealthThreshold = 80000000
--- location: placeholder aEUR" Lucent Citadel arena AABB not yet captured.
+-- location: placeholder — Lucent Citadel arena AABB not yet captured.
 -- Detection falls back to nameAliases (name-based, may fail on non-EN clients).
 -- To calibrate: stand in arena, run /script d(GetUnitWorldPosition("boss1"))
 
@@ -77,7 +77,7 @@ local function handleLightningFlood(self, context, alerts, abilityId,
     self.firstFlood  = false
     self.lightningFloodTimer:reset(FLOOD_CD)
     local target = (unitName and unitName ~= "") and unitName or "?"
-    alerts:showAction("Lightning Flood a+' " .. target)
+    alerts:showAction("Lightning Flood → " .. target)
 end
 
 local function handleBreakout(self, context, alerts, abilityId, unitTag, ...)
@@ -91,7 +91,7 @@ local function handleShieldThrow(self, context, alerts, abilityId,
                                   sourceUnitName, unitName)
     local target = (unitName and unitName ~= "") and unitName or "?"
     local dur = CastDur.get(abilityId, FALLBACK_DUR)
-    CA.alertCast(abilityId, "Shield Throw a+' " .. target, dur, COL_LIGHTNING)
+    CA.alertCast(abilityId, "Shield Throw → " .. target, dur, COL_LIGHTNING)
 end
 
 local function handleColorChange(self, context, alerts, abilityId, ...)

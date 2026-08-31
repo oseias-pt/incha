@@ -1,10 +1,10 @@
-
+﻿
 local CA = require("lib.CA")
 local BossBase = require("lib.BossBase")
 local CastDur = require("lib.CastDur")
 
 -- ── Ability IDs ───────────────────────────────────────────────────────────
-local POWERFUL_THROW = 218971   -- combatRoute: ACTION_RESULT_BEGIN a+' caAlertCast; on player a+' explicit alert
+local POWERFUL_THROW = 218971   -- combatRoute: ACTION_RESULT_BEGIN → caAlertCast; on player → explicit alert
 
 -- ── CA colour palettes ────────────────────────────────────────────────────
 local COL_THROW = { -3, 0, false, { 1, 0.5, 0, 0.4 }, { 1, 0.5, 0, 0.8 } }
@@ -20,7 +20,7 @@ DarielEncounter.nameAliases       = { "Dariel" }
 -- hmHealthThreshold: math.huge until measured in-game on vet HM.
 -- (0 would make detectDifficulty always return HARDMODE.)
 DarielEncounter.hmHealthThreshold = math.huge
--- location: placeholder aEUR" Lucent Citadel arena AABB not yet captured.
+-- location: placeholder — Lucent Citadel arena AABB not yet captured.
 -- Detection falls back to nameAliases (name-based, may fail on non-EN clients).
 -- To calibrate: stand in arena, run /script d(GetUnitWorldPosition("boss1"))
 
@@ -37,11 +37,11 @@ local function handlePowerfulThrow(self, context, alerts, abilityId,
                                    sourceUnitName, unitName)
     local target = (unitName and unitName ~= "") and unitName or "?"
     local dur = CastDur.get(abilityId, FALLBACK_DUR)
-    CA.alertCast(abilityId, "Throw a+' " .. target, dur, COL_THROW)
+    CA.alertCast(abilityId, "Throw → " .. target, dur, COL_THROW)
     if IsUnitPlayer(unitTag) then
         alerts:showAction("Powerful Throw on YOU!")
     else
-        alerts:showAction("Powerful Throw a+' " .. target)
+        alerts:showAction("Powerful Throw → " .. target)
     end
 end
 
