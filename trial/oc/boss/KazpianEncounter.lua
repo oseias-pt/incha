@@ -223,6 +223,7 @@ KazpianEncounter.combatRoutes = {
 }
 
 function KazpianEncounter:onWipe()
+    OsseinCageCommon.reset()
     self.bombDebounce:clear()
     self.portalPhase    = 0; self.channelersDead = 0
     self.chainedA       = nil; self.chainedB = nil
