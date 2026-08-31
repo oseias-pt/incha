@@ -42,8 +42,14 @@ local W, H = 320, 260
 --   hudVisible     -  the hud/hudui scene allows it
 -- Call this instead of SetHidden directly so both gates stay in sync.
 local function applyVisibility()
-    if not ctrl then return end
+    if not ctrl then
+        d("|cFFD700[Incha:Panel]|r applyVisibility – ctrl is nil")
+        return
+    end
     local hudVisible = (hudState == "showing") or (hudUiState == "showing")
+    d("|cFFD700[Incha:Panel]|r active=" .. tostring(ctrl.active)
+      .. " hud=" .. hudState .. " hudui=" .. hudUiState
+      .. " → hidden=" .. tostring(not (ctrl.active and hudVisible)))
     ctrl.panel:SetHidden(not (ctrl.active and hudVisible))
 end
 
@@ -72,7 +78,11 @@ local function panel_clear()
 end
 
 local function build()
-    if ctrl then return end
+    if ctrl then
+        d("|cFFD700[Incha:Panel]|r build() skipped – already built")
+        return
+    end
+    d("|cFFD700[Incha:Panel]|r build() starting")
 
     local sv = Settings.get().overlay
 
@@ -147,6 +157,7 @@ local function build()
         actionText = "",
         headerText = "",
     }
+    d("|cFFD700[Incha:Panel]|r build() complete")
 
     -- Hide the panel when neither HUD scene is active (escape menu, loading
     -- screen, etc.) and restore it when either returns to "showing".
