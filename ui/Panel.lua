@@ -41,15 +41,16 @@ local W, H = 320, 260
 --   ctrl.active    -  trial/boss content should be on screen
 --   hudVisible     -  the hud/hudui scene allows it
 -- Call this instead of SetHidden directly so both gates stay in sync.
+-- ESO scene lifecycle: "showing" → "shown" → "hiding" → "hidden".
+-- The panel is visible while either HUD scene is in the active half
+-- ("showing" or "shown"); hidden only when both are in the inactive half.
+local function isActive(state)
+    return state == "showing" or state == "shown"
+end
+
 local function applyVisibility()
-    if not ctrl then
-        d("|cFFD700[Incha:Panel]|r applyVisibility – ctrl is nil")
-        return
-    end
-    local hudVisible = (hudState == "showing") or (hudUiState == "showing")
-    d("|cFFD700[Incha:Panel]|r active=" .. tostring(ctrl.active)
-      .. " hud=" .. hudState .. " hudui=" .. hudUiState
-      .. " → hidden=" .. tostring(not (ctrl.active and hudVisible)))
+    if not ctrl then return end
+    local hudVisible = isActive(hudState) or isActive(hudUiState)
     ctrl.panel:SetHidden(not (ctrl.active and hudVisible))
 end
 
@@ -78,11 +79,7 @@ local function panel_clear()
 end
 
 local function build()
-    if ctrl then
-        d("|cFFD700[Incha:Panel]|r build() skipped – already built")
-        return
-    end
-    d("|cFFD700[Incha:Panel]|r build() starting")
+    if ctrl then return end
 
     local sv = Settings.get().overlay
 
@@ -157,7 +154,6 @@ local function build()
         actionText = "",
         headerText = "",
     }
-    d("|cFFD700[Incha:Panel]|r build() complete")
 
     -- Hide the panel when neither HUD scene is active (escape menu, loading
     -- screen, etc.) and restore it when either returns to "showing".
