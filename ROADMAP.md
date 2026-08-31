@@ -8,7 +8,7 @@ Checked items are **shipped** (committed). Unchecked items are pending.
 ## Known bugs — fix immediately
 
 ### P0 — mechanic completely non-functional
-- [ ] **OC / JynorahEncounter — `handleReflective` parameter order inverted.**
+- [x] **OC / JynorahEncounter — `handleReflective` parameter order inverted.**
       `trial/oc/boss/JynorahEncounter.lua:97` — plain-function combatRoute entries receive
       `(self, context, alerts, result, abilityId, unitTag, ...)` but `handleReflective`
       declares them as `(self, context, alerts, abilityId, result, ...)`.
@@ -25,7 +25,7 @@ Checked items are **shipped** (committed). Unchecked items are pending.
       Added both with `nil` value and doc comments to `stateSchema`.
 - [x] **OC / KazpianEncounter — `chainedA` / `chainedB` not in `stateSchema`.**
       Added `chainedA = nil`, `chainedB = nil` to `stateSchema`.
-- [ ] **OC / OsseinCageCommon — `_carrionStacks` not reset on wipe.**
+- [x] **OC / OsseinCageCommon — `_carrionStacks` not reset on wipe.**
       Module-level upvalue survives encounter wipes; the stack count shown after a wipe
       reflects the pre-wipe value until the next `EFFECT_FADED` fires.
       **Fix:** export `OsseinCageCommon.reset()` and call it from each boss `onWipe`.
@@ -143,7 +143,7 @@ Checked items are **shipped** (committed). Unchecked items are pending.
 - [x] Xalvakka (boss 3): ManifoldDebuff OSI mechanic icon
 - [ ] Real Location bounds (zone coordinates needed in-game)
 - [ ] HM thresholds for all three bosses (verify in-game)
-- [ ] Oaxiltso real mechanics (reference: external guides — no reference addon available)
+- [x] Oaxiltso real mechanics (reference: `QcellRockgroveHelper` at `D:\dev\AddOns\QcellRockgroveHelper`)
 - [ ] Xalvakka: shield event parameters, first-jump timing (verify in-game)
 
 ---
@@ -425,9 +425,9 @@ Boss 1: Jynorah (with Skorkhif mini). Boss 2: Kazpian. Boss 3: Shaper of Flesh.
 **Zone ID:** Verify in-game (Fallen Banners DLC, 2025 — likely ~1600+ range).
 
 #### OC-0 — Immediate bugs (see Known Bugs section above)
-- [ ] Fix `handleReflective` parameter order in JynorahEncounter (P0 — mechanic completely broken)
-- [ ] Add `chainedA = nil`, `chainedB = nil` to KazpianEncounter `stateSchema`
-- [ ] Export `OsseinCageCommon.reset()` and call from each boss `onWipe` to clear
+- [x] Fix `handleReflective` parameter order in JynorahEncounter (P0 — mechanic completely broken)
+- [x] Add `chainedA = nil`, `chainedB = nil` to KazpianEncounter `stateSchema`
+- [x] Export `OsseinCageCommon.reset()` and call from each boss `onWipe` to clear
       `_carrionStacks` (currently stale after wipes)
 
 #### OC-1 — Infrastructure
