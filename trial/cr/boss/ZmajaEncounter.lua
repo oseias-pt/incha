@@ -1,4 +1,4 @@
-local Timer    = require("lib.Timer")
+﻿local Timer    = require("lib.Timer")
 
 local CA = require("lib.CA")
 local BossBase = require("lib.BossBase")
@@ -38,17 +38,17 @@ local GALE_IDS = {
 -- -- Ability IDs (from HowToCloudrest / CrutchAlerts) ---------------------
 
 -- -- Siroria ---------------------------------------------------------------
-local SIRO_HA          = 104755  -- Heavy Attack a+' block/dodge
+local SIRO_HA          = 104755  -- Heavy Attack → block/dodge
 local SIRO_JUMP        = 106601  -- Jump - 23 s CD
 local SIRO_BANNER      = 104902  -- Banner skill - 45 s CD
 local SIRO_DARK_TALONS = 105765  -- Root on player
-local SIRO_FLARE       = 103531  -- Roaring Flare a+' target name, 6.6 s window
+local SIRO_FLARE       = 103531  -- Roaring Flare → target name, 6.6 s window
 local SIRO_FLARE_EXEC  = 110431  -- Roaring Flare execute variant
 
 -- -- Relequen --------------------------------------------------------------
 local RELE_HA          = 105780  -- Heavy Attack
 local RELE_JUMP        = 105796  -- Flux Burst jump - 19 s CD
-local RELE_DIRECT_CURR = 105380  -- Direct Current channel a+' INTERRUPT! 20 s CD
+local RELE_DIRECT_CURR = 105380  -- Direct Current channel → INTERRUPT! 20 s CD
 local RELE_JOLT        = 106614  -- Jolt cone - 15 s CD
 local RELE_OVERLOAD_1  = 103555  -- Voltaic Overload incoming (bar-swap warning)
 local RELE_OVERLOAD_2  = 87346   -- Voltaic Overload active on player
@@ -56,7 +56,7 @@ local RELE_OVERLOAD_2  = 87346   -- Voltaic Overload active on player
 -- -- Galenwe ---------------------------------------------------------------
 local GALE_HA          = 106375  -- Heavy Attack
 local GALE_JUMP        = 106682  -- Teleport jump - 19 s CD
-local GALE_GLACIAL     = 106405  -- Glacial Spikes channel a+' INTERRUPT! 22 s CD
+local GALE_GLACIAL     = 106405  -- Glacial Spikes channel → INTERRUPT! 22 s CD
 local GALE_DONUT       = 106378  -- Donut AoE - 22 s CD
 local GALE_HOARFROST_C = 105151  -- Hoarfrost cast (ground AoE incoming)
 local GALE_HOARFROST_C2= 110466  -- Hoarfrost cast execute variant
@@ -79,13 +79,13 @@ local PORTAL_RESET     = 105890  -- Z'Maja re-engage - reset portal group to 1
 local PLAYER_EXIT      = 105218  -- Player exits shadow realm (side-boss variant)
 
 -- -- Z'Maja abilities ------------------------------------------------------
-local ZMAJA_JUMP       = 104564  -- BEGIN a+' "Z'Maja jumping!"
-local ZMAJA_HIDE_JUMP  = 104452  -- BEGIN a+' Z'Maja retreats to shadow
-local CRUSHING_DARK_1  = 105152  -- BEGIN a+' Kite! Crushing Darkness
+local ZMAJA_JUMP       = 104564  -- BEGIN → "Z'Maja jumping!"
+local ZMAJA_HIDE_JUMP  = 104452  -- BEGIN → Z'Maja retreats to shadow
+local CRUSHING_DARK_1  = 105152  -- BEGIN → Kite! Crushing Darkness
 local CRUSHING_DARK_2  = 105172
 local CRUSHING_DARK_3  = 105239
-local SHADOW_SPLASH    = 105123  -- BEGIN a+' Shadow Splash! Interrupt!
-local BANEFUL_MARK     = 107196  -- BEGIN (execute) a+' Baneful Mark!
+local SHADOW_SPLASH    = 105123  -- BEGIN → Shadow Splash! Interrupt!
+local BANEFUL_MARK     = 107196  -- BEGIN (execute) → Baneful Mark!
 local ZMAJA_SHACKLE    = 107490  -- EFFECT_GAINED -> mini shackled / dies
 local ZMAJA_RESET_PORT = 107478  -- Z'Maja portal-phase reset (all portals close)
 
@@ -203,9 +203,9 @@ local function handleSiroFlare(self, context, alerts, result, abilityId,
     if not self.siroActive then self.siroActive = true end
     if result ~= ACTION_RESULT_BEGIN then return end
     local target = (unitName and unitName ~= "") and unitName or "?"
-    alerts:showAction("Flare a+' " .. target)
+    alerts:showAction("Flare → " .. target)
     local dur = CastDur.get(abilityId, math.floor(FLARE_WINDOW * 1000))
-    local cid = CA.alertCast(abilityId, "Flare a+' " .. target, dur, COL_SIRO)
+    local cid = CA.alertCast(abilityId, "Flare → " .. target, dur, COL_SIRO)
     if cid and unitId then self.alertList[unitId] = cid end
 end
 
@@ -411,7 +411,7 @@ local function handleOlorimeSpear(self, context, alerts, result, abilityId,
     if result ~= ACTION_RESULT_EFFECT_GAINED and result ~= ACTION_RESULT_BEGIN then return end
     self.spearCount = self.spearCount + 1
     local target = (unitName and unitName ~= "") and unitName or "?"
-    alerts:showAction("Spear a+' " .. target .. " (" .. self.spearCount .. ")")
+    alerts:showAction("Spear → " .. target .. " (" .. self.spearCount .. ")")
 end
 
 local function handleRazorThorns(self, context, alerts, abilityId, unitTag, ...)

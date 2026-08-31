@@ -1,4 +1,4 @@
-local Timer    = require("lib.Timer")
+﻿local Timer    = require("lib.Timer")
 
 local CA       = require("lib.CA")
 local BossBase = require("lib.BossBase")
@@ -7,21 +7,21 @@ local Settings = require("core.Settings")
 
 -- ── Ability IDs (from AsylumTracker / AsylumPriorityTarget) ───────────────
 -- Olms
-local OLMS_STORM_THE_HEAVENS  = 98535  -- combatRoute: ACTION_RESULT_BEGIN a+' Kite alert, reset stormTimer
-local OLMS_TRIAL_BY_FIRE      = 98582  -- combatRoute: ACTION_RESULT_BEGIN a+' Trial by Fire alert, reset fireTimer
-local OLMS_SCALDING_ROAR      = 98683  -- combatRoute: ACTION_RESULT_BEGIN a+' Steam Breath caAlertCast, reset steamTimer
-local OLMS_GUSTS_OF_STEAM     = 98868  -- combatRoute: ACTION_RESULT_BEGIN a+' Jump! alert, advance jump threshold
-local OLMS_EXHAUSTIVE_CHARGES = 95482  -- combatRoute: ACTION_RESULT_BEGIN a+' Charges! alert, reset chargesTimer
+local OLMS_STORM_THE_HEAVENS  = 98535  -- combatRoute: ACTION_RESULT_BEGIN → Kite alert, reset stormTimer
+local OLMS_TRIAL_BY_FIRE      = 98582  -- combatRoute: ACTION_RESULT_BEGIN → Trial by Fire alert, reset fireTimer
+local OLMS_SCALDING_ROAR      = 98683  -- combatRoute: ACTION_RESULT_BEGIN → Steam Breath caAlertCast, reset steamTimer
+local OLMS_GUSTS_OF_STEAM     = 98868  -- combatRoute: ACTION_RESULT_BEGIN → Jump! alert, advance jump threshold
+local OLMS_EXHAUSTIVE_CHARGES = 95482  -- combatRoute: ACTION_RESULT_BEGIN → Charges! alert, reset chargesTimer
 -- Protector
-local STATIC_SHIELD           = 96010  -- effectRoute: (plain) EFFECT_RESULT_GAINED/FADED a+' protectorUp state + alert
+local STATIC_SHIELD           = 96010  -- effectRoute: (plain) EFFECT_RESULT_GAINED/FADED → protectorUp state + alert
 -- Llothis
-local LLOTHIS_DEFILING_BLAST   = 95545  -- combatRoute: ACTION_RESULT_BEGIN a+' Blast caAlertCast (targeted), reset blastTimer
-local LLOTHIS_OPPRESSIVE_BOLTS = 95585  -- combatRoute: ACTION_RESULT_BEGIN a+' Interrupt! alert, reset boltsTimer
+local LLOTHIS_DEFILING_BLAST   = 95545  -- combatRoute: ACTION_RESULT_BEGIN → Blast caAlertCast (targeted), reset blastTimer
+local LLOTHIS_OPPRESSIVE_BOLTS = 95585  -- combatRoute: ACTION_RESULT_BEGIN → Interrupt! alert, reset boltsTimer
 -- Felms
-local FELMS_TELEPORT_STRIKE   = 99138  -- combatRoute: ACTION_RESULT_BEGIN a+' Strike caAlertCast (targeted), reset jumpTimer
+local FELMS_TELEPORT_STRIKE   = 99138  -- combatRoute: ACTION_RESULT_BEGIN → Strike caAlertCast (targeted), reset jumpTimer
 -- Mini-boss state
-local DORMANT                 = 99990  -- effectRoute: (plain) EFFECT_RESULT_GAINED/FADED a+' mini-boss dormancy + reseed timers
-local BOSS_EVENT              = 10298  -- combatRoute: ACTION_RESULT_EFFECT_GAINED a+' mini-boss spawn detection + timer seeding
+local DORMANT                 = 99990  -- effectRoute: (plain) EFFECT_RESULT_GAINED/FADED → mini-boss dormancy + reseed timers
+local BOSS_EVENT              = 10298  -- combatRoute: ACTION_RESULT_EFFECT_GAINED → mini-boss spawn detection + timer seeding
 
 -- ── Timer durations (seconds) ─────────────────────────────────────────────
 local STORM_CD    = 41
@@ -51,7 +51,7 @@ OlmsEncounter.nameAliases       = { "Saint Olms the Just" }
 -- (0 would make detectDifficulty always return HARDMODE.)
 -- To calibrate: pull on vet HM, run /script d(GetUnitPower("boss1", POWERTYPE_HEALTH))
 OlmsEncounter.hmHealthThreshold = math.huge
--- location: placeholder aEUR" Asylum arena AABB not yet captured.
+-- location: placeholder — Asylum arena AABB not yet captured.
 -- Detection falls back to nameAliases (name-based, may fail on non-EN clients).
 -- To calibrate: stand in arena, run /script d(GetUnitWorldPosition("boss1"))
 
@@ -173,9 +173,9 @@ local function handleDefilingBlast(self, context, alerts, abilityId,
                                     unitTag, sourceUnitTag, sourceUnitId, unitId,
                                     sourceUnitName, unitName)
     local target = (unitName and unitName ~= "") and unitName or "?"
-    alerts:showAction("Blast! a+' " .. target)
+    alerts:showAction("Blast! → " .. target)
     local dur = CastDur.get(LLOTHIS_DEFILING_BLAST, FALLBACK_BLAST_DUR)
-    local cid = CA.alertCast(abilityId, "Blast a+' " .. target, dur,
+    local cid = CA.alertCast(abilityId, "Blast → " .. target, dur,
         { -3, 0, false, { 0.6, 0, 0.8, 0.4 }, { 0.6, 0, 0.8, 0.8 } })
     if cid and unitId then self.alertList[unitId] = cid end
     self.blastTimer:reset()
@@ -191,9 +191,9 @@ local function handleTeleportStrike(self, context, alerts, abilityId,
                                      unitTag, sourceUnitTag, sourceUnitId, unitId,
                                      sourceUnitName, unitName)
     local target = (unitName and unitName ~= "") and unitName or "?"
-    alerts:showAction("Strike! a+' " .. target)
+    alerts:showAction("Strike! → " .. target)
     local dur = CastDur.get(FELMS_TELEPORT_STRIKE, FALLBACK_STRIKE_DUR)
-    local cid = CA.alertCast(abilityId, "Strike a+' " .. target, dur,
+    local cid = CA.alertCast(abilityId, "Strike → " .. target, dur,
         { -3, 0, false, { 0, 0.6, 0.8, 0.4 }, { 0, 0.6, 0.8, 0.8 } })
     if cid and unitId then self.alertList[unitId] = cid end
     self.jumpTimer:reset()
@@ -291,7 +291,7 @@ local function showOlmsLines(self, alerts)
     alerts:showInfo(4, t4 > 0 and ("Fire:    " .. ZO_FormatCountdownTimer(t4)) or "")
 end
 
--- Line 5: Llothis aEUR" not yet spawned, dormant, or blast timer.
+-- Line 5: Llothis — not yet spawned, dormant, or blast timer.
 local function showLlothisLine(self, alerts)
     if self.llothisSpawnGs == nil then
         alerts:showInfo(5, "")
@@ -313,7 +313,7 @@ local function showBoltsLine(self, alerts)
     end
 end
 
--- Line 7: Felms aEUR" not yet spawned, dormant, or strike timer.
+-- Line 7: Felms — not yet spawned, dormant, or strike timer.
 local function showFelmsLine(self, alerts)
     if self.felmsSpawnGs == nil then
         alerts:showInfo(7, "")
