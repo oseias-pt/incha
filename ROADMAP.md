@@ -223,8 +223,7 @@ registers handlers for all entities, gated by which variant is active.
 
 **Reference addon:** `HowToCloudrest` (comprehensive tracker).
 
-**Zone ID:** Factory has 1051 (vintage-plausible for Summerset 2018). Verify with
-`/script d(GetZoneId(GetUnitZoneIndex("player")))` if zone detection misfires.
+**Zone ID:** 1051 — confirmed in-game.
 
 #### CR-1 — Infrastructure
 - [ ] Determine zone ID (in-game verification)
@@ -317,7 +316,7 @@ ZMAJA_SHACKLE_MINI = 107490  -- Mini dies → Z'Maja phase
 - [ ] Olorime Spear: flash alert on spear grant
 
 #### CR-4 — In-game verification
-- [ ] Zone ID constant
+- [x] Zone ID constant — 1051 ✓
 - [ ] Real Location bounds — stand at room corners: `/script local x,y,z,_ = GetUnitWorldPosition("player"); d(x..","..y)`
 - [ ] HM threshold for Z'Maja: `/script d(GetUnitMaxPower("boss1", POWERTYPE_HEALTH))`
 - [ ] Confirm portal assignments fire correctly with all group configurations
@@ -333,7 +332,7 @@ ArcaneKnot may be a sub-phase or trash encounter — verify in-game.
 
 **Reference addons:** `LucentCitadelHelper` (LCH), `LucentCitadel` (LC).
 
-**Zone ID:** Factory has speculative 1478. Verify with `/script d(GetZoneId(GetUnitZoneIndex("player")))` inside the trial.
+**Zone ID:** 1478 — confirmed in-game.
 
 #### LC-1 — Infrastructure
 - [ ] Determine zone ID
@@ -408,7 +407,8 @@ These modules exist in LC main but LCH doesn't cover them → mechanics unknown 
 - [ ] Implement once abilities are known
 
 #### LC-7 — In-game verification
-- [ ] Zone ID, boss name strings
+- [x] Zone ID — 1478 ✓
+- [ ] Boss name strings
 - [ ] Real Location bounds — stand at room corners: `/script local x,y,z,_ = GetUnitWorldPosition("player"); d(x..","..y)`
 - [ ] HM thresholds for all bosses: `/script d(GetUnitMaxPower("boss1", POWERTYPE_HEALTH))`
 - [ ] Pad icon coordinate accuracy (LCH coords pre-measured but verify they match)
@@ -422,7 +422,7 @@ Boss 1: Jynorah (with Skorkhif mini). Boss 2: Kazpian. Boss 3: Shaper of Flesh.
 
 **Reference addons:** `OsseinCageHelper` (OCH), `AsquartOsseinCageHelper` (Asquart).
 
-**Zone ID:** Factory has speculative 1548. Verify with `/script d(GetZoneId(GetUnitZoneIndex("player")))` inside the trial.
+**Zone ID:** 1548 — confirmed in-game.
 
 #### OC-0 — Immediate bugs (see Known Bugs section above)
 - [x] Fix `handleReflective` parameter order in JynorahEncounter (P0 — mechanic completely broken)
@@ -575,7 +575,8 @@ IMMOLATING_SPHERE    = 237011   -- Incinerator
 - [ ] Implement once abilities are known
 
 #### OC-6 — In-game verification
-- [ ] Zone ID, boss name strings
+- [x] Zone ID — 1548 ✓
+- [ ] Boss name strings
 - [ ] Real Location bounds — stand at room corners: `/script local x,y,z,_ = GetUnitWorldPosition("player"); d(x..","..y)`
 - [ ] HM thresholds (Jynorah/Skorkhif dragon_max_hp=242176464 on vet HM confirmed; verify Kazpian + Shaper): `/script d(GetUnitMaxPower("boss1", POWERTYPE_HEALTH))`
 - [ ] Portal color assignment logic (Jynorah) — verify curse tracking accuracy
@@ -760,9 +761,9 @@ Split HP tracking: all three clones named "Ansuul the Tormentor" — differentia
 (Items requiring a live ESO session)
 
 ### All new trials
-- [x] Zone ID for CR — Factory has 1051 (plausible for Summerset 2018; verify with `/script d(GetZoneId(GetUnitZoneIndex("player")))` if zone detection misfires)
-- [ ] Zone ID for LC — Factory has speculative 1478; verify in-game
-- [ ] Zone ID for OC — Factory has speculative 1548; verify in-game
+- [x] Zone ID for CR — 1051 ✓ confirmed in-game
+- [x] Zone ID for LC — 1478 ✓ confirmed in-game
+- [x] Zone ID for OC — 1548 ✓ confirmed in-game
 - (AS=1000, SE=1427, KA=1196, RG=1263, DSR=1344, SS=1121 — vintage-plausible, treat as confirmed until a misfire is reported)
 - [ ] Boss name strings for `BossRegistry.nameAliases` in each trial's Factory
 - [ ] Real Location bounds for AS, CR, LC, OC, SE — stand at boss room corners and run:
