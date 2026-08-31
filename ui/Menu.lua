@@ -344,6 +344,11 @@ local function printHelp()
     d("  " .. ADDON_SLASH .. " lock           -  toggle overlay drag lock")
     d("  " .. ADDON_SLASH .. " scale <n>      -  set overlay scale (0.5 - 3.0)")
     d("  " .. ADDON_SLASH .. " reset          -  reset overlay to default position")
+    d("  " .. ADDON_SLASH .. " preview panel  -  show sample panel data")
+    d("  " .. ADDON_SLASH .. " preview inst   -  animate instability head icon")
+    d("  " .. ADDON_SLASH .. " preview border -  flash CA border")
+    d("  " .. ADDON_SLASH .. " preview alert  -  show CA text alert")
+    d("  " .. ADDON_SLASH .. " preview clear  -  clear all preview effects")
 end
 
 local function handleSlash(text)
@@ -376,6 +381,17 @@ local function handleSlash(text)
         sv.overlay.scale   = 1.0
         Panel.refresh()
         d("|cFFD700[Incha]|r Overlay position reset")
+
+    elseif cmd == "preview" then
+        local sub = arg:match("^%s*(%S*)")
+        if     sub == "panel"  then Preview.showPanel()
+        elseif sub == "inst"   then Preview.showInstability()
+        elseif sub == "border" then Preview.showCaBorder()
+        elseif sub == "alert"  then Preview.showCaAlert()
+        elseif sub == "clear"  then Preview.clear()
+        else
+            d(ADDON_TAG .. " preview: panel | inst | border | alert | clear")
+        end
 
     else
         printHelp()
