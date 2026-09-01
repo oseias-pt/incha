@@ -27,8 +27,10 @@ local function instAnimTick()
     _instFrame = (_instFrame % INST_FRAMES) + 1
     local tex = string.format("Incha/resources/instability/frame_%02d.dds",
                               _instFrame)
-    -- OSI.SetMechanicIconForUnit(lowerDisplayName, texture, size) — 3 args.
-    -- Display name must be lowercased (confirmed from QcellDreadsailReefHelper).
+    if _instFrame == 1 then   -- log once per 2 s loop so chat isn't flooded
+        d("[Incha] instAnimTick: dn='" .. _instDn .. "' tex=" .. tex
+          .. " sz=" .. tostring(2 * OSI.GetIconSize()))
+    end
     OSI.SetMechanicIconForUnit(_instDn, tex, 2 * OSI.GetIconSize())
 end
 
@@ -69,17 +71,31 @@ end
 --- The overlay panel is intentionally NOT shown for this preview —
 --- instability is a head-icon mechanic, not a panel alert.
 function Preview.showInstability()
+    -- Diagnostic: dump OSI state so we can identify the failure mode.
+    d("[Incha] inst: OSI=" .. tostring(OSI ~= nil)
+      .. " SetMechanic=" .. tostring(OSI and OSI.SetMechanicIconForUnit ~= nil)
+      .. " GetIconSize=" .. tostring(OSI and OSI.GetIconSize ~= nil))
     if not OSI then
-        d(ADDON_TAG .. " Instability preview requires OdySupportIcons")
+        d("[Incha] inst: OdySupportIcons not loaded — icon unavailable")
         return
     end
-    local dn = GetUnitDisplayName and string.lower(GetUnitDisplayName("player") or "") or ""
-    if dn == "" then return end
+    if not OSI.SetMechanicIconForUnit then
+        d("[Incha] inst: OSI.SetMechanicIconForUnit missing — wrong OSI version?")
+        return
+    end
+    local rawDn = GetUnitDisplayName and GetUnitDisplayName("player") or ""
+    local dn    = string.lower(rawDn)
+    d("[Incha] inst: rawDn='" .. rawDn .. "' dn='" .. dn .. "'")
+    if dn == "" then
+        d("[Incha] inst: empty display name — cannot set icon")
+        return
+    end
     stopInstAnim()
     _instDn    = dn
     _instFrame = 0
     EVENT_MANAGER:RegisterForUpdate(INST_KEY, INST_INTERVAL, instAnimTick)
     _instActive = true
+    d("[Incha] inst: animation registered, first tick in " .. INST_INTERVAL .. "ms")
 end
 
 --- Flash a red CombatAlerts screen-edge border for 3 s.
