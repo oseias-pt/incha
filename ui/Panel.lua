@@ -40,9 +40,9 @@ local hudUiState = "showing"   -- most recent state of the "hudui" scene
 local previewMode = false
 
 -- Panel dimensions (points, scales with ctrl.panel:SetScale).
--- H=200 accommodates the info lines (each 18 px) + header (26 px) + action (38 px bottom).
+-- Layout: header(26) at y=10 | 10 info lines(20 each) from y=42 | action(36) at bottom.
 local INFO_LINE_COUNT = 10
-local W, H = 320, 260
+local W, H = 360, 300
 
 -- Show or hide the panel based on two independent gates:
 --   ctrl.active    -  trial/boss content should be on screen
@@ -120,22 +120,32 @@ local function build()
         applyPosition(c)
     end)
 
+    -- Backdrop colours (BackgroundColor/EdgeColor are invalid ESO XML elements;
+    -- set them here so the panel is dark rather than the default white).
+    if InchPanelBg then
+        InchPanelBg:SetCenterColor(0.04, 0.04, 0.04, 0.82)
+        InchPanelBg:SetEdgeColor(0.35, 0.35, 0.35, 0.9)
+    end
+
     -- Apply font, colour, and alignment (XML attributes for these are not
     -- reliably parsed across ESO client versions, so we set them here).
-    InchPanelHeader:SetFont("ZoFontGameSmall")
+    -- Header: large bold gold — boss name should be immediately readable.
+    InchPanelHeader:SetFont("ZoFontGameLargeBold")
     InchPanelHeader:SetColor(1, 0.82, 0.22, 1)
     InchPanelHeader:SetHorizontalAlignment(TEXT_ALIGN_CENTER)
 
-    InchPanelAction:SetFont("ZoFontGameBold")
+    -- Action: large bold orange — mid-fight call-out must dominate the panel.
+    InchPanelAction:SetFont("ZoFontGameLargeBold")
     InchPanelAction:SetColor(1, 0.42, 0.08, 1)
     InchPanelAction:SetHorizontalAlignment(TEXT_ALIGN_CENTER)
 
     -- Collect info-line references from the XML globals and style them.
+    -- Info lines use standard game font — readable but secondary to action.
     local info = {}
     for i = 1, INFO_LINE_COUNT do
         local lbl = _G[string.format("InchPanelInfo%02d", i)]
         if lbl then
-            lbl:SetFont("ZoFontGameSmall")
+            lbl:SetFont("ZoFontGame")
             lbl:SetColor(0.75, 0.75, 0.75, 1)
             lbl:SetHorizontalAlignment(TEXT_ALIGN_CENTER)
         end

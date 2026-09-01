@@ -65,11 +65,13 @@ end
 
 --- Start the animated instability icon on the local player's head.
 --- Requires OdySupportIcons; silently no-ops if OSI is not installed.
+--- The overlay panel is intentionally NOT shown for this preview —
+--- instability is a head-icon mechanic, not a panel alert.
 function Preview.showInstability()
-    ensurePanel()
-    Panel.setPreviewMode(true)
-    Panel.alerts.action("Instability!")
-    if not OSI then return end
+    if not OSI then
+        d(ADDON_TAG .. " Instability preview requires OdySupportIcons")
+        return
+    end
     local dn = GetUnitDisplayName and GetUnitDisplayName("player") or nil
     if not dn or dn == "" then return end
     stopInstAnim()

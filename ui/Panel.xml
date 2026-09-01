@@ -3,89 +3,88 @@
     <!--
       InchPanel — Incha trial overlay.
       Defined in XML so ESO creates controls during the loading sequence.
-      Font, colour, and alignment are applied in Panel.lua build() via Lua API
-      (inline XML attributes for those properties are not reliably supported
-      across ESO XML parser versions and cause silent element-creation failures).
+      Font, colour, alignment, and backdrop colours are all applied via Lua
+      in Panel.lua build() — inline XML attributes for those properties are
+      not reliably supported and were causing silent element-creation failures.
     -->
     <TopLevelControl name="InchPanel" hidden="true"
                      clampedToScreen="true" movable="true" mouseEnabled="true">
-      <Dimensions x="320" y="260"/>
+      <Dimensions x="360" y="300"/>
       <!-- initial anchor is overridden by applyPosition() in Panel.lua -->
       <Anchor point="TOPLEFT" relativeTo="GuiRoot" relativePoint="TOPLEFT"
               offsetX="800" offsetY="150"/>
 
       <Controls>
-        <!-- semi-transparent dark background -->
+        <!-- semi-transparent dark background (colours set in Lua) -->
         <Backdrop name="$(parent)Bg">
           <AnchorFill/>
           <Edge edgeTexture="" edgeSize="8" tileCorner="false" tileEdge="false"/>
           <Center centerTexture=""/>
-          <BackgroundColor r="0.04" g="0.04" b="0.04" a="0.82"/>
-          <EdgeColor r="0.35" g="0.35" b="0.35" a="0.9"/>
         </Backdrop>
 
-        <!-- header: boss name / HM status -->
+        <!-- header: boss name / HM status — offsetY=10, height=26 -->
         <Label name="$(parent)Header">
-          <Dimensions x="304" y="18"/>
+          <Dimensions x="344" y="26"/>
           <Anchor point="TOPLEFT" relativeTo="$(parent)" relativePoint="TOPLEFT"
-                  offsetX="8" offsetY="8"/>
+                  offsetX="8" offsetY="10"/>
         </Label>
 
-        <!-- info lines 1–10: timer countdowns (18 px pitch) -->
+        <!-- info lines 1–10: timer countdowns, 20 px tall, 20 px pitch
+             First line starts at Y=42 (10+26+6 gap).                    -->
         <Label name="$(parent)Info01">
-          <Dimensions x="304" y="16"/>
+          <Dimensions x="344" y="20"/>
           <Anchor point="TOPLEFT" relativeTo="$(parent)" relativePoint="TOPLEFT"
-                  offsetX="8" offsetY="28"/>
+                  offsetX="8" offsetY="42"/>
         </Label>
         <Label name="$(parent)Info02">
-          <Dimensions x="304" y="16"/>
+          <Dimensions x="344" y="20"/>
           <Anchor point="TOPLEFT" relativeTo="$(parent)" relativePoint="TOPLEFT"
-                  offsetX="8" offsetY="46"/>
+                  offsetX="8" offsetY="62"/>
         </Label>
         <Label name="$(parent)Info03">
-          <Dimensions x="304" y="16"/>
-          <Anchor point="TOPLEFT" relativeTo="$(parent)" relativePoint="TOPLEFT"
-                  offsetX="8" offsetY="64"/>
-        </Label>
-        <Label name="$(parent)Info04">
-          <Dimensions x="304" y="16"/>
+          <Dimensions x="344" y="20"/>
           <Anchor point="TOPLEFT" relativeTo="$(parent)" relativePoint="TOPLEFT"
                   offsetX="8" offsetY="82"/>
         </Label>
-        <Label name="$(parent)Info05">
-          <Dimensions x="304" y="16"/>
+        <Label name="$(parent)Info04">
+          <Dimensions x="344" y="20"/>
           <Anchor point="TOPLEFT" relativeTo="$(parent)" relativePoint="TOPLEFT"
-                  offsetX="8" offsetY="100"/>
+                  offsetX="8" offsetY="102"/>
+        </Label>
+        <Label name="$(parent)Info05">
+          <Dimensions x="344" y="20"/>
+          <Anchor point="TOPLEFT" relativeTo="$(parent)" relativePoint="TOPLEFT"
+                  offsetX="8" offsetY="122"/>
         </Label>
         <Label name="$(parent)Info06">
-          <Dimensions x="304" y="16"/>
+          <Dimensions x="344" y="20"/>
           <Anchor point="TOPLEFT" relativeTo="$(parent)" relativePoint="TOPLEFT"
-                  offsetX="8" offsetY="118"/>
+                  offsetX="8" offsetY="142"/>
         </Label>
         <Label name="$(parent)Info07">
-          <Dimensions x="304" y="16"/>
+          <Dimensions x="344" y="20"/>
           <Anchor point="TOPLEFT" relativeTo="$(parent)" relativePoint="TOPLEFT"
-                  offsetX="8" offsetY="136"/>
+                  offsetX="8" offsetY="162"/>
         </Label>
         <Label name="$(parent)Info08">
-          <Dimensions x="304" y="16"/>
+          <Dimensions x="344" y="20"/>
           <Anchor point="TOPLEFT" relativeTo="$(parent)" relativePoint="TOPLEFT"
-                  offsetX="8" offsetY="154"/>
+                  offsetX="8" offsetY="182"/>
         </Label>
         <Label name="$(parent)Info09">
-          <Dimensions x="304" y="16"/>
+          <Dimensions x="344" y="20"/>
           <Anchor point="TOPLEFT" relativeTo="$(parent)" relativePoint="TOPLEFT"
-                  offsetX="8" offsetY="172"/>
+                  offsetX="8" offsetY="202"/>
         </Label>
         <Label name="$(parent)Info10">
-          <Dimensions x="304" y="16"/>
+          <Dimensions x="344" y="20"/>
           <Anchor point="TOPLEFT" relativeTo="$(parent)" relativePoint="TOPLEFT"
-                  offsetX="8" offsetY="190"/>
+                  offsetX="8" offsetY="222"/>
         </Label>
 
-        <!-- action: prominent mid-fight call-out (orange, bold) -->
+        <!-- action: prominent mid-fight call-out, anchored to bottom -->
         <Label name="$(parent)Action">
-          <Dimensions x="304" y="28"/>
+          <Dimensions x="344" y="36"/>
           <Anchor point="BOTTOM" relativeTo="$(parent)" relativePoint="BOTTOM"
                   offsetX="0" offsetY="-10"/>
         </Label>
