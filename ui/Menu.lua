@@ -420,8 +420,11 @@ local function handlePreviewSlash(text)
             elseif sub == "clear"  then Preview.clear()
             end
         end, 200)
+    elseif sub == "debug" then
+        -- Run immediately (no HUD delay needed — just reading state).
+        Panel.debugState()
     else
-        d(ADDON_TAG .. " /ip  panel | inst | border | alert | clear")
+        d(ADDON_TAG .. " /ip  panel | inst | border | alert | clear | debug")
     end
 end
 

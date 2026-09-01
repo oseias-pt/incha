@@ -110,6 +110,35 @@ local function build()
         info[i] = { name = nameLbl, time = timeLbl }
     end
 
+    -- Apply font and colour from Lua — the XML color= attribute is silently
+    -- ignored in some ESO client builds, which leaves text black on a
+    -- transparent background (invisible).  Lua calls are authoritative.
+    local FONT_HDR    = "EsoUI/Common/Fonts/univers67.otf|26|soft-shadow-thick"
+    local FONT_INFO   = "EsoUI/Common/Fonts/univers67.otf|20|soft-shadow-thick"
+    local FONT_ACTION = "EsoUI/Common/Fonts/univers67.otf|36|soft-shadow-thick"
+
+    InchPanelHeader:SetFont(FONT_HDR)
+    InchPanelHeader:SetColor(1.0, 0.843, 0.0, 1.0)      -- FFD700 gold
+    InchPanelHeader:SetText("")
+
+    for i = 1, INFO_LINE_COUNT do
+        local row = info[i]
+        if row.name then
+            row.name:SetFont(FONT_INFO)
+            row.name:SetColor(0.8, 0.8, 0.8, 1.0)       -- CCCCCC grey
+            row.name:SetText("")
+        end
+        if row.time then
+            row.time:SetFont(FONT_INFO)
+            row.time:SetColor(1.0, 0.522, 0.0, 1.0)     -- FF8500 orange
+            row.time:SetText("")
+        end
+    end
+
+    InchPanelAction:SetFont(FONT_ACTION)
+    InchPanelAction:SetColor(1.0, 1.0, 1.0, 1.0)        -- FFFFFF white
+    InchPanelAction:SetText("")
+
     local infoText = {}
     for i = 1, INFO_LINE_COUNT do infoText[i] = "" end
 
@@ -236,6 +265,29 @@ function Panel.setPreviewMode(enabled)
     if ctrl then
         if enabled then ctrl.active = true end
         applyVisibility()
+    end
+end
+
+-- -- Debug -------------------------------------------------------------------
+
+function Panel.debugState()
+    if not InchPanel then
+        d("[Incha] panel debug: InchPanel global is NIL — XML not loaded")
+        return
+    end
+    local hidden  = InchPanel:IsHidden()
+    local x, y    = InchPanel:GetLeft(), InchPanel:GetTop()
+    local alpha   = InchPanel:GetAlpha()
+    local scaleOk = InchPanel:GetScale()
+    d(string.format("[Incha] panel: hidden=%s  pos=(%d,%d)  alpha=%.2f  scale=%.2f",
+        tostring(hidden), x, y, alpha, scaleOk))
+    if not ctrl then
+        d("[Incha] panel: ctrl is NIL — build() did not complete")
+    else
+        d(string.format("[Incha] panel: ctrl OK  active=%s  previewMode=%s  hud=%s  hudui=%s",
+            tostring(ctrl.active), tostring(previewMode), hudState, hudUiState))
+        d("[Incha] header text: '" .. (ctrl.header:GetText() or "") .. "'")
+        d("[Incha] row1 name:  '" .. (ctrl.info[1].name and ctrl.info[1].name:GetText() or "NIL") .. "'")
     end
 end
 

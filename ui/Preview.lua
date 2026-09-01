@@ -67,17 +67,22 @@ end
 --- The overlay panel is intentionally NOT shown for this preview —
 --- instability is a head-icon mechanic, not a panel alert.
 function Preview.showInstability()
-    -- Instability is a head-icon mechanic visible to other players in the group.
-    -- The icon appears above your own character (@account-name) but is not visible
-    -- to yourself from the default behind-the-character camera.  To verify solo:
-    -- orbit the camera around to see your character's front, or have a group member
-    -- confirm they can see it.
+    -- OSI head icons only render for players present in the active group frame.
+    -- Solo: no group frame exists, so nothing appears.
+    -- In a group: the icon appears above each affected player, visible to all
+    -- other group members.  Your own icon is not visible to yourself.
+    -- This preview starts the animation so it fires correctly when a real
+    -- instability event triggers during a Falgravn pull.
     if not OSI then
         d(ADDON_TAG .. " /ip inst: OdySupportIcons not loaded")
         return
     end
     if not OSI.SetMechanicIconForUnit then
         d(ADDON_TAG .. " /ip inst: OSI.SetMechanicIconForUnit missing — update OdySupportIcons")
+        return
+    end
+    if GetGroupSize() <= 1 then
+        d(ADDON_TAG .. " /ip inst: OSI head icons require a group — join a group to preview")
         return
     end
     local dn = string.lower(GetUnitDisplayName and GetUnitDisplayName("player") or "")
