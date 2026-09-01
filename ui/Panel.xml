@@ -2,94 +2,200 @@
   <Controls>
     <!--
       InchPanel — Incha trial overlay.
-      Defined in XML so ESO creates controls during the loading sequence.
-      Font, colour, alignment, and backdrop colours are all applied via Lua
-      in Panel.lua build() — inline XML attributes for those properties are
-      not reliably supported and were causing silent element-creation failures.
+
+      Design follows the QcellDreadsailReefHelper pattern:
+        - No backdrop: transparent TopLevelControl, text readable via soft-shadow.
+        - Two labels per info row: name (left-aligned) + timer (right-aligned).
+        - Font path format gives precise size control independent of UI scale presets.
+
+      All font, colour, and alignment are set here as XML attributes (confirmed
+      valid in ESO XML by QDRH reference).  Panel.lua build() only applies the
+      draw-layer override and scene callbacks; no CreateControl calls.
     -->
     <TopLevelControl name="InchPanel" hidden="true"
                      clampedToScreen="true" movable="true" mouseEnabled="true">
-      <Dimensions x="360" y="300"/>
-      <!-- initial anchor is overridden by applyPosition() in Panel.lua -->
+      <Dimensions x="320" y="380"/>
+      <!-- initial anchor overridden by applyPosition() in Panel.lua -->
       <Anchor point="TOPLEFT" relativeTo="GuiRoot" relativePoint="TOPLEFT"
               offsetX="800" offsetY="150"/>
 
       <Controls>
-        <!-- semi-transparent dark background (colours set in Lua) -->
-        <Backdrop name="$(parent)Bg">
-          <AnchorFill/>
-          <Edge edgeTexture="" edgeSize="8" tileCorner="false" tileEdge="false"/>
-          <Center centerTexture=""/>
-        </Backdrop>
 
-        <!-- header: boss name / HM status — offsetY=10, height=26 -->
-        <Label name="$(parent)Header">
-          <Dimensions x="344" y="26"/>
+        <!-- ── Header: boss name / HM status ────────────────────────────── -->
+        <Label name="$(parent)Header"
+               font="EsoUI/Common/Fonts/univers67.otf|26|soft-shadow-thick"
+               color="FFD700"
+               horizontalAlignment="CENTER" verticalAlignment="CENTER">
+          <Dimensions x="320" y="34"/>
           <Anchor point="TOPLEFT" relativeTo="$(parent)" relativePoint="TOPLEFT"
-                  offsetX="8" offsetY="10"/>
+                  offsetX="0" offsetY="0"/>
         </Label>
 
-        <!-- info lines 1–10: timer countdowns, 20 px tall, 20 px pitch
-             First line starts at Y=42 (10+26+6 gap).                    -->
-        <Label name="$(parent)Info01">
-          <Dimensions x="344" y="20"/>
+        <!-- ── Info rows 1–10: name (left) + timer (right) ──────────────── -->
+        <!-- Row pitch: 28 px.  Name col: x=8 w=200.  Time col: x=213 w=85. -->
+        <Label name="$(parent)Info01Name"
+               font="EsoUI/Common/Fonts/univers67.otf|20|soft-shadow-thick"
+               color="CCCCCC" horizontalAlignment="LEFT" verticalAlignment="CENTER">
+          <Dimensions x="200" y="28"/>
           <Anchor point="TOPLEFT" relativeTo="$(parent)" relativePoint="TOPLEFT"
-                  offsetX="8" offsetY="42"/>
+                  offsetX="8" offsetY="38"/>
         </Label>
-        <Label name="$(parent)Info02">
-          <Dimensions x="344" y="20"/>
+        <Label name="$(parent)Info01Time"
+               font="EsoUI/Common/Fonts/univers67.otf|20|soft-shadow-thick"
+               color="FF8500" horizontalAlignment="RIGHT" verticalAlignment="CENTER">
+          <Dimensions x="85" y="28"/>
           <Anchor point="TOPLEFT" relativeTo="$(parent)" relativePoint="TOPLEFT"
-                  offsetX="8" offsetY="62"/>
+                  offsetX="213" offsetY="38"/>
         </Label>
-        <Label name="$(parent)Info03">
-          <Dimensions x="344" y="20"/>
+
+        <Label name="$(parent)Info02Name"
+               font="EsoUI/Common/Fonts/univers67.otf|20|soft-shadow-thick"
+               color="CCCCCC" horizontalAlignment="LEFT" verticalAlignment="CENTER">
+          <Dimensions x="200" y="28"/>
           <Anchor point="TOPLEFT" relativeTo="$(parent)" relativePoint="TOPLEFT"
-                  offsetX="8" offsetY="82"/>
+                  offsetX="8" offsetY="66"/>
         </Label>
-        <Label name="$(parent)Info04">
-          <Dimensions x="344" y="20"/>
+        <Label name="$(parent)Info02Time"
+               font="EsoUI/Common/Fonts/univers67.otf|20|soft-shadow-thick"
+               color="FF8500" horizontalAlignment="RIGHT" verticalAlignment="CENTER">
+          <Dimensions x="85" y="28"/>
           <Anchor point="TOPLEFT" relativeTo="$(parent)" relativePoint="TOPLEFT"
-                  offsetX="8" offsetY="102"/>
+                  offsetX="213" offsetY="66"/>
         </Label>
-        <Label name="$(parent)Info05">
-          <Dimensions x="344" y="20"/>
+
+        <Label name="$(parent)Info03Name"
+               font="EsoUI/Common/Fonts/univers67.otf|20|soft-shadow-thick"
+               color="CCCCCC" horizontalAlignment="LEFT" verticalAlignment="CENTER">
+          <Dimensions x="200" y="28"/>
+          <Anchor point="TOPLEFT" relativeTo="$(parent)" relativePoint="TOPLEFT"
+                  offsetX="8" offsetY="94"/>
+        </Label>
+        <Label name="$(parent)Info03Time"
+               font="EsoUI/Common/Fonts/univers67.otf|20|soft-shadow-thick"
+               color="FF8500" horizontalAlignment="RIGHT" verticalAlignment="CENTER">
+          <Dimensions x="85" y="28"/>
+          <Anchor point="TOPLEFT" relativeTo="$(parent)" relativePoint="TOPLEFT"
+                  offsetX="213" offsetY="94"/>
+        </Label>
+
+        <Label name="$(parent)Info04Name"
+               font="EsoUI/Common/Fonts/univers67.otf|20|soft-shadow-thick"
+               color="CCCCCC" horizontalAlignment="LEFT" verticalAlignment="CENTER">
+          <Dimensions x="200" y="28"/>
           <Anchor point="TOPLEFT" relativeTo="$(parent)" relativePoint="TOPLEFT"
                   offsetX="8" offsetY="122"/>
         </Label>
-        <Label name="$(parent)Info06">
-          <Dimensions x="344" y="20"/>
+        <Label name="$(parent)Info04Time"
+               font="EsoUI/Common/Fonts/univers67.otf|20|soft-shadow-thick"
+               color="FF8500" horizontalAlignment="RIGHT" verticalAlignment="CENTER">
+          <Dimensions x="85" y="28"/>
           <Anchor point="TOPLEFT" relativeTo="$(parent)" relativePoint="TOPLEFT"
-                  offsetX="8" offsetY="142"/>
-        </Label>
-        <Label name="$(parent)Info07">
-          <Dimensions x="344" y="20"/>
-          <Anchor point="TOPLEFT" relativeTo="$(parent)" relativePoint="TOPLEFT"
-                  offsetX="8" offsetY="162"/>
-        </Label>
-        <Label name="$(parent)Info08">
-          <Dimensions x="344" y="20"/>
-          <Anchor point="TOPLEFT" relativeTo="$(parent)" relativePoint="TOPLEFT"
-                  offsetX="8" offsetY="182"/>
-        </Label>
-        <Label name="$(parent)Info09">
-          <Dimensions x="344" y="20"/>
-          <Anchor point="TOPLEFT" relativeTo="$(parent)" relativePoint="TOPLEFT"
-                  offsetX="8" offsetY="202"/>
-        </Label>
-        <Label name="$(parent)Info10">
-          <Dimensions x="344" y="20"/>
-          <Anchor point="TOPLEFT" relativeTo="$(parent)" relativePoint="TOPLEFT"
-                  offsetX="8" offsetY="222"/>
+                  offsetX="213" offsetY="122"/>
         </Label>
 
-        <!-- action: prominent mid-fight call-out, anchored to bottom -->
-        <Label name="$(parent)Action">
-          <Dimensions x="344" y="36"/>
+        <Label name="$(parent)Info05Name"
+               font="EsoUI/Common/Fonts/univers67.otf|20|soft-shadow-thick"
+               color="CCCCCC" horizontalAlignment="LEFT" verticalAlignment="CENTER">
+          <Dimensions x="200" y="28"/>
+          <Anchor point="TOPLEFT" relativeTo="$(parent)" relativePoint="TOPLEFT"
+                  offsetX="8" offsetY="150"/>
+        </Label>
+        <Label name="$(parent)Info05Time"
+               font="EsoUI/Common/Fonts/univers67.otf|20|soft-shadow-thick"
+               color="FF8500" horizontalAlignment="RIGHT" verticalAlignment="CENTER">
+          <Dimensions x="85" y="28"/>
+          <Anchor point="TOPLEFT" relativeTo="$(parent)" relativePoint="TOPLEFT"
+                  offsetX="213" offsetY="150"/>
+        </Label>
+
+        <Label name="$(parent)Info06Name"
+               font="EsoUI/Common/Fonts/univers67.otf|20|soft-shadow-thick"
+               color="CCCCCC" horizontalAlignment="LEFT" verticalAlignment="CENTER">
+          <Dimensions x="200" y="28"/>
+          <Anchor point="TOPLEFT" relativeTo="$(parent)" relativePoint="TOPLEFT"
+                  offsetX="8" offsetY="178"/>
+        </Label>
+        <Label name="$(parent)Info06Time"
+               font="EsoUI/Common/Fonts/univers67.otf|20|soft-shadow-thick"
+               color="FF8500" horizontalAlignment="RIGHT" verticalAlignment="CENTER">
+          <Dimensions x="85" y="28"/>
+          <Anchor point="TOPLEFT" relativeTo="$(parent)" relativePoint="TOPLEFT"
+                  offsetX="213" offsetY="178"/>
+        </Label>
+
+        <Label name="$(parent)Info07Name"
+               font="EsoUI/Common/Fonts/univers67.otf|20|soft-shadow-thick"
+               color="CCCCCC" horizontalAlignment="LEFT" verticalAlignment="CENTER">
+          <Dimensions x="200" y="28"/>
+          <Anchor point="TOPLEFT" relativeTo="$(parent)" relativePoint="TOPLEFT"
+                  offsetX="8" offsetY="206"/>
+        </Label>
+        <Label name="$(parent)Info07Time"
+               font="EsoUI/Common/Fonts/univers67.otf|20|soft-shadow-thick"
+               color="FF8500" horizontalAlignment="RIGHT" verticalAlignment="CENTER">
+          <Dimensions x="85" y="28"/>
+          <Anchor point="TOPLEFT" relativeTo="$(parent)" relativePoint="TOPLEFT"
+                  offsetX="213" offsetY="206"/>
+        </Label>
+
+        <Label name="$(parent)Info08Name"
+               font="EsoUI/Common/Fonts/univers67.otf|20|soft-shadow-thick"
+               color="CCCCCC" horizontalAlignment="LEFT" verticalAlignment="CENTER">
+          <Dimensions x="200" y="28"/>
+          <Anchor point="TOPLEFT" relativeTo="$(parent)" relativePoint="TOPLEFT"
+                  offsetX="8" offsetY="234"/>
+        </Label>
+        <Label name="$(parent)Info08Time"
+               font="EsoUI/Common/Fonts/univers67.otf|20|soft-shadow-thick"
+               color="FF8500" horizontalAlignment="RIGHT" verticalAlignment="CENTER">
+          <Dimensions x="85" y="28"/>
+          <Anchor point="TOPLEFT" relativeTo="$(parent)" relativePoint="TOPLEFT"
+                  offsetX="213" offsetY="234"/>
+        </Label>
+
+        <Label name="$(parent)Info09Name"
+               font="EsoUI/Common/Fonts/univers67.otf|20|soft-shadow-thick"
+               color="CCCCCC" horizontalAlignment="LEFT" verticalAlignment="CENTER">
+          <Dimensions x="200" y="28"/>
+          <Anchor point="TOPLEFT" relativeTo="$(parent)" relativePoint="TOPLEFT"
+                  offsetX="8" offsetY="262"/>
+        </Label>
+        <Label name="$(parent)Info09Time"
+               font="EsoUI/Common/Fonts/univers67.otf|20|soft-shadow-thick"
+               color="FF8500" horizontalAlignment="RIGHT" verticalAlignment="CENTER">
+          <Dimensions x="85" y="28"/>
+          <Anchor point="TOPLEFT" relativeTo="$(parent)" relativePoint="TOPLEFT"
+                  offsetX="213" offsetY="262"/>
+        </Label>
+
+        <Label name="$(parent)Info10Name"
+               font="EsoUI/Common/Fonts/univers67.otf|20|soft-shadow-thick"
+               color="CCCCCC" horizontalAlignment="LEFT" verticalAlignment="CENTER">
+          <Dimensions x="200" y="28"/>
+          <Anchor point="TOPLEFT" relativeTo="$(parent)" relativePoint="TOPLEFT"
+                  offsetX="8" offsetY="290"/>
+        </Label>
+        <Label name="$(parent)Info10Time"
+               font="EsoUI/Common/Fonts/univers67.otf|20|soft-shadow-thick"
+               color="FF8500" horizontalAlignment="RIGHT" verticalAlignment="CENTER">
+          <Dimensions x="85" y="28"/>
+          <Anchor point="TOPLEFT" relativeTo="$(parent)" relativePoint="TOPLEFT"
+                  offsetX="213" offsetY="290"/>
+        </Label>
+
+        <!-- ── Action: prominent mid-fight call-out ─────────────────────── -->
+        <!-- Anchored to panel BOTTOM so it stays fixed regardless of how    -->
+        <!-- many info lines are populated.                                  -->
+        <Label name="$(parent)Action"
+               font="EsoUI/Common/Fonts/univers67.otf|36|soft-shadow-thick"
+               color="FFFFFF"
+               horizontalAlignment="CENTER" verticalAlignment="CENTER">
+          <Dimensions x="320" y="42"/>
           <Anchor point="BOTTOM" relativeTo="$(parent)" relativePoint="BOTTOM"
                   offsetX="0" offsetY="-10"/>
         </Label>
-      </Controls>
 
+      </Controls>
     </TopLevelControl>
   </Controls>
 </GuiXml>

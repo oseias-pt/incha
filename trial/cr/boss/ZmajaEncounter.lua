@@ -217,9 +217,8 @@ local function handleGaleHoarfrost(self, context, alerts, result, abilityId,
     if result == ACTION_RESULT_EFFECT_GAINED then
         local dname = GetUnitDisplayName and GetUnitDisplayName(unitTag) or nil
         if OSI and dname and dname ~= "" and Settings.trial("cr").posIconsZmaja then
-            local sz = OSI.GetIconSize and (2 * OSI.GetIconSize()) or nil
-            OSI.SetMechanicIconForUnit(dname, GetAbilityIcon(abilityId), sz,
-                                       {0, 0.87, 0.87}, nil, nil)
+            OSI.SetMechanicIconForUnit(string.lower(dname), GetAbilityIcon(abilityId),
+                                       2 * OSI.GetIconSize())
         end
         if IsUnitPlayer(unitTag) then
             alerts:showAction("Frost! Drop in 6s")
@@ -230,7 +229,7 @@ local function handleGaleHoarfrost(self, context, alerts, result, abilityId,
     elseif result == ACTION_RESULT_EFFECT_FADED then
         local dname = GetUnitDisplayName and GetUnitDisplayName(unitTag) or nil
         if OSI and dname and dname ~= "" and Settings.trial("cr").posIconsZmaja then
-            OSI.RemoveMechanicIconForUnit(dname)
+            OSI.RemoveMechanicIconForUnit(string.lower(dname))
         end
     end
 end

@@ -27,8 +27,9 @@ local function instAnimTick()
     _instFrame = (_instFrame % INST_FRAMES) + 1
     local tex = string.format("Incha/resources/instability/frame_%02d.dds",
                               _instFrame)
-    local sz = OSI.GetIconSize and (2 * OSI.GetIconSize()) or nil
-    OSI.SetMechanicIconForUnit(_instDn, tex, sz, { 1.0, 0.6, 0.0 }, nil, nil)
+    -- OSI.SetMechanicIconForUnit(lowerDisplayName, texture, size) — 3 args.
+    -- Display name must be lowercased (confirmed from QcellDreadsailReefHelper).
+    OSI.SetMechanicIconForUnit(_instDn, tex, 2 * OSI.GetIconSize())
 end
 
 local function stopInstAnim()
@@ -72,8 +73,8 @@ function Preview.showInstability()
         d(ADDON_TAG .. " Instability preview requires OdySupportIcons")
         return
     end
-    local dn = GetUnitDisplayName and GetUnitDisplayName("player") or nil
-    if not dn or dn == "" then return end
+    local dn = GetUnitDisplayName and string.lower(GetUnitDisplayName("player") or "") or ""
+    if dn == "" then return end
     stopInstAnim()
     _instDn    = dn
     _instFrame = 0

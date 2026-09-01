@@ -32,17 +32,18 @@ local _instActive = false
 
 local function instAnimTick()
     if not OSI then return end
-    local sz = OSI.GetIconSize and (2 * OSI.GetIconSize()) or nil
     for _, state in pairs(_instAnim) do
         state.frame = (state.frame % INST_ANIM_FRAMES) + 1
         local tex = string.format("Incha/resources/instability/frame_%02d.dds",
                                   state.frame)
-        OSI.SetMechanicIconForUnit(state.dn, tex, sz, COL_INSTABILITY, nil, nil)
+        -- OSI.SetMechanicIconForUnit(lowerName, texture, size) — 3 args, no colour.
+        OSI.SetMechanicIconForUnit(state.dn, tex, 2 * OSI.GetIconSize())
     end
 end
 
 local function startInstAnim(unitTag, displayName)
-    _instAnim[unitTag] = { dn = displayName, frame = 0 }
+    -- Display name must be lowercased for OSI (confirmed from QcellDreadsailReefHelper).
+    _instAnim[unitTag] = { dn = string.lower(displayName), frame = 0 }
     if not _instActive then
         EVENT_MANAGER:RegisterForUpdate(INST_ANIM_KEY, INST_ANIM_INTERVAL,
                                         instAnimTick)
@@ -122,18 +123,20 @@ local _posIconConn     = false
 local _posIconBlood    = false
 local _posIconTorturer = false
 
-local function osiSet(displayName, texture, color)
+-- osiSet / osiRemove: OSI mechanic-icon helpers.
+-- Correct 3-arg signature confirmed from QcellDreadsailReefHelper:
+--   SetMechanicIconForUnit(lowerDisplayName, texture, size)  — no colour arg.
+-- Extra colour args passed by callers are silently discarded by Lua.
+local function osiSet(displayName, texture)
     if OSI and displayName and displayName ~= "" then
-        -- BSCHTKA uses 2 x GetIconSize() for mechanic icons.  Guard the call
-        -- in case a future OSI version removes or renames GetIconSize.
-        local sz = OSI.GetIconSize and (2 * OSI.GetIconSize()) or nil
-        OSI.SetMechanicIconForUnit(displayName, texture, sz, color, nil, nil)
+        OSI.SetMechanicIconForUnit(string.lower(displayName), texture,
+                                   2 * OSI.GetIconSize())
     end
 end
 
 local function osiRemove(displayName)
     if OSI and displayName and displayName ~= "" then
-        OSI.RemoveMechanicIconForUnit(displayName)
+        OSI.RemoveMechanicIconForUnit(string.lower(displayName))
     end
 end
 
