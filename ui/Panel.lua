@@ -215,6 +215,10 @@ Panel.alerts = {
     hideAction = function()
         if not ctrl then return end
         ctrl.action:SetText("")
+        -- Clear the diff cache too: action() above compares against ctrl.actionText
+        -- and skips SetText when the strings match, so leaving the old text cached
+        -- makes the next identical callout a no-op. Mirrors panel_clear().
+        ctrl.actionText = ""
         -- leave panel visible  -  info lines may still carry timer data
     end,
 
