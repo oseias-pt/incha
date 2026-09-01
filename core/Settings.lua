@@ -35,6 +35,10 @@ local DEFAULTS = {
             showPercent      = true,   -- show hp% milestone alerts (Falgravn etc.)
             portalIconVrol   = true,   -- show floor icon on Vrol portal spawn
             posIconsFalgravn = true,   -- connection-node / blood-ball / torturer floor markers
+            -- "off"  = no instability icons or alerts
+            -- "self" = panel action alert only when YOU have the debuff
+            -- "all"  = OSI animated icon above every affected player + panel alert for self
+            instabilityIcons = "all",
         },
         ss  = { enabled = true, showBossUI = true },
         rg  = { enabled = true, showBossUI = true },

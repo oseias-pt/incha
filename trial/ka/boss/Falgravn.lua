@@ -669,20 +669,47 @@ local function handleTorturerLa(self, context, alerts, abilityId, unitTag, ...)
 end
 
 -- Instability animated icon: shared handler for HM (140944) and non-HM (140941).
--- Starts the 40-frame animation cycle on EFFECT_GAINED; stops it on EFFECT_FADED.
+--
+-- Behaviour is controlled by Settings.trial("ka").instabilityIcons:
+--   "off"  — nothing shown.
+--   "self" — when YOU have the debuff, the panel action line shows "Instability on you!".
+--            No OSI icons for others; useful when OdySupportIcons is not installed.
+--   "all"  — OSI animated icon above every affected player (visible to the addon user
+--            only, not broadcast to others) + panel action alert when it is YOU.
+--            Your own icon is not visible to yourself (camera angle), so the panel
+--            alert serves as the self-indicator.
 local function handleInstabilityEffect(self, context, alerts, changeType, abilityId,
                                         unitTag, unitId, unitName, stackCount)
     if not IsUnitPlayer(unitTag) then return end
+
+    local mode = Settings.trial("ka").instabilityIcons
+    if mode == "off" then return end
+
+    local isSelf = (unitTag == "player")
+    if mode == "self" and not isSelf then return end
+
     if changeType == EFFECT_RESULT_GAINED then
-        local dn = GetUnitDisplayName(unitTag)
-        if dn and dn ~= "" then
-            self.osiInstability[unitTag] = dn
-            startInstAnim(unitTag, dn)
+        -- Animated OSI icon above the affected player (all-mode only).
+        if mode == "all" then
+            local dn = GetUnitDisplayName(unitTag)
+            if dn and dn ~= "" then
+                self.osiInstability[unitTag] = dn
+                startInstAnim(unitTag, dn)
+            end
+        end
+        -- Prominent panel alert when it is the local player.
+        if isSelf then
+            alerts:showAction("Instability on you!")
         end
     elseif changeType == EFFECT_RESULT_FADED then
-        stopInstAnim(unitTag)
-        osiRemove(self.osiInstability[unitTag])
-        self.osiInstability[unitTag] = nil
+        if mode == "all" then
+            stopInstAnim(unitTag)
+            osiRemove(self.osiInstability[unitTag])
+            self.osiInstability[unitTag] = nil
+        end
+        if isSelf then
+            alerts:hideAction()
+        end
     end
 end
 

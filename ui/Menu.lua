@@ -112,6 +112,15 @@ local OPTIONS = {
         getFunc = function() return Settings.get().trials.ka.posIconsFalgravn end,
         setFunc = function(v) Settings.get().trials.ka.posIconsFalgravn = v end,
     },
+    {
+        type         = "dropdown",
+        name         = "Instability icons",
+        tooltip      = "Off: nothing shown.  Self: panel alert only when you have instability.  Everyone: animated OSI icon above each affected player + panel alert for yourself (requires OdySupportIcons for the group icons; self-alert always works).",
+        choices      = { "Off", "Self only", "Everyone" },
+        choicesValues = { "off", "self", "all" },
+        getFunc      = function() return Settings.get().trials.ka.instabilityIcons end,
+        setFunc      = function(v) Settings.get().trials.ka.instabilityIcons = v end,
+    },
 
     -- Section: Sunspire
     {
