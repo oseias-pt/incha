@@ -96,9 +96,11 @@ local function build()
     -- loading sequence before any Lua runs.  Grab the globals by name.
     local panel = InchPanel
     if not panel then
-        -- XML wasn't loaded — shouldn't happen, but guard so the rest of
-        -- the addon still loads without a nil-access error.
-        d("[Incha] ERROR: InchPanel XML control missing — /reloadui and check incha.txt")
+        d("[Incha] ERROR: InchPanel XML control missing — check ui/Panel.xml is in AddOns folder and /reloadui")
+        return
+    end
+    if not InchPanelHeader or not InchPanelAction then
+        d("[Incha] ERROR: InchPanel child controls missing (Header/Action nil) — XML may have a parse error")
         return
     end
 
@@ -118,10 +120,26 @@ local function build()
         applyPosition(c)
     end)
 
-    -- Collect info-line references from the XML globals.
+    -- Apply font, colour, and alignment (XML attributes for these are not
+    -- reliably parsed across ESO client versions, so we set them here).
+    InchPanelHeader:SetFont("ZoFontGameSmall")
+    InchPanelHeader:SetColor(1, 0.82, 0.22, 1)
+    InchPanelHeader:SetHorizontalAlignment(TEXT_ALIGN_CENTER)
+
+    InchPanelAction:SetFont("ZoFontGameBold")
+    InchPanelAction:SetColor(1, 0.42, 0.08, 1)
+    InchPanelAction:SetHorizontalAlignment(TEXT_ALIGN_CENTER)
+
+    -- Collect info-line references from the XML globals and style them.
     local info = {}
     for i = 1, INFO_LINE_COUNT do
-        info[i] = _G[string.format("InchPanelInfo%02d", i)]
+        local lbl = _G[string.format("InchPanelInfo%02d", i)]
+        if lbl then
+            lbl:SetFont("ZoFontGameSmall")
+            lbl:SetColor(0.75, 0.75, 0.75, 1)
+            lbl:SetHorizontalAlignment(TEXT_ALIGN_CENTER)
+        end
+        info[i] = lbl
     end
 
     -- Text caches: last string passed to each SetText call.
