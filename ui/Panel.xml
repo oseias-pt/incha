@@ -206,12 +206,14 @@
     -->
     <TopLevelControl name="InchInstIcon" hidden="true"
                      clampedToScreen="true" movable="true" mouseEnabled="true">
-      <Dimensions x="40" y="40"/>
-      <Anchor point="TOPRIGHT" relativeTo="InchPanel" relativePoint="TOPLEFT"
-              offsetX="-8" offsetY="0"/>
+      <Dimensions x="80" y="80"/>
+      <!-- Default: above the player character (screen centre, slightly up).
+           build() overrides this with the saved position when one exists. -->
+      <Anchor point="CENTER" relativeTo="GuiRoot" relativePoint="CENTER"
+              offsetX="0" offsetY="-150"/>
       <Controls>
         <Texture name="$(parent)Tex">
-          <Dimensions x="40" y="40"/>
+          <Dimensions x="80" y="80"/>
           <Anchor point="TOPLEFT" relativeTo="$(parent)" relativePoint="TOPLEFT"
                   offsetX="0" offsetY="0"/>
         </Texture>

@@ -26,6 +26,10 @@ local DEFAULTS = {
         -- first OnMoveStop, at which point both values will be >= 0.
         offsetX  = -1,
         offsetY  = -1,
+        -- Self-instability icon (InchInstIcon) saved position.
+        -- -1 = use default (screen centre, -150 px up).
+        instIconX = -1,
+        instIconY = -1,
     },
 
     trials = {

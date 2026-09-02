@@ -64,6 +64,17 @@ local function applyVisibility()
     ctrl.panel:SetHidden(not (ctrl.active and hudVisible))
 end
 
+local function applyInstIconPosition()
+    if not InchInstIcon then return end
+    local sv = Settings.get().overlay
+    InchInstIcon:ClearAnchors()
+    if sv.instIconX >= 0 then
+        InchInstIcon:SetAnchor(TOPLEFT, GuiRoot, TOPLEFT, sv.instIconX, sv.instIconY)
+    else
+        InchInstIcon:SetAnchor(CENTER, GuiRoot, CENTER, 0, -150)
+    end
+end
+
 local function applyPosition(panel)
     local sv = Settings.get().overlay
     panel:ClearAnchors()
@@ -164,6 +175,13 @@ local function build()
 
     if InchInstIcon then
         InchInstIcon:SetDrawLayer(DL_OVERLAY)
+        applyInstIconPosition()
+        InchInstIcon:SetHandler("OnMoveStop", function(c)
+            local sv = Settings.get().overlay
+            sv.instIconX = c:GetLeft()
+            sv.instIconY = c:GetTop()
+            applyInstIconPosition()
+        end)
     end
 
     ctrl = {
