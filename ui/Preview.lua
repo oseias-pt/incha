@@ -83,22 +83,34 @@ function Preview.showInstability()
         d(ADDON_TAG .. " /ip inst: OdySupportIcons not loaded")
         return
     end
-    if GetGroupSize() <= 1 then
-        d(ADDON_TAG .. " /ip inst: solo — OSI head icons require a group frame to render.")
-        d(ADDON_TAG .. "   Join any group (even a duo), then /ip inst to place the icon above")
-        d(ADDON_TAG .. "   your head.  A group member will see it; you won't (camera angle).")
-        d(ADDON_TAG .. "   During a real Falgravn pull you'll see it above OTHER players.")
+    -- The icon appears above a player's head.  You cannot see an icon above
+    -- your own head (camera is behind you), so the preview must place it on
+    -- another group member that you can look at.
+    local selfDn    = string.lower(GetUnitDisplayName("player") or "")
+    local targetDn  = nil
+    local groupSize = GetGroupSize()
+    for i = 1, groupSize do
+        local dn = string.lower(GetUnitDisplayName("group" .. i) or "")
+        if dn ~= "" and dn ~= selfDn then
+            targetDn = dn
+            break
+        end
+    end
+    if not targetDn then
+        if groupSize <= 1 then
+            d(ADDON_TAG .. " /ip inst: join a group first — OSI needs a group frame to render.")
+        else
+            d(ADDON_TAG .. " /ip inst: could not find another player in the group.")
+        end
         return
     end
-    local dn = string.lower(GetUnitDisplayName and GetUnitDisplayName("player") or "")
-    if dn == "" then return end
     stopInstAnim()
-    _instDn    = dn
+    _instDn    = targetDn
     _instFrame = 0
     EVENT_MANAGER:RegisterForUpdate(INST_KEY, INST_INTERVAL, instAnimTick)
     _instActive = true
-    d(ADDON_TAG .. " /ip inst: animation started on " .. dn
-      .. " — ask a group member to confirm the icon appears above your head.")
+    d(ADDON_TAG .. " /ip inst: icon placed above " .. targetDn .. " for 5 s — look at them!")
+    zo_callLater(stopInstAnim, 5000)
 end
 
 --- Flash a red CombatAlerts screen-edge border for 3 s.
