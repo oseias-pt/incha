@@ -109,8 +109,16 @@ function Preview.showInstability()
     _instFrame = 0
     EVENT_MANAGER:RegisterForUpdate(INST_KEY, INST_INTERVAL, instAnimTick)
     _instActive = true
-    d(ADDON_TAG .. " /ip inst: icon placed above " .. targetDn .. " for 5 s — look at them!")
-    zo_callLater(stopInstAnim, 5000)
+    -- Also show the 2D self-indicator so you can see what it looks like
+    -- when YOU have instability.
+    ensurePanel()
+    Panel.alerts.selfInstOn()
+    d(ADDON_TAG .. " /ip inst: OSI icon above " .. targetDn
+      .. " + self-indicator in panel — both auto-clear in 5 s.")
+    zo_callLater(function()
+        stopInstAnim()
+        Panel.alerts.selfInstOff()
+    end, 5000)
 end
 
 --- Flash a red CombatAlerts screen-edge border for 3 s.
@@ -130,6 +138,7 @@ end
 function Preview.clear()
     Panel.setPreviewMode(false)
     stopInstAnim()
+    Panel.alerts.selfInstOff()
     if Panel.bridge then Panel.bridge.onDisable() end
     CA.border(false, 0, "red")
 end

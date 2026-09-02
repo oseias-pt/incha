@@ -43,6 +43,14 @@ function AlertSink:hideAction()
     emit(self, "hideAction")
 end
 
+-- Self-instability 2D icon: shown/hidden independently of the action text.
+function AlertSink:showSelfInst()
+    emit(self, "selfInstOn")
+end
+function AlertSink:hideSelfInst()
+    emit(self, "selfInstOff")
+end
+
 function AlertSink:clear()
     emit(self, "clear")
 end

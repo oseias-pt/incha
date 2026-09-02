@@ -31,6 +31,20 @@ local hudUiState = "showing"
 -- When true the panel is pinned visible regardless of HUD scene state.
 local previewMode = false
 
+-- Self-instability 2D icon: animated when the local player has the debuff.
+local SELF_INST_FRAMES   = 40
+local SELF_INST_INTERVAL = 50
+local SELF_INST_KEY      = "Incha_PanelSelfInstAnim"
+local _selfInstFrame     = 0
+local _selfInstActive    = false
+
+local function selfInstAnimTick()
+    if not ctrl or not ctrl.selfInstIcon then return end
+    _selfInstFrame = (_selfInstFrame % SELF_INST_FRAMES) + 1
+    ctrl.selfInstIcon:SetTexture(
+        string.format("Incha/resources/instability/frame_%02d.dds", _selfInstFrame))
+end
+
 -- Panel dimensions (container size for drag/move hit-testing).
 -- Layout: header(34) at y=0 | 10 rows × 28 px from y=38 | action(42) at bottom.
 local INFO_LINE_COUNT = 10
@@ -69,6 +83,12 @@ local function panel_clear()
         ctrl.info[i].time:SetText("")
         ctrl.infoText[i] = ""
     end
+    -- Stop the self-instability icon animation if running.
+    if _selfInstActive then
+        EVENT_MANAGER:UnregisterForUpdate(SELF_INST_KEY)
+        _selfInstActive = false
+    end
+    if ctrl.selfInstIcon then ctrl.selfInstIcon:SetHidden(true) end
     ctrl.active = false
     applyVisibility()
 end
@@ -143,14 +163,15 @@ local function build()
     for i = 1, INFO_LINE_COUNT do infoText[i] = "" end
 
     ctrl = {
-        panel      = panel,
-        header     = InchPanelHeader,
-        info       = info,
-        action     = InchPanelAction,
-        active     = false,
-        infoText   = infoText,
-        actionText = "",
-        headerText = "",
+        panel        = panel,
+        header       = InchPanelHeader,
+        info         = info,
+        action       = InchPanelAction,
+        selfInstIcon = InchPanelSelfInstIcon,
+        active       = false,
+        infoText     = infoText,
+        actionText   = "",
+        headerText   = "",
     }
 
     SCENE_MANAGER:GetScene("hud"):RegisterCallback("StateChange", function(_, newState)
@@ -225,6 +246,29 @@ Panel.alerts = {
         -- makes the next identical callout a no-op. Mirrors panel_clear().
         ctrl.actionText = ""
         -- leave panel visible  -  info lines may still carry timer data
+    end,
+
+    -- Show the animated 2D instability icon (local player has the debuff).
+    selfInstOn = function()
+        if not ctrl or not ctrl.selfInstIcon then return end
+        ctrl.selfInstIcon:SetHidden(false)
+        _selfInstFrame = 0
+        if not _selfInstActive then
+            EVENT_MANAGER:RegisterForUpdate(SELF_INST_KEY, SELF_INST_INTERVAL,
+                                            selfInstAnimTick)
+            _selfInstActive = true
+        end
+        if not ctrl.active then ctrl.active = true; applyVisibility() end
+    end,
+
+    -- Stop and hide the self-instability icon.
+    selfInstOff = function()
+        if not ctrl then return end
+        if _selfInstActive then
+            EVENT_MANAGER:UnregisterForUpdate(SELF_INST_KEY)
+            _selfInstActive = false
+        end
+        if ctrl.selfInstIcon then ctrl.selfInstIcon:SetHidden(true) end
     end,
 
     clear = function()

@@ -364,6 +364,8 @@ function Falgravn:onWipe(context, alerts)
         osiRemove(dn)
     end
     for _, dn in pairs(self.osiSynergy) do osiRemove(dn) end
+    -- Hide the self-instability 2D icon (panel_clear is not called on wipe).
+    alerts:hideSelfInst()
     -- Wipe the tracking tables so stale EFFECT_RESULT_FADED events fired
     -- after the wipe don't try to double-remove already-cleared icons.
     self.osiPrison      = {}
@@ -697,8 +699,9 @@ local function handleInstabilityEffect(self, context, alerts, changeType, abilit
                 startInstAnim(unitTag, dn)
             end
         end
-        -- Prominent panel alert when it is the local player.
+        -- Self: 2D on-screen animated icon (always visible) + action text.
         if isSelf then
+            alerts:showSelfInst()
             alerts:showAction("Instability on you!")
         end
     elseif changeType == EFFECT_RESULT_FADED then
@@ -708,6 +711,7 @@ local function handleInstabilityEffect(self, context, alerts, changeType, abilit
             self.osiInstability[unitTag] = nil
         end
         if isSelf then
+            alerts:hideSelfInst()
             alerts:hideAction()
         end
     end

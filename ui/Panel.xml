@@ -183,6 +183,16 @@
                   offsetX="213" offsetY="290"/>
         </Label>
 
+        <!-- ── Self-instability icon ────────────────────────────────────── -->
+        <!-- Animated 48×48 texture shown when the LOCAL player has the    -->
+        <!-- instability debuff.  Positioned to the left of the panel so  -->
+        <!-- it is always visible regardless of camera angle.             -->
+        <Texture name="$(parent)SelfInstIcon" hidden="true">
+          <Dimensions x="48" y="48"/>
+          <Anchor point="TOPRIGHT" relativeTo="$(parent)" relativePoint="TOPLEFT"
+                  offsetX="-6" offsetY="0"/>
+        </Texture>
+
         <!-- ── Action: prominent mid-fight call-out ─────────────────────── -->
         <!-- Anchored to panel BOTTOM so it stays fixed regardless of how    -->
         <!-- many info lines are populated.                                  -->
