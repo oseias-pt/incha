@@ -183,16 +183,6 @@
                   offsetX="213" offsetY="290"/>
         </Label>
 
-        <!-- ── Self-instability icon ────────────────────────────────────── -->
-        <!-- Animated 48×48 texture shown when the LOCAL player has the    -->
-        <!-- instability debuff.  Positioned to the left of the panel so  -->
-        <!-- it is always visible regardless of camera angle.             -->
-        <Texture name="$(parent)SelfInstIcon" hidden="true">
-          <Dimensions x="48" y="48"/>
-          <Anchor point="TOPRIGHT" relativeTo="$(parent)" relativePoint="TOPLEFT"
-                  offsetX="-6" offsetY="0"/>
-        </Texture>
-
         <!-- ── Action: prominent mid-fight call-out ─────────────────────── -->
         <!-- Anchored to panel BOTTOM so it stays fixed regardless of how    -->
         <!-- many info lines are populated.                                  -->
@@ -207,5 +197,26 @@
 
       </Controls>
     </TopLevelControl>
+
+    <!--
+      InchInstIcon — standalone 40×40 instability self-indicator.
+      Shown (animated) when the local player has the instability debuff.
+      Separate from InchPanel so it can be repositioned independently.
+      Default anchor: 8 px to the left of InchPanel.
+    -->
+    <TopLevelControl name="InchInstIcon" hidden="true"
+                     clampedToScreen="true" movable="true" mouseEnabled="true">
+      <Dimensions x="40" y="40"/>
+      <Anchor point="TOPRIGHT" relativeTo="InchPanel" relativePoint="TOPLEFT"
+              offsetX="-8" offsetY="0"/>
+      <Controls>
+        <Texture name="$(parent)Tex">
+          <Dimensions x="40" y="40"/>
+          <Anchor point="TOPLEFT" relativeTo="$(parent)" relativePoint="TOPLEFT"
+                  offsetX="0" offsetY="0"/>
+        </Texture>
+      </Controls>
+    </TopLevelControl>
+
   </Controls>
 </GuiXml>

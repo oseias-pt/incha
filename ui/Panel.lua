@@ -39,9 +39,9 @@ local _selfInstFrame     = 0
 local _selfInstActive    = false
 
 local function selfInstAnimTick()
-    if not ctrl or not ctrl.selfInstIcon then return end
+    if not InchInstIconTex then return end
     _selfInstFrame = (_selfInstFrame % SELF_INST_FRAMES) + 1
-    ctrl.selfInstIcon:SetTexture(
+    InchInstIconTex:SetTexture(
         string.format("Incha/resources/instability/frame_%02d.dds", _selfInstFrame))
 end
 
@@ -88,7 +88,7 @@ local function panel_clear()
         EVENT_MANAGER:UnregisterForUpdate(SELF_INST_KEY)
         _selfInstActive = false
     end
-    if ctrl.selfInstIcon then ctrl.selfInstIcon:SetHidden(true) end
+    if InchInstIcon then InchInstIcon:SetHidden(true) end
     ctrl.active = false
     applyVisibility()
 end
@@ -162,16 +162,19 @@ local function build()
     local infoText = {}
     for i = 1, INFO_LINE_COUNT do infoText[i] = "" end
 
+    if InchInstIcon then
+        InchInstIcon:SetDrawLayer(DL_OVERLAY)
+    end
+
     ctrl = {
-        panel        = panel,
-        header       = InchPanelHeader,
-        info         = info,
-        action       = InchPanelAction,
-        selfInstIcon = InchPanelSelfInstIcon,
-        active       = false,
-        infoText     = infoText,
-        actionText   = "",
-        headerText   = "",
+        panel      = panel,
+        header     = InchPanelHeader,
+        info       = info,
+        action     = InchPanelAction,
+        active     = false,
+        infoText   = infoText,
+        actionText = "",
+        headerText = "",
     }
 
     SCENE_MANAGER:GetScene("hud"):RegisterCallback("StateChange", function(_, newState)
@@ -248,27 +251,26 @@ Panel.alerts = {
         -- leave panel visible  -  info lines may still carry timer data
     end,
 
-    -- Show the animated 2D instability icon (local player has the debuff).
+    -- Show the animated instability icon panel (local player has the debuff).
     selfInstOn = function()
-        if not ctrl or not ctrl.selfInstIcon then return end
-        ctrl.selfInstIcon:SetHidden(false)
+        if not InchInstIcon or not InchInstIconTex then return end
+        InchInstIconTex:SetTexture("Incha/resources/instability/frame_01.dds")
+        InchInstIcon:SetHidden(false)
         _selfInstFrame = 0
         if not _selfInstActive then
             EVENT_MANAGER:RegisterForUpdate(SELF_INST_KEY, SELF_INST_INTERVAL,
                                             selfInstAnimTick)
             _selfInstActive = true
         end
-        if not ctrl.active then ctrl.active = true; applyVisibility() end
     end,
 
-    -- Stop and hide the self-instability icon.
+    -- Stop and hide the instability icon panel.
     selfInstOff = function()
-        if not ctrl then return end
         if _selfInstActive then
             EVENT_MANAGER:UnregisterForUpdate(SELF_INST_KEY)
             _selfInstActive = false
         end
-        if ctrl.selfInstIcon then ctrl.selfInstIcon:SetHidden(true) end
+        if InchInstIcon then InchInstIcon:SetHidden(true) end
     end,
 
     clear = function()
