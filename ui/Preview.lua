@@ -11,8 +11,20 @@ local CA    = require("lib.CA")
 local Preview = {}
 
 -- -- Instability animated icon -----------------------------------------------
--- Mirrors the pattern in trial/ka/boss/Falgravn.lua so the preview uses the
--- same frame sequence and timing without coupling to that module.
+-- OSI head-icon limitation:
+--   SetMechanicIconForUnit only renders for players in the active group frame.
+--   Solo   → no group frame → call is silently ignored, nothing appears.
+--   Group  → icon appears above your character, but only OTHER players can see
+--            it (default camera is behind you, so your own icon is occluded).
+--
+-- Preview strategy:
+--   • In a group  → start the animation on self; a group member can confirm
+--                   the icon appears above your head.
+--   • Solo        → print an explanation; nothing visible is possible.
+--
+-- In a real Falgravn pull the feature works correctly:
+--   other players with instability → icon visible to you (they're in your group).
+--   you with instability           → panel action "Instability on you!" fires.
 
 local INST_FRAMES   = 40
 local INST_INTERVAL = 50           -- ms per frame  (2 s full loop)
@@ -20,7 +32,7 @@ local INST_KEY      = "Incha_PreviewInstAnim"
 
 local _instFrame  = 0
 local _instActive = false
-local _instDn     = nil            -- display name of the target (local player)
+local _instDn     = nil
 
 local function instAnimTick()
     if not OSI or not _instDn then return end
@@ -67,22 +79,15 @@ end
 --- The overlay panel is intentionally NOT shown for this preview —
 --- instability is a head-icon mechanic, not a panel alert.
 function Preview.showInstability()
-    -- OSI head icons only render for players present in the active group frame.
-    -- Solo: no group frame exists, so nothing appears.
-    -- In a group: the icon appears above each affected player, visible to all
-    -- other group members.  Your own icon is not visible to yourself.
-    -- This preview starts the animation so it fires correctly when a real
-    -- instability event triggers during a Falgravn pull.
-    if not OSI then
+    if not OSI or not OSI.SetMechanicIconForUnit then
         d(ADDON_TAG .. " /ip inst: OdySupportIcons not loaded")
         return
     end
-    if not OSI.SetMechanicIconForUnit then
-        d(ADDON_TAG .. " /ip inst: OSI.SetMechanicIconForUnit missing — update OdySupportIcons")
-        return
-    end
     if GetGroupSize() <= 1 then
-        d(ADDON_TAG .. " /ip inst: OSI head icons require a group — join a group to preview")
+        d(ADDON_TAG .. " /ip inst: solo — OSI head icons require a group frame to render.")
+        d(ADDON_TAG .. "   Join any group (even a duo), then /ip inst to place the icon above")
+        d(ADDON_TAG .. "   your head.  A group member will see it; you won't (camera angle).")
+        d(ADDON_TAG .. "   During a real Falgravn pull you'll see it above OTHER players.")
         return
     end
     local dn = string.lower(GetUnitDisplayName and GetUnitDisplayName("player") or "")
@@ -92,6 +97,8 @@ function Preview.showInstability()
     _instFrame = 0
     EVENT_MANAGER:RegisterForUpdate(INST_KEY, INST_INTERVAL, instAnimTick)
     _instActive = true
+    d(ADDON_TAG .. " /ip inst: animation started on " .. dn
+      .. " — ask a group member to confirm the icon appears above your head.")
 end
 
 --- Flash a red CombatAlerts screen-edge border for 3 s.
