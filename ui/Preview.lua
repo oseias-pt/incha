@@ -79,46 +79,42 @@ end
 --- The overlay panel is intentionally NOT shown for this preview —
 --- instability is a head-icon mechanic, not a panel alert.
 function Preview.showInstability()
-    if not OSI or not OSI.SetMechanicIconForUnit then
-        d(ADDON_TAG .. " /ip inst: OdySupportIcons not loaded")
-        return
-    end
-    -- The icon appears above a player's head.  You cannot see an icon above
-    -- your own head (camera is behind you), so the preview must place it on
-    -- another group member that you can look at.
-    local selfDn    = string.lower(GetUnitDisplayName("player") or "")
-    local targetDn  = nil
-    local groupSize = GetGroupSize()
-    for i = 1, groupSize do
-        local dn = string.lower(GetUnitDisplayName("group" .. i) or "")
-        if dn ~= "" and dn ~= selfDn then
-            targetDn = dn
-            break
-        end
-    end
-    if not targetDn then
-        if groupSize <= 1 then
-            d(ADDON_TAG .. " /ip inst: join a group first — OSI needs a group frame to render.")
-        else
-            d(ADDON_TAG .. " /ip inst: could not find another player in the group.")
-        end
-        return
-    end
-    stopInstAnim()
-    _instDn    = targetDn
-    _instFrame = 0
-    EVENT_MANAGER:RegisterForUpdate(INST_KEY, INST_INTERVAL, instAnimTick)
-    _instActive = true
-    -- Also show the 2D self-indicator so you can see what it looks like
-    -- when YOU have instability.
+    -- Part 1: 2D self-indicator — works solo, no OSI needed.
     ensurePanel()
+    Panel.setPreviewMode(true)
     Panel.alerts.selfInstOn()
-    d(ADDON_TAG .. " /ip inst: OSI icon above " .. targetDn
-      .. " + self-indicator in panel — both auto-clear in 5 s.")
-    zo_callLater(function()
-        stopInstAnim()
-        Panel.alerts.selfInstOff()
-    end, 5000)
+
+    -- Part 2: OSI head icon on a nearby group member so you can see what
+    -- OTHER players look like when they have the debuff.  Skipped solo.
+    local didOsi = false
+    if OSI and OSI.SetMechanicIconForUnit then
+        local selfDn    = string.lower(GetUnitDisplayName("player") or "")
+        local targetDn  = nil
+        local groupSize = GetGroupSize()
+        for i = 1, groupSize do
+            local dn = string.lower(GetUnitDisplayName("group" .. i) or "")
+            if dn ~= "" and dn ~= selfDn then
+                targetDn = dn
+                break
+            end
+        end
+        if targetDn then
+            stopInstAnim()
+            _instDn    = targetDn
+            _instFrame = 0
+            EVENT_MANAGER:RegisterForUpdate(INST_KEY, INST_INTERVAL, instAnimTick)
+            _instActive = true
+            didOsi = true
+        end
+    end
+
+    local msg = "[Incha] /ip inst: self-indicator shown in panel"
+    if didOsi then
+        msg = msg .. " + OSI icon above " .. _instDn
+    else
+        msg = msg .. " (join a group to also preview the head icon above others)"
+    end
+    d(msg .. " — /ip clear to stop")
 end
 
 --- Flash a red CombatAlerts screen-edge border for 3 s.
