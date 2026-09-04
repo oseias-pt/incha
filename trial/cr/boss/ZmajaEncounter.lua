@@ -3,6 +3,7 @@ local Timer    = require("lib.Timer")
 local CA = require("lib.CA")
 local BossBase = require("lib.BossBase")
 local CastDur = require("lib.CastDur")
+local Settings = require("core.Settings")
 
 -- -- Ability ID sets for mini-boss detection -------------------------------
 -- Any of these firing marks that mini as active (detects +1/+2/+3 variant).
