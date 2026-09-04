@@ -20,6 +20,7 @@
 
 local DreadsailCommon = require("trial.dsr.DreadsailCommon")
 local CastDur = require("lib.CastDur")
+local Lang = require("core.Lang")
 
 -- -- Ability IDs -----------------------------------------------------------
 local RAPID_DELUGE_N   = 174959   -- effectRoute: EFFECT_RESULT_GAINED + player -> Move bubble alert
@@ -83,7 +84,7 @@ local Taleria = {}
 Taleria.__index = Taleria
 
 Taleria.key              = "taleria"
-Taleria.name             = "Tideborn Taleria"   -- TODO: verify via GetUnitName("boss1") in-game
+Taleria.name             = Lang.t("boss_tideborn_taleria")   -- TODO: verify via GetUnitName("boss1") in-game
 -- location: arena AABB not yet captured  -  detection is name-based.
 -- To add AABB: stand in arena, run /script d(GetUnitWorldPosition("boss1"))
 Taleria.hmHealthThreshold = 100000001            -- TODO: verify
@@ -158,7 +159,7 @@ end
 
 local function handleMaelstromCast(self, context, alerts, abilityId, ...)
     self.lastMaelstrom = GetGameTimeMilliseconds() / 1000
-    CA.alert(nil, "|c66CC66Maelstrom  -  HEAL!|r (6 s)",
+    CA.alert(nil, Lang.t("dsr_taleria_maelstrom_alert"),
         0x66CC66D9, SOUNDS.CHAMPION_POINTS_COMMITTED, 6000)
 end
 
@@ -231,9 +232,9 @@ end
 -- Portal open: factory for the three portal-effect handlers (E6).
 -- Each differs only in bridge index, display label, and alert colour.
 local PORTAL_LABELS = {
-    "|c22CC22Green portal open|r  -  60 s!",
-    "|cDDCC00Yellow portal open|r  -  60 s!",
-    "|c8822DDPurple portal open|r  -  60 s!",
+    Lang.t("dsr_taleria_portal_green"),
+    Lang.t("dsr_taleria_portal_yellow"),
+    Lang.t("dsr_taleria_portal_purple"),
 }
 local PORTAL_COLORS = { 0x22CC22D9, 0xDDCC00D9, 0x8822DDD9 }
 
@@ -277,18 +278,16 @@ local function showMaelstromLine(self, alerts, now)
         if elapsed < MAELSTROM_DUR then
             local T = MAELSTROM_DUR - elapsed
             if T <= MAELSTROM_DODGE then
-                alerts:showInfo(1, "|cff0000DODGE!|r (Maelstrom ends)")
+                alerts:showInfo(1, Lang.t("dsr_taleria_dodge_maelstrom"))
             else
-                alerts:showInfo(1,
-                    "|c66CC66HEAL!|r (" .. string.format("%.0f", T) .. "s)")
+                alerts:showInfo(1, Lang.t("dsr_taleria_heal", T))
             end
         else
             local T = MAELSTROM_CD - elapsed
             if T > 0 then
-                alerts:showInfo(1,
-                    "|c66CC66Maelstrom|r: " .. string.format("%.0f", T) .. "s")
+                alerts:showInfo(1, Lang.t("dsr_taleria_maelstrom", T))
             else
-                alerts:showInfo(1, "|c66CC66Maelstrom|r: |cff0000INC|r")
+                alerts:showInfo(1, Lang.t("dsr_taleria_maelstrom_inc"))
             end
         end
     else
@@ -304,13 +303,11 @@ local function showBehemothLine(self, alerts, now, isHM)
         local slamT   = (self.behemothSlam > 0) and (self.behemothSlam - now) or -1
 
         if slamT >= 0 and slamT <= 3 then
-            alerts:showInfo(2,
-                "|cFF8800Behemoth SLAM|r: " .. string.format("%.0f", slamT) .. "s!")
+            alerts:showInfo(2, Lang.t("dsr_taleria_behemoth_slam", slamT))
         elseif summonT > 0 then
-            alerts:showInfo(2,
-                "|cFF8800Behemoth|r: " .. string.format("%.0f", summonT) .. "s")
+            alerts:showInfo(2, Lang.t("dsr_taleria_behemoth", summonT))
         else
-            alerts:showInfo(2, "|cFF8800Behemoth|r: |cff0000INC|r")
+            alerts:showInfo(2, Lang.t("dsr_taleria_behemoth_inc"))
         end
     else
         alerts:showInfo(2, "")
@@ -323,10 +320,8 @@ local function showStormWallLine(self, alerts, now)
     if self.lastStormWall > 0 and not suppressStorm then
         local T = STORM_WALL_DUR - (now - self.lastStormWall)
         if T > 0 then
-            local dir = self.stormWallCW and "CW ->" or "CCW <-"
-            alerts:showInfo(3,
-                "|cD672F7Storm " .. dir .. "|r  -  " ..
-                string.format("%.0f", T) .. "s")
+            alerts:showInfo(3, Lang.t(
+                self.stormWallCW and "dsr_taleria_storm_cw" or "dsr_taleria_storm_ccw", T))
         else
             alerts:showInfo(3, "")
         end
@@ -338,7 +333,7 @@ end
 -- Info 4: Active bridge wipe timers (red when <= 15 s); or next bridge HP threshold.
 local function showBridgeLine(self, alerts, now, context)
     local bridgeLabels = {}
-    local names = { "|c22CC22G|r", "|cDDCC00Y|r", "|c8822DDPu|r" }
+    local names = { Lang.t("dsr_taleria_bridge_label_1"), Lang.t("dsr_taleria_bridge_label_2"), Lang.t("dsr_taleria_bridge_label_3") }
     for i = 1, 3 do
         if self.bridgeWipeStart[i] > 0 and not self.bridgeDone[i] then
             local T = BRIDGE_WIPE - (now - self.bridgeWipeStart[i])
@@ -367,8 +362,7 @@ local function showBridgeLine(self, alerts, now, context)
             end
         end
         if nextBridge then
-            alerts:showInfo(4,
-                "Next bridge: |cffdd00" .. string.format("%.1f", nextBridge) .. "%%|r")
+            alerts:showInfo(4, Lang.t("dsr_taleria_next_bridge", nextBridge))
         else
             alerts:showInfo(4, "")
         end

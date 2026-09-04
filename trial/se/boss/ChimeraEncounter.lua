@@ -3,6 +3,7 @@ local Timer    = require("lib.Timer")
 local CA = require("lib.CA")
 local BossBase = require("lib.BossBase")
 local CastDur = require("lib.CastDur")
+local Lang = require("core.Lang")
 
 -- -- Ability IDs --------------------------------------------------------------------
 local VIVIFY           = 186000   -- combatRoute: ACTION_RESULT_EFFECT_FADED -> Chimera spawned, reset timers
@@ -56,7 +57,7 @@ local ChimeraEncounter = {}
 ChimeraEncounter.__index = ChimeraEncounter
 
 ChimeraEncounter.key               = "chimera"
-ChimeraEncounter.nameAliases       = { "Chimera" }
+ChimeraEncounter.nameAliases       = { Lang.t("boss_chimera") }
 ChimeraEncounter.hmHealthThreshold = 70000000   -- vet ~46.5M, HM ~93.1M
 -- location: placeholder - Sunken Elder arena AABB not yet captured.
 -- Detection falls back to nameAliases (name-based, may fail on non-EN clients).
@@ -88,10 +89,11 @@ end
 -- -- Handlers ----------------------------------------------------------------------
 
 -- Portal mantle: personal alert when assigned to a portal.
-local function makePortalHandler(color, label, colorHex)
+local function makePortalHandler(labelKey, colorHex)
     return { result = ACTION_RESULT_EFFECT_GAINED,
         fn = function(self, context, alerts, abilityId, unitTag, ...)
         if not IsUnitPlayer(unitTag) then return end
+        local label = Lang.t(labelKey)
         alerts:showAction(label .. "!")
         CA.alert(nil, label, colorHex, SOUNDS.NONE, 4000)
     end }
@@ -102,64 +104,64 @@ local function handleVivify(self, context, alerts, abilityId, ...)
     self.firstChain    = true
     self.despawnTimer:reset(DESPAWN_CD)
     self.chainTimer:reset(CHAIN_FIRST_CD)
-    alerts:showHeader("Chimera spawned!")
+    alerts:showHeader(Lang.t("se_chimera_header"))
 end
 
 local function handlePetrify(self, context, alerts, abilityId, ...)
     self.chimeraActive = false
     self.despawnTimer:clear()
     self.chainTimer:clear()
-    alerts:showAction("Chimera despawning...")
+    alerts:showAction(Lang.t("se_chimera_despawning"))
 end
 
 local function handleChainLightning(self, context, alerts, abilityId, ...)
     self.firstChain = false
     self.chainTimer:reset(CHAIN_CD)
-    alerts:showAction("Chain Lightning!")
-    CA.alert(nil, "CHAIN LIGHTNING", 0xFFD666FF, SOUNDS.NONE, 2500)
+    alerts:showAction(Lang.t("se_chimera_chain_lightning"))
+    CA.alert(nil, Lang.t("se_chimera_chain_lightning_alert"), 0xFFD666FF, SOUNDS.NONE, 2500)
 end
 
 local function handleChainCircuit(self, context, alerts, abilityId,
                                    unitTag, ...)
     if not IsUnitPlayer(unitTag) then return end
-    alerts:showAction("Chain Circuit on you!")
-    CA.alert(nil, "CHAIN CIRCUIT", 0xFFD666FF, SOUNDS.NONE, 3000)
+    alerts:showAction(Lang.t("se_chimera_chain_circuit"))
+    CA.alert(nil, Lang.t("se_chimera_chain_circuit_alert"), 0xFFD666FF, SOUNDS.NONE, 3000)
 end
 
 local function handleArcticShred(self, context, alerts, abilityId,
                                    unitTag, sourceUnitTag, sourceUnitId, unitId,
                                    sourceUnitName, unitName)
     local target = (unitName and unitName ~= "") and unitName or "?"
-    alerts:showAction("Arctic Shred -> " .. target)
+    alerts:showAction(Lang.t("se_chimera_arctic_shred", target))
     local dur = CastDur.get(abilityId, FALLBACK_SHRED_DUR)
-    CA.alertCast(abilityId, "Arctic Shred!", dur, COL_SHRED)
+    CA.alertCast(abilityId, Lang.t("se_chimera_arctic_shred_bar"), dur, COL_SHRED)
 end
 
 local function handleLionDoubleStrike(self, context, alerts, abilityId, ...)
     local dur = CastDur.get(abilityId, FALLBACK_DUR)
-    CA.alertCast(abilityId, "Lion Double Strike!", dur, COL_STRIKE)
-    alerts:showAction("Lion Double Strike!")
+    CA.alertCast(abilityId, Lang.t("se_chimera_lion_double_bar"), dur, COL_STRIKE)
+    alerts:showAction(Lang.t("se_chimera_lion_double"))
 end
 
 local function handleGryphonPeck(self, context, alerts, abilityId, ...)
     local dur = CastDur.get(abilityId, FALLBACK_DUR)
-    CA.alertCast(abilityId, "Gryphon Peck!", dur, COL_SHRED)
-    alerts:showAction("Gryphon Peck!")
+    CA.alertCast(abilityId, Lang.t("se_chimera_gryphon_peck_bar"), dur, COL_SHRED)
+    alerts:showAction(Lang.t("se_chimera_gryphon_peck"))
 end
 
 local function handleChimeraBolt(self, context, alerts, abilityId,
                                   unitTag, sourceUnitTag, sourceUnitId, unitId,
                                   sourceUnitName, unitName)
     local target = (unitName and unitName ~= "") and unitName or "?"
-    alerts:showAction("Lightning Bolt -> " .. target)
+    alerts:showAction(Lang.t("se_chimera_lightning_bolt", target))
     local dur = CastDur.get(abilityId, FALLBACK_DUR)
-    local cid = CA.alertCast(abilityId, "Bolt!", dur, COL_LIGHTNING)
+    local cid = CA.alertCast(abilityId, Lang.t("se_chimera_bolt_bar"), dur, COL_LIGHTNING)
     if cid and unitId then self.alertList[unitId] = cid end
 end
 
 local function handleGryphonWindLance(self, context, alerts, abilityId, ...)
-    alerts:showAction("Wind Lance! Move!")
-    CA.alert(nil, "WIND LANCE", 0xD1F1F9FF, SOUNDS.NONE, 2000)
+    alerts:showAction(Lang.t("se_chimera_wind_lance"))
+    CA.alert(nil, Lang.t("se_chimera_wind_lance_alert"), 0xD1F1F9FF, SOUNDS.NONE, 2000)
 end
 
 -- -- Routing tables (C3) -----------------------------------------------------------
@@ -193,9 +195,9 @@ ChimeraEncounter.combatRoutes = {
     [CHIMERA_BOLT]         = { result = ACTION_RESULT_BEGIN,                 fn = handleChimeraBolt },
     [GRYPHON_WIND_LANCE]   = { result = ACTION_RESULT_BEGIN,                 fn = handleGryphonWindLance },
     -- Portal mantle buffs (factory entries - EXEMPT from D7)
-    [MANTLE_WAMASU]  = makePortalHandler("green", "Wamasu Portal (Green)", 0x02FF00FF),
-    [MANTLE_LION]    = makePortalHandler("red",   "Lion Portal (Red)",     0xFF0000FF),
-    [MANTLE_GRYPHON] = makePortalHandler("blue",  "Gryphon Portal (Blue)", 0x0044FFFF),
+    [MANTLE_WAMASU]  = makePortalHandler("se_chimera_portal_wamasu",  0x02FF00FF),
+    [MANTLE_LION]    = makePortalHandler("se_chimera_portal_lion",    0xFF0000FF),
+    [MANTLE_GRYPHON] = makePortalHandler("se_chimera_portal_gryphon", 0x0044FFFF),
 }
 
 -- -- Info-line renderers -----------------------------------------------------------
@@ -205,8 +207,8 @@ local function showChimeraLines(self, alerts)
     if self.chimeraActive then
         local rd = self.despawnTimer:remaining()
         local rc = self.chainTimer:remaining()
-        alerts:showInfo(1, "Despawn: " .. (rd > 0 and ZO_FormatCountdownTimer(rd) or "imminent"))
-        alerts:showInfo(2, "Chain Ltng: " .. (rc > 0 and ZO_FormatCountdownTimer(rc) or "ready"))
+        alerts:showInfo(1, Lang.t("se_chimera_despawn_label") .. (rd > 0 and ZO_FormatCountdownTimer(rd) or Lang.t("common_imminent")))
+        alerts:showInfo(2, Lang.t("se_chimera_chain_label") .. (rc > 0 and ZO_FormatCountdownTimer(rc) or Lang.t("common_ready")))
     else
         alerts:showInfo(1, "")
         alerts:showInfo(2, "")

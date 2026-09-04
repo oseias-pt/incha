@@ -22,6 +22,7 @@ local SunspireCommon = require("trial.ss.SunspireCommon")
 local BossBase       = require("lib.BossBase")
 local MapUtils       = require("lib.MapUtils")
 local Timer          = require("lib.Timer")
+local Lang           = require("core.Lang")
 
 -- -- Ability IDs ------------------------------------------------------------
 local POWERFUL_SLAM    = 120542   -- combatRoute: ACTION_RESULT_BEGIN -> Block alert (player/nearby 7m)
@@ -61,7 +62,7 @@ Nahvii.__index = Nahvii
 setmetatable(Nahvii, {__index = BossBase})
 
 Nahvii.key  = "nahvii"
-Nahvii.name = "Nahviintaas"
+Nahvii.name = Lang.t("boss_nahviintaas")
 -- location: Sunspire arena is one shared room for all three bosses  -  a single AABB
 -- would be ambiguous.  Name-based detection is intentional; name is well-established
 -- EN string (same client since Elsweyr launch), non-EN risk is low.
@@ -145,7 +146,7 @@ local function handleNextMeteor(self, context, alerts, result, abilityId,
             self.meteorTargets[unitTag] = name
             self.meteorDisplayEnd_ms = GetGameTimeMilliseconds() + 4000
             if AreUnitsEqual("player", unitTag) then
-                alerts:showAction("YOU -> Meteor!")
+                alerts:showAction(Lang.t("ss_nahvii_you_meteor"))
                 CA.alert(nil, "Meteor on YOU!", 0xFF2200FF, SOUNDS.NONE, 4000)
             end
         end
@@ -174,7 +175,7 @@ local function handlePowerfulSlam(self, context, alerts, abilityId,
         end
     end
     if show then
-        alerts:showAction("Block! (Slam)")
+        alerts:showAction(Lang.t("ss_nahvii_block_slam"))
         local dur = CastDur.get(POWERFUL_SLAM, FALLBACK_SLAM_DUR)
         local cid = CA.alertCast(abilityId, sourceUnitName, dur, COL_SLAM)
         if cid and sourceUnitId then self.alertList[sourceUnitId] = cid end
@@ -185,19 +186,19 @@ local function handleStonefist(self, context, alerts, abilityId,
                                 unitTag, sourceUnitTag, sourceUnitId, unitId,
                                 sourceUnitName, unitName)
     if not (IsUnitPlayer(unitTag) and AreUnitsEqual("player", unitTag)) then return end
-    alerts:showAction("Block! (Stonefist)")
+    alerts:showAction(Lang.t("ss_nahvii_block_stonefist"))
     local dur = CastDur.get(STONEFIST, FALLBACK_SLAM_DUR)
     local cid = CA.alertCast(abilityId, sourceUnitName, dur, COL_STONE)
     if cid and sourceUnitId then self.alertList[sourceUnitId] = cid end
 end
 
 local function handleSweepRight(self, context, alerts, abilityId, ...)
-    local dir = "> Sweep Breath >>>"
+    local dir = Lang.t("ss_nahvii_sweep_right")
     alerts:showAction(dir); CA.alert(nil, dir, 0xFF8833FF, SOUNDS.NONE, 2000)
 end
 
 local function handleSweepLeft(self, context, alerts, abilityId, ...)
-    local dir = "<<< Sweep Breath <"
+    local dir = Lang.t("ss_nahvii_sweep_left")
     alerts:showAction(dir); CA.alert(nil, dir, 0xFF8833FF, SOUNDS.NONE, 2000)
 end
 
@@ -215,7 +216,7 @@ local function handleThrash(self, context, alerts, abilityId, ...)
 end
 
 local function handleSoulTear(self, context, alerts, abilityId, ...)
-    alerts:showAction("SOUL TEAR!")
+    alerts:showAction(Lang.t("ss_nahvii_soul_tear"))
     CA.alert(nil, "SOUL TEAR!", 0x9966FFFF, SOUNDS.NONE, 2000)
 end
 
@@ -275,7 +276,7 @@ end
 
 local function handleNegateField(self, context, alerts, abilityId, unitTag, ...)
     if IsUnitPlayer(unitTag) and AreUnitsEqual("player", unitTag) then
-        alerts:showAction("Dodge! (Negate)")
+        alerts:showAction(Lang.t("ss_nahvii_dodge_negate"))
         CA.alert(nil, "Dodge Negate!", 0x9966FFFF, SOUNDS.NONE, 2500)
     end
 end
@@ -325,9 +326,9 @@ local function showNextMeteorLine(self, alerts, now)
     if self.nextMeteorTime > 0 then
         local T = self.nextMeteorTime - now
         if T > 0 then
-            alerts:showInfo(1, "|cf51414Next Meteor|r: " .. string.format("%.0f", T) .. "s")
+            alerts:showInfo(1, Lang.t("ss_nahvii_next_meteor", T))
         else
-            alerts:showInfo(1, "|cf51414Next Meteor|r: |cff0000INC|r")
+            alerts:showInfo(1, Lang.t("ss_nahvii_next_meteor_inc"))
         end
     else
         alerts:showInfo(1, "")
@@ -341,18 +342,14 @@ local function showPortalInterruptLine(self, alerts, now)
     local pinsLeft   = self.pinsTime - now
 
     if interLeft > 0 then
-        alerts:showInfo(2, "|c7fffd4Interrupt in|r: |cff0000" ..
-            string.format("%.1f", interLeft) .. "s|r")
+        alerts:showInfo(2, Lang.t("ss_nahvii_interrupt_in", interLeft))
     elseif pinsLeft > 0 then
-        alerts:showInfo(2, "|c7fffd4Next Pins|r: |cffcc00" ..
-            string.format("%.0f", pinsLeft) .. "s|r")
+        alerts:showInfo(2, Lang.t("ss_nahvii_next_pins", pinsLeft))
     elseif portalLeft > 0 then
         if portalLeft >= 11 then
-            alerts:showInfo(2, "|c7fffd4Portal|r: |cff0000" ..
-                string.format("%.0f", portalLeft) .. "s|r")
+            alerts:showInfo(2, Lang.t("ss_nahvii_portal_urgent", portalLeft))
         else
-            alerts:showInfo(2, "|c7fffd4Portal|r: " ..
-                string.format("%.0f", portalLeft) .. "s")
+            alerts:showInfo(2, Lang.t("ss_nahvii_portal", portalLeft))
         end
     else
         alerts:showInfo(2, "")
@@ -371,11 +368,9 @@ local function showMeteorOrStormLine(self, alerts, now, now_ms)
     else
         local storm = self.stormTime - now
         if storm >= 5.2 then
-            alerts:showInfo(3, "|ce51919Fire Storm Begin|r: " ..
-                string.format("%.1f", storm - 5.2) .. "s")
+            alerts:showInfo(3, Lang.t("ss_nahvii_fire_storm_begin", storm - 5.2))
         elseif storm >= 0 then
-            alerts:showInfo(3, "|ce51919Fire Storm End|r: " ..
-                string.format("%.1f", storm) .. "s")
+            alerts:showInfo(3, Lang.t("ss_nahvii_fire_storm_end", storm))
         else
             alerts:showInfo(3, "")
         end
@@ -388,9 +383,9 @@ local function showLandingWipeLine(self, alerts, now, context)
     local wipeLeft = self.wipeTime    - now
 
     if landing > 0 then
-        alerts:showInfo(4, "|c5cd65cLanding|r: " .. string.format("%.0f", landing) .. "s")
+        alerts:showInfo(4, Lang.t("ss_landing", landing))
     elseif wipeLeft > 0 then
-        alerts:showInfo(4, "|c8a2be2Portal Wipe|r: " .. string.format("%.0f", wipeLeft) .. "s")
+        alerts:showInfo(4, Lang.t("ss_nahvii_portal_wipe", wipeLeft))
     elseif not self.inPortal then
         local hp = context.healthPercent
         if hp and hp > 39 then
@@ -400,8 +395,7 @@ local function showLandingWipeLine(self, alerts, now, context)
             elseif hp >= 40 then flyAt = 40
             end
             if flyAt and (hp - flyAt) <= 5 then
-                alerts:showInfo(4, "|cffa500Can Fly In|r: " ..
-                    string.format("%.1f", hp - flyAt) .. "%")
+                alerts:showInfo(4, Lang.t("ss_can_fly_in", hp - flyAt))
             else
                 alerts:showInfo(4, "")
             end

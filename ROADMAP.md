@@ -1,6 +1,6 @@
 # Incha — Roadmap
 
-Working plan last updated 2026-08-30. Phases are ordered by dependency.
+Working plan last updated 2026-09-04. Phases are ordered by dependency.
 Checked items are **shipped** (committed). Unchecked items are pending.
 
 ---
@@ -29,6 +29,20 @@ Checked items are **shipped** (committed). Unchecked items are pending.
       Module-level upvalue survives encounter wipes; the stack count shown after a wipe
       reflects the pre-wipe value until the next `EFFECT_FADED` fires.
       **Fix:** export `OsseinCageCommon.reset()` and call it from each boss `onWipe`.
+
+### P2 — correctness / usability
+- [ ] **`Log.warn` gated behind the debug flag.** `lib/Log.lua:33` — `Log.warn()`
+      early-returns when `enabled == false`. Unexpected-state warnings (nil unit, bad
+      coordinate, unrecognised boss name) are invisible to production users. Fix: remove
+      the `enabled` guard from `Log.warn` only; keep it on `Log.debug`.
+- [ ] **`handleSlash` preview branch missing `zo_callLater`.** `ui/Menu.lua:385–392` —
+      the `/incha preview` branch calls preview functions synchronously; the `/ip` path
+      wraps the same call in `zo_callLater(fn, 200)`. Without the delay the panel can
+      appear then immediately hide while `hudUiState` is still `"hiding"`.
+      Fix: wrap the preview call in `zo_callLater(fn, 200)`, matching `handlePreviewSlash`.
+- [ ] **Version string duplicated.** `PANEL.version = "0.1.0"` in `ui/Menu.lua:28` and
+      `d(ADDON_TAG .. " v0.1.0 loaded")` in `incha.lua:41` are separate literals. Declare
+      `ADDON_VERSION` once in `bootstrap.lua` and reference it from both callsites.
 
 ### File encoding corruption
 - [x] Eight files contained `a"EUR` sequences (corrupted `─` U+2500 box-drawing chars).
@@ -170,7 +184,7 @@ Checked items are **shipped** (committed). Unchecked items are pending.
 
 ---
 
-### AS — Asylum Sanctorium (zoneId = 1000) 📋 Planned
+### AS — Asylum Sanctorium (zoneId = 1000) 🔄 In progress
 
 **Architecture note:** AS is a *concurrent* multi-boss fight — Olms is always present; Llothis and
 Felms spawn and go dormant on timers. This doesn't fit the single-active-boss pattern.
@@ -181,9 +195,9 @@ internally, rather than wiring three separate boss modules through `BossRegistry
 timer tracker). Key ability IDs extracted from both.
 
 #### AS-1 — Infrastructure
-- [ ] `trial/as/Factory.lua` — zone detection (zoneId=1000), create trial, wire `OlmsEncounter`
-- [ ] `trial/as/CombatHandler.lua` — delegates combat/effect events to `OlmsEncounter`
-- [ ] Register `as` in `incha.lua`; add `## Description` update for AS
+- [x] `trial/as/Factory.lua` — zone detection (zoneId=1000), create trial, wire `OlmsEncounter`
+- [x] `trial/as/CombatHandler.lua` — delegates combat/effect events to `OlmsEncounter`
+- [x] Register `as` in `incha.lua`
 
 #### AS-2 — OlmsEncounter (single compound module)
 Boss name: `"Saint Olms the Just"` (from `GetUnitName("boss1")`)
@@ -226,7 +240,7 @@ BOSS_EVENT              = 10298   -- ACTION_RESULT_EFFECT_GAINED hitValue=1
 
 ---
 
-### CR — Cloudrest (zoneId = TBD) 📋 Planned
+### CR — Cloudrest (zoneId = 1051) 🔄 In progress
 
 **Architecture note:** CR supports +0/+1/+2/+3 variants. The mini-bosses (Siroria, Relequen, Galenwe)
 can be active simultaneously with Z'Maja. Use a single encounter module similar to AS,
@@ -238,9 +252,9 @@ registers handlers for all entities, gated by which variant is active.
 **Zone ID:** 1051 — confirmed in-game.
 
 #### CR-1 — Infrastructure
-- [ ] Determine zone ID (in-game verification)
-- [ ] `trial/cr/Factory.lua`, `trial/cr/CombatHandler.lua`
-- [ ] Register `cr` in `incha.lua`
+- [x] Zone ID — 1051 ✓ confirmed in-game
+- [x] `trial/cr/Factory.lua`, `trial/cr/CombatHandler.lua`
+- [x] Register `cr` in `incha.lua`
 
 #### CR-2 — Mini-boss mechanics (Siroria, Relequen, Galenwe)
 These appear in the pre-Z'Maja phase (portal realm) and optionally alongside Z'Maja.
@@ -336,7 +350,7 @@ ZMAJA_SHACKLE_MINI = 107490  -- Mini dies → Z'Maja phase
 
 ---
 
-### LC — Lucent Citadel (zoneId = TBD) 📋 Planned
+### LC — Lucent Citadel (zoneId = 1478) 🔄 In progress
 
 **Architecture note:** Sequential bosses, fits single-active-boss model.
 5–6 encounters: Baron, Cavot, Orphic, Xoryn, Zilyesset (with Count Ryelaz).
@@ -347,9 +361,9 @@ ArcaneKnot may be a sub-phase or trash encounter — verify in-game.
 **Zone ID:** 1478 — confirmed in-game.
 
 #### LC-1 — Infrastructure
-- [ ] Determine zone ID
-- [ ] `trial/lc/Factory.lua`, `trial/lc/CombatHandler.lua`
-- [ ] Register `lc` in `incha.lua`; stub bosses: Baron, Cavot, Orphic, Xoryn, Zilyesset
+- [x] Zone ID — 1478 ✓ confirmed in-game
+- [x] `trial/lc/Factory.lua`, `trial/lc/CombatHandler.lua`
+- [x] Register `lc` in `incha.lua`; stub bosses: Baron, Cavot, Orphic, Xoryn, Zilyesset
 
 #### LC-2 — Common / trash mechanics
 These apply throughout all encounters:
@@ -427,7 +441,7 @@ These modules exist in LC main but LCH doesn't cover them → mechanics unknown 
 
 ---
 
-### OC — Ossein Cage (zoneId = TBD) 📋 Planned
+### OC — Ossein Cage (zoneId = 1548) 🔄 In progress
 
 **Architecture note:** 3 sequential bosses, fits single-active-boss model.
 Boss 1: Jynorah (with Skorkhif mini). Boss 2: Kazpian. Boss 3: Shaper of Flesh.
@@ -443,9 +457,9 @@ Boss 1: Jynorah (with Skorkhif mini). Boss 2: Kazpian. Boss 3: Shaper of Flesh.
       `_carrionStacks` (currently stale after wipes)
 
 #### OC-1 — Infrastructure
-- [ ] Determine zone ID
-- [ ] `trial/oc/Factory.lua`, `trial/oc/CombatHandler.lua`
-- [ ] Register `oc` in `incha.lua`; stub bosses: Jynorah, Kazpian, ShaperOfFlesh
+- [x] Zone ID — 1548 ✓ confirmed in-game
+- [x] `trial/oc/Factory.lua`, `trial/oc/CombatHandler.lua`
+- [x] Register `oc` in `incha.lua`; stub bosses: Jynorah, Kazpian, ShaperOfFlesh
 
 #### OC-2 — Common / trash mechanics
 ```
@@ -596,7 +610,7 @@ IMMOLATING_SPHERE    = 237011   -- Incinerator
 
 ---
 
-### SE — Sanity's Edge (zoneId = 1427) 📋 Planned
+### SE — Sanity's Edge (zoneId = 1427) 🔄 In progress
 
 **Architecture note:** 3 sequential bosses, fits single-active-boss model.
 Boss 1: Exarchanic Yaseyla. Boss 2: Chimera. Boss 3: Ansuul the Tormentor.
@@ -604,8 +618,8 @@ Boss 1: Exarchanic Yaseyla. Boss 2: Chimera. Boss 3: Ansuul the Tormentor.
 **Reference addons:** `SanitysEdgeHelper` (SEH), `SlipsSanitysEdgeAssist` (SSEA).
 
 #### SE-1 — Infrastructure
-- [ ] `trial/se/Factory.lua`, `trial/se/CombatHandler.lua`
-- [ ] Register `se` in `incha.lua`; stub bosses: Yaseyla, Chimera, Ansuul
+- [x] `trial/se/Factory.lua`, `trial/se/CombatHandler.lua`
+- [x] Register `se` in `incha.lua`; stub bosses: Yaseyla, Chimera, Ansuul
 
 #### SE-2 — Yaseyla (boss 1)
 **Cleanup:**
@@ -846,13 +860,9 @@ Split HP tracking: all three clones named "Ansuul the Tormentor" — differentia
 
 ## Open architecture questions
 
-1. **`core/` must not depend on `ui/`** — currently `core/Trial.lua` does
-   `require("ui.Bridge")`, which inverts the dependency layer.  `Bridge` is a
-   pure interface (no WINDOW_MANAGER calls, no UI state) and belongs in core.
-   Fix: move `ui/Bridge.lua` → `core/Bridge.lua`; update the two callers:
-   `core/Trial.lua` and `ui/Panel.lua` both `require("core.Bridge")`.
-   Update `incha.txt` accordingly (remove `ui/Bridge.lua`, add `core/Bridge.lua`
-   in the core block before `core/Trial.lua`).
+1. ~~**`core/` must not depend on `ui/`**~~ **RESOLVED** — `core/Bridge.lua` already
+   lives in `core/`; `core/Trial.lua` and `ui/Panel.lua` both `require("core.Bridge")`.
+   No further action needed.
 
 2. **Module-level mutable state in `*Common` files**: `OsseinCageCommon._carrionStacks` and
    `_toxicIreLastMs` are module-level upvalues. They survive wipes and re-entries within
@@ -866,10 +876,7 @@ Split HP tracking: all three clones named "Ansuul the Tormentor" — differentia
    (b) a small extension to `Trial` that supports multiple "active" bosses.
    Option (a) is lower risk and doesn't change the existing API.
 
-2. **`modulesToUnload` drift**: each new trial added without updating this list extends
-   the session-lifetime leak. Consider auto-deriving from Factory `require` calls (Phase 0).
-
-3. **Zone ID discovery**: for trials without a known ID, stand inside the trial
+4. **Zone ID discovery**: for trials without a known ID, stand inside the trial
    zone and run:
    ```
    /script d(GetZoneId(GetUnitZoneIndex("player")))
@@ -879,7 +886,7 @@ Split HP tracking: all three clones named "Ansuul the Tormentor" — differentia
    against.  Note: `GetCurrentMapZoneIndex()` returns a different number (the
    zone *index*, not the ID); do not use that for Factory values.
 
-4. **OSI dependency**: SE and LC use OSI extensively. Ensure `## OptionalDependsOn: OdySupportIcons`
+5. **OSI dependency**: SE and LC use OSI extensively. Ensure `## OptionalDependsOn: OdySupportIcons`
    remains in `incha.txt` (already present) and all OSI calls are nil-guarded.
 
 ---

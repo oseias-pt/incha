@@ -2,6 +2,7 @@ local Location    = require("core.Location")
 local HealthRules = require("core.HealthRules")
 local Settings    = require("core.Settings")
 local Timer       = require("lib.Timer")
+local Lang        = require("core.Lang")
 
 local CA = require("lib.CA")
 local BossBase = require("lib.BossBase")
@@ -472,19 +473,24 @@ function Falgravn:onUpdate(context, alerts)
 
     if stage == 1 then
         local ti = self.instabilityTimer:remaining()
-        alerts:showInfo(1, "Instability: " .. (ti > 0 and ZO_FormatCountdownTimer(ti) or "up!"))
+        alerts:showInfo(1, Lang.t("ka_falgravn_instability",
+            ti > 0 and ZO_FormatCountdownTimer(ti) or Lang.t("common_up")))
 
     elseif stage == 2 then
         local ti  = self.instabilityTimer:remaining()
         local tbb = self.bloodBallTimer:remaining()
-        alerts:showInfo(1, "Instability: " .. (ti > 0 and ZO_FormatCountdownTimer(ti) or "up!"))
-        alerts:showInfo(2, tbb > 0 and ("Blood Ball: " .. ZO_FormatCountdownTimer(tbb)) or "Blood Ball: soon!")
+        alerts:showInfo(1, Lang.t("ka_falgravn_instability",
+            ti > 0 and ZO_FormatCountdownTimer(ti) or Lang.t("common_up")))
+        alerts:showInfo(2, Lang.t("ka_falgravn_blood_ball",
+            tbb > 0 and ZO_FormatCountdownTimer(tbb) or Lang.t("common_soon")))
 
     elseif stage == 3 then
         local tog = self.openGatesTimer:remaining()
         local ttp = self.torturerTimer:remaining()
-        alerts:showInfo(1, tog > 0 and ("Open Gates: " .. ZO_FormatCountdownTimer(tog)) or "Open Gates: soon!")
-        alerts:showInfo(2, ttp > 0 and ("Torturer TP: " .. ZO_FormatCountdownTimer(ttp)) or "")
+        alerts:showInfo(1, Lang.t("ka_falgravn_open_gates",
+            tog > 0 and ZO_FormatCountdownTimer(tog) or Lang.t("common_soon")))
+        alerts:showInfo(2, ttp > 0 and Lang.t("ka_falgravn_torturer_tp",
+            ZO_FormatCountdownTimer(ttp)) or "")
     end
 end
 
@@ -508,22 +514,22 @@ end
 local function handleInfuserCasts(self, context, alerts, abilityId,
                                    unitTag, sourceUnitTag, sourceUnitId, unitId,
                                    sourceUnitName, unitName)
-    alerts:showAction("Interrupt Infuser!")
+    alerts:showAction(Lang.t("ka_falgravn_interrupt_inf"))
     local cid = CA.alertCast(abilityId, sourceUnitName, 1000,
         { -3, 0, false, { 0.0, 0.0, 1, 0.4 }, { 0.1, 0.1, 1, 0.8 } })
     if cid and sourceUnitId then self.alertList[sourceUnitId] = cid end
 end
 
 local function handleInfuserBuff(self, context, alerts, abilityId, ...)
-    alerts:showAction("Infuser Buff passed!")
-    CA.alert(nil, "Infuser Buff passed!", 0xFF8800FF, SOUNDS.DUEL_START, 3000)
+    alerts:showAction(Lang.t("ka_falgravn_inf_buff"))
+    CA.alert(nil, Lang.t("ka_falgravn_inf_buff"), 0xFF8800FF, SOUNDS.DUEL_START, 3000)
 end
 
 -- HM confirmation ability (plain entry: receives result).
 local function handleFalgravnHm(self, context, alerts, result, abilityId, ...)
     if result == ACTION_RESULT_EFFECT_GAINED then
         self.bHM = true
-        alerts:showHeader(GetUnitName("boss1") .. " [HM: ON]")
+        alerts:showHeader(GetUnitName("boss1") .. Lang.t("ka_falgravn_hm_suffix"))
     elseif result == ACTION_RESULT_EFFECT_FADED then
         alerts:showHeader(GetUnitName("boss1"))
         self:after(2000, function()
@@ -537,11 +543,11 @@ local function handleNjordalMove(self, context, alerts, result, abilityId,
                                   unitTag, sourceUnitTag, sourceUnitId, unitId, ...)
     if result == ACTION_RESULT_BEGIN and self.bMove then
         self.bMove = false
-        alerts:showAction("Move!")
+        alerts:showAction(Lang.t("ka_falgravn_move"))
         local cid = CA.castAlertsStart(abilityId, GetAbilityName(abilityId),
             12000, 12000,
             { 1, 0.7, 0, 0.5 },
-            { 12000, "Move!", 0.8, 0, 0, 0.9, SOUNDS.NONE })
+            { 12000, Lang.t("ka_falgravn_move"), 0.8, 0, 0, 0.9, SOUNDS.NONE })
         if cid and sourceUnitId then self.alertList[sourceUnitId] = cid end
     elseif result == ACTION_RESULT_EFFECT_FADED and not self.bMove then
         self.bMove = true
@@ -553,11 +559,11 @@ local function handleNjordalBlock(self, context, alerts, result, abilityId,
                                    unitTag, sourceUnitTag, sourceUnitId, unitId, ...)
     if result == ACTION_RESULT_BEGIN and self.bBlock then
         self.bBlock = false
-        alerts:showAction("Block Cast!")
+        alerts:showAction(Lang.t("ka_falgravn_block_cast"))
         local cid = CA.castAlertsStart(FALGRAVN_M_BLOCK_HEAVY, "Bloody Frenzy",
             6500, 6500,
             { 1, 0.7, 0, 0.5 },
-            { 6500, "Block Cast!", 0.8, 0, 0, 0.9, SOUNDS.NONE })
+            { 6500, Lang.t("ka_falgravn_block_cast"), 0.8, 0, 0, 0.9, SOUNDS.NONE })
         if cid and sourceUnitId then self.alertList[sourceUnitId] = cid end
     elseif result == ACTION_RESULT_EFFECT_FADED and not self.bBlock then
         self.bBlock = true
@@ -567,17 +573,17 @@ end
 local function handleBloodCleave(self, context, alerts, abilityId,
                                   unitTag, sourceUnitTag, sourceUnitId, unitId,
                                   sourceUnitName, unitName)
-    alerts:showAction("DODGE!")
+    alerts:showAction(Lang.t("ka_falgravn_dodge"))
     local dur = CastDur.get(FALGRAVN_M_CLEAVE, FALLBACK_DUR)
     CA.castAlertsStart(abilityId, sourceUnitName, dur, dur,
         { 1, 0, 0.6, 0.4 },
-        { 700, "DODGE!", 1, 0, 0.6, 0.8, SOUNDS.CHAMPION_POINTS_COMMITTED })
+        { 700, Lang.t("ka_falgravn_dodge"), 1, 0, 0.6, 0.8, SOUNDS.CHAMPION_POINTS_COMMITTED })
 end
 
 local function handleBloodFountain(self, context, alerts, abilityId,
                                     unitTag, sourceUnitTag, sourceUnitId, unitId,
                                     sourceUnitName, unitName)
-    alerts:showAction("Block Blood Fountain!")
+    alerts:showAction(Lang.t("ka_falgravn_block_fountain"))
     CA.alertCast(FALGRAVN_BLOOD_FOUNT, sourceUnitName, 3033,
         { -3, 0, false, { 1, 0.2, 0.9, 0.4 }, { 1, 0.2, 0.9, 0.8 } })
 end
@@ -655,8 +661,8 @@ local function handleOpenDoor(self, context, alerts, abilityId,
                                sourceUnitName, unitName)
     self.openGatesTimer:reset(NEXT_OPENGATE_TIME)
     self.torturerTimer:reset(NEXT_TORTURER_TP)
-    alerts:showAction("Open the Gates!")
-    CA.alert(nil, "Open the Gates!", 0x991111FF,
+    alerts:showAction(Lang.t("ka_falgravn_open_gates_action"))
+    CA.alert(nil, Lang.t("ka_falgravn_open_gates_action"), 0x991111FF,
         SOUNDS.CHAMPION_POINTS_COMMITTED, 2000)
     local capturedSrc = sourceUnitName or ""
     -- Re-arming mechanic: drop the previous window before opening a new one.
@@ -677,11 +683,11 @@ local function handleTorturerFeed(self, context, alerts, result, abilityId,
     if result == ACTION_RESULT_EFFECT_GAINED then
         if self.bStartTorturerCD then
             self.bStartTorturerCD = false
-            alerts:showAction("KILL Torturer!")
+            alerts:showAction(Lang.t("ka_falgravn_kill_torturer"))
             local cid = CA.castAlertsStart(abilityId, GetAbilityName(abilityId),
                 10000, 10000,
                 { 1, 0.7, 0, 0.5 },
-                { 10000, "KILL Torturer!", 0.8, 0, 0, 0.9, SOUNDS.NONE })
+                { 10000, Lang.t("ka_falgravn_kill_torturer"), 0.8, 0, 0, 0.9, SOUNDS.NONE })
             if cid and sourceUnitId then self.alertList[sourceUnitId] = cid end
         end
         -- Turn the active torturer's icon yellow so raiders can see which one to kill.
@@ -714,15 +720,15 @@ local function handleSacrifice(self, context, alerts, result, abilityId,
 end
 
 local function handleTorturerEsc(self, context, alerts, abilityId, ...)
-    alerts:showAction("Torturer Comes Down!")
-    CA.alert(nil, "Torturer Comes Down!", 0xFF8800FF,
+    alerts:showAction(Lang.t("ka_falgravn_torturer_down"))
+    CA.alert(nil, Lang.t("ka_falgravn_torturer_down"), 0xFF8800FF,
         SOUNDS.CHAMPION_POINTS_COMMITTED, 3000)
 end
 
 local function handleTorturerLa(self, context, alerts, abilityId, unitTag, ...)
     if IsUnitPlayer(unitTag) and GetSelectedLFGRole() ~= LFG_ROLE_TANK then
-        alerts:showAction("DODGE! (Torturer LA)")
-        CA.alert("Torturer LA's", "DODGE!", 0xFF0000FF, SOUNDS.DUEL_START, 1000)
+        alerts:showAction(Lang.t("ka_falgravn_dodge_torturer"))
+        CA.alert(Lang.t("ka_falgravn_torturer_la_label"), Lang.t("ka_falgravn_dodge"), 0xFF0000FF, SOUNDS.DUEL_START, 1000)
     end
 end
 
@@ -752,7 +758,7 @@ local function handlePrisonEffect(self, context, alerts, changeType, abilityId,
     -- bar running until its own duration expired while the following FADED
     -- stopped the second bar twice.
     if changeType == EFFECT_RESULT_GAINED then
-        alerts:showAction("KILL PRISON!")
+        alerts:showAction(Lang.t("ka_falgravn_kill_prison"))
         local dur = 8000
         -- Re-application on the same player: drop the stale bar first.
         CA.castAlertsStop(self.prisonBars[unitTag])
@@ -760,7 +766,7 @@ local function handlePrisonEffect(self, context, alerts, changeType, abilityId,
             abilityId, GetAbilityName(abilityId),
             dur, dur,
             { 1, 0.7, 0, 0.5 },
-            { dur, "KILL PRISON!", 0.8, 0, 0, 0.9, SOUNDS.NONE })
+            { dur, Lang.t("ka_falgravn_kill_prison"), 0.8, 0, 0, 0.9, SOUNDS.NONE })
         local dn = GetUnitDisplayName(unitTag)
         osiSet(dn, ICON_PRISON, COL_PRISON)
         if dn and dn ~= "" then self.osiPrison[unitTag] = dn end

@@ -12,6 +12,7 @@ local SunspireCommon = require("trial.ss.SunspireCommon")
 local BossBase       = require("lib.BossBase")
 local MapUtils       = require("lib.MapUtils")
 local Timer          = require("lib.Timer")
+local Lang           = require("core.Lang")
 
 -- -- Ability IDs ------------------------------------------------------------
 local ATRO_SPAWN    = 119549   -- combatRoute: ACTION_RESULT_BEGIN -> Kill Atro alert
@@ -36,7 +37,7 @@ Yolna.__index = Yolna
 setmetatable(Yolna, {__index = BossBase})
 
 Yolna.key  = "yolna"
-Yolna.name = "Yolnahkriin"
+Yolna.name = Lang.t("boss_yolnahkriin")
 -- location: Sunspire arena is one shared room for all three bosses  -  a single AABB
 -- would be ambiguous.  Name-based detection is intentional; name is well-established
 -- EN string (same client since Elsweyr launch), non-EN risk is low.
@@ -91,7 +92,7 @@ Yolna.common = SunspireCommon
 -- -- Handlers ------------------------------------------------------------
 
 local function handleAtroSpawn(self, context, alerts, abilityId, ...)
-    alerts:showAction("Kill Atro!")
+    alerts:showAction(Lang.t("ss_yolna_kill_atro"))
     CA.alert(nil, "Kill Atro!", 0xFF8000FF, SOUNDS.NONE, 4500)
 end
 
@@ -107,7 +108,7 @@ local function handleLavaGeyser(self, context, alerts, abilityId,
         end
     end
     if show then
-        alerts:showAction("Dodge! (Geyser)")
+        alerts:showAction(Lang.t("ss_yolna_dodge_geyser"))
         local dur = CastDur.get(LAVA_GEYSER, FALLBACK_GEYSER_DUR)
         CA.alertCast(abilityId, sourceUnitName, dur, COL_GEYSER)
     end
@@ -149,9 +150,9 @@ local function showFlareLine(self, alerts, now)
     if self.nextFlareTime > 0 then
         local T = self.nextFlareTime - now
         if T > 0 then
-            alerts:showInfo(1, "|ce51919Next Flare|r: " .. string.format("%.0f", T) .. "s")
+            alerts:showInfo(1, Lang.t("ss_yolna_next_flare", T))
         else
-            alerts:showInfo(1, "|ce51919Next Flare|r: |cff0000INC|r")
+            alerts:showInfo(1, Lang.t("ss_yolna_next_flare_inc"))
         end
     else
         alerts:showInfo(1, "")
@@ -162,8 +163,7 @@ end
 local function showCataLine(self, alerts)
     local cataLeft = self.cataTimer:remaining()
     if cataLeft > 0 then
-        alerts:showInfo(2, "|ce51919Cataclysm Ends|r: " ..
-            string.format("%.1f", cataLeft) .. "s")
+        alerts:showInfo(2, Lang.t("ss_yolna_cataclysm_ends", cataLeft))
     else
         alerts:showInfo(2, "")
     end
@@ -173,7 +173,7 @@ end
 local function showLandingOrFlyLine(self, alerts, context)
     local landing = self.landingTimer:remaining()
     if landing > 0 then
-        alerts:showInfo(4, "|c5cd65cLanding|r: " .. string.format("%.0f", landing) .. "s")
+        alerts:showInfo(4, Lang.t("ss_landing", landing))
     else
         local hp = context.healthPercent
         if hp and hp > 25 then
@@ -183,8 +183,7 @@ local function showLandingOrFlyLine(self, alerts, context)
             elseif hp >= 26 then flyAt = 26
             end
             if flyAt and (hp - flyAt) <= 5 then
-                alerts:showInfo(4, "|cffa500Can Fly In|r: " ..
-                    string.format("%.1f", hp - flyAt) .. "%")
+                alerts:showInfo(4, Lang.t("ss_can_fly_in", hp - flyAt))
             else
                 alerts:showInfo(4, "")
             end

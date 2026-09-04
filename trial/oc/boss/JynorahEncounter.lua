@@ -4,6 +4,7 @@ local CA               = require("lib.CA")
 local BossBase         = require("lib.BossBase")
 local CastDur          = require("lib.CastDur")
 local OsseinCageCommon = require("trial.oc.OsseinCageCommon")
+local Lang             = require("core.Lang")
 
 -- -- Ability IDs (from OsseinCageHelper) ----------------------------------------------------------
 -- Dragons (Valneer = fire/orange, Myrinax = lightning/blue)
@@ -62,7 +63,7 @@ local JynorahEncounter = {}
 JynorahEncounter.__index = JynorahEncounter
 
 JynorahEncounter.key               = "jynorah"
-JynorahEncounter.nameAliases       = { "Jynorah", "Skorkhif" }
+JynorahEncounter.nameAliases       = { Lang.t("boss_jynorah"), Lang.t("boss_skorkhif") }
 -- hmHealthThreshold: math.huge until measured in-game on vet HM.
 -- (0 would make detectDifficulty always return HARDMODE.)
 JynorahEncounter.hmHealthThreshold = math.huge
@@ -88,7 +89,7 @@ end
 local function handleLeap(self, context, alerts, abilityId, ...)
     self.firstLeap = false
     self.leapTimer:reset(LEAP_CD)
-    alerts:showAction("Titanic Leap!")
+    alerts:showAction(Lang.t("oc_jynorah_titanic_leap"))
 end
 
 -- Reflective Scales: yellow border while the dragon buff is active.
@@ -98,7 +99,7 @@ local function handleReflective(self, context, alerts, result, abilityId,
                                   unitTag, ...)
     if result == ACTION_RESULT_EFFECT_GAINED then
         CA.border(true, 6000, "yellow")
-        alerts:showAction("Reflective Scales  -  stop DPS!")
+        alerts:showAction(Lang.t("oc_jynorah_reflective"))
     elseif result == ACTION_RESULT_EFFECT_FADED then
         CA.border(false, 0, "yellow")
     end
@@ -110,33 +111,33 @@ local function handleTailSlam(self, context, alerts, abilityId,
                                 sourceUnitName, unitName)
     local target = (unitName and unitName ~= "") and unitName or "?"
     local dur = CastDur.get(abilityId, FALLBACK_DUR)
-    CA.alertCast(abilityId, "Tail Slam -> " .. target, dur, COL_CLASH)
+    CA.alertCast(abilityId, Lang.t("oc_jynorah_tail_slam_bar", target), dur, COL_CLASH)
 end
 
 local function handleTitanicClash(self, context, alerts, abilityId, ...)
     self.clashActive = true
     self.clashTimer:reset(37.5)
-    CA.alertCast(abilityId, "TITANIC CLASH! DODGE!", 3500, COL_CLASH)
-    alerts:showAction("Titanic Clash (~37.5s)")
+    CA.alertCast(abilityId, Lang.t("oc_jynorah_clash_bar"), 3500, COL_CLASH)
+    alerts:showAction(Lang.t("oc_jynorah_titanic_clash"))
 end
 
 local function handleTitanicClashHitV(self, context, alerts, abilityId, ...)
-    alerts:showAction("Valneer hit!")
+    alerts:showAction(Lang.t("oc_jynorah_valneer_hit"))
 end
 
 local function handleTitanicClashHitM(self, context, alerts, abilityId, ...)
-    alerts:showAction("Myrinax hit!")
+    alerts:showAction(Lang.t("oc_jynorah_myrinax_hit"))
 end
 
 local function handleSparkingCurseCast(self, context, alerts, abilityId,
                                         unitTag, sourceUnitTag, sourceUnitId, unitId,
                                         sourceUnitName, unitName)
     if IsUnitPlayer(unitTag) then
-        CA.alert(nil, "Curse incoming!", 0x44CCFFFF, SOUNDS.NONE, 3000)
-        alerts:showAction("Sparking Curse  -  on YOU!")
+        CA.alert(nil, Lang.t("oc_jynorah_curse_alert"), 0x44CCFFFF, SOUNDS.NONE, 3000)
+        alerts:showAction(Lang.t("oc_jynorah_sparking_you"))
     else
         local target = (unitName and unitName ~= "") and unitName or "?"
-        alerts:showAction("Sparking Curse -> " .. target)
+        alerts:showAction(Lang.t("oc_jynorah_sparking_tgt", target))
     end
 end
 
@@ -144,11 +145,11 @@ local function handleBlazingCurseCast(self, context, alerts, abilityId,
                                        unitTag, sourceUnitTag, sourceUnitId, unitId,
                                        sourceUnitName, unitName)
     if IsUnitPlayer(unitTag) then
-        CA.alert(nil, "Curse incoming!", 0xFF8844FF, SOUNDS.NONE, 3000)
-        alerts:showAction("Blazing Curse  -  on YOU!")
+        CA.alert(nil, Lang.t("oc_jynorah_curse_alert"), 0xFF8844FF, SOUNDS.NONE, 3000)
+        alerts:showAction(Lang.t("oc_jynorah_blazing_you"))
     else
         local target = (unitName and unitName ~= "") and unitName or "?"
-        alerts:showAction("Blazing Curse -> " .. target)
+        alerts:showAction(Lang.t("oc_jynorah_blazing_tgt", target))
     end
 end
 
@@ -157,8 +158,8 @@ local function handleSparkingCurseDebuf(self, context, alerts, abilityId,
     if not IsUnitPlayer(unitTag) then return end
     self.playerCurse = "sparking"
     CA.border(true, 30000, "blue")
-    CA.alert(nil, "Sparking Curse  -  BLUE!", 0x44CCFFFF, SOUNDS.NONE, 4000)
-    alerts:showAction("Sparking Curse  -  swap to Valneer side!")
+    CA.alert(nil, Lang.t("oc_jynorah_sparking_blue"), 0x44CCFFFF, SOUNDS.NONE, 4000)
+    alerts:showAction(Lang.t("oc_jynorah_sparking_valneer"))
 end
 
 local function handleBlazingCurseDebuf(self, context, alerts, abilityId,
@@ -166,50 +167,50 @@ local function handleBlazingCurseDebuf(self, context, alerts, abilityId,
     if not IsUnitPlayer(unitTag) then return end
     self.playerCurse = "blazing"
     CA.border(true, 30000, "red")
-    CA.alert(nil, "Blazing Curse  -  RED!", 0xFF8844FF, SOUNDS.NONE, 4000)
-    alerts:showAction("Blazing Curse  -  swap to Myrinax side!")
+    CA.alert(nil, Lang.t("oc_jynorah_blazing_red"), 0xFF8844FF, SOUNDS.NONE, 4000)
+    alerts:showAction(Lang.t("oc_jynorah_blazing_myrinax"))
 end
 
 local function handleColdflameSurge(self, context, alerts, abilityId,
                                      unitTag, ...)
     if not IsUnitPlayer(unitTag) then return end
-    CA.alert(nil, "Surge on YOU!", 0x44CCFFFF, SOUNDS.NONE, 3000)
-    alerts:showAction("Coldflame Surge on you! MOVE!")
+    CA.alert(nil, Lang.t("oc_jynorah_surge_alert"), 0x44CCFFFF, SOUNDS.NONE, 3000)
+    alerts:showAction(Lang.t("oc_jynorah_coldflame"))
 end
 
 local function handleBrimstoneSurge(self, context, alerts, abilityId,
                                      unitTag, ...)
     if not IsUnitPlayer(unitTag) then return end
-    CA.alert(nil, "Surge on YOU!", 0xFF6600FF, SOUNDS.NONE, 3000)
-    alerts:showAction("Brimstone Surge on you! MOVE!")
+    CA.alert(nil, Lang.t("oc_jynorah_surge_alert"), 0xFF6600FF, SOUNDS.NONE, 3000)
+    alerts:showAction(Lang.t("oc_jynorah_brimstone"))
 end
 
 local function handleColdflameStomp(self, context, alerts, abilityId, ...)
-    CA.alertCast(abilityId, "DODGE  -  stomp!", 2000, COL_ICE)
+    CA.alertCast(abilityId, Lang.t("oc_jynorah_stomp_bar"), 2000, COL_ICE)
 end
 
 local function handleBrimstoneStomp(self, context, alerts, abilityId, ...)
-    CA.alertCast(abilityId, "DODGE  -  stomp!", 2000, COL_FIRE)
+    CA.alertCast(abilityId, Lang.t("oc_jynorah_stomp_bar"), 2000, COL_FIRE)
 end
 
 local function handleHeatRay(self, context, alerts, abilityId, unitTag, ...)
     if not IsUnitPlayer(unitTag) then return end
-    CA.alert(nil, "Heat Ray on YOU!", 0xFF6600FF, SOUNDS.NONE, 3000)
-    alerts:showAction("Heat Ray on you  -  move!")
+    CA.alert(nil, Lang.t("oc_jynorah_heat_ray_alert"), 0xFF6600FF, SOUNDS.NONE, 3000)
+    alerts:showAction(Lang.t("oc_jynorah_heat_ray"))
 end
 
 local function handleMyrinaxBreath(self, context, alerts, abilityId,
                                     unitTag, ...)
     if not IsUnitPlayer(unitTag) then return end
-    CA.alert(nil, "BREATH  -  MOVE!", 0x44CCFFFF, SOUNDS.NONE, 2500)
-    alerts:showAction("Myrinax Breath on you! MOVE!")
+    CA.alert(nil, Lang.t("oc_jynorah_breath_alert"), 0x44CCFFFF, SOUNDS.NONE, 2500)
+    alerts:showAction(Lang.t("oc_jynorah_myrinax_breath"))
 end
 
 local function handleValneerBreath(self, context, alerts, abilityId,
                                     unitTag, ...)
     if not IsUnitPlayer(unitTag) then return end
-    CA.alert(nil, "BREATH  -  MOVE!", 0xFF8844FF, SOUNDS.NONE, 2500)
-    alerts:showAction("Valneer Breath on you! MOVE!")
+    CA.alert(nil, Lang.t("oc_jynorah_breath_alert"), 0xFF8844FF, SOUNDS.NONE, 2500)
+    alerts:showAction(Lang.t("oc_jynorah_valneer_breath"))
 end
 
 -- -- Routing tables (C3) ----------------------------------------------------------------------------
@@ -262,7 +263,7 @@ local function showClashLine(self, alerts)
     if self.clashActive then
         local r = self.clashTimer:remaining()
         if r > 0 then
-            alerts:showInfo(1, "|cFF4444CLASH: " .. ZO_FormatCountdownTimer(r) .. "|r")
+            alerts:showInfo(1, Lang.t("oc_jynorah_clash_timer", ZO_FormatCountdownTimer(r)))
         else
             self.clashActive = false
             alerts:showInfo(1, "")
@@ -275,10 +276,11 @@ end
 -- Line 2: Titanic Leap cooldown; shows "first ~5s" before the first leap is seen.
 local function showLeapLine(self, alerts)
     if self.firstLeap then
-        alerts:showInfo(2, "Leap: first ~5s")
+        alerts:showInfo(2, Lang.t("oc_jynorah_leap_first"))
     else
         local r = self.leapTimer:remaining()
-        alerts:showInfo(2, "Leap: " .. (r > 0 and ZO_FormatCountdownTimer(r) or "NOW"))
+        alerts:showInfo(2, Lang.t("oc_jynorah_leap_label")
+            .. (r > 0 and ZO_FormatCountdownTimer(r) or Lang.t("common_now")))
     end
 end
 

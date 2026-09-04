@@ -3,6 +3,7 @@ local Timer    = require("lib.Timer")
 local CA = require("lib.CA")
 local BossBase = require("lib.BossBase")
 local CastDur = require("lib.CastDur")
+local Lang = require("core.Lang")
 
 -- ── Ability IDs ───────────────────────────────────────────────────────────
 local THUNDER_THRALL  = 214383   -- combatRoute: ACTION_RESULT_BEGIN → Xoryn jump; timer 25.5s / 8s first
@@ -30,7 +31,7 @@ local OrphicEncounter = {}
 OrphicEncounter.__index = OrphicEncounter
 
 OrphicEncounter.key               = "orphic"
-OrphicEncounter.nameAliases       = { "Orphic Shattered Shard" }
+OrphicEncounter.nameAliases       = { Lang.t("boss_orphic") }
 OrphicEncounter.hmHealthThreshold = 80000000
 -- location: placeholder — Lucent Citadel arena AABB not yet captured.
 -- Detection falls back to nameAliases (name-based, may fail on non-EN clients).
@@ -67,7 +68,7 @@ local function handleThunderThrall(self, context, alerts, abilityId, ...)
     self.xorynActive = true
     self.firstThrall = false
     self.thunderThrallTimer:reset(THRALL_CD)
-    alerts:showAction("Thunder Thrall (Xoryn jump)")
+    alerts:showAction(Lang.t("lc_orphic_thunder_thrall"))
 end
 
 local function handleLightningFlood(self, context, alerts, abilityId,
@@ -77,13 +78,13 @@ local function handleLightningFlood(self, context, alerts, abilityId,
     self.firstFlood  = false
     self.lightningFloodTimer:reset(FLOOD_CD)
     local target = (unitName and unitName ~= "") and unitName or "?"
-    alerts:showAction("Lightning Flood → " .. target)
+    alerts:showAction(Lang.t("lc_orphic_lightning_flood", target))
 end
 
 local function handleBreakout(self, context, alerts, abilityId, unitTag, ...)
     if not IsUnitPlayer(unitTag) then return end
-    CA.alertCast(abilityId, "BREAK OUT!", 3000, COL_CRYSTAL)
-    alerts:showAction("Break out of the crystal!")
+    CA.alertCast(abilityId, Lang.t("lc_orphic_break_out_bar"), 3000, COL_CRYSTAL)
+    alerts:showAction(Lang.t("lc_orphic_break_crystal"))
 end
 
 local function handleShieldThrow(self, context, alerts, abilityId,
@@ -91,12 +92,12 @@ local function handleShieldThrow(self, context, alerts, abilityId,
                                   sourceUnitName, unitName)
     local target = (unitName and unitName ~= "") and unitName or "?"
     local dur = CastDur.get(abilityId, FALLBACK_DUR)
-    CA.alertCast(abilityId, "Shield Throw → " .. target, dur, COL_LIGHTNING)
+    CA.alertCast(abilityId, Lang.t("lc_orphic_shield_throw", target), dur, COL_LIGHTNING)
 end
 
 local function handleColorChange(self, context, alerts, abilityId, ...)
-    CA.alert(nil, "Color Change!", 0xFFFF44FF, SOUNDS.NONE, 3000)
-    alerts:showAction("Color change! Switch mirror!")
+    CA.alert(nil, Lang.t("lc_orphic_color_change_alert"), 0xFFFF44FF, SOUNDS.NONE, 3000)
+    alerts:showAction(Lang.t("lc_orphic_color_change"))
 end
 
 -- ── Routing tables (C3) ──────────────────────────────────────────────────
@@ -119,16 +120,18 @@ end
 function OrphicEncounter:onUpdate(context, alerts)
     if self.xorynActive then
         if self.firstThrall then
-            alerts:showInfo(1, "Thrall: first ~8s")
+            alerts:showInfo(1, Lang.t("lc_orphic_thrall_first"))
         else
             local r = self.thunderThrallTimer:remaining()
-            alerts:showInfo(1, "Thrall: " .. (r > 0 and ZO_FormatCountdownTimer(r) or "NOW"))
+            alerts:showInfo(1, Lang.t("lc_orphic_thrall_label")
+                .. (r > 0 and ZO_FormatCountdownTimer(r) or Lang.t("common_now")))
         end
         if self.firstFlood then
-            alerts:showInfo(2, "Flood:  first ~3s")
+            alerts:showInfo(2, Lang.t("lc_orphic_flood_first"))
         else
             local r = self.lightningFloodTimer:remaining()
-            alerts:showInfo(2, "Flood:  " .. (r > 0 and ZO_FormatCountdownTimer(r) or "NOW"))
+            alerts:showInfo(2, Lang.t("lc_orphic_flood_label")
+                .. (r > 0 and ZO_FormatCountdownTimer(r) or Lang.t("common_now")))
         end
     else
         alerts:showInfo(1, "")

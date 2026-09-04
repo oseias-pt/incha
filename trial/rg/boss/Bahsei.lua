@@ -28,6 +28,7 @@
 ---   TODO: verify exact HM health pool in-game.
 
 local RockgroveCommon = require("trial.rg.RockgroveCommon")
+local Lang = require("core.Lang")
 
 -- -- Ability IDs ------------------------------------------------------------
 local CURSED_GROUND    = 152475   -- combatRoute: ACTION_RESULT_BEGIN -> Cursed Ground alert
@@ -65,7 +66,7 @@ local Bahsei = {}
 Bahsei.__index = Bahsei
 
 Bahsei.key               = "bahsei"
-Bahsei.name              = "Bahsei"      -- TODO: verify; may be "Flame-Herald Bahsei"
+Bahsei.name              = Lang.t("boss_bahsei")      -- TODO: verify; may be "Flame-Herald Bahsei"
 -- location: arena AABB not yet captured  -  detection is name-based.
 -- To add AABB: stand in arena, run /script d(GetUnitWorldPosition("boss1"))
 Bahsei.hmHealthThreshold = 100000001     -- TODO: verify exact HM health pool in-game
@@ -282,9 +283,9 @@ local function showCursedGroundLine(self, alerts, now)
     if self.lastCursedGround > 0 then
         local T = 28 - (now - self.lastCursedGround)
         if T > 0 then
-            alerts:showInfo(1, "|caa50ffNext Curse|r: " .. string.format("%.0f", T) .. "s")
+            alerts:showInfo(1, Lang.t("rg_bahsei_next_curse", T))
         else
-            alerts:showInfo(1, "|caa50ffNext Curse|r: |cff0000INC|r")
+            alerts:showInfo(1, Lang.t("rg_bahsei_next_curse_inc"))
         end
     else
         alerts:showInfo(1, "")
@@ -296,14 +297,12 @@ local function showPortalLine(self, alerts, now, isHM)
     if isHM then
         local delta = self.nextPortal - now
         if delta > 0 then
-            alerts:showInfo(2,
-                "|c38bdf8Portal|r |c7b82a0(" .. self.portalNumber .. ")|r: " ..
-                string.format("%.0f", delta) .. "s")
+            alerts:showInfo(2, Lang.t("rg_bahsei_portal_cd", self.portalNumber, delta))
         else
-            local dir = self.lastPortalCW and "|c00cc00CW|r" or "|cff8040CCW|r"
+            local dir = self.lastPortalCW and Lang.t("rg_bahsei_portal_cw") or Lang.t("rg_bahsei_portal_ccw")
             local cnt = self.numPlayersInPortal
             alerts:showInfo(2, "|c38bdf8Portal|r " .. dir ..
-                " |c7b82a0in progress|r" ..
+                " " .. Lang.t("rg_bahsei_portal_progress") ..
                 (cnt > 0 and (" |c888888(" .. cnt .. ")|r") or ""))
         end
     else
@@ -317,16 +316,13 @@ local function showDeathTouchLine(self, alerts, now, isHM)
     local explodeDelta = (self.nextMtExplosion > 0) and (self.nextMtExplosion - now) or -1
     local dtDelta      = (self.lastDeathTouch  > 0) and (9 - (now - self.lastDeathTouch)) or -1
     if explodeDelta >= 0 and explodeDelta <= 3 then
-        alerts:showInfo(3, "|cff2020TANK EXPLODING|r: " ..
-            string.format("%.0f", explodeDelta) .. "s!")
+        alerts:showInfo(3, Lang.t("rg_bahsei_tank_exploding", explodeDelta))
     elseif dtDelta > 0 then
-        alerts:showInfo(3, "|c6699ffDeath Touch|r: " ..
-            string.format("%.1f", dtDelta) .. "s")
+        alerts:showInfo(3, Lang.t("rg_bahsei_death_touch", dtDelta))
     elseif isHM and self.selfDoNotPortalTime > 0 then
         local noPortalDelta = self.selfDoNotPortalTime - now
         if noPortalDelta > 0 then
-            alerts:showInfo(3, "|cff6030No Portal|r: " ..
-                string.format("%.0f", noPortalDelta) .. "s")
+            alerts:showInfo(3, Lang.t("rg_bahsei_no_portal", noPortalDelta))
         else
             alerts:showInfo(3, "")
         end
@@ -340,9 +336,9 @@ local function showSickleLine(self, alerts, now, isHM)
     if isHM and self.nextSickle > 0 then
         local T = self.nextSickle - now
         if T > 0 and T <= 15 then
-            alerts:showInfo(4, "|ccc80ffNext Sickle|r: " .. string.format("%.0f", T) .. "s")
+            alerts:showInfo(4, Lang.t("rg_bahsei_next_sickle", T))
         elseif T <= 0 then
-            alerts:showInfo(4, "|ccc80ffNext Sickle|r: |cff0000INC|r")
+            alerts:showInfo(4, Lang.t("rg_bahsei_next_sickle_inc"))
         else
             alerts:showInfo(4, "")
         end

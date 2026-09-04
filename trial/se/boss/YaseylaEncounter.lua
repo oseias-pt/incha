@@ -3,6 +3,7 @@ local Timer    = require("lib.Timer")
 local CA       = require("lib.CA")
 local BossBase = require("lib.BossBase")
 local CastDur  = require("lib.CastDur")
+local Lang     = require("core.Lang")
 local Settings = require("core.Settings")
 
 -- -- Ability IDs (from SanitysEdgeHelper / SSEA data) ------------------------------
@@ -66,7 +67,7 @@ local YaseylaEncounter = {}
 YaseylaEncounter.__index = YaseylaEncounter
 
 YaseylaEncounter.key               = "yaseyla"
-YaseylaEncounter.nameAliases       = { "Exarchanic Yaseyla" }
+YaseylaEncounter.nameAliases       = { Lang.t("boss_yaseyla") }
 YaseylaEncounter.hmHealthThreshold = 80000000   -- vet ~65M, HM ~97.8M
 -- location: placeholder - Sunken Elder arena AABB not yet captured.
 -- Detection falls back to nameAliases (name-based, may fail on non-EN clients).
@@ -115,10 +116,10 @@ local function handleFrostBomb(self, context, alerts, abilityId,
     self.firstFrost = false
     self.frostTimer:reset(FROST_CD)
     if IsUnitPlayer(unitTag) then
-        alerts:showAction("Frost Bomb on you! Drop it!")
-        CA.alert(nil, "FROST BOMB - drop!", 0x99CCFFFF, SOUNDS.NONE, 3000)
+        alerts:showAction(Lang.t("se_yaseyla_frost_bomb_you"))
+        CA.alert(nil, Lang.t("se_yaseyla_frost_bomb_alert"), 0x99CCFFFF, SOUNDS.NONE, 3000)
     elseif unitName and unitName ~= "" then
-        alerts:showAction("Frost Bomb -> " .. unitName)
+        alerts:showAction(Lang.t("se_yaseyla_frost_bomb_tgt", unitName))
     end
 end
 
@@ -129,31 +130,31 @@ local function handleFireBombs(self, context, alerts, abilityId,
     local cd = self.executePhase and FIREBOMB_EXEC_CD or FIREBOMB_CD
     self.firebombTimer:reset(cd)
     local target = (unitName and unitName ~= "") and unitName or "?"
-    alerts:showAction("Fire Bombs -> " .. target)
+    alerts:showAction(Lang.t("se_yaseyla_fire_bombs_tgt", target))
     local dur = CastDur.get(abilityId, FALLBACK_DUR)
-    local cid = CA.alertCast(abilityId, "Fire Bombs!", dur, COL_FIRE)
+    local cid = CA.alertCast(abilityId, Lang.t("se_yaseyla_fire_bombs_bar"), dur, COL_FIRE)
     if cid and unitId then self.alertList[unitId] = cid end
 end
 
 local function handleChainPull(self, context, alerts, abilityId, ...)
     self.chainTimer:reset(CHAIN_CD)
-    alerts:showAction("Chains!")
+    alerts:showAction(Lang.t("se_yaseyla_chains"))
 end
 
 local function handleIgnite(self, context, alerts, abilityId, unitTag, ...)
     if not IsUnitPlayer(unitTag) then return end
-    alerts:showAction("Ignite on you! Move!")
+    alerts:showAction(Lang.t("se_yaseyla_ignite"))
 end
 
 local function handleDeflect(self, context, alerts, abilityId, ...)
     self.shrapnelCount = self.shrapnelCount + 1
-    alerts:showAction("SHRAPNEL! Stack! (" .. self.shrapnelCount .. ")")
-    CA.alert(nil, "STACK!", 0xFF0033FF, SOUNDS.NONE, 3000)
+    alerts:showAction(Lang.t("se_yaseyla_shrapnel_you", self.shrapnelCount))
+    CA.alert(nil, Lang.t("se_yaseyla_deflect_alert"), 0xFF0033FF, SOUNDS.NONE, 3000)
 end
 
 local function handleShrapnel(self, context, alerts, abilityId, ...)
-    alerts:showAction("Shrapnel! Stack!")
-    CA.alert(nil, "SHRAPNEL - STACK!", 0xFF0033FF, SOUNDS.NONE, 3000)
+    alerts:showAction(Lang.t("se_yaseyla_shrapnel"))
+    CA.alert(nil, Lang.t("se_yaseyla_shrapnel_alert"), 0xFF0033FF, SOUNDS.NONE, 3000)
 end
 
 local function handleKnifeBlast(self, context, alerts, abilityId,
@@ -161,23 +162,23 @@ local function handleKnifeBlast(self, context, alerts, abilityId,
                                  sourceUnitName, unitName)
     local target = (unitName and unitName ~= "") and unitName or "?"
     local dur = CastDur.get(abilityId, FALLBACK_DUR)
-    CA.alertCast(abilityId, "Knife Blast -> " .. target, dur, COL_BLADE)
-    alerts:showAction("Knife Blast -> " .. target)
+    CA.alertCast(abilityId, Lang.t("se_yaseyla_knife_blast_bar", target), dur, COL_BLADE)
+    alerts:showAction(Lang.t("se_yaseyla_knife_blast", target))
 end
 
 local function handleVengefulStrike(self, context, alerts, abilityId, ...)
-    alerts:showAction("Vengeful Strike! Dodge!")
-    CA.alert(nil, "VENGEFUL STRIKE", 0xFF4400FF, SOUNDS.NONE, 2500)
+    alerts:showAction(Lang.t("se_yaseyla_vengeful_strike"))
+    CA.alert(nil, Lang.t("se_yaseyla_vengeful_alert"), 0xFF4400FF, SOUNDS.NONE, 2500)
 end
 
 local function handleVantonsClarity(self, context, alerts, abilityId, ...)
-    alerts:showAction("Portal! Vanton's Clarity")
-    CA.alert(nil, "PORTAL - synergy!", 0xAAFFAAFF, SOUNDS.NONE, 4000)
+    alerts:showAction(Lang.t("se_yaseyla_portal"))
+    CA.alert(nil, Lang.t("se_yaseyla_portal_alert"), 0xAAFFAAFF, SOUNDS.NONE, 4000)
 end
 
 local function handleSeethe(self, context, alerts, abilityId, ...)
-    alerts:showAction("ENRAGE! Seethe!")
-    CA.alert(nil, "ENRAGE!", 0xFF0000FF, SOUNDS.NONE, 5000)
+    alerts:showAction(Lang.t("se_yaseyla_enrage"))
+    CA.alert(nil, Lang.t("se_yaseyla_enrage_alert"), 0xFF0000FF, SOUNDS.NONE, 5000)
 end
 
 local function handleWamasuCharge(self, context, alerts, abilityId,
@@ -185,23 +186,23 @@ local function handleWamasuCharge(self, context, alerts, abilityId,
                                    sourceUnitName, unitName)
     local target = (unitName and unitName ~= "") and unitName or "?"
     local dur = CastDur.get(abilityId, FALLBACK_DUR)
-    CA.alertCast(abilityId, "Charge -> " .. target, dur, COL_FIRE)
+    CA.alertCast(abilityId, Lang.t("se_yaseyla_charge_bar", target), dur, COL_FIRE)
 end
 
 local function handleHeadbutt(self, context, alerts, abilityId,
                                unitTag, sourceUnitTag, sourceUnitId, unitId,
                                sourceUnitName, unitName)
     local target = (unitName and unitName ~= "") and unitName or "?"
-    alerts:showAction("Headbutt -> " .. target .. "! DODGE!")
-    CA.alert(nil, "HEADBUTT - DODGE!", 0xFF6600FF, SOUNDS.NONE, 2500)
+    alerts:showAction(Lang.t("se_yaseyla_headbutt", target))
+    CA.alert(nil, Lang.t("se_yaseyla_headbutt_alert"), 0xFF6600FF, SOUNDS.NONE, 2500)
 end
 
 local function handleOvwLightning(self, context, alerts, abilityId,
                                    unitTag, sourceUnitTag, sourceUnitId, unitId,
                                    sourceUnitName, unitName)
     if not IsUnitPlayer(unitTag) then return end
-    alerts:showAction("Overwhelming Lightning on you!")
-    CA.alert(nil, "OVW LIGHTNING", 0xFFDD44FF, SOUNDS.NONE, 3000)
+    alerts:showAction(Lang.t("se_yaseyla_overwhelming"))
+    CA.alert(nil, Lang.t("se_yaseyla_ovw_lightning"), 0xFFDD44FF, SOUNDS.NONE, 3000)
 end
 
 YaseylaEncounter.combatRoutes = {
@@ -248,28 +249,33 @@ YaseylaEncounter.combatRoutes = {
 -- Line 1: Fire Bombs CD; label switches to "Bombs (exec)" once execute phase begins.
 local function showFireBombLine(self, alerts)
     if self.firstFirebomb then
-        alerts:showInfo(1, "Fire Bombs: first ~7s")
+        alerts:showInfo(1, Lang.t("se_yaseyla_fire_bombs_first"))
     else
         local r     = self.firebombTimer:remaining()
-        local label = self.executePhase and "Bombs (exec)" or "Fire Bombs"
-        alerts:showInfo(1, label .. ": " .. (r > 0 and ZO_FormatCountdownTimer(r) or "ready"))
+        local label = self.executePhase
+            and Lang.t("se_yaseyla_bombs_exec_name")
+            or  Lang.t("se_yaseyla_fire_bombs_name")
+        alerts:showInfo(1, Lang.t("se_yaseyla_fire_bombs_label", label)
+            .. (r > 0 and ZO_FormatCountdownTimer(r) or Lang.t("common_ready")))
     end
 end
 
 -- Line 3: Frost Bomb CD; shows estimated first-cast window before the ability is seen.
 local function showFrostBombLine(self, alerts)
     if self.firstFrost then
-        alerts:showInfo(3, "Frost: first ~17s")
+        alerts:showInfo(3, Lang.t("se_yaseyla_frost_first"))
     else
         local r = self.frostTimer:remaining()
-        alerts:showInfo(3, "Frost Bomb: " .. (r > 0 and ZO_FormatCountdownTimer(r) or "ready"))
+        alerts:showInfo(3, Lang.t("se_yaseyla_frost_bomb_label")
+            .. (r > 0 and ZO_FormatCountdownTimer(r) or Lang.t("common_ready")))
     end
 end
 
 function YaseylaEncounter:onUpdate(context, alerts)
     showFireBombLine(self, alerts)
     local rc = self.chainTimer:remaining()
-    alerts:showInfo(2, "Chains: " .. (rc > 0 and ZO_FormatCountdownTimer(rc) or "ready"))
+    alerts:showInfo(2, Lang.t("se_yaseyla_chains_label")
+        .. (rc > 0 and ZO_FormatCountdownTimer(rc) or Lang.t("common_ready")))
     showFrostBombLine(self, alerts)
     alerts:showInfo(4, "")
     alerts:showInfo(5, "")
@@ -281,7 +287,7 @@ function YaseylaEncounter:onPowerUpdate(context, healthPercent, alerts)
     -- Enter execute phase when HP drops below 26%
     if not self.executePhase and healthPercent > 0 and healthPercent < FIREBOMB_EXEC_THOLD then
         self.executePhase = true
-        alerts:showAction("Execute! (<26%) Fire Bombs accelerate")
+        alerts:showAction(Lang.t("se_yaseyla_execute"))
     end
 
     -- HP milestone pre-warnings (Wamasu+Archers at 90/70/50/30/20/10%;
@@ -289,39 +295,39 @@ function YaseylaEncounter:onPowerUpdate(context, healthPercent, alerts)
     if not Settings.trial("se").showPercent then return end
     if not self.m90 and healthPercent < 90 then
         self.m90 = true
-        alerts:showAction("90% - Wamasu + Archers incoming!")
+        alerts:showAction(Lang.t("se_yaseyla_90pct"))
     elseif not self.m80 and healthPercent < 80 then
         self.m80 = true
-        alerts:showAction("80% - Shrapnel incoming!")
+        alerts:showAction(Lang.t("se_yaseyla_80pct"))
     elseif not self.m70 and healthPercent < 70 then
         self.m70 = true
-        alerts:showAction("70% - Wamasu + Archers incoming!")
+        alerts:showAction(Lang.t("se_yaseyla_70pct"))
     elseif not self.m60 and healthPercent < 60 then
         self.m60 = true
-        alerts:showAction("60% - Portal phase!")
-        CA.alert(nil, "PORTAL PHASE ~60%", 0xAAFFAAFF, SOUNDS.NONE, 4000)
+        alerts:showAction(Lang.t("se_yaseyla_60pct"))
+        CA.alert(nil, Lang.t("se_yaseyla_portal_pct_alert", 60), 0xAAFFAAFF, SOUNDS.NONE, 4000)
     elseif not self.m55 and healthPercent < 55 then
         self.m55 = true
-        alerts:showAction("55% - Shrapnel incoming!")
+        alerts:showAction(Lang.t("se_yaseyla_55pct"))
     elseif not self.m50 and healthPercent < 50 then
         self.m50 = true
-        alerts:showAction("50% - Wamasu + Archers incoming!")
+        alerts:showAction(Lang.t("se_yaseyla_50pct"))
     elseif not self.m35 and healthPercent < 35 then
         self.m35 = true
-        alerts:showAction("35% - Portal phase!")
-        CA.alert(nil, "PORTAL PHASE ~35%", 0xAAFFAAFF, SOUNDS.NONE, 4000)
+        alerts:showAction(Lang.t("se_yaseyla_35pct"))
+        CA.alert(nil, Lang.t("se_yaseyla_portal_pct_alert", 35), 0xAAFFAAFF, SOUNDS.NONE, 4000)
     elseif not self.m30 and healthPercent < 30 then
         self.m30 = true
-        alerts:showAction("30% - Wamasu + Archers incoming!")
+        alerts:showAction(Lang.t("se_yaseyla_30pct"))
     elseif not self.m25 and healthPercent < 25 then
         self.m25 = true
-        alerts:showAction("25% - Shrapnel incoming!")
+        alerts:showAction(Lang.t("se_yaseyla_25pct"))
     elseif not self.m20 and healthPercent < 20 then
         self.m20 = true
-        alerts:showAction("20% - Wamasu + Archers + Shrapnel!")
+        alerts:showAction(Lang.t("se_yaseyla_20pct"))
     elseif not self.m10 and healthPercent < 10 then
         self.m10 = true
-        alerts:showAction("10% - Wamasu + Archers + Shrapnel!")
+        alerts:showAction(Lang.t("se_yaseyla_10pct"))
     end
 end
 

@@ -1,4 +1,5 @@
 local Timer    = require("lib.Timer")
+local Lang     = require("core.Lang")
 
 local CA       = require("lib.CA")
 local BossBase = require("lib.BossBase")
@@ -46,7 +47,7 @@ local OlmsEncounter = {}
 OlmsEncounter.__index = OlmsEncounter
 
 OlmsEncounter.key               = "olms"
-OlmsEncounter.nameAliases       = { "Saint Olms the Just" }
+OlmsEncounter.nameAliases       = { Lang.t("boss_saint_olms") }
 -- hmHealthThreshold: math.huge until measured in-game on vet HM.
 -- (0 would make detectDifficulty always return HARDMODE.)
 -- To calibrate: pull on vet HM, run /script d(GetUnitPower("boss1", POWERTYPE_HEALTH))
@@ -120,7 +121,7 @@ end
 -- (Olms has no shared common module; no per-unit DIED cleanup needed.)
 
 local function handleStormTheHeavens(self, context, alerts, abilityId, ...)
-    alerts:showAction("Kite! (Storm the Heavens)")
+    alerts:showAction(Lang.t("as_olms_kite_storm"))
     CA.alert(nil, "KITE!", 0xFF4400FF, SOUNDS.NONE, 3000)
     self.stormTimer:reset()
     self.stormPreWarned = false
@@ -128,26 +129,26 @@ end
 
 local function handleScaldingRoar(self, context, alerts, abilityId,
                                    unitTag, sourceUnitTag, sourceUnitId, unitId, ...)
-    alerts:showAction("Steam Breath! Move!")
+    alerts:showAction(Lang.t("as_olms_steam_breath"))
     local dur = CastDur.get(OLMS_SCALDING_ROAR, FALLBACK_ROAR_DUR)
-    local cid = CA.alertCast(abilityId, "Steam Breath!", dur,
+    local cid = CA.alertCast(abilityId, Lang.t("as_olms_steam_breath"), dur,
         { -3, 0, false, { 0.8, 0.4, 0, 0.4 }, { 0.8, 0.4, 0, 0.8 } })
     if cid and unitId then self.alertList[unitId] = cid end
     self.steamTimer:reset()
 end
 
 local function handleExhaustiveCharges(self, context, alerts, abilityId, ...)
-    alerts:showAction("Charges!")
+    alerts:showAction(Lang.t("as_olms_charges"))
     self.chargesTimer:reset()
 end
 
 local function handleTrialByFire(self, context, alerts, abilityId, ...)
-    alerts:showAction("Trial by Fire!")
+    alerts:showAction(Lang.t("as_olms_trial_by_fire"))
     self.fireTimer:reset()
 end
 
 local function handleGustsOfSteam(self, context, alerts, abilityId, ...)
-    alerts:showAction("Jump! Dodge!")
+    alerts:showAction(Lang.t("as_olms_jump_dodge"))
     if self.nextJumpThreshold <= #JUMP_THRESHOLDS then
         self.nextJumpThreshold = self.nextJumpThreshold + 1
     end
@@ -173,17 +174,17 @@ local function handleDefilingBlast(self, context, alerts, abilityId,
                                     unitTag, sourceUnitTag, sourceUnitId, unitId,
                                     sourceUnitName, unitName)
     local target = (unitName and unitName ~= "") and unitName or "?"
-    alerts:showAction("Blast! → " .. target)
+    alerts:showAction(Lang.t("as_olms_blast_target", target))
     local dur = CastDur.get(LLOTHIS_DEFILING_BLAST, FALLBACK_BLAST_DUR)
-    local cid = CA.alertCast(abilityId, "Blast → " .. target, dur,
+    local cid = CA.alertCast(abilityId, Lang.t("as_olms_blast_bar", target), dur,
         { -3, 0, false, { 0.6, 0, 0.8, 0.4 }, { 0.6, 0, 0.8, 0.8 } })
     if cid and unitId then self.alertList[unitId] = cid end
     self.blastTimer:reset()
 end
 
 local function handleOppressiveBolts(self, context, alerts, abilityId, ...)
-    alerts:showAction("Interrupt Llothis!")
-    CA.alert(nil, "Interrupt!", 0xFF0000FF, SOUNDS.NONE, 2000)
+    alerts:showAction(Lang.t("as_olms_interrupt_llothis"))
+    CA.alert(nil, Lang.t("common_interrupt"), 0xFF0000FF, SOUNDS.NONE, 2000)
     self.boltsTimer:reset()
 end
 
@@ -191,9 +192,9 @@ local function handleTeleportStrike(self, context, alerts, abilityId,
                                      unitTag, sourceUnitTag, sourceUnitId, unitId,
                                      sourceUnitName, unitName)
     local target = (unitName and unitName ~= "") and unitName or "?"
-    alerts:showAction("Strike! → " .. target)
+    alerts:showAction(Lang.t("as_olms_strike_target", target))
     local dur = CastDur.get(FELMS_TELEPORT_STRIKE, FALLBACK_STRIKE_DUR)
-    local cid = CA.alertCast(abilityId, "Strike → " .. target, dur,
+    local cid = CA.alertCast(abilityId, Lang.t("as_olms_strike_bar", target), dur,
         { -3, 0, false, { 0, 0.6, 0.8, 0.4 }, { 0, 0.6, 0.8, 0.8 } })
     if cid and unitId then self.alertList[unitId] = cid end
     self.jumpTimer:reset()
@@ -231,11 +232,11 @@ end
 local function handleStaticShield(self, context, alerts, changeType, abilityId, ...)
     if changeType == EFFECT_RESULT_GAINED then
         self.protectorUp = true
-        alerts:showAction("Kill the Protector!")
-        CA.alert(nil, "PROTECTOR ACTIVE", 0xFFCC00FF, SOUNDS.NONE, 4000)
+        alerts:showAction(Lang.t("as_olms_kill_protector"))
+        CA.alert(nil, Lang.t("as_olms_kill_protector"), 0xFFCC00FF, SOUNDS.NONE, 4000)
     elseif changeType == EFFECT_RESULT_FADED then
         self.protectorUp = false
-        alerts:showAction("Shield down!")
+        alerts:showAction(Lang.t("as_olms_shield_down"))
     end
 end
 
@@ -268,7 +269,7 @@ OlmsEncounter.effectRoutes = {
 -- Fires a one-shot CA pre-warning when the countdown drops into the 6 s window.
 local function showStormLine(self, alerts)
     if self.protectorUp then
-        alerts:showInfo(1, "|cffcc00[!] PROTECTOR ACTIVE|r")
+        alerts:showInfo(1, Lang.t("as_olms_protector_active"))
         return
     end
     local t = self.stormTimer:remaining()
@@ -278,7 +279,8 @@ local function showStormLine(self, alerts)
     elseif t > 6 then
         self.stormPreWarned = false
     end
-    alerts:showInfo(1, "Storm:   " .. (t > 0 and ZO_FormatCountdownTimer(t) or "ready"))
+    alerts:showInfo(1, Lang.t("as_olms_storm_label")
+        .. (t > 0 and ZO_FormatCountdownTimer(t) or Lang.t("common_ready")))
 end
 
 -- Lines 2-4: Olms core timers (always visible).
@@ -286,9 +288,11 @@ local function showOlmsLines(self, alerts)
     local t2 = self.steamTimer:remaining()
     local t3 = self.chargesTimer:remaining()
     local t4 = self.fireTimer:remaining()
-    alerts:showInfo(2, "Steam:   " .. (t2 > 0 and ZO_FormatCountdownTimer(t2) or "ready"))
-    alerts:showInfo(3, "Charges: " .. (t3 > 0 and ZO_FormatCountdownTimer(t3) or "ready"))
-    alerts:showInfo(4, t4 > 0 and ("Fire:    " .. ZO_FormatCountdownTimer(t4)) or "")
+    alerts:showInfo(2, Lang.t("as_olms_steam_label")
+        .. (t2 > 0 and ZO_FormatCountdownTimer(t2) or Lang.t("common_ready")))
+    alerts:showInfo(3, Lang.t("as_olms_charges_label")
+        .. (t3 > 0 and ZO_FormatCountdownTimer(t3) or Lang.t("common_ready")))
+    alerts:showInfo(4, t4 > 0 and (Lang.t("as_olms_fire_label") .. ZO_FormatCountdownTimer(t4)) or "")
 end
 
 -- Line 5: Llothis — not yet spawned, dormant, or blast timer.
@@ -296,10 +300,11 @@ local function showLlothisLine(self, alerts)
     if self.llothisSpawnGs == nil then
         alerts:showInfo(5, "")
     elseif not self.llothisActive then
-        alerts:showInfo(5, "Llothis: DORMANT")
+        alerts:showInfo(5, Lang.t("as_olms_llothis_dormant"))
     else
         local t = self.blastTimer:remaining()
-        alerts:showInfo(5, "Blast:   " .. (t > 0 and ZO_FormatCountdownTimer(t) or "ready"))
+        alerts:showInfo(5, Lang.t("as_olms_blast_label")
+            .. (t > 0 and ZO_FormatCountdownTimer(t) or Lang.t("common_ready")))
     end
 end
 
@@ -307,7 +312,8 @@ end
 local function showBoltsLine(self, alerts)
     if self.llothisActive then
         local t = self.boltsTimer:remaining()
-        alerts:showInfo(6, "Bolts:   " .. (t > 0 and ZO_FormatCountdownTimer(t) or "!INTERRUPT"))
+        alerts:showInfo(6, Lang.t("as_olms_bolts_label")
+            .. (t > 0 and ZO_FormatCountdownTimer(t) or Lang.t("common_interrupt")))
     else
         alerts:showInfo(6, "")
     end
@@ -318,10 +324,11 @@ local function showFelmsLine(self, alerts)
     if self.felmsSpawnGs == nil then
         alerts:showInfo(7, "")
     elseif not self.felmsActive then
-        alerts:showInfo(7, "Felms:   DORMANT")
+        alerts:showInfo(7, Lang.t("as_olms_felms_dormant"))
     else
         local t = self.jumpTimer:remaining()
-        alerts:showInfo(7, "Strike:  " .. (t > 0 and ZO_FormatCountdownTimer(t) or "ready"))
+        alerts:showInfo(7, Lang.t("as_olms_strike_label")
+            .. (t > 0 and ZO_FormatCountdownTimer(t) or Lang.t("common_ready")))
     end
 end
 
@@ -340,7 +347,7 @@ function OlmsEncounter:onPowerUpdate(context, healthPercent, alerts)
     if self.nextJumpThreshold > #JUMP_THRESHOLDS then return end
     local threshold = JUMP_THRESHOLDS[self.nextJumpThreshold]
     if healthPercent <= threshold + 3 and healthPercent > threshold then
-        alerts:showInfo(1, "Jump at " .. threshold .. "%!")
+        alerts:showInfo(1, Lang.t("as_olms_jump_at", threshold))
     end
 end
 

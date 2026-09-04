@@ -6,6 +6,7 @@
 
 local SunspireCommon = require("trial.ss.SunspireCommon")
 local BossBase       = require("lib.BossBase")
+local Lang           = require("core.Lang")
 local MapUtils       = require("lib.MapUtils")
 
 -- -- Ability IDs ------------------------------------------------------------
@@ -18,18 +19,19 @@ local LASER_3         = 122822   -- combatRoute: ACTION_RESULT_BEGIN -> laser 32
 local ICE_EFFECT_CAST = 124687   -- effectRoute: EFFECT_RESULT_GAINED -> TombCast signal
 local ICE_EFFECT_ARM  = 119638   -- effectRoute: EFFECT_RESULT_GAINED / FADED -> TombArmed / TombFaded
 
--- -- IceTomb display strings (match HTS palette) ---------------------------
-local sA    = "[|c00ff00A|r]: "
-local sB    = "[|c00ff00B|r]: "
-local sTake = "|cd92626Take|r "
-local sHeal = "|c00ffffHeal|r "
-local sDone = "|c00FF00Done|r"
-local sInc  = "|c00ffffinc|r"
+-- -- IceTomb display strings (from Lang table) --------------------------------
+local sA    = Lang.t("ss_lokke_tomb_slot_a")
+local sB    = Lang.t("ss_lokke_tomb_slot_b")
+local sTake = Lang.t("ss_lokke_tomb_take")
+local sHeal = Lang.t("ss_lokke_tomb_heal")
+local sDone = Lang.t("ss_lokke_tomb_done")
+local sInc  = Lang.t("ss_lokke_tomb_inc")
 
 local NEXT_TOMB = { [0]=1, [1]=2, [2]=3, [3]=1 }   -- iceNumber -> next label
 
 local CA = require("lib.CA")
 local CastDur = require("lib.CastDur")
+local Lang = require("core.Lang")
 
 local function newTombSlots()
     return {
@@ -126,7 +128,7 @@ Lokke.__index = Lokke
 setmetatable(Lokke, {__index = BossBase})
 
 Lokke.key  = "lokke"
-Lokke.name = "Lokkestiiz"
+Lokke.name = Lang.t("boss_lokkestiiz")
 -- location: Sunspire arena is one shared room for all three bosses  -  a single AABB
 -- would be ambiguous.  Name-based detection is intentional; name is well-established
 -- EN string (same client since Elsweyr launch), non-EN risk is low.
@@ -225,7 +227,7 @@ local function handleGlacialFist(self, context, alerts, abilityId,
         end
     end
     if show then
-        alerts:showAction("Block! (Glacial Fist)")
+        alerts:showAction(Lang.t("ss_lokke_block_glacial"))
         local dur = CastDur.get(GLACIAL_FIST, FALLBACK_FIST_DUR)
         local cid = CA.alertCast(abilityId, sourceUnitName, dur,
             { -2, 0, false, { 0.3, 0.7, 1.0, 0.4 }, { 0.3, 0.7, 1.0, 0.8 } })
@@ -289,9 +291,9 @@ local function showLaserLandingLine(self, alerts, now, context)
     local laser   = self.laserTime   - now
     local landing = self.landingTime - now
     if laser > 0 then
-        alerts:showInfo(4, "|c7fffd4Laser|r: " .. string.format("%.0f", laser) .. "s")
+        alerts:showInfo(4, Lang.t("ss_lokke_laser", laser))
     elseif landing > 0 then
-        alerts:showInfo(4, "|c5cd65cLanding|r: " .. string.format("%.0f", landing) .. "s")
+        alerts:showInfo(4, Lang.t("ss_landing", landing))
     else
         local hp = context.healthPercent
         if hp and hp > 20 then
@@ -301,8 +303,7 @@ local function showLaserLandingLine(self, alerts, now, context)
             elseif hp >= 21 then flyAt = 21
             end
             if flyAt and (hp - flyAt) <= 5 then
-                alerts:showInfo(4, "|cffa500Can Fly In|r: " ..
-                    string.format("%.1f", hp - flyAt) .. "%")
+                alerts:showInfo(4, Lang.t("ss_can_fly_in", hp - flyAt))
             else
                 alerts:showInfo(4, "")
             end
@@ -328,20 +329,19 @@ local function showIceTombLines(self, alerts, now)
             local iN = NEXT_TOMB[self.iceNumber]
             local header
             if T2 <= 0 then
-                header = "|c00ffffIce Tomb|r |cff0000" .. iN .. "|r |cff0000INC|r"
+                header = Lang.t("ss_lokke_tomb_header_inc", iN)
             else
-                header = "|c00ffffIce Tomb|r |cff0000" .. iN ..
-                         "|r |c00ffffin|r: " .. string.format("%.0f", T2) .. "s"
+                header = Lang.t("ss_lokke_tomb_header_cd", iN, T2)
             end
             alerts:showInfo(1, header)
             alerts:showInfo(2, "")
             alerts:showInfo(3, "")
         end
     else
-        alerts:showInfo(1, "|c00ffffIce Tomb|r |cff0000" .. self.iceNumber .. "|r")
+        alerts:showInfo(1, Lang.t("ss_lokke_tomb_active", self.iceNumber))
         alerts:showInfo(2, formatTombLabel(self.iceTomb[1], sA, now))
         if self.iceDouble then
-            alerts:showInfo(3, sB .. "|c00ff00Double|r")
+            alerts:showInfo(3, sB .. Lang.t("ss_lokke_tomb_double"))
         else
             alerts:showInfo(3, formatTombLabel(self.iceTomb[2], sB, now))
         end

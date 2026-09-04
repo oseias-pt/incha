@@ -34,6 +34,7 @@
 ---   TODO: verify exact HM health pool in-game.
 
 local RockgroveCommon = require("trial.rg.RockgroveCommon")
+local Lang = require("core.Lang")
 
 local SHIELD_EVENT_KEY = ADDON_PREFIX .. "RG_XalvakkaShield"
 
@@ -87,7 +88,7 @@ Xalvakka.__index = Xalvakka
 Xalvakka.common = RockgroveCommon   -- C3: common mechanic dispatch
 
 Xalvakka.key               = "xalvakka"
-Xalvakka.name              = "Xalvakka"     -- TODO: verify exact unit name via GetUnitName("boss1")
+Xalvakka.name              = Lang.t("boss_xalvakka")     -- TODO: verify exact unit name via GetUnitName("boss1")
 -- location: arena AABB not yet captured  -  detection is name-based.
 -- To add AABB: stand in arena, run /script d(GetUnitWorldPosition("boss1"))
 Xalvakka.hmHealthThreshold = 100000001      -- TODO: verify exact HM health pool
@@ -277,10 +278,9 @@ local function showJumpLine(self, alerts, now, isHM)
     if isHM and self.nextJump > 0 and self.numJumps < 4 then
         local T = self.nextJump - now
         if T > 0 then
-            alerts:showInfo(1,
-                "|cffaa40Next Jump|r: " .. string.format("%.0f", T) .. "s")
+            alerts:showInfo(1, Lang.t("rg_xalvakka_next_jump", T))
         else
-            alerts:showInfo(1, "|cffaa40Next Jump|r: |cff0000INC|r")
+            alerts:showInfo(1, Lang.t("rg_xalvakka_next_jump_inc"))
         end
     else
         alerts:showInfo(1, "")
@@ -292,8 +292,7 @@ local function showSoulLine(self, alerts, now)
     if self.soulStart > 0 then
         local T = SOUL_WINDOW - (now - self.soulStart)
         if T > 0 then
-            alerts:showInfo(2,
-                "|cff6600Soul Resonance|r: " .. string.format("%.1f", T) .. "s")
+            alerts:showInfo(2, Lang.t("rg_xalvakka_soul_res", T))
         else
             self.soulStart = 0
             alerts:showInfo(2, "")
@@ -314,9 +313,9 @@ local function showManifoldLine(self, alerts)
         for _, name in pairs(self.manifoldOthers) do
             parts[#parts + 1] = "|cAA44ff" .. name .. "|r"
         end
-        alerts:showInfo(3, "Manifold: " .. table.concat(parts, ", "))
+        alerts:showInfo(3, Lang.t("rg_xalvakka_manifold", table.concat(parts, ", ")))
     elseif self.shellShield > 0 then
-        alerts:showInfo(3, "|c75E6DAShield|r: " .. fmtShield(self.shellShield))
+        alerts:showInfo(3, Lang.t("rg_xalvakka_shield", fmtShield(self.shellShield)))
     else
         alerts:showInfo(3, "")
     end
@@ -327,13 +326,11 @@ end
 local function showRunLine(self, alerts, context)
     local hp = context.healthPercent
     if hp and hp > RUN1_BOT and hp <= RUN1_TOP then
-        alerts:showInfo(4, "|cffdd00RUN IN|r: " ..
-            string.format("%.1f%%", hp - RUN1_BOT))
+        alerts:showInfo(4, Lang.t("rg_xalvakka_run_in", hp - RUN1_BOT))
     elseif hp and hp > RUN2_BOT and hp <= RUN2_TOP then
-        alerts:showInfo(4, "|cffdd00RUN IN|r: " ..
-            string.format("%.1f%%", hp - RUN2_BOT))
+        alerts:showInfo(4, Lang.t("rg_xalvakka_run_in", hp - RUN2_BOT))
     elseif self.onBlob then
-        alerts:showInfo(4, "|c66ff66ON BLOB|r  -  stand still!")
+        alerts:showInfo(4, Lang.t("rg_xalvakka_on_blob"))
     else
         alerts:showInfo(4, "")
     end
