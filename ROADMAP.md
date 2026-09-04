@@ -49,17 +49,21 @@ Checked items are **shipped** (committed). Unchecked items are pending.
 ## Architecture phases
 
 ### Phase 0 — Memory foundation
-- [x] Auto-derive `modulesToUnload` per trial via `trialModules(prefix)` in `incha.lua`;
-      `ZoneManager` calls `ModuleLoader.unload(entry.unloadList)` on zone exit so
-      `package.loaded` entries are cleared between zone visits.
-      **Architectural note**: ESO's `require` shim is lookup-only (no file I/O); all
-      modules are executed at startup via `incha.txt`.  `package.loaded` can be cleared
-      between zone visits, but the Trial objects and their boss-class references stay
-      alive in `trials[]` so re-entry never re-requires anything at runtime.  True
-      GC of module tables would require restructuring Factory to create fresh Trial
-      instances on each zone entry — deferred.
-- [ ] Verify GC baseline: `collectgarbage("count")` before/after entering and leaving
-      a trial zone; confirm `package.loaded` sweep returns to pre-enter size.
+- [x] ~~Auto-derive `modulesToUnload` per trial~~ — **removed, it reclaimed nothing.**
+      `core/ModuleLoader.lua`, the `trialModules(prefix)` helper and the `unloadList`
+      plumbing through `ZoneManager` have been deleted.
+      **Why it could not work as built**: ESO's `require` shim is lookup-only (no file
+      I/O) and every file in `incha.txt` is executed at startup. Each Factory builds its
+      Trial at file scope, and `ZoneManager` holds that Trial in `trials[zoneId].module`
+      for the whole session so re-entry never re-requires anything — which keeps every
+      boss class, routing table and constant table reachable regardless. Clearing
+      `package.loaded` therefore freed the cache *keys* and nothing else, while reading
+      to the next maintainer as if it were managing memory. `ModuleLoader.loadScoped`,
+      the piece that would have made it real, had no callers at all.
+      **What real reduction would take**: build Trials lazily on zone entry rather than
+      at load time, which means restructuring each Factory to return a constructor
+      instead of a ready-made instance. Worth doing only if the resident set ever
+      actually matters — for ~12k lines of Lua it is a few hundred KB of tables.
 - [x] `lib/Throttle.lua` — `Trial:onPowerUpdate` is bucket-gated (1% granularity)
       so health-rule evaluation and UI updates only fire when `healthPercent` changes
       meaningfully.  `Throttle:reset()` is called on boss transitions.

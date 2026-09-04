@@ -8,29 +8,19 @@ local ZoneManager = require("core.ZoneManager")
 local Panel = require("ui.Panel")
 local Menu  = require("ui.Menu")
 
--- Collect all package.loaded keys whose names begin with `prefix`.
--- Called immediately after requiring a trial's Factory so that every module
--- that Factory pulled in transitively is included in the unload list.
--- Core and UI modules are excluded by the prefix convention ("trial.<id>.").
-local function trialModules(prefix)
-    local list = {}
-    for name in pairs(package.loaded) do
-        if name:sub(1, #prefix) == prefix then
-            list[#list + 1] = name
-        end
-    end
-    return list
-end
-
-ZoneManager.registerTrial(1196, require("trial.ka.Factory"),  "ka",  trialModules("trial.ka."))
-ZoneManager.registerTrial(1121, require("trial.ss.Factory"),  "ss",  trialModules("trial.ss."))
-ZoneManager.registerTrial(1263, require("trial.rg.Factory"),  "rg",  trialModules("trial.rg."))
-ZoneManager.registerTrial(1344, require("trial.dsr.Factory"), "dsr", trialModules("trial.dsr."))
-ZoneManager.registerTrial(1000, require("trial.as.Factory"),  "as",  trialModules("trial.as."))
-ZoneManager.registerTrial(1051, require("trial.cr.Factory"),  "cr",  trialModules("trial.cr."))
-ZoneManager.registerTrial(1427, require("trial.se.Factory"),  "se",  trialModules("trial.se."))
-ZoneManager.registerTrial(1478, require("trial.lc.Factory"),  "lc",  trialModules("trial.lc."))
-ZoneManager.registerTrial(1548, require("trial.oc.Factory"),  "oc",  trialModules("trial.oc."))
+-- Every trial is resident for the whole session.  incha.txt executes each
+-- file at load time and each Factory builds its Trial at file scope, so the
+-- boss classes and routing tables are already reachable before this runs;
+-- ZoneManager just decides which Trial is enabled for the current zone.
+ZoneManager.registerTrial(1196, require("trial.ka.Factory"),  "ka")
+ZoneManager.registerTrial(1121, require("trial.ss.Factory"),  "ss")
+ZoneManager.registerTrial(1263, require("trial.rg.Factory"),  "rg")
+ZoneManager.registerTrial(1344, require("trial.dsr.Factory"), "dsr")
+ZoneManager.registerTrial(1000, require("trial.as.Factory"),  "as")
+ZoneManager.registerTrial(1051, require("trial.cr.Factory"),  "cr")
+ZoneManager.registerTrial(1427, require("trial.se.Factory"),  "se")
+ZoneManager.registerTrial(1478, require("trial.lc.Factory"),  "lc")
+ZoneManager.registerTrial(1548, require("trial.oc.Factory"),  "oc")
 
 local function OnAddOnLoaded(event, addonName)
     if addonName ~= ADDON_NAME then
