@@ -45,6 +45,57 @@ function BossBase.fromSchema(class)
     return setmetatable(inst, class)
 end
 
+--- Schedule `fn` to run in `ms` milliseconds, tied to this boss instance.
+---
+--- Prefer this over a bare zo_callLater in boss code.  Trial replaces the
+--- boss instance on every encounter, so a raw deferred closure outlives the
+--- pull that scheduled it: it either fires into a reset raid (five "Acid
+--- pool 3/5 - MOVE!" alerts through a wipe) or reads a guard flag on the
+--- discarded instance rather than the live one.
+---
+--- Handles are recorded on the instance and cancelled by cancelPending(),
+--- which Trial calls automatically on wipe and on boss exit / zone change.
+--- The wrapper also drops the handle before invoking fn, so a callback that
+--- has already run is never cancelled twice.
+---
+--- @param ms number    delay in milliseconds
+--- @param fn function   called with no arguments; capture what it needs
+--- @return number|nil   the zo_callLater handle, or nil if scheduling failed
+function BossBase:after(ms, fn)
+    self._pending = self._pending or {}
+    local pending = self._pending
+
+    local handle
+    handle = zo_callLater(function()
+        if handle then pending[handle] = nil end
+        fn()
+    end, ms)
+
+    if handle then pending[handle] = true end
+    return handle
+end
+
+--- Cancel one callback scheduled through :after(), by its handle.
+--- Use this for mechanics that re-arm: store the handle, cancel the previous
+--- one, schedule the next.  Safe to call with nil or an already-fired handle.
+function BossBase:cancelAfter(handle)
+    if not handle then return end
+    zo_removeCallLater(handle)
+    if self._pending then self._pending[handle] = nil end
+end
+
+--- Cancel every callback scheduled through :after() that has not yet fired.
+--- Called by Trial on wipe and on boss exit; safe to call when nothing is
+--- pending, and safe to call more than once.
+function BossBase:cancelPending()
+    local pending = self._pending
+    if not pending then return end
+    for handle in pairs(pending) do
+        zo_removeCallLater(handle)
+    end
+    self._pending = nil
+end
+
 --- Stop tracked cast bars for both the dead unit and its killer, then
 --- remove both from alertList.  Called automatically by CombatHandler when
 --- ACTION_RESULT_DIED fires.  Boss overrides that need extra cleanup should

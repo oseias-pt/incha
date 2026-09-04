@@ -58,10 +58,8 @@ end
 -- Called from both onLeave (zone exit) and onWipe so neither path leaks.
 local function yandir_cleanup(self)
     self:cleanupAlertList()
-    if self.poisonTotemTimer then
-        zo_removeCallLater(self.poisonTotemTimer)
-        self.poisonTotemTimer = false
-    end
+    self:cancelAfter(self.poisonTotemTimer)
+    self.poisonTotemTimer = false
 end
 
 function Yandir:onLeave(context)
@@ -151,18 +149,18 @@ local function handlePoisonTotemCp(self, context, alerts, abilityId,
     -- Guard with BTotemCall so only one delayed bar fires per totem spawn.
     if self.BTotemCall then return end
     self.BTotemCall = true
-    local capturedSrc  = sourceUnitName or ""
-    local capturedSelf = self
-    -- Store the handle so onLeave/onWipe can cancel it if the zone is exited
-    -- or the group wipes before the 26.8 s fires.
-    self.poisonTotemTimer = zo_callLater(function()
+    local capturedSrc = sourceUnitName or ""
+    -- Store the handle so yandir_cleanup can cancel it if the zone is exited
+    -- or the group wipes before the 26.8 s fires.  Trial:cancelPending is a
+    -- second net on both paths.
+    self.poisonTotemTimer = self:after(26800, function()
         self.poisonTotemTimer = false
-        if capturedSelf.poisonTotemId ~= -1 and IsUnitInCombat("player") then
-            capturedSelf.BTotemCall = false
+        if self.poisonTotemId ~= -1 and IsUnitInCombat("player") then
+            self.BTotemCall = false
             CA.alertCast(TOTEM_POISON_CP, capturedSrc, 4300,
                 { -3, 0, false, { 0, 0.8, 0, 0.4 }, { 0, 0.8, 0, 0.8 } })
         end
-    end, 26800)
+    end)
 end
 
 local function handleGargoyleTotem(self, context, alerts, abilityId,

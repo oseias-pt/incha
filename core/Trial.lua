@@ -108,6 +108,12 @@ function Trial:onBossesChanged(forceReset)
         if self.activeBoss.onLeave then
             self.activeBoss:onLeave(self.context)
         end
+        -- Drop any :after() callbacks the outgoing boss still had in flight,
+        -- so they cannot fire against a discarded instance.  Runs after
+        -- onLeave so the boss can still schedule teardown work if it needs to.
+        if self.activeBoss.cancelPending then
+            self.activeBoss:cancelPending()
+        end
         self.activeBoss = nil
     end
 
@@ -224,8 +230,16 @@ function Trial:onCombatState(inCombat)
     -- to soft-reset without a full zone-exit teardown: stop active cast bars,
     -- clear per-pull flags, hide position icons  -  but keep long-lived icons
     -- created in onEnter so they're still visible at the start of the next pull.
-    if not inCombat and boss and boss.onWipe then
-        boss:onWipe(self.context, self.alerts)
+    if not inCombat and boss then
+        -- Cancel in-flight :after() callbacks first, so a delayed alert from
+        -- the pull that just ended cannot fire into the reset.  onWipe runs
+        -- afterwards and may schedule new ones.
+        if boss.cancelPending then
+            boss:cancelPending()
+        end
+        if boss.onWipe then
+            boss:onWipe(self.context, self.alerts)
+        end
     end
 end
 
@@ -249,8 +263,13 @@ function Trial:disable()
 
     self.pipeline:disable()
 
-    if self.activeBoss and self.activeBoss.onLeave then
-        self.activeBoss:onLeave(self.context)
+    if self.activeBoss then
+        if self.activeBoss.onLeave then
+            self.activeBoss:onLeave(self.context)
+        end
+        if self.activeBoss.cancelPending then
+            self.activeBoss:cancelPending()
+        end
     end
     self.activeBoss = nil
 

@@ -85,10 +85,9 @@ local function tombFaded(self)
     -- 100 ms delay lets iceGained settle before we read iGained.
     if self.checkDouble and self.tFaded == 2 and self.iceTomb[2].unit == 0 then
         self.checkDouble = false
-        local s = self
-        zo_callLater(function()
-            s.iceDouble = (s.iGained == 1)
-        end, 100)
+        self:after(100, function()
+            self.iceDouble = (self.iGained == 1)
+        end)
     end
 
     local slot = self.iceTomb[self.tFaded]
@@ -168,10 +167,8 @@ local function lokke_cleanup(self)
     self:cleanupAlertList()
     CA.castAlertsStop(self.laserBarId)
     self.laserBarId = false
-    if self.laserResetTimer then
-        zo_removeCallLater(self.laserResetTimer)
-        self.laserResetTimer = false
-    end
+    self:cancelAfter(self.laserResetTimer)
+    self.laserResetTimer = false
 end
 
 function Lokke:onLeave(context)
@@ -208,14 +205,11 @@ local function makeLaserHandler(laserDelay, landingAfterLaser)
             { laserDelay * 1000, "LASER!", 1, 0.5, 0, 0.9, SOUNDS.NONE })
         -- Reset iceNumber once boss is airborne (~10 s in).
         -- Store the handle so onLeave can cancel it on zone exit.
-        if self.laserResetTimer then
-            zo_removeCallLater(self.laserResetTimer)
-        end
-        local s = self
-        self.laserResetTimer = zo_callLater(function()
-            s.laserResetTimer = false
-            s.iceNumber = 0
-        end, 10000)
+        self:cancelAfter(self.laserResetTimer)
+        self.laserResetTimer = self:after(10000, function()
+            self.laserResetTimer = false
+            self.iceNumber = 0
+        end)
     end }
 end
 
