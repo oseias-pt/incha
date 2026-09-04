@@ -6,6 +6,7 @@ local Timer       = require("lib.Timer")
 local CA = require("lib.CA")
 local BossBase = require("lib.BossBase")
 local CastDur = require("lib.CastDur")
+local Log = require("lib.Log")
 
 -- -- OSI helpers (OdySupportIcons, optional) -------------------------------
 -- Textures: pulled from the live ability data so they always match the
@@ -238,6 +239,26 @@ setmetatable(Falgravn, {__index = BossBase})   -- inherit cleanupAlertList, defa
 
 Falgravn.key                  = "falgravn"
 Falgravn.hmHealthThreshold    = 248386060
+
+-- UNVERIFIED COORDINATE SPACE  -  see checkNodeCoordSpace() below.
+--
+-- This AABB is the arena used to detect Falgravn, and it does not contain the
+-- world positions used by the OSI floor markers in this same file:
+--
+--                       x                 y                z
+--   arena AABB     73,700 - 84,500    6,000 - 22,500   50,200 - 61,900
+--   CONN_NODES     23,311 - 26,800       21,670         8,270 - 11,754
+--   BLOOD_NODES    24,488 - 25,513       14,570         9,517 - 10,509
+--   TORTURER_NODES 22,300 - 27,796        7,703 -  7,742  7,114 - 12,970
+--
+-- Every node y falls inside the AABB's y range; no node x or z comes close.
+-- The convention is right elsewhere in this trial (Vrol's portal icon at
+-- 114,624 / 25,764 / 71,349 sits inside Vrol's own box), which suggests the
+-- node tables carry a different origin, most likely inherited from BSCHTKA
+-- without re-measurement. If so, every Falgravn floor marker is misplaced.
+--
+-- To settle it: enter the arena with `/incha debug` on and read the
+-- "falgravn coords" line printed by onEnter.
 Falgravn.location             = Location.new(73700, 84500, 6000, 22500, 50200, 61900)
 Falgravn.hideActionWhenNoRule = true
 Falgravn.healthRules          = HealthRules.register({
@@ -392,7 +413,40 @@ function Falgravn:onWipe(context, alerts)
     for name in pairs(self.PRISONERS) do self.PRISONERS[name] = 0 end
 end
 
+-- Debug-gated coordinate report.  Prints the player's live world position
+-- next to the arena AABB and one representative node from each marker table,
+-- so a single visit to the arena settles whether the node tables share the
+-- game's world-coordinate space.  Costs nothing when debug is off: Log.debug
+-- early-returns, and the guard skips the formatting entirely.
+--
+-- Reading it: stand anywhere in the arena. `player` should fall inside the
+-- AABB on all three axes.  If it does but the node x/z values are an order
+-- of magnitude away, the node tables need re-deriving  -  stand on the first
+-- connection node (wall end of the north-left line) and compare against LN1.
+local function checkNodeCoordSpace()
+    if not Log.isEnabled() then return end
+    local _, px, py, pz = GetUnitWorldPosition("player")
+    Log.debug("falgravn coords: player = %.0f / %.0f / %.0f", px, py, pz)
+    Log.debug("  arena AABB   x 73700-84500  y 6000-22500  z 50200-61900")
+    Log.debug("  CONN LN1     %d / %d / %d",
+        CONN_NODES.LN1[1], CONN_NODES.LN1[2], CONN_NODES.LN1[3])
+    Log.debug("  BLOOD #1     %d / %d / %d",
+        BLOOD_NODES[1].x, BLOOD_NODES[1].y, BLOOD_NODES[1].z)
+    Log.debug("  TORTURER Ama %d / %d / %d",
+        TORTURER_NODES.Ama[1], TORTURER_NODES.Ama[2], TORTURER_NODES.Ama[3])
+
+    local inX = px > 73700  and px < 84500
+    local inY = py > 6000   and py < 22500
+    local inZ = pz > 50200  and pz < 61900
+    if not (inX and inY and inZ) then
+        Log.warn("falgravn: player is OUTSIDE the detection AABB "
+            .. "(x=%s y=%s z=%s)  -  the box itself needs re-measuring",
+            tostring(inX), tostring(inY), tostring(inZ))
+    end
+end
+
 function Falgravn:onEnter(context, alerts)
+    checkNodeCoordSpace()
     self.showPercentUI = Settings.trial("ka").showPercent
     if Settings.trial("ka").posIconsFalgravn then
         -- Deferred so OSI has finished initialising.  Scheduled through
