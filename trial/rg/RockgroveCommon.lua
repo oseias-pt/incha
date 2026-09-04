@@ -11,6 +11,7 @@
 
 local CA = require("lib.CA")
 local CastDur = require("lib.CastDur")
+local Lang = require("core.Lang")
 local RockgroveCommon = {}
 
 -- -- Ability IDs ------------------------------------------------------------
@@ -82,7 +83,7 @@ function RockgroveCommon.handle(alerts, result, abilityId, unitTag, sourceUnitNa
     if abilityId == SUNDERING then
         if not IsUnitPlayer(unitTag) then return false end
         local dur = CastDur.get(SUNDERING, FALL_MELEE)
-        alerts:showAction("Block! (Sundering)")
+        alerts:showAction(Lang.t("rg_block_sundering"))
         CA.alertCast(abilityId, sourceUnitName, dur, COL_MELEE)
         PlaySound(SOUNDS.DUEL_START)
         return true
@@ -118,7 +119,7 @@ function RockgroveCommon.handle(alerts, result, abilityId, unitTag, sourceUnitNa
     if abilityId == SCALDING then
         if not IsUnitPlayer(unitTag) then return false end
         local dur = CastDur.get(SCALDING, FALL_MELEE)
-        alerts:showAction("Dodge! (Scalding)")
+        alerts:showAction(Lang.t("rg_dodge_scalding"))
         CA.alertCast(abilityId, sourceUnitName, dur, COL_DOT)
         CA.alert(nil, "Scalding", 0xCC0000D9, SOUNDS.DUEL_START, 9000)
         PlaySound(SOUNDS.DUEL_START)

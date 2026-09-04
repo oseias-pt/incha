@@ -13,6 +13,7 @@
 ---   BossEnrage   (152502) / MiniEnrage (152503): EFFECT_GAINED/FADED flags
 
 local RockgroveCommon = require("trial.rg.RockgroveCommon")
+local Lang = require("core.Lang")
 
 -- -- Ability IDs ------------------------------------------------------------
 local SAVAGE_BLITZ    = 149414   -- combatRoute: ACTION_RESULT_BEGIN -> Savage Blitz caAlertCast
@@ -50,7 +51,7 @@ local Oaxiltso = {}
 Oaxiltso.__index = Oaxiltso
 
 Oaxiltso.key  = "oaxiltso"
-Oaxiltso.name = "Oaxiltso"   -- TODO: verify exact unit name via GetUnitName("boss1") in-game
+Oaxiltso.name = Lang.t("boss_oaxiltso")   -- TODO: verify exact unit name via GetUnitName("boss1") in-game
 -- location: arena AABB not yet captured  -  detection is name-based.
 -- To add AABB: stand in arena, run /script d(GetUnitWorldPosition("boss1"))
 
@@ -123,7 +124,7 @@ local function handleCinderCleave(self, context, alerts, abilityId,
                                    unitTag, sourceUnitTag, sourceUnitId, unitId,
                                    sourceUnitName, unitName)
     if not IsUnitPlayer(unitTag) then return end
-    alerts:showAction("Dodge! (Cone)")
+    alerts:showAction(Lang.t("rg_oaxiltso_dodge_cone"))
     CA.alertCast(abilityId, sourceUnitName, 2000, COL_CONE)
 end
 
@@ -135,7 +136,7 @@ local function handleEmberChains(self, context, alerts, abilityId,
 end
 
 local function handleAddSpawn(self, context, alerts, abilityId, ...)
-    alerts:showAction("ADD SPAWNING!")
+    alerts:showAction(Lang.t("rg_oaxiltso_add_spawning"))
 end
 
 Oaxiltso.combatRoutes = {
@@ -214,9 +215,9 @@ local function showBlitzLine(self, alerts, now)
     if self.lastBlitz > 0 then
         local T = 36 - (now - self.lastBlitz)
         if T > 0 then
-            alerts:showInfo(1, "|cff6030Next Blitz|r: " .. string.format("%.0f", T) .. "s")
+            alerts:showInfo(1, Lang.t("rg_oaxiltso_next_blitz", T))
         else
-            alerts:showInfo(1, "|cff6030Next Blitz|r: |cff0000INC|r")
+            alerts:showInfo(1, Lang.t("rg_oaxiltso_next_blitz_inc"))
         end
     else
         alerts:showInfo(1, "")
@@ -228,9 +229,9 @@ local function showSludgeLine(self, alerts, now)
     if self.lastSludge > 0 then
         local T = 28 - (now - self.lastSludge)
         if T > 0 then
-            alerts:showInfo(2, "|c50c050Next Sludge|r: " .. string.format("%.0f", T) .. "s")
+            alerts:showInfo(2, Lang.t("rg_oaxiltso_next_sludge", T))
         else
-            alerts:showInfo(2, "|c50c050Next Sludge|r: |cff0000INC|r")
+            alerts:showInfo(2, Lang.t("rg_oaxiltso_next_sludge_inc"))
         end
     else
         alerts:showInfo(2, "")
@@ -240,11 +241,11 @@ end
 -- Info 3: Enrage state  -  boss enraged, add enraged, or both.
 local function showEnrageLine(self, alerts)
     if self.bossEnraged and self.miniEnraged then
-        alerts:showInfo(3, "|cff2020BOSS + ADD ENRAGED|r")
+        alerts:showInfo(3, Lang.t("rg_oaxiltso_boss_add_enrage"))
     elseif self.bossEnraged then
-        alerts:showInfo(3, "|cff2020BOSS ENRAGED|r")
+        alerts:showInfo(3, Lang.t("rg_oaxiltso_boss_enraged"))
     elseif self.miniEnraged then
-        alerts:showInfo(3, "|cff6020ADD ENRAGED|r")
+        alerts:showInfo(3, Lang.t("rg_oaxiltso_add_enraged"))
     else
         alerts:showInfo(3, "")
     end

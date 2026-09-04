@@ -8,6 +8,8 @@
 
 bootstrap.lua
 
+lang/en.lua
+
 lib/Log.lua
 lib/Throttle.lua
 lib/Timer.lua
@@ -27,6 +29,7 @@ core/EventPipeline.lua
 core/Settings.lua
 core/CombatHandler.lua
 core/Bridge.lua
+core/Lang.lua
 
 ui/Panel.lua
 ui/Preview.lua
