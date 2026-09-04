@@ -6,6 +6,7 @@
 
 local SunspireCommon = require("trial.ss.SunspireCommon")
 local BossBase       = require("lib.BossBase")
+local Lang           = require("core.Lang")
 local MapUtils       = require("lib.MapUtils")
 
 -- -- Ability IDs ------------------------------------------------------------
