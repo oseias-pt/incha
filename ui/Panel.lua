@@ -85,7 +85,14 @@ local function build()
     local sv = Settings.get().overlay
 
     -- Outer container  -  the draggable root.
-    local panel = WINDOW_MANAGER:CreateControl("InchPanel", GuiRoot, CT_CONTROL)
+    --
+    -- Named with the addon prefix on purpose.  ESO keeps top-level controls in
+    -- one flat namespace under GuiRoot, shared with every other installed
+    -- addon, so an unprefixed name is a name two addons can both claim; ZO's
+    -- own controls and the GM panel list them by that string.  Every control
+    -- below this one is created with a nil name because it is only ever
+    -- reached through the `ctrl` table, so this is the only line that matters.
+    local panel = WINDOW_MANAGER:CreateControl("Incha_Panel", GuiRoot, CT_CONTROL)
     panel:SetDimensions(W, H)
     panel:SetClampedToScreen(true)
     panel:SetMouseEnabled(not sv.locked)
