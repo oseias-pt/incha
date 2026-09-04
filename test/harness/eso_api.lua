@@ -87,6 +87,13 @@ EVENT_EFFECT_CHANGED        = 104
 EVENT_ADD_ON_LOADED         = 105
 EVENT_PLAYER_ACTIVATED      = 106
 EVENT_ZONE_CHANGED          = 107
+-- Absorb-shield tracking, registered directly by trial/rg/boss/Xalvakka.lua
+-- rather than through EventPipeline.
+EVENT_UNIT_ATTRIBUTE_VISUAL_ADDED   = 108
+EVENT_UNIT_ATTRIBUTE_VISUAL_UPDATED = 109
+EVENT_UNIT_ATTRIBUTE_VISUAL_REMOVED = 110
+
+ATTRIBUTE_VISUAL_POWER_SHIELDING = 1
 
 -- -- EVENT_MANAGER stub ----------------------------------------------------
 EVENT_MANAGER = {

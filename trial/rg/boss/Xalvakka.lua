@@ -125,29 +125,36 @@ function Xalvakka:onEnter(context, alerts)
     -- ESO event parameters (verify against live API):
     --   eventCode, unitTag, attributeType, powerType, value, max, shieldPoolIndex
     -- ATTRIBUTE_VISUAL_POWER_SHIELDING tracks absorb shields on a unit's health bar.
-    EVENT_MANAGER:RegisterForEvent(SHIELD_EVENT_KEY, EVENT_UNIT_ATTRIBUTE_VISUAL_ADDED,
-        function(eventCode, unitTag, attributeType, powerType, value, max, poolIndex)
-            if unitTag ~= "reticleover" then return end
-            if attributeType == ATTRIBUTE_VISUAL_POWER_SHIELDING then
-                self.shellShield = value or 0
-            end
-        end)
+    --
+    -- These three events fire for every shield tick on every unit the client
+    -- knows about, which in a twelve-player raid is a lot of traffic for a
+    -- handler that only ever cares about "reticleover".  REGISTER_FILTER_UNIT_TAG
+    -- moves that test into the engine so the rest never reaches Lua.
+    --
+    -- Registration is wrapped so an error here is reported and swallowed the
+    -- way EventPipeline does it: this boss registers outside the pipeline, so
+    -- without the wrapper an error would escape into ESO's event system and
+    -- affect other addons.
+    local function onShield(setter)
+        return function(eventCode, unitTag, attributeType, powerType, value, max, poolIndex)
+            local ok, err = pcall(function()
+                if attributeType == ATTRIBUTE_VISUAL_POWER_SHIELDING then
+                    self.shellShield = setter(value)
+                end
+            end)
+            if not ok then d(ADDON_TAG .. " " .. tostring(err)) end
+        end
+    end
 
-    EVENT_MANAGER:RegisterForEvent(SHIELD_EVENT_KEY, EVENT_UNIT_ATTRIBUTE_VISUAL_UPDATED,
-        function(eventCode, unitTag, attributeType, powerType, value, max, poolIndex)
-            if unitTag ~= "reticleover" then return end
-            if attributeType == ATTRIBUTE_VISUAL_POWER_SHIELDING then
-                self.shellShield = value or 0
-            end
-        end)
+    local function register(event, handler)
+        EVENT_MANAGER:RegisterForEvent(SHIELD_EVENT_KEY, event, handler)
+        EVENT_MANAGER:AddFilterForEvent(SHIELD_EVENT_KEY, event,
+            REGISTER_FILTER_UNIT_TAG, "reticleover")
+    end
 
-    EVENT_MANAGER:RegisterForEvent(SHIELD_EVENT_KEY, EVENT_UNIT_ATTRIBUTE_VISUAL_REMOVED,
-        function(eventCode, unitTag, attributeType, powerType, value, max, poolIndex)
-            if unitTag ~= "reticleover" then return end
-            if attributeType == ATTRIBUTE_VISUAL_POWER_SHIELDING then
-                self.shellShield = 0
-            end
-        end)
+    register(EVENT_UNIT_ATTRIBUTE_VISUAL_ADDED,   onShield(function(v) return v or 0 end))
+    register(EVENT_UNIT_ATTRIBUTE_VISUAL_UPDATED, onShield(function(v) return v or 0 end))
+    register(EVENT_UNIT_ATTRIBUTE_VISUAL_REMOVED, onShield(function() return 0 end))
 end
 
 -- Soft reset on wipe: clear the CA danger border and all per-pull state
