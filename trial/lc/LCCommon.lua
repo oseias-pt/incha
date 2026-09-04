@@ -24,6 +24,18 @@ local HINDERED        = 165972   -- tank-swap debuff
 local RADIANCE_DEBUFF = 214675   -- red screen border on player
 local SOLAR_FLARE     = 222475   -- Dremora Spellcaster cast bar
 
+-- ── Registration sets ─────────────────────────────────────────────────────
+-- EventPipeline registers one ability-filtered handler per id in these sets,
+-- so the engine rejects everything else before it reaches Lua.  handle() and
+-- handleEffect() gate on the SAME tables, which is what keeps the two in
+-- step: an ability that is not listed here is not registered AND not
+-- dispatched, so a missing entry can never present as "registered but
+-- ignored" or "dispatched but unregistered".
+--
+-- Adding a mechanic means adding its id here as well as writing the branch.
+LCCommon.combatAbilityIds = { [222475] = true }                    -- SOLAR_FLARE
+LCCommon.effectAbilityIds = { [165972] = true, [214675] = true }   -- HINDERED, RADIANCE
+
 -- ── Fallback cast duration (ms) ───────────────────────────────────────────
 local FALL_SOLAR = 2500   -- Solar Flare: empirical
 
@@ -34,6 +46,7 @@ local COL_SOLAR = { -2, 0, false, { 1.0, 0.6, 0.0, 0.4 }, { 1.0, 0.6, 0.0, 0.8 }
 -- Handles ACTION_RESULT_BEGIN events shared across all LC encounters.
 -- Returning true short-circuits the boss combatRoutes lookup.
 function LCCommon.handle(alerts, result, abilityId, unitTag, sourceUnitName)
+    if not LCCommon.combatAbilityIds[abilityId] then return false end
     if result ~= ACTION_RESULT_BEGIN then return false end
 
     -- Dremora Spellcaster: Solar Flare (cast bar) ──────────────────────────
@@ -50,6 +63,7 @@ end
 -- Handles EVENT_EFFECT_CHANGED events shared across all LC encounters.
 -- Returning true short-circuits the boss effectRoutes lookup.
 function LCCommon.handleEffect(alerts, changeType, abilityId, unitTag, stackCount)
+    if not LCCommon.effectAbilityIds[abilityId] then return false end
     -- Hindered: tank-swap debuff (tank player only) ────────────────────────
     -- OSI mechanic icon is deferred; alert fires for the tank instead.
     if abilityId == HINDERED then

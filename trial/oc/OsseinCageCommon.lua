@@ -46,6 +46,26 @@ local _toxicIreLastMs = 0
 local _carrionStacks = 0
 
 -- -- Fallback cast durations (ms) ------------------------------------------
+-- -- Registration sets -------------------------------------------------------
+-- EventPipeline registers one ability-filtered handler per id here, so the
+-- engine rejects everything else before it reaches Lua.  handle() and
+-- handleEffect() gate on these same tables, which keeps the two in step: an
+-- unlisted ability is neither registered nor dispatched.
+OsseinCageCommon.combatAbilityIds = {
+    [SKULLSTORM] = true,
+    [LIFE_DRAIN] = true,
+}
+OsseinCageCommon.effectAbilityIds = {
+    [HINDERED]         = true,
+    [TOXIC_IRE]        = true,
+    [CORVID_SWARM]     = true,
+    [CURSED_TERRAIN]   = true,
+    [DETONATE_SOUL_DB] = true,
+}
+for id in pairs(CAUSTIC_CARRION) do
+    OsseinCageCommon.effectAbilityIds[id] = true
+end
+
 local FALL_SKULL    = 2500   -- Skullstorm: empirical
 local FALL_DETONATE = 3000   -- Detonate Soul: empirical
 
@@ -85,6 +105,7 @@ end
 -- Handles ACTION_RESULT_BEGIN events shared across all OC bosses.
 -- Returning true short-circuits the boss combatRoutes lookup.
 function OsseinCageCommon.handle(alerts, result, abilityId, unitTag, sourceUnitName)
+    if not OsseinCageCommon.combatAbilityIds[abilityId] then return false end
     if result ~= ACTION_RESULT_BEGIN then return false end
 
     -- Skullmancer: Skullstorm (cast bar) -----------------------------------
@@ -110,6 +131,7 @@ end
 -- stackCount is passed by the extended CombatHandler.onEffectChanged call.
 -- Returning true short-circuits the boss effectRoutes lookup.
 function OsseinCageCommon.handleEffect(alerts, changeType, abilityId, unitTag, stackCount)
+    if not OsseinCageCommon.effectAbilityIds[abilityId] then return false end
     -- Hindered: tank-swap debuff (tank player only) ------------------------
     -- OSI mechanic icon is deferred; alert fires for the tank instead.
     if abilityId == HINDERED then

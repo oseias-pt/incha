@@ -10,8 +10,11 @@ local crTrial = Trial.create({
     bosses          = { ZmajaEncounter },
     bridge          = Panel.bridge,
     alerts          = Panel.alerts,
-    onCombatEvent   = CombatHandler.onCombatEvent,
-    onEffectChanged = CombatHandler.onEffectChanged,
+    abilityIdsFor           = CombatHandler.abilityIdsFor,
+    onCombatEventFiltered   = CombatHandler.onCombatEventFiltered,
+    onEffectChangedFiltered = CombatHandler.onEffectChangedFiltered,
+    onDiedCombatEvent       = CombatHandler.onDiedCombatEvent,
+    onLegacyCombatEvent     = CombatHandler.onLegacyCombatEvent,
 })
 
 package.loaded["trial.cr.Factory"] = crTrial

@@ -302,6 +302,12 @@ Nahvii.combatRoutes = {
 
 -- Catch-all fallback: bash detection has no abilityId filter and cannot be routed.
 -- CombatHandler invokes this ONLY when abilityId is not in combatRoutes.
+-- Catch-all guarded on a combat RESULT rather than an ability id, so it
+-- cannot be reached through an ability-filtered registration.  Declaring the
+-- results here lets EventPipeline give it a REGISTER_FILTER_COMBAT_RESULT
+-- registration instead of forcing an unfiltered one for the whole trial.
+Nahvii.combatResults = { ACTION_RESULT_INTERRUPT }
+
 function Nahvii:onCombatEvent(context, alerts, result, abilityId,
                                unitTag, sourceUnitTag, sourceUnitId, unitId,
                                sourceUnitName, unitName)
