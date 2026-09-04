@@ -165,11 +165,9 @@ end
 function XorynEncounter:onUpdate(context, alerts)
     showCurrentLine(self, alerts)
     showKnotLine(self, alerts)
-    alerts:showInfo(3, "")
-    alerts:showInfo(4, "")
-    alerts:showInfo(5, "")
-    alerts:showInfo(6, "")
-    alerts:showInfo(7, "")
+    -- Slots 3-7 are not written by this encounter.  Trial:onBossesChanged
+    -- clears the panel on every boss transition, so they do not need to be
+    -- blanked on each tick.
 end
 
 package.loaded["trial.lc.boss.XorynEncounter"] = XorynEncounter
