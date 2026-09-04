@@ -1,5 +1,4 @@
-local Settings     = require("core.Settings")
-local ModuleLoader = require("core.ModuleLoader")
+local Settings = require("core.Settings")
 
 local ZoneManager = {}
 
@@ -14,13 +13,17 @@ local activeEntry   = nil   -- the trials[] entry currently enabled
 --- @param trialId     string   Optional.  When provided, the trial's Settings entry
 ---                             is checked at zone-enter time; if .enabled == false
 ---                             the trial stays inactive even while the player is in zone.
---- @param unloadList  table    Optional.  List of package.loaded keys to nil on zone exit
----                             so entries do not persist across the whole session.
----                             The Trial object itself is kept alive in trials[]; only
----                             the cache entries are cleared.  Auto-derived in incha.lua
----                             via the trialModules() helper.
-function ZoneManager.registerTrial(zoneId, trialModule, trialId, unloadList)
-    trials[zoneId] = { module = trialModule, trialId = trialId, unloadList = unloadList }
+---
+--- NOTE ON MEMORY: every trial is resident for the whole session, by
+--- construction.  ESO executes each file listed in incha.txt at load time,
+--- each Factory builds its Trial at file scope, and the Trial object is held
+--- here in trials[zoneId].module so re-entering a zone needs no re-require.
+--- That keeps every boss class, routing table and constant table reachable.
+--- Reducing it would mean building Trials lazily on zone entry, which the
+--- manifest load model does not allow without restructuring the Factories.
+--- See the Phase 0 note in ROADMAP.md.
+function ZoneManager.registerTrial(zoneId, trialModule, trialId)
+    trials[zoneId] = { module = trialModule, trialId = trialId }
 end
 
 local function getPlayerZoneId()
@@ -30,13 +33,6 @@ end
 local function disableCurrentTrial()
     if activeTrial and activeTrial.disable then
         activeTrial:disable()
-    end
-
-    -- Clear package.loaded entries for the outgoing trial.  The Trial object
-    -- itself remains alive in trials[zoneId].module so re-entering the zone
-    -- works without re-requiring anything at runtime.
-    if activeEntry and activeEntry.unloadList then
-        ModuleLoader.unload(activeEntry.unloadList)
     end
 
     activeTrial  = nil

@@ -25,7 +25,6 @@ core/TrialContext.lua
 core/BossRegistry.lua
 core/EventPipeline.lua
 core/Settings.lua
-core/ModuleLoader.lua
 core/CombatHandler.lua
 core/Bridge.lua
 
