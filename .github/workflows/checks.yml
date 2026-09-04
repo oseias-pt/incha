@@ -5,9 +5,13 @@ name: checks
 # each step is the same script a developer runs locally:
 #
 #   sh   test/checks/syntax.sh
+#   sh   test/checks/encoding.sh
 #   luajit test/checks/globals.lua
 #   luajit test/checks/manifest.lua
 #   luajit test/checks/contracts.lua
+#   luajit test/checks/filters.lua
+#   luajit test/checks/settings-usage.lua
+#   luajit test/checks/state-reset.lua
 #
 # ESO runs a Lua 5.1 dialect; LuaJIT is source-compatible and is what the
 # offline test harness already targets.
@@ -69,3 +73,13 @@ jobs:
       # and every handler must have a set to register from.
       - name: Filters
         run: luajit test/checks/filters.lua
+
+      # Every settings key needs a reader. A checkbox with no reader is worse
+      # than dead code because the player can still click it.
+      - name: Settings usage
+        run: luajit test/checks/settings-usage.lua
+
+      # Per-pull state has to be reset by onWipe: Trial reuses the boss instance
+      # across a wipe, so a field nothing touches keeps last pull's value.
+      - name: State reset
+        run: luajit test/checks/state-reset.lua
