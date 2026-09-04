@@ -10,6 +10,9 @@
 ---   EsoApi.setCurrentTime(ms)   -- advance simulated clock
 ---   EsoApi.setZoneId(id)        -- change the active zone
 ---   EsoApi.setTracker(t)        -- inject a UnitTracker instance
+---   EsoApi.setRoles(dps,heal,t)  -- role returned by GetPlayerRoles
+---   EsoApi.setLfgRole(r)         -- role returned by GetSelectedLFGRole
+---   EsoApi.setAbilityDuration(id, ms)  -- override one ability duration
 
 local EsoApi = {}
 
@@ -22,6 +25,19 @@ function EsoApi.setCurrentTime(ms) _currentMs = ms end
 function EsoApi.setZoneId(id)      _zoneId    = id  end
 function EsoApi.setTracker(t)      _tracker   = t   end
 function EsoApi.getCurrentTime()   return _currentMs end
+
+-- Role of the replaying player.  ESO's GetPlayerRoles returns
+-- isDPS, isHeal, isTank, so the three fields map to that order directly.
+-- Default is a damage dealer, which is the common case for a replayed log.
+local _roles    = { dps = true, heal = false, tank = false }
+local _lfgRole  = 0                      -- see LFG_ROLE_* below
+local _abilityDur = {}                   -- abilityId -> ms, overrides only
+
+function EsoApi.setRoles(dps, heal, tank)
+    _roles.dps, _roles.heal, _roles.tank = dps, heal, tank
+end
+function EsoApi.setLfgRole(role)              _lfgRole = role end
+function EsoApi.setAbilityDuration(id, ms)    _abilityDur[id] = ms end
 
 -- -- ESO action-result constants -------------------------------------------
 -- Values chosen to match ESO's actual enum so log result strings map
@@ -79,6 +95,54 @@ function GetUnitWorldPosition(unitTag)
     -- Return (0,0,0,0)  -  name-based detection takes over in the harness.
     return 0, 0, 0, 0
 end
+
+-- -- Role / ability / sound stubs ------------------------------------------
+-- Referenced by boss modules but never stubbed, so every replay that reached
+-- one of them threw inside the runner's pcall and was counted as an error
+-- instead of as coverage.  Six call sites read `local _, _, isTank`
+-- (Bahsei, RockgroveCommon, OsseinCageCommon, LCCommon) and two read
+-- `local _, isHeal, isTank` (Lylanar) - both are correct, because the game
+-- returns isDPS, isHeal, isTank.
+
+function GetPlayerRoles()
+    return _roles.dps, _roles.heal, _roles.tank
+end
+
+function GetSelectedLFGRole()
+    return _lfgRole
+end
+
+-- The numeric values here are placeholders, not the game's enum: nothing in
+-- Incha compares them arithmetically (Falgravn only tests
+-- GetSelectedLFGRole() == LFG_ROLE_TANK), so what matters is that the stub and
+-- the constant both come from this file.  Override with EsoApi.setLfgRole().
+LFG_ROLE_NONE   = 0
+LFG_ROLE_DPS    = 1
+LFG_ROLE_TANK   = 2
+LFG_ROLE_HEALER = 3
+_lfgRole = LFG_ROLE_NONE
+
+-- Called at *module load* by trial/rg/RockgroveCommon.lua (DODGE_DUR), so it
+-- has to exist before any trial module is required.  ESO durations are
+-- milliseconds; RockgroveCommon falls back to 650 when this yields <= 0.
+function GetAbilityDuration(abilityId)
+    return _abilityDur[abilityId] or 1500
+end
+
+-- Two tags can name the same unit ("group2" and "pet2" resolve to one log
+-- unit id), which is what the real function answers about.  Comparing tags
+-- textually would be wrong for exactly the case the boss modules care about.
+function AreUnitsEqual(unitTag, secondUnitTag)
+    if unitTag == secondUnitTag then return true end
+    if not _tracker then return false end
+    local a = _tracker:getByTag(unitTag)
+    local b = _tracker:getByTag(secondUnitTag)
+    if not a or not b then return false end
+    return a.id == b.id
+end
+
+-- Audibility is not under test; the call sites are what matter.
+function PlaySound(soundName) end
 
 -- -- Unit queries ----------------------------------------------------------
 function DoesUnitExist(unitTag)
