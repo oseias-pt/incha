@@ -70,7 +70,7 @@ function Trial.create(options)
             self:onBossesChanged(forceReset)
         end,
         onPowerUpdate = function(eventCode, unitTag, powerIndex, powerType, powerValue, powerMax, powerEffectiveMax)
-            self:onPowerUpdate(powerValue, powerMax)
+            self:onPowerUpdate(powerValue, powerMax, unitTag, powerEffectiveMax)
         end,
         -- Always registered  -  Trial:onCombatState delegates to the active boss
         -- if it has the callback, so no trial-level conditional is needed.
@@ -127,12 +127,18 @@ function Trial:onBossesChanged(forceReset)
     -- field instead of (or in addition to) a location bounding box.
     -- Check boss1-boss4 so concurrent-boss encounters (e.g. Ryelaz+Zilyesset)
     -- are detected correctly regardless of which slot the engine assigns first.
+    -- Which boss<N> slot the encounter was recognised in.  Health samples for
+    -- difficulty detection must come from that unit, not unconditionally from
+    -- boss1, or a concurrent-boss encounter reads the wrong health pool.
+    local detectedSlot = "boss1"
+
     if not bossClass then
         for _, slot in ipairs({"boss1", "boss2", "boss3", "boss4"}) do
             if DoesUnitExist(slot) then
                 local candidate = self.registry:findByName(GetUnitName(slot))
                 if candidate then
                     bossClass = candidate
+                    detectedSlot = slot
                     break
                 end
             end
@@ -173,7 +179,11 @@ function Trial:onBossesChanged(forceReset)
         self.activeBoss = instance
         self.context:setBoss(instance)
 
-        local _, _, effectiveMax = GetUnitPower("boss1", POWERTYPE_HEALTH)
+        -- First sample.  This can legitimately read 0 on the frame the boss
+        -- appears, in which case detectDifficulty returns NONE and
+        -- onPowerUpdate re-resolves from the next real health tick.
+        self.bossSlot = detectedSlot
+        local _, _, effectiveMax = GetUnitPower(detectedSlot, POWERTYPE_HEALTH)
         self.context:setDifficulty(self.registry:detectDifficulty(bossClass, effectiveMax))
 
         if instance.onEnter then
@@ -189,7 +199,7 @@ function Trial:onBossesChanged(forceReset)
     end
 end
 
-function Trial:onPowerUpdate(powerValue, powerMax)
+function Trial:onPowerUpdate(powerValue, powerMax, unitTag, powerEffectiveMax)
     if not self.enabled then
         return
     end
@@ -202,6 +212,29 @@ function Trial:onPowerUpdate(powerValue, powerMax)
     local boss = self:getActiveBoss()
     if not boss then
         return
+    end
+
+    -- Second chance at difficulty detection.  The sample taken in
+    -- onBossesChanged can read 0 on the frame the boss appears, which leaves
+    -- difficulty at NONE; this event carries an authoritative effective-max
+    -- for free, so re-resolve until it is known.  Restricted to the slot the
+    -- encounter was recognised in, since the POWER_UPDATE filter admits every
+    -- boss<N> tag and a concurrent boss has a different health pool.
+    --
+    -- context.isHM gates real mechanics (Xalvakka's jump timer, Taleria's
+    -- behemoth line), so getting this right matters beyond the header text.
+    if self.context.difficulty == Difficulty.NONE
+    and (unitTag == nil or unitTag == self.bossSlot) then
+        local sample = powerEffectiveMax
+        if not sample or sample <= 0 then sample = powerMax end
+        local resolved = self.registry:detectDifficulty(boss, sample)
+        if resolved ~= Difficulty.NONE then
+            self.context:setDifficulty(resolved)
+            Log.debug("%s: difficulty resolved to %s (max hp %d, threshold %s)",
+                self.id,
+                resolved == Difficulty.HARDMODE and "HARDMODE" or "NORMAL",
+                sample, tostring(boss.hmHealthThreshold))
+        end
     end
 
     local healthPercent = powerValue / powerMax * 100

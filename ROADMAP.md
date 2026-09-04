@@ -868,9 +868,20 @@ Split HP tracking: all three clones named "Ansuul the Tormentor" — differentia
 
 The following bosses are implemented (mechanics complete) but `hmHealthThreshold` is
 still `math.huge` or a placeholder `100000001`.  Until the correct value is supplied,
-`detectDifficulty()` always returns `NORMAL`, silently skipping HM-specific alerts.
+`detectDifficulty()` returns `NORMAL` for any real health pool below the placeholder,
+silently skipping HM-specific alerts.
 
-**How to measure:**  Pull on Vet HM → `/script d(GetUnitMaxPower("boss1", POWERTYPE_HEALTH))`
+**How to measure — two ways:**
+
+1. `/incha debug` on, then pull. `Trial:onPowerUpdate` logs the resolved difficulty
+   with the health pool it used and the threshold it compared against, e.g.
+   `dsr: difficulty resolved to NORMAL (max hp 118374912, threshold 100000001)`.
+   Read the real pool straight off that line.
+2. Manually: pull on Vet HM → `/script d(GetUnitMaxPower("boss1", POWERTYPE_HEALTH))`
+
+A boss with **no** `hmHealthThreshold` at all stays at `Difficulty.NONE`, which is
+distinct from `NORMAL` — the addon no longer claims "this is a normal run" when it
+simply has not been told how to tell.
 
 | Boss file | Current value | Trial |
 |---|---|---|
