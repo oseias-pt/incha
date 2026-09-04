@@ -4,10 +4,17 @@
 ---   local BossBase = require("lib.BossBase")
 ---   local Boss = {}
 ---   Boss.__index = Boss
----   setmetatable(Boss, {__index = BossBase})   -- inherit onDied + cleanupAlertList
+---   function Boss.new() return BossBase.fromSchema(Boss) end
 ---
---- The boss's new() must still initialise   alertList = {}   in the instance table.
---- onLeave (if the boss has extra bars beyond alertList) should call
+--- fromSchema links the class to BossBase itself, so onDied and
+--- cleanupAlertList resolve without each boss file having to remember
+---   setmetatable(Boss, {__index = BossBase})
+--- An explicit setmetatable is still honoured (fromSchema leaves any class
+--- that already has a metatable alone), so existing boss files keep working.
+---
+--- Declare   alertList = function() return {} end   in Boss.stateSchema for
+--- any boss that tracks CA cast bars.  onLeave (if the boss has extra bars
+--- beyond alertList) should call
 ---   self:cleanupAlertList()
 --- then stop those bars manually.
 
@@ -22,7 +29,15 @@ BossBase.__index = BossBase
 --- not once at class load).  Static values are copied directly.
 --- Fields initialized to nil in the original new() are simply omitted from
 --- the schema  -  they remain nil by default via the metatable lookup.
+--- Also links `class` to BossBase on first use when the boss file did not do
+--- it explicitly.  Without this, a class that calls self:cleanupAlertList()
+--- or relies on the default onDied but forgot the setmetatable line resolves
+--- both to nil and throws on wipe / zone exit  -  a mistake four boss classes
+--- had already made.  The guard leaves an explicitly-set metatable untouched.
 function BossBase.fromSchema(class)
+    if getmetatable(class) == nil then
+        setmetatable(class, {__index = BossBase})
+    end
     local inst = {}
     for k, v in pairs(class.stateSchema or {}) do
         inst[k] = type(v) == "function" and v() or v
