@@ -74,6 +74,9 @@ POWERTYPE_STAMINA = 2
 -- -- Event filter constants ------------------------------------------------
 REGISTER_FILTER_POWER_TYPE      = 1
 REGISTER_FILTER_UNIT_TAG_PREFIX = 2
+REGISTER_FILTER_ABILITY_ID      = 3
+REGISTER_FILTER_COMBAT_RESULT   = 4
+REGISTER_FILTER_UNIT_TAG        = 5
 
 -- -- ESO event-code constants (arbitrary unique values used as map keys) ---
 EVENT_BOSSES_CHANGED        = 100

@@ -77,12 +77,19 @@ function Trial.create(options)
         onCombatState = function(eventCode, inCombat)
             self:onCombatState(inCombat)
         end,
-        onCombatEvent = options.onCombatEvent and function(...)
-            options.onCombatEvent(self, ...)
-        end or nil,
-        onEffectChanged = options.onEffectChanged and function(...)
-            options.onEffectChanged(self, ...)
-        end or nil,
+        -- Combat / effect events are registered per ability id and per combat
+        -- result by EventPipeline:setActiveBoss, so these are the narrow
+        -- entry points rather than one unfiltered dispatcher.  Each filtered
+        -- registration admits a disjoint slice; see core/CombatHandler.lua.
+        abilityIdsFor = options.abilityIdsFor,
+        onCombatEventFiltered = options.onCombatEventFiltered
+            and function(...) options.onCombatEventFiltered(self, ...) end or nil,
+        onEffectChangedFiltered = options.onEffectChangedFiltered
+            and function(...) options.onEffectChangedFiltered(self, ...) end or nil,
+        onDiedCombatEvent = options.onDiedCombatEvent
+            and function(...) options.onDiedCombatEvent(self, ...) end or nil,
+        onLegacyCombatEvent = options.onLegacyCombatEvent
+            and function(...) options.onLegacyCombatEvent(self, ...) end or nil,
         -- 200ms timer-display loop.  Calls boss:onUpdate(context, alerts) when
         -- a boss is active.  No-op otherwise, so the loop is always registered
         -- without wasting ticks between encounters.
@@ -186,6 +193,11 @@ function Trial:onBossesChanged(forceReset)
         local _, _, effectiveMax = GetUnitPower(detectedSlot, POWERTYPE_HEALTH)
         self.context:setDifficulty(self.registry:detectDifficulty(bossClass, effectiveMax))
 
+        -- Narrow the combat / effect event registrations to the abilities and
+        -- results this boss can actually act on.  Done before onEnter so a
+        -- boss that fires alerts from onEnter is already wired up.
+        self.pipeline:setActiveBoss(instance)
+
         if instance.onEnter then
             instance:onEnter(self.context, self.alerts)
         end
@@ -194,6 +206,7 @@ function Trial:onBossesChanged(forceReset)
     else
         self.context:setBoss(nil)
         self.context:setDifficulty(Difficulty.NONE)
+        self.pipeline:setActiveBoss(nil)
 
         self.bridge.onBossExit()
     end

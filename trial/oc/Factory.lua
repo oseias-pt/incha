@@ -12,8 +12,11 @@ local ocTrial = Trial.create({
     bosses          = { JynorahEncounter, KazpianEncounter, ShaperEncounter },
     bridge          = Panel.bridge,
     alerts          = Panel.alerts,
-    onCombatEvent   = CombatHandler.onCombatEvent,
-    onEffectChanged = CombatHandler.onEffectChanged,
+    abilityIdsFor           = CombatHandler.abilityIdsFor,
+    onCombatEventFiltered   = CombatHandler.onCombatEventFiltered,
+    onEffectChangedFiltered = CombatHandler.onEffectChangedFiltered,
+    onDiedCombatEvent       = CombatHandler.onDiedCombatEvent,
+    onLegacyCombatEvent     = CombatHandler.onLegacyCombatEvent,
 })
 
 package.loaded["trial.oc.Factory"] = ocTrial

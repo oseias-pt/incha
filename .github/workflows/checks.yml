@@ -58,3 +58,9 @@ jobs:
       # helpers, and an onDied for any boss that tracks cast bars.
       - name: Contracts
         run: luajit test/checks/contracts.lua
+
+      # Combat and effect events are registered per ability id, so the sets a
+      # boss routes and the sets its common module claims must stay disjoint,
+      # and every handler must have a set to register from.
+      - name: Filters
+        run: luajit test/checks/filters.lua

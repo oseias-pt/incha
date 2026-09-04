@@ -25,6 +25,28 @@ local MOLTEN_RAIN  = 157482   -- Ash Titan: fire rain to kite
 local ASTRAL_SHIELD_IDS = { [149089] = true, [157466] = true }   -- Soulweaver
 local ASSAULT_IDS       = { [149268] = true, [149261] = true }   -- Barbarian Hasted Assault
 
+-- -- Registration set --------------------------------------------------------
+-- EventPipeline registers one ability-filtered handler per id here, so the
+-- engine rejects everything else before it reaches Lua.  handle() gates on
+-- this same table, which keeps the two in step: an unlisted ability is
+-- neither registered nor dispatched.
+--
+-- Built from the constants above rather than restated, so the sets cannot
+-- disagree.  A new mechanic must be added here as well as to handle().
+local combatAbilityIds = {
+    [EARTHQUAKE]   = true,
+    [SUNDERING]    = true,
+    [TAKING_AIM]   = true,
+    [QUICK_STRIKE] = true,
+    [SCALDING]     = true,
+    [PRIME_METEOR] = true,
+    [MOLTEN_RAIN]  = true,
+}
+for _, set in ipairs({ ASTRAL_SHIELD_IDS, ASSAULT_IDS }) do
+    for id in pairs(set) do combatAbilityIds[id] = true end
+end
+RockgroveCommon.combatAbilityIds = combatAbilityIds
+
 -- -- Fallback cast durations (ms) ------------------------------------------
 local FALL_MELEE    = 1500
 local FALL_MOLTEN   = 3000
@@ -47,6 +69,7 @@ local ACT_METEOR   = { 10000,     "KILL SUN!",   0.8, 0.0, 0.0, 0.9, nil }
 -- Called by CombatHandler (boss.common.handle) before the combatRoutes lookup.
 -- Returning true short-circuits the route dispatch for this event.
 function RockgroveCommon.handle(alerts, result, abilityId, unitTag, sourceUnitName)
+    if not combatAbilityIds[abilityId] then return false end
     if result ~= ACTION_RESULT_BEGIN then return false end
 
     -- -- Reaver: Earthquake ------------------------------------------------

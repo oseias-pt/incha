@@ -57,6 +57,24 @@ local SPIT_IDS = {
 local SHIELD_CHARGE = 117075   -- 1H & Shield add charge
 local LEAP          = 116836   -- 2H add leap
 
+-- -- Registration set --------------------------------------------------------
+-- EventPipeline registers one ability-filtered handler per id here, so the
+-- engine rejects everything else before it reaches Lua.  handle() gates on
+-- this same table, which keeps the two in step: an unlisted ability is
+-- neither registered nor dispatched, so a missing entry can never present as
+-- "registered but ignored" or "dispatched but unregistered".
+--
+-- Built from the id tables above rather than restated, so the sets cannot
+-- disagree.  A new single-id mechanic must be added to the explicit list.
+local combatAbilityIds = {
+    [SHIELD_CHARGE] = true,
+    [LEAP]          = true,
+}
+for _, set in ipairs({ HA_IDS, BLOCK_IDS, BREATH_IDS, SPIT_IDS }) do
+    for id in pairs(set) do combatAbilityIds[id] = true end
+end
+SunspireCommon.combatAbilityIds = combatAbilityIds
+
 -- -- Fallback cast durations (ms) ------------------------------------------
 -- Used when GetAbilityCastInfo returns 0 (instant / unknown).
 local HA_FALLBACK     = 1400
@@ -77,6 +95,7 @@ local COL_CHARGE = { -2, 0, false, { 0.2, 0.60, 1.0, 0.4 }, { 0.2, 0.60, 1.0, 0.
 -- Called by CombatHandler (boss.common.handle) before the combatRoutes lookup.
 -- Returns true if the event was handled (caller returns immediately); false otherwise.
 function SunspireCommon.handle(alerts, result, abilityId, unitTag, sourceUnitName)
+    if not combatAbilityIds[abilityId] then return false end
     if result ~= ACTION_RESULT_BEGIN then return false end
 
     -- -- Heavy Attack (player-targeted) ---------------------------------
