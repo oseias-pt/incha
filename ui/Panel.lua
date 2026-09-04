@@ -16,6 +16,7 @@
 --- Used by ka/rg/dsr.
 
 local BridgeBase = require("core.Bridge")
+local Log        = require("lib.Log")
 local Settings   = require("core.Settings")
 
 local Panel = {}
@@ -32,10 +33,17 @@ local ctrl = nil
 local hudState   = "showing"   -- most recent state of the "hud" scene
 local hudUiState = "showing"   -- most recent state of the "hudui" scene
 
+-- Info-line slots.  Boss onUpdate methods address these as showInfo(n, text);
+-- the busiest encounter currently uses 7, so ten labels were being built and
+-- three of them could never receive text.  Raise this if a future boss needs
+-- more lines, and raise H to match.
+local INFO_LINE_COUNT = 7
+
 -- Panel dimensions (points, scales with ctrl.panel:SetScale).
--- H=200 accommodates the info lines (each 18 px) + header (26 px) + action (38 px bottom).
-local INFO_LINE_COUNT = 10
-local W, H = 320, 260
+-- Height budget: header 8+18, info lines from y=28 at 18 px each, action 28 px
+-- anchored 10 px off the bottom.  7 lines -> 28 + 7*18 = 154, plus the 38 px
+-- action block and 8 px padding.
+local W, H = 320, 200
 
 -- Show or hide the panel based on two independent gates:
 --   ctrl.active    -  trial/boss content should be on screen
@@ -90,7 +98,17 @@ local function build()
         local s = Settings.get().overlay
         s.offsetX = c:GetLeft()
         s.offsetY = c:GetTop()
-        applyPosition(c)
+        -- No applyPosition() here: the drag has already placed the control,
+        -- and re-anchoring it to the values just read is at best a no-op.
+        -- It is only a no-op if GetLeft/GetTop report in the same space
+        -- SetAnchor consumes; if they do not, the panel would visibly jump on
+        -- every drag AND accumulate the error into the saved offsets.
+        --
+        -- UNVERIFIED at scale ~= 1.0: drag the panel at /incha scale 0.5 and
+        -- again at 2.0, reload, and confirm it returns to where it was left.
+        -- The debug line below prints what was stored.
+        Log.debug("panel: saved offset %d, %d (scale %.2f)",
+            s.offsetX, s.offsetY, s.scale)
     end)
 
     -- Semi-transparent dark background.
@@ -180,8 +198,11 @@ Panel.alerts = {
         end
     end,
 
-    -- info(n, text)  -  timer countdown for slot n (1-7).
-    -- Hot path: called up to 7x per 200 ms onUpdate tick.  Skip SetText when
+    -- info(n, text)  -  timer countdown for slot n (1..INFO_LINE_COUNT).
+    -- Out-of-range n is ignored rather than erroring, so a boss writing to a
+    -- slot that does not exist degrades to a missing line instead of throwing
+    -- mid-fight.
+    -- Hot path: called up to INFO_LINE_COUNT times per 200 ms onUpdate tick.  Skip SetText when
     -- the string is unchanged (LuaJIT interns all strings, so ~= is a pointer
     -- compare).  Skip applyVisibility when the panel is already active.
     info = function(n, text)
