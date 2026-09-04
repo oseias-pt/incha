@@ -84,9 +84,41 @@ if order[1] ~= "bootstrap.lua" then
          MANIFEST, tostring(order[1]))
 end
 
+-- -- Version strings must agree ---------------------------------------------
+-- The version lives in three places and they had drifted: the manifest said
+-- 0.0.1 while the load message and the LAM panel both said 0.1.0. Only the
+-- manifest value is what users and Minion actually see, so a stale one there
+-- misreports every install.
+local function versionIn(path, pattern, label)
+    local text = read(path)
+    if not text then
+        fail("MISSING FILE  cannot read %s", path)
+        return nil
+    end
+    local v = text:match(pattern)
+    if not v then
+        fail("NO VERSION    could not find the %s version string in %s", label, path)
+    end
+    return v
+end
+
+local manifestVersion = manifestText:match("##%s*Version:%s*(%S+)")
+local loadMsgVersion  = versionIn("incha.lua", 'v(%d+%.%d+%.%d+)', "load-message")
+local lamVersion      = versionIn("ui/Menu.lua", 'version%s*=%s*"(%d+%.%d+%.%d+)"', "LAM panel")
+
+if not manifestVersion then
+    fail("NO VERSION    %s has no '## Version:' line", MANIFEST)
+elseif loadMsgVersion and lamVersion then
+    if not (manifestVersion == loadMsgVersion and manifestVersion == lamVersion) then
+        fail("VERSION DRIFT %s says %s, incha.lua prints %s, ui/Menu.lua declares %s",
+             MANIFEST, manifestVersion, loadMsgVersion, lamVersion)
+    end
+end
+
 -- -- Report ------------------------------------------------------------------
 if findings == 0 then
-    print(string.format("manifest: clean (%d files listed)", #order))
+    print(string.format("manifest: clean (%d files listed, version %s)",
+          #order, tostring(manifestVersion)))
 else
     print(string.format("manifest: %d finding(s)", findings))
 end

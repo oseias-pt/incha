@@ -2,7 +2,7 @@
 ## Description: Trial helper — mechanics overlay for KA, SS, RG, DSR, AS, CR, SE, LC, OC
 ## Version: 0.1.0
 ## Author: Oseias
-## APIVersion: 101042
+## APIVersion: 101042 101043
 ## SavedVariables: Incha_SV
 ## OptionalDependsOn: LibAddonMenu-2.0 OdySupportIcons CombatAlerts
 

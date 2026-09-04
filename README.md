@@ -96,15 +96,24 @@ lib/                   shared primitives (Timer, Log, Throttle, CastDur, BossBas
 core/                  engine (BossRegistry, CombatHandler, EventPipeline, Settings, …)
 ui/                    overlay panel and settings menu
 trial/<id>/            per-trial modules
-  boss/<Name>.lua      per-boss combat handlers
-  Factory.lua          trial setup / zone detection
-  Dispatcher.lua       event routing
+  boss/<Name>.lua      per-boss handlers (combatRoutes / effectRoutes tables)
+  <Name>Common.lua     mechanics shared across that trial's arenas (optional)
+  Factory.lua          trial setup / boss registration
 test/                  offline test harness
+  checks/              static checks; also run in CI
 ```
+
+Event routing lives in `core/CombatHandler.lua` — one dispatcher shared by all
+nine trials, rather than a per-trial `Dispatcher.lua`.
 
 ## Development notes
 
-- Boss modules implement `onCombatEvent`, `onEffectChanged`, `onUpdate`, and `reset` via `BossBase`.
+- Before pushing, run the static checks locally — CI runs the same six:
+  ```bash
+  sh test/checks/syntax.sh && sh test/checks/encoding.sh && for c in globals manifest contracts filters; do luajit test/checks/$c.lua || break; done
+  ```
+- Boss modules declare `combatRoutes` / `effectRoutes` tables keyed by ability ID, plus optional `onEnter`, `onWipe`, `onLeave`, `onUpdate` and `onPowerUpdate` hooks. `BossBase` supplies `new()` via `fromSchema`, the default `onDied`, `cleanupAlertList`, and `after`/`cancelAfter` for deferred callbacks.
+- Combat and effect events are registered **per ability ID**. An ability missing from a routing table (or from a common module's `combatAbilityIds` / `effectAbilityIds`) is never registered, so its handler is dead code — `test/checks/filters.lua` guards the related invariants.
 - `stateSchema` on each boss defines the saved-variable shape for per-boss persistence.
 - Zone IDs and boss name strings that are marked TBD in ROADMAP.md require in-game verification — see the [verification backlog](ROADMAP.md#in-game-verification-backlog).
 - OSI calls must always be nil-guarded; the dependency is optional.
