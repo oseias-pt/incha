@@ -349,10 +349,8 @@ function Falgravn:onWipe(context, alerts)
     self:cleanupAlertList()
     CA.castAlertsStop(self.prisonBarId)
     self.prisonBarId = false
-    if self.openGatesDelayTimer then
-        zo_removeCallLater(self.openGatesDelayTimer)
-        self.openGatesDelayTimer = false
-    end
+    self:cancelAfter(self.openGatesDelayTimer)
+    self.openGatesDelayTimer = false
 
     -- Remove per-player OSI mechanic icons that were showing during the pull.
     for _, dn in pairs(self.osiPrison)  do osiRemove(dn) end
@@ -396,11 +394,14 @@ end
 function Falgravn:onEnter(context, alerts)
     self.showPercentUI = Settings.trial("ka").showPercent
     if Settings.trial("ka").posIconsFalgravn then
-        zo_callLater(function()
+        -- Deferred so OSI has finished initialising.  Scheduled through
+        -- :after so leaving the arena inside the 3.1 s window cancels it,
+        -- rather than creating icons onLeave has already discarded.
+        self:after(3100, function()
             if not _posIconConn     then _posIconConn     = createConnIcons()     end
             if not _posIconBlood    then _posIconBlood    = createBloodIcons()    end
             if not _posIconTorturer then _posIconTorturer = createTorturerIcons() end
-        end, 3100)
+        end)
     end
 end
 
@@ -469,9 +470,9 @@ local function handleFalgravnHm(self, context, alerts, result, abilityId, ...)
         alerts:showHeader(GetUnitName("boss1") .. " [HM: ON]")
     elseif result == ACTION_RESULT_EFFECT_FADED then
         alerts:showHeader(GetUnitName("boss1"))
-        zo_callLater(function()
+        self:after(2000, function()
             if not IsUnitInCombat("player") then self.bHM = false end
-        end, 2000)
+        end)
     end
 end
 
@@ -597,15 +598,14 @@ local function handleOpenDoor(self, context, alerts, abilityId,
     CA.alert(nil, "Open the Gates!", 0x991111FF,
         SOUNDS.CHAMPION_POINTS_COMMITTED, 2000)
     local capturedSrc = sourceUnitName or ""
-    if self.openGatesDelayTimer then
-        zo_removeCallLater(self.openGatesDelayTimer)
-    end
-    self.openGatesDelayTimer = zo_callLater(function()
+    -- Re-arming mechanic: drop the previous window before opening a new one.
+    self:cancelAfter(self.openGatesDelayTimer)
+    self.openGatesDelayTimer = self:after(25000, function()
         self.openGatesDelayTimer = false
         if not IsUnitInCombat("player") then return end
         CA.alertCast(FALGRAVN_OPEN_DOOR, capturedSrc, 7500,
             { -3, 0, false, { 0, 0, 0.7, 0.4 }, { 0, 0, 0.7, 0.8 } })
-    end, 25000)
+    end)
 end
 
 -- Torturer feeding: kill countdown (plain entry; deduped per feed cycle).

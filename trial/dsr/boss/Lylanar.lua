@@ -286,13 +286,13 @@ local function handleCinderSurge(self, context, alerts, changeType, abilityId,
                                   unitTag, unitId, unitName, stackCount)
     if changeType == EFFECT_RESULT_GAINED then
         self.cinderSurgeActive = true
-        zo_callLater(function()
+        self:after(500, function()
             if self.cinderSurgeActive then
                 CA.alert(nil, "|cFF5733INTERRUPT!|r (Ice Dome)",
                     0xFF2020D9, SOUNDS.DUEL_START, 15000)
                 PlaySound(SOUNDS.DUEL_START)
             end
-        end, 500)
+        end)
     elseif changeType == EFFECT_RESULT_FADED then
         self.cinderSurgeActive = false
     end
@@ -303,13 +303,13 @@ local function handleNumbingShards(self, context, alerts, changeType, abilityId,
                                     unitTag, unitId, unitName, stackCount)
     if changeType == EFFECT_RESULT_GAINED then
         self.numbingShardsActive = true
-        zo_callLater(function()
+        self:after(500, function()
             if self.numbingShardsActive then
                 CA.alert(nil, "|c99CCffINTERRUPT!|r (Fire Dome)",
                     0x2020FFD9, SOUNDS.DUEL_START, 15000)
                 PlaySound(SOUNDS.DUEL_START)
             end
-        end, 500)
+        end)
     elseif changeType == EFFECT_RESULT_FADED then
         self.numbingShardsActive = false
     end

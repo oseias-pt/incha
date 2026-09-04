@@ -66,14 +66,17 @@ end
 -- -- Lifecycle -------------------------------------------------------------
 function Vrol:onEnter(context, alerts)
     if Settings.trial("ka").portalIconVrol and OSI and OSI.CreatePositionIcon then
-        zo_callLater(function()
+        -- Deferred so OSI has finished initialising.  Scheduled through
+        -- :after so leaving the arena inside the 3.1 s window cancels it,
+        -- rather than creating an icon onLeave has already discarded.
+        self:after(3100, function()
             if not _portalIcon then
                 _portalIcon = OSI.CreatePositionIcon(
                     114624, 25764, 71349,
                     "/esoui/art/icons/malatar_agonizingbolts.dds",
                     100, { 1, 1, 1 })
             end
-        end, 3100)
+        end)
     end
 end
 

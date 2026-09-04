@@ -115,13 +115,14 @@ local function handleAcidReflux(self, context, alerts, abilityId, ...)
     CA.castAlertsStop(self.acidRefluxBarId)
     self.acidRefluxBarId = CA.castAlertsStart(
         abilityId, "Acid Reflux", 10000, 10000, COL_ACID, ACT_ACID)
+    -- Scheduled through BossBase:after so a wipe part-way through the channel
+    -- cancels the remaining pool alerts instead of firing them into the reset.
     for i = 1, ACID_COUNT do
-        local delay = i * ACID_INTERVAL
-        zo_callLater(function()
+        self:after(i * ACID_INTERVAL, function()
             CA.alert(nil,
                 "Acid pool " .. i .. "/" .. ACID_COUNT .. "  -  MOVE!",
                 0x44DD22D9, SOUNDS.CHAMPION_POINTS_COMMITTED, 1500)
-        end, delay)
+        end)
     end
 end
 
