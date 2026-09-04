@@ -221,14 +221,25 @@ function zo_removeCallLater(handle) end
 
 -- -- Formatting ------------------------------------------------------------
 -- zo_strformat  -  ESO's format-string helper.  Tokens <<1>>..<<N>> are
--- replaced by the corresponding positional argument.  For Phase 1 the
--- only production use is zo_strformat("<<1>>", name) to normalize a name,
--- so a simple indexed-token replacement covers all real cases.
+-- replaced by the corresponding positional argument.  The only production
+-- use is zo_strformat("<<1>>", name) to normalize a unit name, so indexed
+-- token replacement plus grammar-markup stripping covers all real cases.
+--
+-- Unit names from GetUnitName can carry ESO's gender / declension markup as
+-- a trailing directive: "Kynmarcher^Fx", "Skeevaton^n". The real zo_strformat
+-- renders these away; stripping them here keeps the harness faithful, so a
+-- test that feeds a marked-up name exercises the same code path the game
+-- does. Anchored to the end so it cannot eat a following word.
+local function stripGrammarMarkup(s)
+    return (s:gsub("%^%a+$", ""))
+end
+
 function zo_strformat(fmt, ...)
     local args = { ... }
-    return (fmt:gsub("<<(%d+)>>", function(n)
+    local out = fmt:gsub("<<(%d+)>>", function(n)
         return tostring(args[tonumber(n)] or "")
-    end))
+    end)
+    return (stripGrammarMarkup(out))
 end
 
 function ZO_FormatCountdownTimer(seconds)
