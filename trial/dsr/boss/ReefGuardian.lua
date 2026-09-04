@@ -15,6 +15,7 @@
 
 local DreadsailCommon = require("trial.dsr.DreadsailCommon")
 local CastDur = require("lib.CastDur")
+local Lang = require("core.Lang")
 
 -- -- Ability IDs -----------------------------------------------------------
 local BUILDING_STATIC_1    = 163575   -- effectRoute: EFFECT_RESULT_GAINED/UPDATED/FADED -> lightning stack tracker
@@ -58,7 +59,7 @@ ReefGuardian.__index = ReefGuardian
 ReefGuardian.common = DreadsailCommon   -- C3: common mechanic dispatch
 
 ReefGuardian.key              = "reef_guardian"
-ReefGuardian.name             = "Reef Guardian"   -- TODO: verify via GetUnitName("boss1") in-game
+ReefGuardian.name             = Lang.t("boss_reef_guardian")   -- TODO: verify via GetUnitName("boss1") in-game
 -- location: arena AABB not yet captured  -  detection is name-based.
 -- To add AABB: stand in arena, run /script d(GetUnitWorldPosition("boss1"))
 ReefGuardian.hmHealthThreshold = 100000001         -- TODO: verify
@@ -235,14 +236,15 @@ ReefGuardian.effectRoutes = {
 local function showLightningStacksLine(self, alerts, now)
     local stacks = self.buildingStaticStacks
     if stacks > 0 then
-        local warn = (stacks >= 7) and " |cff0000!|r" or ""
+        local warn = (stacks >= 7) and Lang.t("dsr_reef_warn") or ""
         if self.playerSheltered
            or (now - self.lastShelteredTime < SHELTERED_WINDOW) then
-            alerts:showInfo(1, "|cFFD666⚡ CLEANSED|r")
+            alerts:showInfo(1, Lang.t("dsr_reef_elec_cleansed"))
         else
             alerts:showInfo(1,
-                "|cFFD666⚡ " .. stacks .. " stack" ..
-                (stacks ~= 1 and "s" or "") .. warn .. "|r")
+                "|cFFD666" .. Lang.t("dsr_reef_elec_label")
+                .. Lang.t(stacks ~= 1 and "dsr_reef_stack_p" or "dsr_reef_stack", stacks)
+                .. warn .. "|r")
         end
     else
         alerts:showInfo(1, "")
@@ -253,14 +255,15 @@ end
 local function showPoisonStacksLine(self, alerts, now)
     local vstacks = self.volatileResidueStacks
     if vstacks > 0 then
-        local warn = (vstacks >= 7) and " |cff0000!|r" or ""
+        local warn = (vstacks >= 7) and Lang.t("dsr_reef_warn") or ""
         if self.playerSheltered
            or (now - self.lastShelteredTime < SHELTERED_WINDOW) then
-            alerts:showInfo(2, "|c66CC66☣ CLEANSED|r")
+            alerts:showInfo(2, Lang.t("dsr_reef_poison_cleansed"))
         else
             alerts:showInfo(2,
-                "|c66CC66☣ " .. vstacks .. " stack" ..
-                (vstacks ~= 1 and "s" or "") .. warn .. "|r")
+                "|c66CC66" .. Lang.t("dsr_reef_poison_label")
+                .. Lang.t(vstacks ~= 1 and "dsr_reef_stack_p" or "dsr_reef_stack", vstacks)
+                .. warn .. "|r")
         end
     else
         alerts:showInfo(2, "")
@@ -283,26 +286,21 @@ local function showReefWipeLines(self, alerts, now)
     end
 
     if timers[1] then
-        local t1  = timers[1]
-        local col = (t1.t <= 15) and "|cff0000" or "|cFFD700"
-        alerts:showInfo(3,
-            col .. "Reef " .. t1.idx .. ": " ..
-            string.format("%.0f", t1.t) .. "s|r")
+        local t1 = timers[1]
+        local col1 = (t1.t <= 15) and "|cff0000" or "|cFFD700"
+        alerts:showInfo(3, col1 .. Lang.t("dsr_reef_reef_timer", t1.idx, t1.t) .. "|r")
     else
         alerts:showInfo(3, "")
     end
 
     if timers[2] then
-        local t2  = timers[2]
-        local col = (t2.t <= 15) and "|cff0000" or "|cFFD700"
-        alerts:showInfo(4,
-            col .. "Reef " .. t2.idx .. ": " ..
-            string.format("%.0f", t2.t) .. "s|r")
+        local t2 = timers[2]
+        local col2 = (t2.t <= 15) and "|cff0000" or "|cFFD700"
+        alerts:showInfo(4, col2 .. Lang.t("dsr_reef_reef_timer", t2.idx, t2.t) .. "|r")
     elseif self.acidicVulnLast > 0 then
         local T = 5 - (now - self.acidicVulnLast)
         if T > 0 then
-            alerts:showInfo(4,
-                "|cff8800Acidic Vuln|r: " .. string.format("%.1f", T) .. "s")
+            alerts:showInfo(4, Lang.t("dsr_reef_acidic_vuln", T))
         else
             self.acidicVulnLast = 0
             alerts:showInfo(4, "")

@@ -4,6 +4,7 @@ local CA               = require("lib.CA")
 local BossBase         = require("lib.BossBase")
 local CastDur          = require("lib.CastDur")
 local OsseinCageCommon = require("trial.oc.OsseinCageCommon")
+local Lang             = require("core.Lang")
 
 -- ── Ability IDs (from OsseinCageHelper) ──────────────────────────────────
 -- Chains
@@ -49,7 +50,7 @@ local KazpianEncounter = {}
 KazpianEncounter.__index = KazpianEncounter
 
 KazpianEncounter.key               = "kazpian"
-KazpianEncounter.nameAliases       = { "Overfiend Kazpian" }
+KazpianEncounter.nameAliases       = { Lang.t("boss_kazpian") }
 -- hmHealthThreshold: math.huge until measured in-game on vet HM.
 -- (0 would make detectDifficulty always return HARDMODE.)
 KazpianEncounter.hmHealthThreshold = math.huge
@@ -77,14 +78,14 @@ end
 local function handleChains(self, context, alerts, abilityId,
                               unitTag, sourceUnitTag, sourceUnitId, unitId,
                               sourceUnitName, unitName)
-    local name = IsUnitPlayer(unitTag) and "YOU" or (unitName or "?")
+    local name = IsUnitPlayer(unitTag) and Lang.t("common_you") or (unitName or "?")
     if not self.chainedA then
         self.chainedA = name
     elseif not self.chainedB then
         self.chainedB = name
-        alerts:showAction("Chains: " .. self.chainedA .. " → " .. self.chainedB)
-        if self.chainedA == "YOU" or self.chainedB == "YOU" then
-            CA.alert(nil, "CHAINED — pull apart!", 0xFF4444FF, SOUNDS.NONE, 4000)
+        alerts:showAction(Lang.t("oc_kazpian_chains", self.chainedA, self.chainedB))
+        if self.chainedA == Lang.t("common_you") or self.chainedB == Lang.t("common_you") then
+            CA.alert(nil, Lang.t("oc_kazpian_chained_alert"), 0xFF4444FF, SOUNDS.NONE, 4000)
         end
         self.chainedA = nil
         self.chainedB = nil
@@ -96,97 +97,97 @@ local function handleBitingBlaze(self, context, alerts, abilityId,
                                   unitTag, sourceUnitTag, sourceUnitId, unitId,
                                   sourceUnitName, unitName)
     local target = (unitName and unitName ~= "") and unitName or "?"
-    alerts:showAction("Biting Blaze → " .. target)
+    alerts:showAction(Lang.t("oc_kazpian_biting_blaze", target))
 end
 
 -- Giant Pulse: shared handler for both variants.
 local function handleGiantPulse(self, context, alerts, abilityId, ...)
     local dur = CastDur.get(abilityId, FALLBACK_DUR)
-    CA.alertCast(abilityId, "Giant Sword!", dur, COL_SLAM)
+    CA.alertCast(abilityId, Lang.t("oc_kazpian_giant_sword_bar"), dur, COL_SLAM)
 end
 
 local function handleVileLeap(self, context, alerts, abilityId, ...)
     local dur = CastDur.get(abilityId, FALLBACK_DUR)
-    CA.alertCast(abilityId, "Vile Leap!", dur, COL_LEAP)
-    alerts:showAction("Vile Leap!")
+    CA.alertCast(abilityId, Lang.t("oc_kazpian_vile_leap"), dur, COL_LEAP)
+    alerts:showAction(Lang.t("oc_kazpian_vile_leap"))
 end
 
 local function handleSeethingLeap(self, context, alerts, abilityId, ...)
     local dur = CastDur.get(abilityId, FALLBACK_DUR)
-    CA.alertCast(abilityId, "VILE LEAP (enrage)!", dur, COL_LEAP_RED)
-    alerts:showAction("Seething Vile Leap!")
+    CA.alertCast(abilityId, Lang.t("oc_kazpian_seething_bar"), dur, COL_LEAP_RED)
+    alerts:showAction(Lang.t("oc_kazpian_seething_leap"))
 end
 
 local function handleAgonizerBombs(self, context, alerts, abilityId, ...)
     if self.bombDebounce:isExpired() then
         self.bombDebounce:reset(5.0)
-        CA.alert(nil, "Agonizer Bombs!", 0xFF8844FF, SOUNDS.NONE, 3000)
-        alerts:showAction("Agonizer Bombs!")
+        CA.alert(nil, Lang.t("oc_kazpian_agonizer"), 0xFF8844FF, SOUNDS.NONE, 3000)
+        alerts:showAction(Lang.t("oc_kazpian_agonizer"))
     end
 end
 
 local function handleGiantCones(self, context, alerts, abilityId, ...)
-    CA.alert(nil, "Dodge cones!", 0xFFFF44FF, SOUNDS.NONE, 2500)
+    CA.alert(nil, Lang.t("oc_kazpian_dodge_cones"), 0xFFFF44FF, SOUNDS.NONE, 2500)
 end
 
 local function handleShockSpear(self, context, alerts, abilityId, ...)
-    CA.alert(nil, "Dodge spear!", 0x44CCFFFF, SOUNDS.NONE, 2500)
+    CA.alert(nil, Lang.t("oc_kazpian_dodge_spear"), 0x44CCFFFF, SOUNDS.NONE, 2500)
 end
 
 local function handleStormSlam(self, context, alerts, abilityId, ...)
     local dur = CastDur.get(abilityId, FALLBACK_DUR)
-    CA.alertCast(abilityId, "DODGE — Storm Slam!", dur, COL_SLAM)
-    alerts:showAction("Molag Kena Storm Slam — DODGE!")
+    CA.alertCast(abilityId, Lang.t("oc_kazpian_storm_slam_bar"), dur, COL_SLAM)
+    alerts:showAction(Lang.t("oc_kazpian_storm_slam"))
 end
 
 local function handleStormSurge(self, context, alerts, abilityId, ...)
     local dur = CastDur.get(abilityId, FALLBACK_DUR)
-    CA.alertCast(abilityId, "Storm Surge!", dur, COL_SURGE)
+    CA.alertCast(abilityId, Lang.t("oc_kazpian_storm_surge_bar"), dur, COL_SURGE)
 end
 
 local function handleHeavyShock(self, context, alerts, abilityId,
                                  unitTag, ...)
     if not IsUnitPlayer(unitTag) then return end
-    CA.alert(nil, "Heavy Shock on YOU!", 0x44CCFFFF, SOUNDS.NONE, 2500)
-    alerts:showAction("Molag Kena Heavy Shock on you!")
+    CA.alert(nil, Lang.t("oc_kazpian_heavy_shock_alert"), 0x44CCFFFF, SOUNDS.NONE, 2500)
+    alerts:showAction(Lang.t("oc_kazpian_heavy_shock"))
 end
 
 local function handleImmolating(self, context, alerts, abilityId,
                                  unitTag, ...)
     if not IsUnitPlayer(unitTag) then return end
-    CA.alert(nil, "Immolating Sphere!", 0xFF6600FF, SOUNDS.NONE, 3000)
-    alerts:showAction("Immolating Sphere on you!")
+    CA.alert(nil, Lang.t("oc_kazpian_immolating_alert"), 0xFF6600FF, SOUNDS.NONE, 3000)
+    alerts:showAction(Lang.t("oc_kazpian_immolating"))
 end
 
 local function handleVileTeleport(self, context, alerts, abilityId, ...)
     self.portalPhase = self.portalPhase + 1
-    alerts:showAction("Portal phase " .. self.portalPhase .. "!")
+    alerts:showAction(Lang.t("oc_kazpian_portal_phase", self.portalPhase))
 end
 
 local function handleStricken(self, context, alerts, abilityId,
                                unitTag, ...)
     if not IsUnitPlayer(unitTag) then return end
-    CA.alert(nil, "Stricken on YOU!", 0xFF4444FF, SOUNDS.NONE, 4000)
-    alerts:showAction("Stricken — tank mechanic!")
+    CA.alert(nil, Lang.t("oc_kazpian_stricken_alert"), 0xFF4444FF, SOUNDS.NONE, 4000)
+    alerts:showAction(Lang.t("oc_kazpian_stricken"))
 end
 
 local function handleFirebombDebuf(self, context, alerts, abilityId,
                                     unitTag, ...)
     if not IsUnitPlayer(unitTag) then return end
-    CA.alert(nil, "Firebomb on YOU!", 0xFF6600FF, SOUNDS.NONE, 3000)
-    alerts:showAction("Firebomb — spread!")
+    CA.alert(nil, Lang.t("oc_kazpian_firebomb_alert"), 0xFF6600FF, SOUNDS.NONE, 3000)
+    alerts:showAction(Lang.t("oc_kazpian_firebomb"))
 end
 
 local function handleTortuousChains(self, context, alerts, abilityId,
                                      unitTag, ...)
     if not IsUnitPlayer(unitTag) then return end
     CA.border(true, 5000, "red")
-    alerts:showAction("Tortuous Chains — run from Kazpian!")
+    alerts:showAction(Lang.t("oc_kazpian_tort_chains"))
 end
 
 local function handleChannelerRitual(self, context, alerts, abilityId, ...)
     self.channelersDead = self.channelersDead + 1
-    alerts:showAction("Channeler down! (" .. self.channelersDead .. " dead)")
+    alerts:showAction(Lang.t("oc_kazpian_channeler_down", self.channelersDead))
 end
 
 -- ── Routing tables (C3) ──────────────────────────────────────────────────
@@ -232,14 +233,14 @@ end
 function KazpianEncounter:onUpdate(context, alerts)
     -- Line 1: portal phase
     if self.portalPhase > 0 then
-        alerts:showInfo(1, "Portal: phase " .. self.portalPhase)
+        alerts:showInfo(1, Lang.t("oc_kazpian_portal_label", self.portalPhase))
     else
         alerts:showInfo(1, "")
     end
 
     -- Line 2: channelers dead
     if self.channelersDead > 0 then
-        alerts:showInfo(2, "Channelers dead: " .. self.channelersDead)
+        alerts:showInfo(2, Lang.t("oc_kazpian_channelers", self.channelersDead))
     else
         alerts:showInfo(2, "")
     end

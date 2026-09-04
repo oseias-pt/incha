@@ -3,6 +3,7 @@ local Timer    = require("lib.Timer")
 local CA = require("lib.CA")
 local BossBase = require("lib.BossBase")
 local CastDur = require("lib.CastDur")
+local Lang = require("core.Lang")
 
 -- ── Ability IDs ───────────────────────────────────────────────────────────
 local ARCANE_KNOT         = 213477   -- combatRoute: ACTION_RESULT_EFFECT_GAINED_DURATION / FADED → carry knot
@@ -31,7 +32,7 @@ local XorynEncounter = {}
 XorynEncounter.__index = XorynEncounter
 
 XorynEncounter.key               = "xoryn"
-XorynEncounter.nameAliases       = { "Xoryn" }
+XorynEncounter.nameAliases       = { Lang.t("boss_xoryn") }
 XorynEncounter.hmHealthThreshold = 100000000
 -- location: placeholder — Lucent Citadel arena AABB not yet captured.
 -- Detection falls back to nameAliases (name-based, may fail on non-EN clients).
@@ -51,18 +52,18 @@ end
 
 local function handleNecroticBarrage(self, context, alerts, abilityId, ...)
     local dur = CastDur.get(abilityId, FALLBACK_BARRAGE_DUR)
-    CA.alertCast(abilityId, "Necrotic Barrage!", dur, COL_NECROTIC)
+    CA.alertCast(abilityId, Lang.t("lc_xoryn_barrage_bar"), dur, COL_NECROTIC)
 end
 
 local function handleAcceleratingCharge(self, context, alerts, abilityId, ...)
-    CA.alert(nil, "Chain Lightning incoming!", 0xFFFF44FF, SOUNDS.NONE, 3000)
-    alerts:showAction("Accelerating Charge → Chain Lightning!")
+    CA.alert(nil, Lang.t("lc_xoryn_chain_lightning"), 0xFFFF44FF, SOUNDS.NONE, 3000)
+    alerts:showAction(Lang.t("lc_xoryn_accel_charge"))
 end
 
 local function handleTempest(self, context, alerts, abilityId, ...)
     local dur = CastDur.get(abilityId, FALLBACK_DUR)
-    CA.alertCast(abilityId, "MOVE from line!", dur, COL_TEMPEST)
-    alerts:showAction("Tempest! MOVE from mirror line!")
+    CA.alertCast(abilityId, Lang.t("lc_xoryn_tempest_bar"), dur, COL_TEMPEST)
+    alerts:showAction(Lang.t("lc_xoryn_tempest"))
 end
 
 local function handleGlassStomp(self, context, alerts, abilityId,
@@ -70,24 +71,24 @@ local function handleGlassStomp(self, context, alerts, abilityId,
                                  sourceUnitName, unitName)
     local target = (unitName and unitName ~= "") and unitName or "?"
     local dur = CastDur.get(abilityId, FALLBACK_DUR)
-    CA.alertCast(abilityId, "Atronach AOE → " .. target, dur, COL_ATRONACH)
+    CA.alertCast(abilityId, Lang.t("lc_xoryn_atronach_bar", target), dur, COL_ATRONACH)
     if IsUnitPlayer(unitTag) then
-        alerts:showAction("Atronach AOE on YOU!")
+        alerts:showAction(Lang.t("lc_xoryn_atronach_aoe"))
     end
 end
 
 local function handleLustrousJavelin(self, context, alerts, abilityId, unitTag, ...)
     if not IsUnitPlayer(unitTag) then return end
-    CA.alert(nil, "Javelin on YOU!", 0xFF8844FF, SOUNDS.NONE, 3000)
-    alerts:showAction("Lustrous Javelin on you!")
+    CA.alert(nil, Lang.t("lc_xoryn_javelin_alert"), 0xFF8844FF, SOUNDS.NONE, 3000)
+    alerts:showAction(Lang.t("lc_xoryn_lustrous_javelin"))
 end
 
 local function handleArcaneKnot(self, context, alerts, result, abilityId, unitTag, ...)
     if not IsUnitPlayer(unitTag) then return end
     if result == ACTION_RESULT_EFFECT_GAINED_DURATION then
         self.holdingKnot = true
-        CA.alert(nil, "Carry knot! Pass it!", 0xFFAA44FF, SOUNDS.NONE, 4000)
-        alerts:showAction("Arcane Knot — carry and pass!")
+        CA.alert(nil, Lang.t("lc_xoryn_knot_alert"), 0xFFAA44FF, SOUNDS.NONE, 4000)
+        alerts:showAction(Lang.t("lc_xoryn_arcane_knot"))
     elseif result == ACTION_RESULT_EFFECT_FADED then
         self.holdingKnot = false
     end
@@ -95,8 +96,8 @@ end
 
 local function handleArcaneConvDebuff(self, context, alerts, abilityId, unitTag, ...)
     if not IsUnitPlayer(unitTag) then return end
-    CA.alert(nil, "TETHER! Move away!", 0xFF4444FF, SOUNDS.NONE, 3000)
-    alerts:showAction("Tether on you! Separate from partner!")
+    CA.alert(nil, Lang.t("lc_xoryn_tether_alert"), 0xFF4444FF, SOUNDS.NONE, 3000)
+    alerts:showAction(Lang.t("lc_xoryn_tether"))
 end
 
 local function handleFluctuatingCurrent(self, context, alerts, result, abilityId, unitTag, ...)
@@ -104,8 +105,8 @@ local function handleFluctuatingCurrent(self, context, alerts, result, abilityId
     if result == ACTION_RESULT_EFFECT_GAINED_DURATION then
         self.holdingCurrent = true
         self.currentTimer:reset(CURRENT_MAX_DUR)
-        CA.alert(nil, "Hold current! Drop at edge!", 0x44CCFFFF, SOUNDS.NONE, 3000)
-        alerts:showAction("Fluctuating Current — hold, then drop!")
+        CA.alert(nil, Lang.t("lc_xoryn_current_alert"), 0x44CCFFFF, SOUNDS.NONE, 3000)
+        alerts:showAction(Lang.t("lc_xoryn_fluctuating"))
     elseif result == ACTION_RESULT_EFFECT_FADED then
         self.holdingCurrent = false
         self.currentTimer:clear()
@@ -114,8 +115,8 @@ end
 
 local function handleOverloadedCurrent(self, context, alerts, abilityId, unitTag, ...)
     if not IsUnitPlayer(unitTag) then return end
-    CA.alert(nil, "DROP current!", 0xFF0000FF, SOUNDS.NONE, 2000)
-    alerts:showAction("Overloaded — DROP the current!")
+    CA.alert(nil, Lang.t("lc_xoryn_drop_alert"), 0xFF0000FF, SOUNDS.NONE, 2000)
+    alerts:showAction(Lang.t("lc_xoryn_overloaded"))
 end
 
 -- ── Routing tables (C3) ──────────────────────────────────────────────────
@@ -138,9 +139,9 @@ local function showCurrentLine(self, alerts)
     if self.holdingCurrent then
         local r = self.currentTimer:remaining()
         if r > 0 then
-            alerts:showInfo(1, "|c44CCFFCurrent: " .. string.format("%.0f", r) .. "s|r")
+            alerts:showInfo(1, Lang.t("lc_xoryn_current", r))
         else
-            alerts:showInfo(1, "|cFF0000DROP NOW!|r")
+            alerts:showInfo(1, Lang.t("lc_xoryn_drop_now"))
         end
     else
         alerts:showInfo(1, "")
@@ -150,7 +151,7 @@ end
 -- Line 2: Arcane Knot carrier indicator.
 local function showKnotLine(self, alerts)
     if self.holdingKnot then
-        alerts:showInfo(2, "|cFFAA44Carrying Arcane Knot|r")
+        alerts:showInfo(2, Lang.t("lc_xoryn_carrying_knot"))
     else
         alerts:showInfo(2, "")
     end

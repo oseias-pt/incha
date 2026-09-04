@@ -21,6 +21,7 @@
 
 local CA      = require("lib.CA")
 local CastDur = require("lib.CastDur")
+local Lang    = require("core.Lang")
 
 local OsseinCageCommon = {}
 
@@ -95,7 +96,7 @@ end
 function OsseinCageCommon.showCarrionInfo(alerts)
     if _carrionStacks > 0 then
         local col = carrionColorCode(_carrionStacks)
-        alerts:showInfo(3, col .. "Carrion: " .. _carrionStacks .. "|r")
+        alerts:showInfo(3, col .. Lang.t("oc_carrion_label", _carrionStacks) .. "|r")
     else
         alerts:showInfo(3, "")
     end
@@ -118,8 +119,8 @@ function OsseinCageCommon.handle(alerts, result, abilityId, unitTag, sourceUnitN
     -- Soul Devourer: Life Drain (player targeted) --------------------------
     if abilityId == LIFE_DRAIN then
         if not IsUnitPlayer(unitTag) then return false end
-        alerts:showAction("Move! (Life Drain)")
-        CA.alert(nil, "Life Drain", 0xCC44FFD9, SOUNDS.NONE, 3000)
+        alerts:showAction(Lang.t("oc_move_life_drain"))
+        CA.alert(nil, Lang.t("oc_life_drain_alert"), 0xCC44FFD9, SOUNDS.NONE, 3000)
         return true
     end
 
@@ -139,8 +140,8 @@ function OsseinCageCommon.handleEffect(alerts, changeType, abilityId, unitTag, s
         if changeType ~= EFFECT_RESULT_FADED then
             local _, _, isTank = GetPlayerRoles()
             if isTank then
-                alerts:showAction("SWAP! (Hindered)")
-                CA.alert(nil, "Hindered  -  SWAP!", 0x4488FFD9, SOUNDS.NONE, 5000)
+                alerts:showAction(Lang.t("oc_swap_hindered"))
+                CA.alert(nil, Lang.t("oc_hindered_swap_alert"), 0x4488FFD9, SOUNDS.NONE, 5000)
             end
         end
         return true
@@ -153,8 +154,8 @@ function OsseinCageCommon.handleEffect(alerts, changeType, abilityId, unitTag, s
             local now = GetGameTimeMilliseconds()
             if now - _toxicIreLastMs >= 10000 then
                 _toxicIreLastMs = now
-                alerts:showAction("Toxic Ire (you!)")
-                CA.alert(nil, "Toxic Ire", 0x44CC44D9, SOUNDS.NONE, 4000)
+                alerts:showAction(Lang.t("oc_toxic_ire"))
+                CA.alert(nil, Lang.t("oc_toxic_ire_alert"), 0x44CC44D9, SOUNDS.NONE, 4000)
             end
         end
         return true
@@ -187,9 +188,9 @@ function OsseinCageCommon.handleEffect(alerts, changeType, abilityId, unitTag, s
         if not IsUnitPlayer(unitTag) then return false end
         if changeType ~= EFFECT_RESULT_FADED then
             local dur = CastDur.get(DETONATE_SOUL_DB, FALL_DETONATE)
-            alerts:showAction("Detonate Soul (you!)")
-            CA.alertCast(DETONATE_SOUL_DB, "Detonate Soul", dur, COL_DETONATE)
-            CA.alert(nil, "Detonate Soul", 0xFF4400D9, SOUNDS.NONE, dur)
+            alerts:showAction(Lang.t("oc_detonate_soul"))
+            CA.alertCast(DETONATE_SOUL_DB, Lang.t("oc_detonate_soul_bar"), dur, COL_DETONATE)
+            CA.alert(nil, Lang.t("oc_detonate_soul_bar"), 0xFF4400D9, SOUNDS.NONE, dur)
         end
         return true
     end
@@ -210,7 +211,7 @@ function OsseinCageCommon.handleEffect(alerts, changeType, abilityId, unitTag, s
         local s = _carrionStacks
         if s == 6 or s == 8 or s == 10 then
             local hex = s >= 10 and 0xFF2222D9 or s >= 8 and 0xFF8800D9 or 0xFFCC00D9
-            CA.alert(nil, "Carrion: " .. s .. " stacks!", hex, SOUNDS.NONE, 3000)
+            CA.alert(nil, Lang.t("oc_carrion_alert", s), hex, SOUNDS.NONE, 3000)
         end
         return true
     end

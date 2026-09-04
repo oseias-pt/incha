@@ -16,6 +16,7 @@
 
 local CA      = require("lib.CA")
 local CastDur = require("lib.CastDur")
+local Lang    = require("core.Lang")
 
 local LCCommon = {}
 
@@ -71,8 +72,8 @@ function LCCommon.handleEffect(alerts, changeType, abilityId, unitTag, stackCoun
         if changeType ~= EFFECT_RESULT_FADED then
             local _, _, isTank = GetPlayerRoles()
             if isTank then
-                alerts:showAction("SWAP! (Hindered)")
-                CA.alert(nil, "Tank swap — Hindered!", 0x4488FFD9, SOUNDS.NONE, 5000)
+                alerts:showAction(Lang.t("lc_swap_hindered"))
+                CA.alert(nil, Lang.t("lc_hindered_alert"), 0x4488FFD9, SOUNDS.NONE, 5000)
             end
         end
         return true

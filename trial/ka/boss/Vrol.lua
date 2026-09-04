@@ -1,5 +1,6 @@
 local Location = require("core.Location")
 local Timer    = require("lib.Timer")
+local Lang     = require("core.Lang")
 
 local CA = require("lib.CA")
 local BossBase = require("lib.BossBase")
@@ -135,7 +136,7 @@ local function handlePortalCast(self, context, alerts, abilityId,
                                  unitTag, sourceUnitTag, sourceUnitId, unitId,
                                  sourceUnitName, unitName)
     self.portalTimer:reset()
-    alerts:showAction("KILL Conjurer!")
+    alerts:showAction(Lang.t("ka_vrol_kill_conjurer"))
     -- Use portal kill-time ability ID for the icon (matches BSCHTKA).
     CA.alertCast(VROL_PORTAL_KTIME, sourceUnitName, 3000,
         { -3, 0, false, { 0.7, 0.2, 0.9, 0.4 }, { 0.7, 0.2, 0.9, 0.8 } })
@@ -147,7 +148,7 @@ local function handleFogCast(self, context, alerts, abilityId,
     self.fogTimer:reset()
     self.fogEndTime  = GetGameTimeMilliseconds() + FOG_DURATION * 1000
     self.fogHitCount = 0
-    alerts:showAction("Dodge/Move! (Fog)")
+    alerts:showAction(Lang.t("ka_vrol_dodge_fog"))
     local cid = CA.alertCast(abilityId, sourceUnitName, 1000,
         { -3, 0, false, { 0.0, 0.0, 1, 0.4 }, { 0.1, 0.1, 1, 0.8 } })
     if cid and unitId then self.alertList[unitId] = cid end
@@ -168,17 +169,17 @@ local function handleHarpoon(self, context, alerts, abilityId,
                               unitTag, sourceUnitTag, sourceUnitId, unitId,
                               sourceUnitName, unitName)
     self.conduitTimer:reset()
-    alerts:showAction("Kill Harpoon! (~16 s)")
+    alerts:showAction(Lang.t("ka_vrol_kill_harpoon"))
     local cid = CA.castAlertsStart(abilityId, GetAbilityName(abilityId),
         16000, 16000,
         { 1, 0.7, 0, 0.5 },
-        { 16000, "Harpoon!", 0.8, 0, 0, 0.9, SOUNDS.NONE })
+        { 16000, Lang.t("ka_vrol_harpoon_action"), 0.8, 0, 0, 0.9, SOUNDS.NONE })
     if cid and unitId then self.alertList[unitId] = cid end
 end
 
 local function handleApothecary(self, context, alerts, abilityId, ...)
-    alerts:showAction("Interrupt Apothecary!")
-    CA.alert(nil, "Interrupt Apothecary!", 0x0099FFFF,
+    alerts:showAction(Lang.t("ka_vrol_interrupt_apoth"))
+    CA.alert(nil, Lang.t("ka_vrol_interrupt_apoth"), 0x0099FFFF,
         SOUNDS.CHAMPION_POINTS_COMMITTED, 2000)
 end
 
@@ -200,23 +201,23 @@ local function handlePortalKillTime(self, context, alerts, changeType, abilityId
 
     if changeType == EFFECT_RESULT_GAINED then
         self.portalKillExpires = GetGameTimeMilliseconds() + 20000
-        alerts:showAction("KILL Conjurer! (20 s)")
+        alerts:showAction(Lang.t("ka_vrol_kill_conjurer_20s"))
         self.portalKillBarId = CA.castAlertsStart(
             abilityId, GetAbilityName(abilityId),
             20000, 20000,
             { 1, 0.7, 0, 0.5 },
-            { 20000, "KILL Conjurer!", 0.8, 0, 0, 0.9, SOUNDS.NONE })
+            { 20000, Lang.t("ka_vrol_kill_conjurer"), 0.8, 0, 0, 0.9, SOUNDS.NONE })
 
     elseif changeType == EFFECT_RESULT_FADED then
         CA.castAlertsStop(self.portalKillBarId)
         self.portalKillBarId = false
 
         if GetGameTimeMilliseconds() < self.portalKillExpires then
-            alerts:showAction("Portal OK!")
-            CA.alert(nil, "Portal OK!", 0x119911FF, SOUNDS.DUEL_WON, 2000)
+            alerts:showAction(Lang.t("ka_vrol_portal_ok"))
+            CA.alert(nil, Lang.t("ka_vrol_portal_ok"), 0x119911FF, SOUNDS.DUEL_WON, 2000)
         else
-            alerts:showAction("Portal Failed!")
-            CA.alert(nil, "Portal Failed!", 0x991111FF, SOUNDS.DUEL_FORFEIT, 2000)
+            alerts:showAction(Lang.t("ka_vrol_portal_failed"))
+            CA.alert(nil, Lang.t("ka_vrol_portal_failed"), 0x991111FF, SOUNDS.DUEL_FORFEIT, 2000)
         end
         self.portalKillExpires = 0
     end
@@ -235,15 +236,17 @@ function Vrol:onUpdate(context, alerts)
     if fogRemMs > 0 then
         local s = fogRemMs / 1000
         local col = (s <= 5) and "|cff6666" or "|c6699ff"
-        alerts:showInfo(1, col .. "Fog clears:|r " .. string.format("%.1f", s) .. "s")
+        alerts:showInfo(1, col .. Lang.t("ka_vrol_fog_clears") .. "|r " .. string.format("%.1f", s) .. "s")
     else
         if self.fogEndTime > 0 then self.fogEndTime = 0 end   -- auto-clear stale timestamp
         local t1 = self.fogTimer:remaining()
-        alerts:showInfo(1, "Next fog: " .. (t1 > 0 and ZO_FormatCountdownTimer(t1) or "soon!"))
+        alerts:showInfo(1, Lang.t("ka_vrol_next_fog")
+            .. (t1 > 0 and ZO_FormatCountdownTimer(t1) or Lang.t("common_soon")))
     end
 
     local t2 = self.conduitTimer:remaining()
-    alerts:showInfo(2, "Conduit: " .. (t2 > 0 and ZO_FormatCountdownTimer(t2) or "ready"))
+    alerts:showInfo(2, Lang.t("ka_vrol_conduit")
+        .. (t2 > 0 and ZO_FormatCountdownTimer(t2) or Lang.t("common_ready")))
 
     -- Portals stop spawning once Vrol drops below 50% HP.  Suppress the
     -- countdown when bPORTAL_END is set so we don't show stale "ready" text.
@@ -251,7 +254,8 @@ function Vrol:onUpdate(context, alerts)
         alerts:showInfo(3, "")
     else
         local t3 = self.portalTimer:remaining()
-        alerts:showInfo(3, "Portal:  " .. (t3 > 0 and ZO_FormatCountdownTimer(t3) or "ready"))
+        alerts:showInfo(3, Lang.t("ka_vrol_portal_label")
+            .. (t3 > 0 and ZO_FormatCountdownTimer(t3) or Lang.t("common_ready")))
     end
 end
 

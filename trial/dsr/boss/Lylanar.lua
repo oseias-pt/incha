@@ -43,6 +43,7 @@
 
 local DreadsailCommon  = require("trial.dsr.DreadsailCommon")
 local DebuffTracker    = require("lib.DebuffTracker")
+local Lang             = require("core.Lang")
 
 -- -- Ability IDs  -  Fire (Lylanar) -------------------------------------------
 local CINDER_SURGE         = 166693   -- effectRoute: EFFECT_RESULT_GAINED / FADED -> interrupt ice dome
@@ -103,8 +104,8 @@ local Lylanar = {}
 Lylanar.__index = Lylanar
 
 Lylanar.key          = "lylanar"
-Lylanar.name         = "Lylanar"        -- TODO: verify via GetUnitName("boss1") in-game
-Lylanar.nameAliases  = { "Turlassil" }  -- both bosses active simultaneously
+Lylanar.name         = Lang.t("boss_lylanar")     -- TODO: verify via GetUnitName("boss1") in-game
+Lylanar.nameAliases  = { Lang.t("boss_turlassil") }  -- both bosses active simultaneously
 -- location: name-based detection intentional  -  dual-boss pair; arenas share the
 -- same room so a single AABB would be ambiguous.  nameAliases covers both names.
 Lylanar.hmHealthThreshold = 100000001   -- TODO: verify exact HM health pool
@@ -202,7 +203,7 @@ local function handleTorridCleave(self, context, alerts, abilityId,
                                    sourceUnitName, unitName)
     if not IsUnitPlayer(unitTag) then return end
     local dur = CastDur.get(abilityId, FALLBACK_HEAVY_DUR)
-    alerts:showAction("Dodge! (Cleave)")
+    alerts:showAction(Lang.t("dsr_lylanar_dodge_cleave"))
     CA.alertCast(abilityId, sourceUnitName, dur, COL_FIRE_HEAVY)
 end
 
@@ -239,7 +240,7 @@ local function handleBriskRip(self, context, alerts, abilityId,
                                sourceUnitName, unitName)
     if not IsUnitPlayer(unitTag) then return end
     local dur = CastDur.get(abilityId, FALLBACK_HEAVY_DUR)
-    alerts:showAction("Dodge! (Cleave)")
+    alerts:showAction(Lang.t("dsr_lylanar_dodge_cleave"))
     CA.alertCast(abilityId, sourceUnitName, dur, COL_ICE_HEAVY)
 end
 
@@ -500,14 +501,15 @@ local function showFireBubbleLine(self, alerts, now, isHM)
         local T      = cd - (now - self.lastDestructiveEmber)
         local stks   = self.destructiveEmberStacks
         local name   = self.destructiveEmberName or "?"
-        local suffix = "  -  " .. stks .. " stack" .. (stks ~= 1 and "s" or "")
+        local suffix = stks ~= 1 and Lang.t("dsr_lylanar_ember_suffix_p", stks)
+                                   or  Lang.t("dsr_lylanar_ember_suffix",   stks)
         if T > 0 then
             alerts:showInfo(1,
-                "|cFF5733🔥 " .. name .. "|r" .. suffix ..
+                "|cFF5733\xf0\x9f\x94\xa5 " .. name .. "|r" .. suffix ..
                 " (" .. string.format("%.0f", T) .. "s)")
         else
             alerts:showInfo(1,
-                "|cFF5733🔥 " .. name .. "|r" .. suffix .. " |cff0000DROP!|r")
+                "|cFF5733\xf0\x9f\x94\xa5 " .. name .. "|r" .. suffix .. " " .. Lang.t("dsr_lylanar_drop"))
         end
     else
         alerts:showInfo(1, "")
@@ -521,14 +523,15 @@ local function showIceBubbleLine(self, alerts, now, isHM)
         local T      = cd - (now - self.lastPiercingHail)
         local stks   = self.piercingHailstacks
         local name   = self.piercingHailName or "?"
-        local suffix = "  -  " .. stks .. " stack" .. (stks ~= 1 and "s" or "")
+        local suffix = stks ~= 1 and Lang.t("dsr_lylanar_ember_suffix_p", stks)
+                                   or  Lang.t("dsr_lylanar_ember_suffix",   stks)
         if T > 0 then
             alerts:showInfo(2,
-                "|c99CCff❄ " .. name .. "|r" .. suffix ..
+                "|c99CCff\xe2\x9d\x84 " .. name .. "|r" .. suffix ..
                 " (" .. string.format("%.0f", T) .. "s)")
         else
             alerts:showInfo(2,
-                "|c99CCff❄ " .. name .. "|r" .. suffix .. " |cff0000DROP!|r")
+                "|c99CCff\xe2\x9d\x84 " .. name .. "|r" .. suffix .. " " .. Lang.t("dsr_lylanar_drop"))
         end
     else
         alerts:showInfo(2, "")
@@ -540,11 +543,9 @@ local function showFragilityLine(self, alerts)
     local fireT = self.fireFragility:remaining()
     local iceT  = self.iceFragility:remaining()
     if fireT > 0 then
-        alerts:showInfo(3,
-            "|cFF5733Fire Fragility|r: " .. string.format("%.0f", fireT) .. "s")
+        alerts:showInfo(3, Lang.t("dsr_lylanar_fire_fragility", fireT))
     elseif iceT > 0 then
-        alerts:showInfo(3,
-            "|c99CCffIce Fragility|r: " .. string.format("%.0f", iceT) .. "s")
+        alerts:showInfo(3, Lang.t("dsr_lylanar_ice_fragility", iceT))
     else
         alerts:showInfo(3, "")
     end
@@ -556,35 +557,29 @@ local function showSpikeLine(self, alerts, now, isHM)
     local iceSpikeT  = (self.lastGlacialSpike > 0) and (SPIKE_DUR - (now - self.lastGlacialSpike)) or -1
 
     if fireSpikeT > 0 then
-        alerts:showInfo(4,
-            "|cFF5733Need Fire Dome|r: " .. string.format("%.1f", fireSpikeT) .. "s")
+        alerts:showInfo(4, Lang.t("dsr_lylanar_need_fire_dome", fireSpikeT))
     elseif iceSpikeT > 0 then
-        alerts:showInfo(4,
-            "|c99CCffNeed Ice Dome|r: " .. string.format("%.1f", iceSpikeT) .. "s")
+        alerts:showInfo(4, Lang.t("dsr_lylanar_need_ice_dome", iceSpikeT))
     elseif isHM and self.lastIncendiaryAxe > 0 then
         local T = WEAPON_CD - (now - self.lastIncendiaryAxe)
         if T > 0 then
             alerts:showInfo(4,
-                "|cFF5733Axe|r: " .. string.format("%.0f", T) .. "s"
+                Lang.t("dsr_lylanar_axe", T)
                 .. (self.lastCalamitousSword > 0 and
-                    ("  |c99CCffSword|r: " .. string.format("%.0f",
-                        math.max(0, WEAPON_CD - (now - self.lastCalamitousSword))) .. "s") or ""))
+                    Lang.t("dsr_lylanar_sword",
+                        math.max(0, WEAPON_CD - (now - self.lastCalamitousSword))) or ""))
         else
-            alerts:showInfo(4, "|cFF5733Axe|r: |cff0000INC|r")
+            alerts:showInfo(4, Lang.t("dsr_lylanar_axe_inc"))
         end
     else
         local fireImminT = self.fireImminent:remaining()
         local iceImminT  = self.iceImminent:remaining()
         if fireImminT > 0 then
-            alerts:showInfo(4,
-                "|cFF5733Imminent Blister|r (" ..
-                (self.fireImminent:playerName() or "?") .. "): " ..
-                string.format("%.0f", fireImminT) .. "s")
+            alerts:showInfo(4, Lang.t("dsr_lylanar_imm_blister",
+                self.fireImminent:playerName() or "?", fireImminT))
         elseif iceImminT > 0 then
-            alerts:showInfo(4,
-                "|c99CCffImminent Chill|r (" ..
-                (self.iceImminent:playerName() or "?") .. "): " ..
-                string.format("%.0f", iceImminT) .. "s")
+            alerts:showInfo(4, Lang.t("dsr_lylanar_imm_chill",
+                self.iceImminent:playerName() or "?", iceImminT))
         else
             alerts:showInfo(4, "")
         end

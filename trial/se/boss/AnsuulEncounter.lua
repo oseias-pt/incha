@@ -3,6 +3,7 @@ local Timer    = require("lib.Timer")
 local CA = require("lib.CA")
 local BossBase = require("lib.BossBase")
 local CastDur = require("lib.CastDur")
+local Lang = require("core.Lang")
 
 -- -- Ability IDs --------------------------------------------------------------------
 local SUNBURST         = 199344   -- combatRoute: ACTION_RESULT_BEGIN -> Dodge alert (player only)
@@ -47,7 +48,7 @@ local AnsuulEncounter = {}
 AnsuulEncounter.__index = AnsuulEncounter
 
 AnsuulEncounter.key               = "ansuul"
-AnsuulEncounter.nameAliases       = { "Ansuul the Tormentor" }
+AnsuulEncounter.nameAliases       = { Lang.t("boss_ansuul") }
 AnsuulEncounter.hmHealthThreshold = 100000000  -- vet ~69M, HM ~160.7M
 -- location: placeholder - Sunken Elder arena AABB not yet captured.
 -- Detection falls back to nameAliases (name-based, may fail on non-EN clients).
@@ -74,83 +75,83 @@ local function handleBreakdown(self, context, alerts, result, abilityId, ...)
             self.inTriplet = true
             self.firstCalamity = true
             self.calamityTimer:reset(CALAMITY_FIRST_CD)
-            alerts:showHeader("TRIPLET PHASE!")
+            alerts:showHeader(Lang.t("se_ansuul_triplet_header"))
         end
     elseif result == ACTION_RESULT_EFFECT_FADED then
         self.inTriplet = false
         self.firstCalamity = true
         self.calamityTimer:reset(CALAMITY_CD)
-        alerts:showAction("Triplet ended!")
+        alerts:showAction(Lang.t("se_ansuul_triplet_ended"))
     end
 end
 
 local function handleCalamity(self, context, alerts, abilityId, ...)
     self.firstCalamity = false
     self.calamityTimer:reset(CALAMITY_CD)
-    alerts:showAction("Calamity! Stack!")
+    alerts:showAction(Lang.t("se_ansuul_calamity_stack"))
 end
 
 local function handleWrack(self, context, alerts, abilityId, ...)
-    alerts:showAction("Kite! Wrack incoming!")
-    CA.alert(nil, "KITE!", 0xFFD666FF, SOUNDS.NONE, 3000)
+    alerts:showAction(Lang.t("se_ansuul_kite_wrack"))
+    CA.alert(nil, Lang.t("se_ansuul_kite_alert"), 0xFFD666FF, SOUNDS.NONE, 3000)
 end
 
 local function handleExecute(self, context, alerts, abilityId, ...)
-    alerts:showAction("INTERRUPT! Execute!")
-    CA.alert(nil, "INTERRUPT!", 0xFF0033FF, SOUNDS.NONE, 2500)
+    alerts:showAction(Lang.t("se_ansuul_interrupt_exec"))
+    CA.alert(nil, Lang.t("common_interrupt"), 0xFF0033FF, SOUNDS.NONE, 2500)
 end
 
 local function handleSunburst(self, context, alerts, abilityId, unitTag, ...)
     if not IsUnitPlayer(unitTag) then return end
-    alerts:showAction("Sunburst on you! Dodge!")
+    alerts:showAction(Lang.t("se_ansuul_sunburst"))
     local dur = CastDur.get(SUNBURST, FALLBACK_SUNBURST_DUR)
-    CA.alertCast(SUNBURST, "SUNBURST", dur, COL_VOID)
+    CA.alertCast(SUNBURST, Lang.t("se_ansuul_sunburst_bar"), dur, COL_VOID)
 end
 
 local function handleWrathstorm(self, context, alerts, abilityId, ...)
     local dur = CastDur.get(WRATHSTORM, FALLBACK_WRATHSTORM_DUR)
-    CA.alertCast(WRATHSTORM, "Wrathstorm!", dur, COL_VOID)
+    CA.alertCast(WRATHSTORM, Lang.t("se_ansuul_wrathstorm_bar"), dur, COL_VOID)
 end
 
 local function handlePoisonedMind(self, context, alerts, abilityId,
                                    unitTag, ...)
     if not IsUnitPlayer(unitTag) then return end
-    alerts:showAction("Poisoned Mind on you!")
+    alerts:showAction(Lang.t("se_ansuul_poisoned_mind"))
     CA.border(true, 8000, "green")
 end
 
 local function handleManicPhobia(self, context, alerts, abilityId,
                                    unitTag, sourceUnitTag, sourceUnitId, unitId,
                                    sourceUnitName, unitName)
-    local name = IsUnitPlayer(unitTag) and "YOU" or (unitName or "?")
-    alerts:showAction("Manic Phobia -> " .. name)
+    local name = IsUnitPlayer(unitTag) and Lang.t("common_you") or (unitName or "?")
+    alerts:showAction(Lang.t("se_ansuul_manic_phobia", name))
     if IsUnitPlayer(unitTag) then
-        CA.alert(nil, "MANIC PHOBIA - fear!", 0xFF44FFFF, SOUNDS.NONE, 5000)
+        CA.alert(nil, Lang.t("se_ansuul_manic_alert"), 0xFF44FFFF, SOUNDS.NONE, 5000)
     end
 end
 
 local function handleEnragedInferno(self, context, alerts, abilityId, ...)
-    alerts:showAction("INTERRUPT! Enraged Inferno!")
-    CA.alert(nil, "INTERRUPT - Inferno!", 0xFF0033FF, SOUNDS.NONE, 2500)
+    alerts:showAction(Lang.t("se_ansuul_interrupt_inf"))
+    CA.alert(nil, Lang.t("se_ansuul_inferno_alert"), 0xFF0033FF, SOUNDS.NONE, 2500)
 end
 
 local function handleEnragedFlare(self, context, alerts, abilityId,
                                    unitTag, sourceUnitTag, sourceUnitId, unitId,
                                    sourceUnitName, unitName)
     local target = (unitName and unitName ~= "") and unitName or "?"
-    alerts:showAction("Enraged Flare -> " .. target)
-    CA.alert(nil, "ENRAGED FLARE", 0xFF6600FF, SOUNDS.NONE, 2500)
+    alerts:showAction(Lang.t("se_ansuul_enraged_flare", target))
+    CA.alert(nil, Lang.t("se_ansuul_flare_alert"), 0xFF6600FF, SOUNDS.NONE, 2500)
 end
 
 local function handleTheRitual(self, context, alerts, result, abilityId, ...)
     if result == ACTION_RESULT_EFFECT_GAINED_DURATION then
         self.inMaze = true
-        alerts:showHeader("Maze phase!")
+        alerts:showHeader(Lang.t("se_ansuul_maze_header"))
     elseif result == ACTION_RESULT_EFFECT_FADED then
         self.inMaze = false
         self.firstCalamity = true
         self.calamityTimer:reset(CALAMITY_FIRST_CD)
-        alerts:showAction("Maze cleared! Calamity in ~9s")
+        alerts:showAction(Lang.t("se_ansuul_maze_cleared"))
     end
 end
 
@@ -186,24 +187,26 @@ AnsuulEncounter.combatRoutes = {
 -- Line 1: Calamity countdown - context-aware: maze suppression, triplet urgency, or normal CD.
 local function showCalamityLine(self, alerts)
     if self.inMaze then
-        alerts:showInfo(1, "Maze phase (no Calamity)")
+        alerts:showInfo(1, Lang.t("se_ansuul_maze_no_cal"))
     elseif self.inTriplet then
         local r = self.calamityTimer:remaining()
-        alerts:showInfo(1, "TRIPLET - Calamity: " .. (r > 0 and ZO_FormatCountdownTimer(r) or "now!"))
+        alerts:showInfo(1, Lang.t("se_ansuul_triplet_cal",
+            r > 0 and ZO_FormatCountdownTimer(r) or Lang.t("se_ansuul_now")))
     elseif self.firstCalamity then
-        alerts:showInfo(1, "Calamity: first ~9s")
+        alerts:showInfo(1, Lang.t("se_ansuul_calamity_first"))
     else
         local r = self.calamityTimer:remaining()
-        alerts:showInfo(1, "Calamity: " .. (r > 0 and ZO_FormatCountdownTimer(r) or "ready"))
+        alerts:showInfo(1, Lang.t("se_ansuul_calamity_label")
+            .. (r > 0 and ZO_FormatCountdownTimer(r) or Lang.t("common_ready")))
     end
 end
 
 -- Line 2: Current phase label (triplet split or maze navigation).
 local function showPhaseLine(self, alerts)
     if self.inTriplet then
-        alerts:showInfo(2, "Split phase - equalize HP!")
+        alerts:showInfo(2, Lang.t("se_ansuul_split_phase"))
     elseif self.inMaze then
-        alerts:showInfo(2, "Navigate the maze")
+        alerts:showInfo(2, Lang.t("se_ansuul_navigate_maze"))
     else
         alerts:showInfo(2, "")
     end

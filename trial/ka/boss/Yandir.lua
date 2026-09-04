@@ -1,5 +1,6 @@
 local Location = require("core.Location")
 local Timer = require("lib.Timer")
+local Lang = require("core.Lang")
 
 local CA = require("lib.CA")
 local BossBase = require("lib.BossBase")
@@ -93,19 +94,21 @@ end
 -- No-op when sink has no info handler (e.g. LegacyUI during the KA transition).
 function Yandir:onUpdate(context, alerts)
     local t1 = self.totemTimer:remaining()
-    alerts:showInfo(1, "Totem:   " .. (t1 > 0 and ZO_FormatCountdownTimer(t1) or "ready"))
+    alerts:showInfo(1, Lang.t("ka_yandir_totem_label")
+        .. (t1 > 0 and ZO_FormatCountdownTimer(t1) or Lang.t("common_ready")))
     local line2
     if self.bGRYPHON_SKIP then
         -- Show how much time was left on the timer when the skip was detected.
         local earlyTag = self.bGRYPHON_SKIP_TIME > 0
-            and (" (" .. ZO_FormatCountdownTimer(self.bGRYPHON_SKIP_TIME) .. " early)")
+            and Lang.t("ka_yandir_gryphon_early", ZO_FormatCountdownTimer(self.bGRYPHON_SKIP_TIME))
             or ""
-        line2 = "Gryphon: |c55aa55Skip!|r" .. earlyTag
+        line2 = Lang.t("ka_yandir_gryphon_label") .. Lang.t("ka_yandir_gryphon_skip") .. earlyTag
     elseif self.bGRYPHON_SKIP_FAILHP > 0 then
-        line2 = string.format("Gryphon: |ccc4444Fail @ %.0f%%|r", self.bGRYPHON_SKIP_FAILHP)
+        line2 = Lang.t("ka_yandir_gryphon_label") .. Lang.t("ka_yandir_gryphon_fail", self.bGRYPHON_SKIP_FAILHP)
     else
         local t2 = self.gryphonTimer:remaining()
-        line2 = "Gryphon: " .. (t2 > 0 and ZO_FormatCountdownTimer(t2) or "ready")
+        line2 = Lang.t("ka_yandir_gryphon_label")
+            .. (t2 > 0 and ZO_FormatCountdownTimer(t2) or Lang.t("common_ready"))
     end
     alerts:showInfo(2, line2)
 end
@@ -135,7 +138,7 @@ local function handlePoisonTotem(self, context, alerts, abilityId,
                                   unitTag, sourceUnitTag, sourceUnitId, unitId,
                                   sourceUnitName, unitName)
     self.totemTimer:reset()
-    alerts:showAction("Dodge! (Poison Totem)")
+    alerts:showAction(Lang.t("ka_yandir_dodge_poison"))
     local cid = CA.alertCast(abilityId, sourceUnitName, 4300,
         { -3, 0, false, { 0, 0.8, 0, 0.4 }, { 0, 0.8, 0, 0.8 } })
     if cid and unitId then self.alertList[unitId] = cid end
@@ -166,7 +169,7 @@ end
 local function handleGargoyleTotem(self, context, alerts, abilityId,
                                     unitTag, sourceUnitTag, sourceUnitId, unitId,
                                     sourceUnitName, unitName)
-    alerts:showAction("Block! (Gargoyle Totem)")
+    alerts:showAction(Lang.t("ka_yandir_block_gargoyle"))
     local dur = CastDur.get(TOTEM_GARGYL, FALLBACK_DUR)
     local cid = CA.alertCast(abilityId, "Block!!", dur,
         { -3, 0, false, { 0.7, 0.7, 0.7, 0.4 }, { 0.7, 0.7, 0.7, 0.8 } })
@@ -174,15 +177,15 @@ local function handleGargoyleTotem(self, context, alerts, abilityId,
 end
 
 local function handleYandirHealing(self, context, alerts, abilityId, ...)
-    alerts:showAction("Casts Healing!")
-    CA.alert(nil, "Casts Healing!", 0x991111FF, SOUNDS.NONE, 2000)
+    alerts:showAction(Lang.t("ka_yandir_casts_healing"))
+    CA.alert(nil, Lang.t("ka_yandir_casts_healing"), 0x991111FF, SOUNDS.NONE, 2000)
 end
 
 local function handleYandirJump(self, context, alerts, abilityId,
                                  unitTag, sourceUnitTag, sourceUnitId, unitId,
                                  sourceUnitName, unitName)
-    alerts:showAction("(Jump) Block!!")
-    local cid = CA.alertCast(abilityId, "(Jump) Block!!", 3000,
+    alerts:showAction(Lang.t("ka_yandir_jump_block"))
+    local cid = CA.alertCast(abilityId, Lang.t("ka_yandir_jump_block"), 3000,
         { -3, 0, false, { 0.7, 0.7, 0.7, 0.4 }, { 0.7, 0.7, 0.7, 0.8 } })
     if cid and unitId then self.alertList[unitId] = cid end
 end
@@ -191,7 +194,7 @@ local function handleSeaAdderSpray(self, context, alerts, abilityId,
                                     unitTag, sourceUnitTag, sourceUnitId, unitId,
                                     sourceUnitName, unitName)
     if not IsUnitPlayer(unitTag) then return end
-    alerts:showAction("Dodge! (Sea Adder)")
+    alerts:showAction(Lang.t("ka_yandir_dodge_sea_adder"))
     local cid = CA.alertCast(abilityId, sourceUnitName, 1933,
         { -3, 0, false, { 0.7, 0.7, 0.7, 0.4 }, { 0.7, 0.7, 0.7, 0.8 } })
     if cid and unitId then self.alertList[unitId] = cid end

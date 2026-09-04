@@ -2,6 +2,7 @@
 local CA = require("lib.CA")
 local BossBase = require("lib.BossBase")
 local CastDur = require("lib.CastDur")
+local Lang = require("core.Lang")
 
 -- ── Ability IDs ───────────────────────────────────────────────────────────
 local BRILLIANT_ANNIHILATION = 214187   -- combatRoute: ACTION_RESULT_BEGIN → light side room wipe; STACK
@@ -19,7 +20,7 @@ local RyelazEncounter = {}
 RyelazEncounter.__index = RyelazEncounter
 
 RyelazEncounter.key               = "ryelaz"
-RyelazEncounter.nameAliases       = { "Count Ryelaz", "Zilyesset" }
+RyelazEncounter.nameAliases       = { Lang.t("boss_count_ryelaz"), Lang.t("boss_zilyesset") }
 RyelazEncounter.hmHealthThreshold = 40000000
 -- location: placeholder — Lucent Citadel arena AABB not yet captured.
 -- Detection falls back to nameAliases (name-based, may fail on non-EN clients).
@@ -42,8 +43,8 @@ local function makeAnnihilHandler(label)
     return { result = ACTION_RESULT_BEGIN,
         fn = function(self, context, alerts, abilityId, ...)
         local dur = CastDur.get(abilityId, FALLBACK_DUR)
-        CA.alertCast(abilityId, "STACK — Annihilation!", dur, COL_ANNIHIL)
-        alerts:showAction(label .. " STACK!")
+        CA.alertCast(abilityId, Lang.t("lc_ryelaz_annihil_action"), dur, COL_ANNIHIL)
+        alerts:showAction(label)
     end }
 end
 
@@ -64,8 +65,8 @@ local function handlePorcinDark(self, context, alerts, result, abilityId, unitTa
 end
 
 RyelazEncounter.combatRoutes = {
-    [BRILLIANT_ANNIHILATION] = makeAnnihilHandler("Brilliant Annihilation!"),
-    [BLEAK_ANNIHILATION]     = makeAnnihilHandler("Bleak Annihilation!"),
+    [BRILLIANT_ANNIHILATION] = makeAnnihilHandler(Lang.t("lc_ryelaz_brilliant")),
+    [BLEAK_ANNIHILATION]     = makeAnnihilHandler(Lang.t("lc_ryelaz_bleak")),
     [PORCIN_LIGHT]           = handlePorcinLight,
     [PORCIN_DARK]            = handlePorcinDark,
 }
@@ -76,9 +77,9 @@ end
 
 function RyelazEncounter:onUpdate(context, alerts)
     if self.playerSide == "ryelaz" then
-        alerts:showInfo(1, "|cFFAA44Ryelaz side (dark)|r")
+        alerts:showInfo(1, Lang.t("lc_ryelaz_side_dark"))
     elseif self.playerSide == "zilyesset" then
-        alerts:showInfo(1, "|c8888FFZilyesset side (light)|r")
+        alerts:showInfo(1, Lang.t("lc_ryelaz_side_light"))
     else
         alerts:showInfo(1, "")
     end

@@ -2,6 +2,7 @@
 local CA = require("lib.CA")
 local BossBase = require("lib.BossBase")
 local CastDur = require("lib.CastDur")
+local Lang = require("core.Lang")
 
 -- ── Ability IDs ───────────────────────────────────────────────────────────
 local POWERFUL_THROW = 218971   -- combatRoute: ACTION_RESULT_BEGIN → caAlertCast; on player → explicit alert
@@ -16,7 +17,7 @@ local DarielEncounter = {}
 DarielEncounter.__index = DarielEncounter
 
 DarielEncounter.key               = "dariel"
-DarielEncounter.nameAliases       = { "Dariel" }
+DarielEncounter.nameAliases       = { Lang.t("boss_dariel") }
 -- hmHealthThreshold: math.huge until measured in-game on vet HM.
 -- (0 would make detectDifficulty always return HARDMODE.)
 DarielEncounter.hmHealthThreshold = math.huge
@@ -37,11 +38,11 @@ local function handlePowerfulThrow(self, context, alerts, abilityId,
                                    sourceUnitName, unitName)
     local target = (unitName and unitName ~= "") and unitName or "?"
     local dur = CastDur.get(abilityId, FALLBACK_DUR)
-    CA.alertCast(abilityId, "Throw → " .. target, dur, COL_THROW)
+    CA.alertCast(abilityId, Lang.t("lc_dariel_throw_target", target), dur, COL_THROW)
     if IsUnitPlayer(unitTag) then
-        alerts:showAction("Powerful Throw on YOU!")
+        alerts:showAction(Lang.t("lc_dariel_throw_you"))
     else
-        alerts:showAction("Powerful Throw → " .. target)
+        alerts:showAction(Lang.t("lc_dariel_throw_target", target))
     end
 end
 
