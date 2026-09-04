@@ -94,8 +94,20 @@ function BossRegistry:knownNames()
     return names
 end
 
+--- Classify an encounter from the boss's effective max health.
+---
+--- Returns Difficulty.NONE for "not known yet" as well as "boss declares no
+--- threshold".  The distinction matters: GetUnitPower can legitimately read 0
+--- on the frame a boss appears, and reporting NORMAL from that sample is a
+--- positive claim the addon has not earned.  NONE lets Trial re-resolve on a
+--- later tick once a real value arrives.
 function BossRegistry:detectDifficulty(boss, effectiveMaxHealth)
     if not boss or not boss.hmHealthThreshold then
+        return Difficulty.NONE
+    end
+
+    -- No usable sample yet  -  stay unknown rather than guessing NORMAL.
+    if not effectiveMaxHealth or effectiveMaxHealth <= 0 then
         return Difficulty.NONE
     end
 
