@@ -132,6 +132,13 @@ function Trial:onBossesChanged(forceReset)
         end
     end
 
+    -- Blank the panel before either branch runs.  The outgoing boss owned
+    -- whatever is currently on screen, and the incoming one only rewrites the
+    -- info slots it actually uses  -  so without this, walking straight from
+    -- one boss to the next leaves the previous boss's countdown lines up
+    -- until (or unless) the new boss happens to write those same slots.
+    self.alerts:clear()
+
     if bossClass then
         -- Create a fresh instance  -  no state carried over from previous pulls.
         local instance = bossClass.new()
@@ -149,7 +156,6 @@ function Trial:onBossesChanged(forceReset)
     else
         self.context:setBoss(nil)
         self.context:setDifficulty(Difficulty.NONE)
-        self.alerts:clear()
 
         self.bridge.onBossExit()
     end

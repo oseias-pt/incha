@@ -82,12 +82,9 @@ function RyelazEncounter:onUpdate(context, alerts)
     else
         alerts:showInfo(1, "")
     end
-    alerts:showInfo(2, "")
-    alerts:showInfo(3, "")
-    alerts:showInfo(4, "")
-    alerts:showInfo(5, "")
-    alerts:showInfo(6, "")
-    alerts:showInfo(7, "")
+    -- Slots 2-7 are not written by this encounter.  Trial:onBossesChanged
+    -- clears the panel on every boss transition, so they do not need to be
+    -- blanked on each tick.
 end
 
 package.loaded["trial.lc.boss.RyelazEncounter"] = RyelazEncounter
