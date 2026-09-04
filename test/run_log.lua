@@ -34,75 +34,34 @@ local UnitTracker = require("harness.unit_tracker")
 local LogReader  = require("harness.log_reader")
 
 -- -- Zone -> trial configuration --------------------------------------------
--- bosses: ordered list of module paths matching the Factory order exactly
---         (BossRegistry assigns IDs 1..N from this order).
--- hints:  log unit-name -> boss key for trials whose boss classes use location-
---         based detection (no .name field) and therefore can't be found by
---         BossRegistry:findByName.
+-- The boss list and its ORDER are read from the real trial/<id>/Factory.lua
+-- at run time, not restated here.  BossRegistry assigns ids 1..N from array
+-- position, so a restated list that drifted from the Factory would produce a
+-- harness that passes while exercising a different configuration than ships.
+--
+-- factory: module path of the trial Factory (the single source of truth).
+-- hints:   log unit-name -> boss key, for trials whose boss classes use
+--          location-based detection (no .name field) and therefore cannot be
+--          found by BossRegistry:findByName inside the harness, where
+--          GetUnitWorldPosition is stubbed to the origin.
 local TRIAL_CONFIG = {
     [1196] = {
-        id     = "ka",
-        bosses = { "trial.ka.boss.Yandir",   "trial.ka.boss.Vrol",  "trial.ka.boss.Falgravn" },
-        hints  = {
+        id      = "ka",
+        factory = "trial.ka.Factory",
+        hints   = {
             ["Yandir the Butcher"] = "yandir",
             ["Captain Vrol"]       = "vrol",
             ["Lord Falgravn"]      = "falgravn",
         },
     },
-    [1121] = {
-        id     = "ss",
-        bosses = { "trial.ss.boss.Lokke", "trial.ss.boss.Yolna", "trial.ss.boss.Nahvii" },
-        hints  = {},
-    },
-    [1263] = {
-        id     = "rg",
-        bosses = { "trial.rg.boss.Oaxiltso", "trial.rg.boss.Bahsei", "trial.rg.boss.Xalvakka" },
-        hints  = {},
-    },
-    [1344] = {
-        id     = "dsr",
-        bosses = { "trial.dsr.boss.Lylanar", "trial.dsr.boss.ReefGuardian", "trial.dsr.boss.Taleria" },
-        hints  = {},
-    },
-    [1000] = {
-        id     = "as",
-        bosses = { "trial.as.boss.OlmsEncounter" },
-        hints  = {},
-    },
-    [1051] = {
-        id     = "cr",
-        bosses = { "trial.cr.boss.ZmajaEncounter" },
-        hints  = {},
-    },
-    [1427] = {
-        id     = "se",
-        bosses = {
-            "trial.se.boss.YaseylaEncounter",
-            "trial.se.boss.ChimeraEncounter",
-            "trial.se.boss.AnsuulEncounter",
-        },
-        hints  = {},
-    },
-    [1478] = {
-        id     = "lc",
-        bosses = {
-            "trial.lc.boss.RyelazEncounter",
-            "trial.lc.boss.DarielEncounter",
-            "trial.lc.boss.OrphicEncounter",
-            "trial.lc.boss.XynizataEncounter",
-            "trial.lc.boss.XorynEncounter",
-        },
-        hints  = {},
-    },
-    [1548] = {
-        id     = "oc",
-        bosses = {
-            "trial.oc.boss.JynorahEncounter",
-            "trial.oc.boss.KazpianEncounter",
-            "trial.oc.boss.ShaperEncounter",
-        },
-        hints  = {},
-    },
+    [1121] = { id = "ss",  factory = "trial.ss.Factory",  hints = {} },
+    [1263] = { id = "rg",  factory = "trial.rg.Factory",  hints = {} },
+    [1344] = { id = "dsr", factory = "trial.dsr.Factory", hints = {} },
+    [1000] = { id = "as",  factory = "trial.as.Factory",  hints = {} },
+    [1051] = { id = "cr",  factory = "trial.cr.Factory",  hints = {} },
+    [1427] = { id = "se",  factory = "trial.se.Factory",  hints = {} },
+    [1478] = { id = "lc",  factory = "trial.lc.Factory",  hints = {} },
+    [1548] = { id = "oc",  factory = "trial.oc.Factory",  hints = {} },
 }
 
 -- -- Captured alerts -------------------------------------------------------
@@ -159,15 +118,22 @@ local function buildTrial(cfg)
     local Trial         = require("core.Trial")
     local CombatHandler = require("core.CombatHandler")
 
-    local bossClasses = {}
-    for _, modulePath in ipairs(cfg.bosses) do
-        local ok, mod = pcall(require, modulePath)
-        if ok and mod then
-            bossClasses[#bossClasses + 1] = mod
-        else
-            io.stderr:write("[harness] WARNING: failed to load boss module "
-                .. modulePath .. ": " .. tostring(mod) .. "\n")
-        end
+    -- Single source of truth: require the shipping Factory and read the boss
+    -- list (and its order) straight off the Trial it built.  The harness then
+    -- constructs its own Trial around the same classes so it can substitute
+    -- print-based alert handlers without mutating the shipping instance.
+    local ok, factoryTrial = pcall(require, cfg.factory)
+    if not ok or not factoryTrial then
+        io.stderr:write("[harness] FATAL: could not load " .. cfg.factory
+            .. ": " .. tostring(factoryTrial) .. "\n")
+        os.exit(1)
+    end
+
+    local bossClasses = factoryTrial.registry.bosses
+    if #bossClasses == 0 then
+        io.stderr:write("[harness] FATAL: " .. cfg.factory
+            .. " registered no bosses\n")
+        os.exit(1)
     end
 
     local trial = Trial.create({

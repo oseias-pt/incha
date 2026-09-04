@@ -71,11 +71,11 @@ Exit code `0` = clean run.  Exit code `1` = at least one handler threw an error.
 | 1121 | Sunspire (SS) |
 | 1263 | Rockgrove (RG) |
 | 1344 | Dreadsail Reef (DSR) |
-| 1000 | Aetherian Archive (AS) |
-| 1051 | Cradle of Shadows (CR) |
+| 1000 | Asylum Sanctorium (AS) |
+| 1051 | Cloudrest (CR) |
 | 1427 | Sanity's Edge (SE) |
 | 1478 | Lucent Citadel (LC) |
-| 1548 | Oathsworn Pit (OC) |
+| 1548 | Ossein Cage (OC) |
 
 ---
 
@@ -104,6 +104,12 @@ injection** strategy:
 1. Every `UNIT_ADDED` with `isBoss=T` is looked up in the `TRIAL_CONFIG.hints`
    table (a log-unit-name → boss-key map) or via `BossRegistry:findByName` for
    bosses that declare a `.name` field.
+
+   The boss list itself is **not** declared in `TRIAL_CONFIG` — the runner
+   requires the shipping `trial/<id>/Factory.lua` and reads
+   `trial.registry.bosses`, so the harness can never drift from the order the
+   addon actually registers (`BossRegistry` assigns boss ids from that order).
+   `hints` is the only harness-specific entry.
 2. If the boss class is found, `trial.activeBoss` is set to a fresh instance and
    `boss:onEnter(context, alerts)` is called — identical to what the real addon
    does after `EVENT_BOSSES_CHANGED`.

@@ -16,6 +16,18 @@
 
 local EsoApi = {}
 
+-- -- Addon identity ---------------------------------------------------------
+-- Normally set by bootstrap.lua, which the harness does not execute (it also
+-- installs the require shim, and the harness uses real file-based require).
+-- Trial.create and several boss modules read ADDON_PREFIX at file scope.
+ADDON_NAME   = "incha"
+ADDON_TITLE  = "Incha"
+ADDON_TAG    = "[Incha]"
+ADDON_SLASH  = "/incha"
+ADDON_SV     = "Incha_SV"
+ADDON_PREFIX = "Incha_"
+ADDON_LAM    = "InchaSettings"
+
 -- -- Internal mutable state ------------------------------------------------
 local _currentMs = 0
 local _zoneId    = 0
@@ -191,6 +203,8 @@ function GetMapPlayerPosition(unitTag) return 0.5, 0.5 end
 function GetAbilityCastInfo(abilityId) return 2000 end
 function GetAbilityName(abilityId)     return "" end
 function GetAbilityIcon(abilityId)     return "" end
+-- GetAbilityDuration is defined above, alongside the other role/duration
+-- stubs, and is settable via EsoApi.setAbilityDuration.
 
 -- -- Deferred calls --------------------------------------------------------
 -- zo_callLater returns a handle; Phase 1 does not execute the callback
