@@ -3,6 +3,7 @@ local BossRegistry = require("core.BossRegistry")
 local Difficulty   = require("core.Difficulty")
 local EventPipeline = require("core.EventPipeline")
 local HealthRules  = require("core.HealthRules")
+local Log          = require("lib.Log")
 local Throttle     = require("lib.Throttle")
 local TrialContext = require("core.TrialContext")
 local BridgeBase   = require("core.Bridge")
@@ -135,6 +136,27 @@ function Trial:onBossesChanged(forceReset)
                     break
                 end
             end
+        end
+    end
+
+    -- Detection failing is silent by design  -  no boss, no panel, no error  -
+    -- which is exactly why a wrong name literal or a stale AABB can sit in the
+    -- tree unnoticed.  Behind the debug flag, report what the game actually
+    -- reported so one run through a trial yields the whole correction list.
+    if not bossClass and Log.isEnabled() then
+        local present = {}
+        for _, slot in ipairs({"boss1", "boss2", "boss3", "boss4"}) do
+            if DoesUnitExist(slot) then
+                present[#present + 1] = string.format("%s=%q", slot, GetUnitName(slot))
+            end
+        end
+        if #present > 0 then
+            Log.warn("%s: no boss matched. Game reports %s",
+                self.id, table.concat(present, "  "))
+            Log.warn("  registry expects: %s",
+                table.concat(self.registry:knownNames(), " | "))
+            Log.warn("  player at %.0f / %.0f / %.0f (no AABB contains this)",
+                x or 0, y or 0, z or 0)
         end
     end
 

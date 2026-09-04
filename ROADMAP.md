@@ -766,6 +766,16 @@ Split HP tracking: all three clones named "Ansuul the Tormentor" — differentia
 - [x] Zone ID for OC — 1548 ✓ confirmed in-game
 - (AS=1000, SE=1427, KA=1196, RG=1263, DSR=1344, SS=1121 — vintage-plausible, treat as confirmed until a misfire is reported)
 - [ ] Boss name strings for `BossRegistry.nameAliases` in each trial's Factory
+      **Collect them in one pass:** run each trial with `/incha debug` on. When
+      `EVENT_BOSSES_CHANGED` fires and nothing matches, `Trial:onBossesChanged`
+      now prints the name the game actually reported for boss1–boss4, the names
+      the registry expected, and the player's world position. One clear per
+      trial yields the whole correction list.
+- [ ] **Localisation:** `BossRegistry:findByName` compares against English
+      literals, so on a DE/FR/RU/ES/JP client every name-detected trial silently
+      does nothing. Only KA declares `Location` bounds, which are locale-independent.
+      Capturing AABBs for the other eight trials (item above) is what removes this
+      dependency; a string table alone does not, since the names come from the client.
 - [ ] Real Location bounds for AS, CR, LC, OC, SE — stand at boss room corners and run:
       `/script local _,x,y,z = GetUnitWorldPosition("player"); d(x..", "..y..", "..z)`
       Record min/max x/z at each corner; y is the floor plane.

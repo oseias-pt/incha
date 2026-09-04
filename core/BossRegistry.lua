@@ -37,25 +37,61 @@ function BossRegistry:findAtPosition(x, y, z)
     return nil
 end
 
+-- GetUnitName can return a name carrying ESO's gender / article markup
+-- ("^Fx", "^n" suffixes and similar).  zo_strformat("<<1>>", name) is the
+-- documented way to render it to the plain display string, and this file
+-- must apply it to BOTH sides: the declared boss.name literals were written
+-- by hand and are already plain, but normalising them too keeps the
+-- comparison symmetric if someone later pastes a raw name in.
+local function normalize(name)
+    if not name or name == "" then return nil end
+    local ok, plain = pcall(zo_strformat, "<<1>>", name)
+    if ok and plain and plain ~= "" then return plain end
+    return name
+end
+
 -- Name-based fallback for trials whose bosses have no location bounding box.
 -- Matches boss.name (or any entry in boss.nameAliases) against the supplied
 -- unit name. nameAliases lets a single boss entry cover multiple unit names
 -- (e.g. the Lylanar/Turlassil dual-boss pair in DSR).
+--
+-- CAVEAT: this compares against English literals, so on a localised client
+-- (DE/FR/RU/ES/JP) it matches nothing and the trial silently does nothing.
+-- Only KA currently declares Location bounds, which are locale-independent;
+-- every other trial relies solely on this path.  See the "Real Location
+-- bounds" item in the ROADMAP verification backlog.
 function BossRegistry:findByName(unitName)
-    if not unitName or unitName == "" then return nil end
+    local target = normalize(unitName)
+    if not target then return nil end
+
     for _, boss in ipairs(self.bosses) do
-        if boss.name == unitName then
+        if normalize(boss.name) == target then
             return boss
         end
         if boss.nameAliases then
             for _, alias in ipairs(boss.nameAliases) do
-                if alias == unitName then
+                if normalize(alias) == target then
                     return boss
                 end
             end
         end
     end
     return nil
+end
+
+--- Every unit name this registry would accept, for diagnostics.
+--- Used by Trial to report what was expected when detection fails.
+function BossRegistry:knownNames()
+    local names = {}
+    for _, boss in ipairs(self.bosses) do
+        if boss.name then names[#names + 1] = boss.name end
+        if boss.nameAliases then
+            for _, alias in ipairs(boss.nameAliases) do
+                names[#names + 1] = alias
+            end
+        end
+    end
+    return names
 end
 
 function BossRegistry:detectDifficulty(boss, effectiveMaxHealth)
