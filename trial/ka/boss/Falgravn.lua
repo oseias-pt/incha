@@ -281,8 +281,9 @@ Falgravn.stateSchema = {
     torturerCount    = 8,
     -- [unitId] -> CA cast bar ID; cleared on leave/death.
     alertList        = function() return {} end,
-    -- CA bar ID for the Prison debuff (false when not active).
-    prisonBarId      = false,
+    -- [unitTag] -> CA bar ID for the Prison debuff.  Keyed because Prison
+    -- can be on several players at once; see handlePrisonEffect.
+    prisonBars       = function() return {} end,
     -- zo_callLater handle for the 25 s Open Door heavy-attack alert.
     -- Stored so onWipe can cancel it if the next pull starts within that window.
     openGatesDelayTimer = false,
@@ -313,8 +314,8 @@ end
 function Falgravn:onLeave(context)
     -- Stop all alertList bars via the BossBase helper, then any extra bars.
     self:cleanupAlertList()
-    CA.castAlertsStop(self.prisonBarId)
-    self.prisonBarId = false
+    for _, cid in pairs(self.prisonBars) do CA.castAlertsStop(cid) end
+    self.prisonBars = {}
     -- Remove any OSI mechanic icons.
     for _, dn in pairs(self.osiPrison)  do osiRemove(dn) end
     for unitTag, dn in pairs(self.osiInstability) do
@@ -347,8 +348,8 @@ end
 function Falgravn:onWipe(context, alerts)
     -- Stop all cast bars.
     self:cleanupAlertList()
-    CA.castAlertsStop(self.prisonBarId)
-    self.prisonBarId = false
+    for _, cid in pairs(self.prisonBars) do CA.castAlertsStop(cid) end
+    self.prisonBars = {}
     self:cancelAfter(self.openGatesDelayTimer)
     self.openGatesDelayTimer = false
 
@@ -685,10 +686,17 @@ end
 
 local function handlePrisonEffect(self, context, alerts, changeType, abilityId,
                                    unitTag, unitId, unitName, stackCount)
+    -- Prison can be active on more than one player at a time, so the bar id
+    -- is keyed by unitTag alongside the OSI icon.  A single shared field
+    -- meant the second GAINED overwrote the first player's id, leaving that
+    -- bar running until its own duration expired while the following FADED
+    -- stopped the second bar twice.
     if changeType == EFFECT_RESULT_GAINED then
         alerts:showAction("KILL PRISON!")
         local dur = 8000
-        self.prisonBarId = CA.castAlertsStart(
+        -- Re-application on the same player: drop the stale bar first.
+        CA.castAlertsStop(self.prisonBars[unitTag])
+        self.prisonBars[unitTag] = CA.castAlertsStart(
             abilityId, GetAbilityName(abilityId),
             dur, dur,
             { 1, 0.7, 0, 0.5 },
@@ -697,8 +705,8 @@ local function handlePrisonEffect(self, context, alerts, changeType, abilityId,
         osiSet(dn, ICON_PRISON, COL_PRISON)
         if dn and dn ~= "" then self.osiPrison[unitTag] = dn end
     elseif changeType == EFFECT_RESULT_FADED then
-        CA.castAlertsStop(self.prisonBarId)
-        self.prisonBarId = false
+        CA.castAlertsStop(self.prisonBars[unitTag])
+        self.prisonBars[unitTag] = nil
         osiRemove(self.osiPrison[unitTag])
         self.osiPrison[unitTag] = nil
     end
