@@ -767,10 +767,26 @@ Split HP tracking: all three clones named "Ansuul the Tormentor" — differentia
 - (AS=1000, SE=1427, KA=1196, RG=1263, DSR=1344, SS=1121 — vintage-plausible, treat as confirmed until a misfire is reported)
 - [ ] Boss name strings for `BossRegistry.nameAliases` in each trial's Factory
 - [ ] Real Location bounds for AS, CR, LC, OC, SE — stand at boss room corners and run:
-      `/script local x,y,z,_ = GetUnitWorldPosition("player"); d(x..","..y)`
+      `/script local _,x,y,z = GetUnitWorldPosition("player"); d(x..", "..y..", "..z)`
       Record min/max x/z at each corner; y is the floor plane.
+      **Note the leading `_`:** `GetUnitWorldPosition` returns **four** values —
+      `zoneId, x, y, z`. The previous form here (`local x,y,z,_ = ...`) bound
+      `x` to the zone id and `z` to the vertical axis, so every bound measured
+      with it is wrong. This is the same mistake `lib/MapUtils.lua` shipped.
 
 ### KA
+- [ ] **Falgravn node tables appear to be in a different coordinate space than the arena AABB.**
+      `Falgravn.location` is x 73,700–84,500 / y 6,000–22,500 / z 50,200–61,900, but the
+      OSI marker tables in the same file use x 22,300–27,796 and z 7,114–12,970. Every node
+      *y* falls inside the AABB's y range; no node *x* or *z* is close. Vrol's portal icon
+      (114,624 / 25,764 / 71,349) *does* sit inside Vrol's own box, so the convention is
+      right elsewhere — the Falgravn tables look inherited from BSCHTKA without
+      re-measurement. If confirmed, every Falgravn floor marker renders in the wrong place,
+      in the trial currently marked feature-complete.
+      **To check:** enter the arena with `/incha debug` on and read the `falgravn coords`
+      lines printed by `onEnter` (see `checkNodeCoordSpace()` in `trial/ka/boss/Falgravn.lua`).
+      Then stand on the wall-end node of the north-left connection line and compare with
+      `CONN_NODES.LN1`.
 - [ ] OSI floor icon world coordinates: connection nodes (×8), blood fountains, torturer walk spots
 
 ### RG
