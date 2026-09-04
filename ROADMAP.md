@@ -796,6 +796,14 @@ Split HP tracking: all three clones named "Ansuul the Tormentor" — differentia
       `x` to the zone id and `z` to the vertical axis, so every bound measured
       with it is wrong. This is the same mistake `lib/MapUtils.lua` shipped.
 
+### UI
+- [ ] **Overlay position round-trip at non-default scale.** `OnMoveStop` saves
+      `GetLeft()`/`GetTop()` and `applyPosition` feeds those back to `SetAnchor`. That is
+      only stable if both report in the same coordinate space once `SetScale` is applied.
+      **To check:** `/incha scale 0.5`, drag the panel, `/reloadui`, confirm it returns to
+      where it was left; repeat at `/incha scale 2.0`. With `/incha debug` on, the saved
+      offsets are printed on every drag.
+
 ### KA
 - [ ] **Falgravn node tables appear to be in a different coordinate space than the arena AABB.**
       `Falgravn.location` is x 73,700–84,500 / y 6,000–22,500 / z 50,200–61,900, but the
