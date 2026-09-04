@@ -40,6 +40,11 @@ jobs:
       - name: Syntax
         run: sh test/checks/syntax.sh
 
+      # No UTF-8 BOMs. Lua tolerates them, so they survive unnoticed and show
+      # up as spurious first-line diffs.
+      - name: Encoding
+        run: sh test/checks/encoding.sh
+
       # No global writes (they leak into the environment shared with every
       # other installed addon), and no global reads outside the ESO API
       # surface (a missing `local X = require(...)` reads nil and throws at

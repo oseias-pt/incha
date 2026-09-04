@@ -32,7 +32,7 @@ Checked items are **shipped** (committed). Unchecked items are pending.
 
 ### File encoding corruption
 - [x] Eight files contained `a"EUR` sequences (corrupted `─` U+2500 box-drawing chars).
-      Fixed: replaced all occurrences with `─` and re-saved as UTF-8 without BOM.
+      Fixed: replaced all occurrences with `─`.
       `trial/cr/boss/ZmajaEncounter.lua` was already clean (used `-- --` style).
       Fixed files:
       - `trial/as/boss/OlmsEncounter.lua` (647 replacements)
@@ -43,6 +43,14 @@ Checked items are **shipped** (committed). Unchecked items are pending.
       - `trial/lc/boss/XynizataEncounter.lua` (279)
       - `trial/oc/boss/KazpianEncounter.lua` (207)
       - `trial/oc/boss/ShaperEncounter.lua` (207)
+- [x] **Correction:** those files were re-saved *with* a UTF-8 BOM, not without one,
+      and `ZmajaEncounter.lua` had one too — nine in total. All nine were stripped in
+      PR #60.
+- [x] Guard against a repeat: `test/checks/encoding.sh` runs in CI, so the note above
+      and the tree can no longer drift apart, and `.gitattributes` / `.editorconfig`
+      pin LF and UTF-8 at the repository and editor level respectively — the BOMs were
+      written by tooling, not by hand, so an editor-level rule is the part that
+      actually prevents a recurrence.
 
 ---
 
