@@ -221,6 +221,7 @@ local FALGRAVN_PRISON       = 132473  -- Prison debuff on player
 local FALGRAVN_INSTABILITY2 = 140941  -- Instability (non-HM variant)
 local FALGRAVN_PRISONER_F   = 137315  -- Prisoner feeding stacks
 local FALGRAVN_BLOPSYNERGIE = 129936  -- Execration synergy on player
+local FALGRAVN_LINK_EFFECT  = 133433  -- Effect placed ON the Lightning Conduit OBJECT by Falgravn
 
 -- -- Timer durations -------------------------------------------------------
 local INSTABILITY_INITIAL_DELAY  = 10
@@ -587,6 +588,11 @@ local function handleLightning(self, context, alerts, result, abilityId, ...)
     if result == ACTION_RESULT_BEGIN and self.bConnect then
         self.bConnect = false
         showPosIcons(_posIconConn, true)
+        -- DEBUG: log Falgravn's world position when the conga-line mechanic fires
+        -- so we can verify GetUnitWorldPosition("boss1") returns meaningful values.
+        local _, bx, by, bz = GetUnitWorldPosition("boss1")
+        Log.debug("[LN-DEBUG] Lightning BEGIN | boss1 world: x=%.0f y=%.0f z=%.0f",
+            bx or -1, by or -1, bz or -1)
     elseif result == ACTION_RESULT_EFFECT_FADED and not self.bConnect then
         self.bConnect = true
     end
@@ -792,6 +798,25 @@ local function handleBlopSynergie(self, context, alerts, changeType, abilityId,
     end
 end
 
+-- DEBUG: Lightning Conduit position probe.
+-- FALGRAVN_LINK_EFFECT (133433) is placed on each Lightning Conduit OBJECT
+-- when a conga line spawns (source = Falgravn, target = conduit unitTag).
+-- This handler dumps the conduit's world position so we can verify:
+--   a) GetUnitWorldPosition works on OBJECT-type units from effect events, and
+--   b) the quadrant of the position (x vs 0.5 / y vs 0.5 on the normalised map)
+--      reliably identifies which of the 4 lines (LN/LS/RN/RS) spawned.
+-- Remove this once conduit identification is confirmed and the real routing is built.
+local function handleLinkEffect(self, context, alerts, changeType, abilityId,
+                                 unitTag, unitId, unitName, stackCount)
+    if changeType ~= EFFECT_RESULT_GAINED then return end
+    local valid = IsUnitValid(unitTag)
+    local name  = GetUnitName(unitTag) or "?"
+    local _, cx, cy, cz = GetUnitWorldPosition(unitTag)
+    Log.debug("[LN-DEBUG] Conduit LINK_EFFECT gained | unitTag=%s unitId=%s valid=%s name=%s world=(%.0f,%.0f,%.0f)",
+        tostring(unitTag), tostring(unitId), tostring(valid), tostring(name),
+        cx or -1, cy or -1, cz or -1)
+end
+
 -- -- Routing tables (C3) --------------------------------------------------
 
 Falgravn.combatRoutes = {
@@ -832,6 +857,8 @@ Falgravn.effectRoutes = {
     [FALGRAVN_INSTABILITY2] = handleInstabilityEffect,
     [FALGRAVN_PRISONER_F]   = { changeType = EFFECT_RESULT_GAINED, fn = handlePrisonerFeeding },
     [FALGRAVN_BLOPSYNERGIE] = handleBlopSynergie,
+    -- DEBUG: conduit position probe; remove after LN/LS/RN/RS identification is confirmed.
+    [FALGRAVN_LINK_EFFECT]  = { changeType = EFFECT_RESULT_GAINED, fn = handleLinkEffect },
 }
 
 package.loaded["trial.ka.boss.Falgravn"] = Falgravn
