@@ -68,11 +68,11 @@ local function applyInstIconPosition()
     if not InchInstIcon then return end
     local sv = Settings.get().overlay
     InchInstIcon:ClearAnchors()
-    if sv.instIconX >= 0 then
-        InchInstIcon:SetAnchor(TOPLEFT, GuiRoot, TOPLEFT, sv.instIconX, sv.instIconY)
-    else
-        InchInstIcon:SetAnchor(CENTER, GuiRoot, CENTER, 0, -150)
-    end
+    -- Always anchor by the icon's own CENTER so dragging or default both
+    -- keep the icon centred on the chosen point.
+    local offX = sv.instIconPinned and sv.instIconOffX or 0
+    local offY = sv.instIconPinned and sv.instIconOffY or -50
+    InchInstIcon:SetAnchor(CENTER, GuiRoot, CENTER, offX, offY)
 end
 
 local function applyPosition(panel)
@@ -177,9 +177,13 @@ local function build()
         InchInstIcon:SetDrawLayer(DL_OVERLAY)
         applyInstIconPosition()
         InchInstIcon:SetHandler("OnMoveStop", function(c)
-            local sv = Settings.get().overlay
-            sv.instIconX = c:GetLeft()
-            sv.instIconY = c:GetTop()
+            local sv   = Settings.get().overlay
+            local scrW = GuiRoot:GetWidth()
+            local scrH = GuiRoot:GetHeight()
+            -- Save offset-from-centre so restore always uses CENTER anchor.
+            sv.instIconOffX   = (c:GetLeft() + c:GetWidth()  / 2) - scrW / 2
+            sv.instIconOffY   = (c:GetTop()  + c:GetHeight() / 2) - scrH / 2
+            sv.instIconPinned = true
             applyInstIconPosition()
         end)
     end

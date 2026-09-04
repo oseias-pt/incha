@@ -74,18 +74,9 @@ function Preview.showPanel()
     Panel.alerts.action("Prison on Oseias!")
 end
 
---- Start the animated instability icon on the local player's head.
---- Requires OdySupportIcons; silently no-ops if OSI is not installed.
---- The overlay panel is intentionally NOT shown for this preview —
---- instability is a head-icon mechanic, not a panel alert.
+--- Start the animated instability OSI icon on a nearby group member.
+--- Requires OdySupportIcons; silently no-ops if OSI is not installed or solo.
 function Preview.showInstability()
-    -- Part 1: 2D self-indicator — works solo, no OSI needed.
-    ensurePanel()
-    Panel.setPreviewMode(true)
-    Panel.alerts.selfInstOn()
-
-    -- Part 2: OSI head icon on a nearby group member so you can see what
-    -- OTHER players look like when they have the debuff.  Skipped solo.
     local didOsi = false
     if OSI and OSI.SetMechanicIconForUnit then
         local selfDn    = string.lower(GetUnitDisplayName("player") or "")
@@ -108,13 +99,11 @@ function Preview.showInstability()
         end
     end
 
-    local msg = "[Incha] /ip inst: self-indicator shown in panel"
     if didOsi then
-        msg = msg .. " + OSI icon above " .. _instDn
+        d("[Incha] /ip inst: OSI icon above " .. _instDn .. " — /ip clear to stop")
     else
-        msg = msg .. " (join a group to also preview the head icon above others)"
+        d("[Incha] /ip inst: join a group to preview the instability head icon above others")
     end
-    d(msg .. " — /ip clear to stop")
 end
 
 --- Flash a red CombatAlerts screen-edge border for 3 s.
@@ -134,7 +123,6 @@ end
 function Preview.clear()
     Panel.setPreviewMode(false)
     stopInstAnim()
-    Panel.alerts.selfInstOff()
     if Panel.bridge then Panel.bridge.onDisable() end
     CA.border(false, 0, "red")
 end

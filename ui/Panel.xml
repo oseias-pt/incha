@@ -210,7 +210,7 @@
       <!-- Default: above the player character (screen centre, slightly up).
            build() overrides this with the saved position when one exists. -->
       <Anchor point="CENTER" relativeTo="GuiRoot" relativePoint="CENTER"
-              offsetX="0" offsetY="-150"/>
+              offsetX="0" offsetY="-50"/>
       <Controls>
         <Texture name="$(parent)Tex">
           <Dimensions x="80" y="80"/>

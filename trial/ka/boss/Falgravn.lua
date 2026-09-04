@@ -200,6 +200,7 @@ end
 local INFUSER_CASTS         = 137289  -- Trash infuser cast
 local INFUSER_BUFF          = 139961  -- Infuser buff gained by ally
 local FALGRAVN_LIGHTNING    = 133428  -- Connect mechanic (90%/80%); OSI floor icons need world coords
+local FALGRAVN_LINK_EFFECT  = 133433  -- Effect placed ON the Lightning Conduit when a line spawns (debug probe)
 local FALGRAVN_OPEN_DOOR    = 136693  -- Open the gates cast
 local FALGRAVN_TUT_FEED     = 137314  -- Torturer feeding prisoner
 local FALGRAVN_M_MOVE       = 136965  -- Njordal ground move AoE
@@ -364,8 +365,6 @@ function Falgravn:onWipe(context, alerts)
         osiRemove(dn)
     end
     for _, dn in pairs(self.osiSynergy) do osiRemove(dn) end
-    -- Hide the self-instability 2D icon (panel_clear is not called on wipe).
-    alerts:hideSelfInst()
     -- Wipe the tracking tables so stale EFFECT_RESULT_FADED events fired
     -- after the wipe don't try to double-remove already-cleared icons.
     self.osiPrison      = {}
@@ -536,9 +535,29 @@ local function handleLightning(self, context, alerts, result, abilityId, ...)
     if result == ACTION_RESULT_BEGIN and self.bConnect then
         self.bConnect = false
         showPosIcons(_posIconConn, true)
+        -- DEBUG: log Falgravn's world position so we can compute how many nodes
+        -- are needed based on how far the tank moved him from centre.
+        local bx, by, bz = GetUnitWorldPosition("boss1")
+        d(string.format("[Incha][LN-DEBUG] Lightning BEGIN | Falgravn world pos: x=%d y=%d z=%d", bx or -1, by or -1, bz or -1))
     elseif result == ACTION_RESULT_EFFECT_FADED and not self.bConnect then
         self.bConnect = true
     end
+end
+
+-- DEBUG: probe for Lightning Conduit unit (effect 133433 is placed ON the conduit when
+-- a line spawns).  We log the conduit's unitTag, validity, name, and world position so
+-- we can confirm whether GetUnitWorldPosition works on OBJECT-type units.
+-- Remove this handler once the data is collected.
+local function handleLinkEffect(self, context, alerts, changeType, abilityId,
+                                 unitTag, unitId, unitName, stackCount)
+    if changeType ~= EFFECT_RESULT_GAINED then return end
+    local valid   = IsUnitValid(unitTag)
+    local name    = GetUnitName(unitTag) or "?"
+    local cx, cy, cz = GetUnitWorldPosition(unitTag)
+    d(string.format(
+        "[Incha][LN-DEBUG] Conduit effect GAINED | unitTag=%s  unitId=%s  valid=%s  name=%s  world=(%s,%s,%s)",
+        tostring(unitTag), tostring(unitId), tostring(valid), tostring(name),
+        tostring(cx), tostring(cy), tostring(cz)))
 end
 
 -- Pulse fades -> clear connection-node info lines 2-4 and hide floor icons.
@@ -699,9 +718,7 @@ local function handleInstabilityEffect(self, context, alerts, changeType, abilit
                 startInstAnim(unitTag, dn)
             end
         end
-        -- Self: 2D on-screen animated icon (always visible) + action text.
         if isSelf then
-            alerts:showSelfInst()
             alerts:showAction("Instability on you!")
         end
     elseif changeType == EFFECT_RESULT_FADED then
@@ -711,7 +728,6 @@ local function handleInstabilityEffect(self, context, alerts, changeType, abilit
             self.osiInstability[unitTag] = nil
         end
         if isSelf then
-            alerts:hideSelfInst()
             alerts:hideAction()
         end
     end
@@ -799,6 +815,7 @@ Falgravn.combatRoutes = {
 -- -- Effect routing tables (C3) -------------------------------------------
 
 Falgravn.effectRoutes = {
+    [FALGRAVN_LINK_EFFECT]  = { changeType = EFFECT_RESULT_GAINED, fn = handleLinkEffect },  -- DEBUG
     [FALGRAVN_PRISON]       = handlePrisonEffect,
     [FALGRAVN_INSTABILITY]  = handleInstabilityEffect,
     [FALGRAVN_INSTABILITY2] = handleInstabilityEffect,

@@ -27,9 +27,11 @@ local DEFAULTS = {
         offsetX  = -1,
         offsetY  = -1,
         -- Self-instability icon (InchInstIcon) saved position.
-        -- -1 = use default (screen centre, -150 px up).
-        instIconX = -1,
-        instIconY = -1,
+        -- instIconPinned=false → use default (screen centre, -50 px up).
+        -- When pinned, offX/offY are offsets from screen centre (can be negative).
+        instIconPinned = false,
+        instIconOffX   = 0,
+        instIconOffY   = -50,
     },
 
     trials = {
