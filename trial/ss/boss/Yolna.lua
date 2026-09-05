@@ -148,37 +148,37 @@ Yolna.combatRoutes = {
     [CATACLYSM]    = { result = ACTION_RESULT_BEGIN,          fn = handleCataclysm },
 }
 
--- -- Info-line renderers ---------------------------------------------------
+-- -- Tracker-row renderers -------------------------------------------------
 
--- Info 1: NextFlare countdown.
+-- Row 1: NextFlare countdown.
 local function showFlareLine(self, alerts, now)
     if self.nextFlareTime > 0 then
         local T = self.nextFlareTime - now
         if T > 0 then
-            alerts:showInfo(1, Fmt.c(COL_FLARE, Lang.t("ss_yolna_next_flare", Fmt.timer(T))))
+            alerts:setRow(1, Fmt.c(COL_FLARE, Lang.t("ss_yolna_next_flare")), T)
         else
-            alerts:showInfo(1, Fmt.colored(COL_FLARE, "Next Flare: ", Fmt.RED, "INC"))
+            alerts:clearRow(1)   -- brief gap between flares; CombatAlerts handles the visible warning
         end
     else
-        alerts:showInfo(1, "")
+        alerts:clearRow(1)
     end
 end
 
--- Info 2: Cataclysm channel  -  time remaining until channel ends.
+-- Row 2: Cataclysm channel — time remaining until channel ends.
 local function showCataLine(self, alerts)
     local cataLeft = self.cataTimer:remaining()
     if cataLeft > 0 then
-        alerts:showInfo(2, Fmt.c(COL_FLARE, Lang.t("ss_yolna_cataclysm_ends", Fmt.timer(cataLeft, 1))))
+        alerts:setRow(2, Fmt.c(COL_FLARE, Lang.t("ss_yolna_cataclysm_ends")), cataLeft)
     else
-        alerts:showInfo(2, "")
+        alerts:clearRow(2)
     end
 end
 
--- Info 4: Landing countdown -> HP "can fly" threshold.
+-- Row 4: Landing countdown → HP can-fly threshold.
 local function showLandingOrFlyLine(self, alerts, context)
     local landing = self.landingTimer:remaining()
     if landing > 0 then
-        alerts:showInfo(4, Fmt.c(COL_LANDING, Lang.t("ss_landing", Fmt.timer(landing))))
+        alerts:setRow(4, Fmt.c(COL_LANDING, Lang.t("ss_landing")), landing)
     else
         local hp = context.healthPercent
         if hp and hp > 25 then
@@ -188,12 +188,12 @@ local function showLandingOrFlyLine(self, alerts, context)
             elseif hp >= 26 then flyAt = 26
             end
             if flyAt and (hp - flyAt) <= 5 then
-                alerts:showInfo(4, Fmt.c(COL_FLY_IN, Lang.t("ss_can_fly_in", Fmt.pct(hp - flyAt, 1))))
+                alerts:setRow(4, Fmt.c(COL_FLY_IN, Lang.t("ss_can_fly_in", Fmt.pct(hp - flyAt, 1))), nil)
             else
-                alerts:showInfo(4, "")
+                alerts:clearRow(4)
             end
         else
-            alerts:showInfo(4, "")
+            alerts:clearRow(4)
         end
     end
 end
@@ -203,7 +203,7 @@ function Yolna:onUpdate(context, alerts)
     local now = GetGameTimeMilliseconds() / 1000
     showFlareLine(self, alerts, now)
     showCataLine(self, alerts)
-    alerts:showInfo(3, "")
+    alerts:clearRow(3)
     showLandingOrFlyLine(self, alerts, context)
 end
 

@@ -328,44 +328,43 @@ function Nahvii:onCombatEvent(context, alerts, result, abilityId,
     end
 end
 
--- -- Info-line renderers ---------------------------------------------------
+-- -- Tracker-row renderers -------------------------------------------------
 
--- Info 1: NextMeteor countdown.
+-- Row 1: NextMeteor countdown.
 local function showNextMeteorLine(self, alerts, now)
     if self.nextMeteorTime > 0 then
         local T = self.nextMeteorTime - now
         if T > 0 then
-            alerts:showInfo(1, Fmt.c(COL_METEOR, Lang.t("ss_nahvii_next_meteor", Fmt.timer(T))))
+            alerts:setRow(1, Fmt.c(COL_METEOR, Lang.t("ss_nahvii_next_meteor")), T)
         else
-            alerts:showInfo(1, Fmt.c(COL_METEOR, Lang.t("ss_nahvii_next_meteor_inc")))
+            alerts:clearRow(1)   -- meteor has hit; CombatAlerts handles the alert bar
         end
     else
-        alerts:showInfo(1, "")
+        alerts:clearRow(1)
     end
 end
 
--- Info 2: Portal window -> Interrupt countdown -> Pins countdown.
+-- Row 2: Portal window → Interrupt countdown → Pins countdown.
 local function showPortalInterruptLine(self, alerts, now)
     local portalLeft = self.portalTime - now
     local interLeft  = self.interruptTimer:remaining()
     local pinsLeft   = self.pinsTime - now
 
     if interLeft > 0 then
-        alerts:showInfo(2, Fmt.c(COL_PORTAL, Lang.t("ss_nahvii_interrupt_in", Fmt.timer(interLeft, 1))))
+        alerts:setRow(2, Fmt.c(COL_PORTAL, Lang.t("ss_nahvii_interrupt_in")), interLeft)
     elseif pinsLeft > 0 then
-        alerts:showInfo(2, Fmt.c(COL_PORTAL, Lang.t("ss_nahvii_next_pins", Fmt.timer(pinsLeft))))
+        alerts:setRow(2, Fmt.c(COL_PORTAL, Lang.t("ss_nahvii_next_pins")),    pinsLeft)
+    elseif portalLeft >= 11 then
+        -- Enough time has passed that the group should already be inside.
+        alerts:setRow(2, Fmt.c(Fmt.RED,    Lang.t("ss_nahvii_portal_urgent")), portalLeft)
     elseif portalLeft > 0 then
-        if portalLeft >= 11 then
-            alerts:showInfo(2, Fmt.c(Fmt.RED, Lang.t("ss_nahvii_portal_urgent", Fmt.timer(portalLeft))))
-        else
-            alerts:showInfo(2, Fmt.c(COL_PORTAL, Lang.t("ss_nahvii_portal", Fmt.timer(portalLeft))))
-        end
+        alerts:setRow(2, Fmt.c(COL_PORTAL, Lang.t("ss_nahvii_portal")),        portalLeft)
     else
-        alerts:showInfo(2, "")
+        alerts:clearRow(2)
     end
 end
 
--- Info 3: Meteor targets while display window is open; otherwise FireStorm countdown.
+-- Row 3: Meteor target names while display window is open; otherwise FireStorm countdown.
 local function showMeteorOrStormLine(self, alerts, now, now_ms)
     if now_ms < self.meteorDisplayEnd_ms then
         local names = {}
@@ -373,28 +372,29 @@ local function showMeteorOrStormLine(self, alerts, now, now_ms)
             names[#names + 1] = name
             if #names >= 3 then break end
         end
-        alerts:showInfo(3, #names > 0 and table.concat(names, "  ") or "")
+        -- Static name-column display: no ETA (targets, not a timer).
+        alerts:setRow(3, #names > 0 and table.concat(names, "  ") or "", nil)
     else
         local storm = self.stormTime - now
         if storm >= 5.2 then
-            alerts:showInfo(3, Fmt.c(COL_FIRE, Lang.t("ss_nahvii_fire_storm_begin", Fmt.timer(storm - 5.2, 1))))
+            alerts:setRow(3, Fmt.c(COL_FIRE, Lang.t("ss_nahvii_fire_storm_begin")), storm - 5.2)
         elseif storm >= 0 then
-            alerts:showInfo(3, Fmt.c(COL_FIRE, Lang.t("ss_nahvii_fire_storm_end", Fmt.timer(storm, 1))))
+            alerts:setRow(3, Fmt.c(COL_FIRE, Lang.t("ss_nahvii_fire_storm_end")),   storm)
         else
-            alerts:showInfo(3, "")
+            alerts:clearRow(3)
         end
     end
 end
 
--- Info 4: Landing countdown -> Portal Wipe -> HP "can fly" threshold.
+-- Row 4: Landing → Portal Wipe → HP can-fly threshold.
 local function showLandingWipeLine(self, alerts, now, context)
     local landing  = self.landingTime - now
     local wipeLeft = self.wipeTime    - now
 
     if landing > 0 then
-        alerts:showInfo(4, Fmt.c(COL_LANDING, Lang.t("ss_landing", Fmt.timer(landing))))
+        alerts:setRow(4, Fmt.c(COL_LANDING, Lang.t("ss_landing")),          landing)
     elseif wipeLeft > 0 then
-        alerts:showInfo(4, Fmt.c(COL_WIPE, Lang.t("ss_nahvii_portal_wipe", Fmt.timer(wipeLeft))))
+        alerts:setRow(4, Fmt.c(COL_WIPE,    Lang.t("ss_nahvii_portal_wipe")), wipeLeft)
     elseif not self.inPortal then
         local hp = context.healthPercent
         if hp and hp > 39 then
@@ -404,15 +404,15 @@ local function showLandingWipeLine(self, alerts, now, context)
             elseif hp >= 40 then flyAt = 40
             end
             if flyAt and (hp - flyAt) <= 5 then
-                alerts:showInfo(4, Fmt.c(COL_FLY_IN, Lang.t("ss_can_fly_in", Fmt.pct(hp - flyAt, 1))))
+                alerts:setRow(4, Fmt.c(COL_FLY_IN, Lang.t("ss_can_fly_in", Fmt.pct(hp - flyAt, 1))), nil)
             else
-                alerts:showInfo(4, "")
+                alerts:clearRow(4)
             end
         else
-            alerts:showInfo(4, "")
+            alerts:clearRow(4)
         end
     else
-        alerts:showInfo(4, "")
+        alerts:clearRow(4)
     end
 end
 
