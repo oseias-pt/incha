@@ -1,4 +1,4 @@
---- LCCommon — cross-encounter mechanics shared across all Lucent Citadel arenas.
+﻿--- LCCommon — cross-encounter mechanics shared across all Lucent Citadel arenas.
 ---
 --- Three abilities appear regardless of which boss is active:
 ---   HINDERED        (165972): tank-swap debuff → alert on player
@@ -14,7 +14,7 @@
 --- Hindered OSI icon: deferred — unit OSI API requires in-game coordinate
 --- measurement.  An alert fires for the tank instead.
 
-local CA      = require("lib.CA")
+local CA      = require("external-api.CombatAlerts")
 local CastDur = require("lib.CastDur")
 local Lang    = require("core.Lang")
 

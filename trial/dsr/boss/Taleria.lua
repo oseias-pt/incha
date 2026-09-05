@@ -1,4 +1,4 @@
---- Taleria (Tideborn Taleria)  -  Dreadsail Reef boss 3
+﻿--- Taleria (Tideborn Taleria)  -  Dreadsail Reef boss 3
 ---
 --- Phase DSR-5: full mechanics
 ---   RapidDeluge (174959/174960/174961 HM): EFFECT_GAINED + player -> Alert "Move bubble!"
@@ -65,7 +65,7 @@ local MAELSTROM_DODGE  = 1.5   -- s: dodge before maelstrom ends
 -- HP thresholds for bridge openings (vet percentages)
 local BRIDGE_HP = { 50.9, 35.9, 20.9 }
 
-local CA = require("lib.CA")
+local CA = require("external-api.CombatAlerts")
 local BossBase = require("lib.BossBase")
 
 -- -- CA colour palettes ----------------------------------------------------

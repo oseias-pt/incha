@@ -1,13 +1,15 @@
-local Location    = require("core.Location")
+﻿local Location    = require("core.Location")
 local HealthRules = require("core.HealthRules")
 local Settings    = require("core.Settings")
 local Timer       = require("lib.Timer")
 local Lang        = require("core.Lang")
 
-local CA = require("lib.CA")
-local BossBase = require("lib.BossBase")
-local CastDur = require("lib.CastDur")
-local Log = require("lib.Log")
+local CA            = require("external-api.CombatAlerts")
+local MechanicIcons = require("external-api.MechanicIcons")
+local PositionIcons = require("external-api.PositionIcons")
+local BossBase      = require("lib.BossBase")
+local CastDur       = require("lib.CastDur")
+local Log           = require("lib.Log")
 
 -- -- OSI helpers (OdySupportIcons, optional) -------------------------------
 -- Textures: pulled from the live ability data so they always match the
@@ -33,13 +35,11 @@ local _instAnim   = {}   -- [unitTag] = { dn = displayName, frame = 0 }
 local _instActive = false
 
 local function instAnimTick()
-    if not OSI then return end
-    local sz = OSI.GetIconSize and (2 * OSI.GetIconSize()) or nil
     for _, state in pairs(_instAnim) do
         state.frame = (state.frame % INST_ANIM_FRAMES) + 1
         local tex = string.format("Incha/resources/instability/frame_%02d.dds",
                                   state.frame)
-        OSI.SetMechanicIconForUnit(state.dn, tex, sz, COL_INSTABILITY, nil, nil)
+        MechanicIcons.set(state.dn, tex, COL_INSTABILITY)
     end
 end
 
@@ -124,30 +124,19 @@ local _posIconConn     = false
 local _posIconBlood    = false
 local _posIconTorturer = false
 
-local function osiSet(displayName, texture, color)
-    if OSI and displayName and displayName ~= "" then
-        -- BSCHTKA uses 2 x GetIconSize() for mechanic icons.  Guard the call
-        -- in case a future OSI version removes or renames GetIconSize.
-        local sz = OSI.GetIconSize and (2 * OSI.GetIconSize()) or nil
-        OSI.SetMechanicIconForUnit(displayName, texture, sz, color, nil, nil)
-    end
-end
-
-local function osiRemove(displayName)
-    if OSI and displayName and displayName ~= "" then
-        OSI.RemoveMechanicIconForUnit(displayName)
-    end
-end
+local osiSet    = MechanicIcons.set
+local osiRemove = MechanicIcons.remove
 
 -- createConnIcons / createBloodIcons / createTorturerIcons:
 --   Called once in onEnter (inside a zo_callLater); icons start hidden.
---   Returns a table of icon handles keyed by node name, or false on failure.
+--   Returns a table of icon handles keyed by node name, or false when
+--   PositionIcons is not configured.
 local function createConnIcons()
-    if not (OSI and OSI.CreatePositionIcon) then return false end
+    if not PositionIcons.isAvailable() then return false end
     local icons = {}
     for name, pos in pairs(CONN_NODES) do
         local idx  = tonumber(string.sub(name, -1)) or 1
-        local icon = OSI.CreatePositionIcon(pos[1], pos[2], pos[3],
+        local icon = PositionIcons.create(pos[1], pos[2], pos[3],
                          CONN_TEX[idx], 60, { 1, 0.3, 0.3 })
         if icon then icon.use = false; icons[name] = icon end
     end
@@ -155,10 +144,10 @@ local function createConnIcons()
 end
 
 local function createBloodIcons()
-    if not (OSI and OSI.CreatePositionIcon) then return false end
+    if not PositionIcons.isAvailable() then return false end
     local icons = {}
     for i, node in ipairs(BLOOD_NODES) do
-        local icon = OSI.CreatePositionIcon(node.x, node.y, node.z,
+        local icon = PositionIcons.create(node.x, node.y, node.z,
                          node.tex, 60, { 1, 0.6, 0.1 })
         if icon then icon.use = false; icons[i] = icon end
     end
@@ -166,21 +155,18 @@ local function createBloodIcons()
 end
 
 local function createTorturerIcons()
-    if not (OSI and OSI.CreatePositionIcon) then return false end
+    if not PositionIcons.isAvailable() then return false end
     local icons = {}
     for name, pos in pairs(TORTURER_NODES) do
-        local icon = OSI.CreatePositionIcon(pos[1], pos[2], pos[3],
+        local icon = PositionIcons.create(pos[1], pos[2], pos[3],
                          TORTURER_TEX.blue, 60, { 0.3, 0.5, 1 })
         if icon then icon.use = false; icons[name] = icon end
     end
     return icons
 end
 
--- discardPosIcons: call OSI.DiscardPositionIcon on every handle in a table.
-local function discardPosIcons(iconTable)
-    if not (iconTable and OSI and OSI.DiscardPositionIcon) then return end
-    for _, icon in pairs(iconTable) do OSI.DiscardPositionIcon(icon) end
-end
+-- discardPosIcons: discard every icon handle in a table via the gateway.
+local discardPosIcons = PositionIcons.discardAll
 
 -- showPosIcons: toggle .use flag on every icon in a table.
 local function showPosIcons(iconTable, visible)
@@ -190,8 +176,8 @@ end
 
 -- updateTorturerIcon: swap texture + color for one named torturer icon.
 local function updateTorturerIcon(iconTable, name, tex, color)
-    if not (iconTable and iconTable[name] and OSI and OSI.UpdateIconData) then return end
-    OSI.UpdateIconData(iconTable[name], tex, nil, color)
+    if not (iconTable and iconTable[name]) then return end
+    PositionIcons.update(iconTable[name], tex, color)
 end
 
 -- -- Ability IDs (from BSCHTKA_Falgraven.lua) ------------------------------

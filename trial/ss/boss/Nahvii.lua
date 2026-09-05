@@ -1,4 +1,4 @@
---- Nahviintaas  -  Sunspire boss 3 (Lightning / Portal)
+﻿--- Nahviintaas  -  Sunspire boss 3 (Lightning / Portal)
 ---
 --- Phase SS-2: Cross-trial alerts via SunspireCommon
 --- Phase SS-5: Nahvii-specific mechanics
@@ -43,7 +43,7 @@ local PORTAL_INTERRUPT = 121436   -- combatRoute: ACTION_RESULT_EFFECT_GAINED_DU
 local WIPE_FINISHED    = 121216   -- combatRoute: ACTION_RESULT_EFFECT_FADED -> clear wipeTime
 local NEGATE_FIELD     = 121411   -- combatRoute: ACTION_RESULT_BEGIN -> Dodge alert (player only)
 
-local CA = require("lib.CA")
+local CA = require("external-api.CombatAlerts")
 local CastDur = require("lib.CastDur")
 
 -- -- CA colour palettes -----------------------------------------------------

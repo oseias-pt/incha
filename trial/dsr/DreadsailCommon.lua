@@ -1,4 +1,4 @@
---- DreadsailCommon  -  trash-add mechanics shared across all three DSR arenas.
+﻿--- DreadsailCommon  -  trash-add mechanics shared across all three DSR arenas.
 ---
 --- Handles add abilities that appear regardless of which boss is active.
 --- Called by CombatHandler.onCombatEvent (boss.common.handle) before route
@@ -25,7 +25,7 @@
 ---
 --- Returns true if the event was consumed (caller should return).
 
-local CA = require("lib.CA")
+local CA = require("external-api.CombatAlerts")
 local CastDur = require("lib.CastDur")
 local DreadsailCommon = {}
 

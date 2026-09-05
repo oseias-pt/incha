@@ -1,4 +1,4 @@
---- RockgroveCommon  -  trash-add mechanics shared across all three Rockgrove arenas.
+﻿--- RockgroveCommon  -  trash-add mechanics shared across all three Rockgrove arenas.
 ---
 --- Nine add abilities appear regardless of which boss is active.
 --- Called by CombatHandler.onCombatEvent (boss.common.handle) before route
@@ -9,7 +9,7 @@
 ---   .handle(alerts, result, abilityId, unitTag, sourceUnitName) -> bool
 ---   handleEffect: not needed (all Rockgrove adds use combat events only)
 
-local CA = require("lib.CA")
+local CA = require("external-api.CombatAlerts")
 local CastDur = require("lib.CastDur")
 local Lang = require("core.Lang")
 local RockgroveCommon = {}

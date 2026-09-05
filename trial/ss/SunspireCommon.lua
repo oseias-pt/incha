@@ -1,4 +1,4 @@
---- SunspireCommon  -  mechanics shared across all three Sunspire boss arenas.
+﻿--- SunspireCommon  -  mechanics shared across all three Sunspire boss arenas.
 ---
 --- These abilities appear regardless of which boss (Lokke/Yolna/Nahvii) is
 --- active: boss heavy attacks, cat and 2H-add interrupts, shield charge,
@@ -16,7 +16,7 @@
 ---   HTS used hitValue for cast-duration timers.  Modern API lacks it; we use
 ---   GetAbilityCastInfo(abilityId) with a per-ability fallback constant instead.
 
-local CA = require("lib.CA")
+local CA = require("external-api.CombatAlerts")
 local CastDur = require("lib.CastDur")
 local Lang = require("core.Lang")
 local SunspireCommon = {}

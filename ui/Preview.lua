@@ -1,12 +1,13 @@
---- ui/Preview.lua  -  in-game preview helpers for the Incha overlay.
+﻿--- ui/Preview.lua  -  in-game preview helpers for the Incha overlay.
 --- Called from LAM panel buttons in ui/Menu.lua; no dependency on combat state.
 ---
 --- Each function is self-contained: it builds the Panel if not already built,
 --- fires the relevant UI element, then returns.  Preview.clear() undoes all
 --- of them at once.
 
-local Panel = require("ui.Panel")
-local CA    = require("lib.CA")
+local Panel         = require("ui.Panel")
+local CA            = require("external-api.CombatAlerts")
+local MechanicIcons = require("external-api.MechanicIcons")
 
 local Preview = {}
 
@@ -23,12 +24,11 @@ local _instActive = false
 local _instDn     = nil            -- display name of the target (local player)
 
 local function instAnimTick()
-    if not OSI or not _instDn then return end
+    if not _instDn then return end
     _instFrame = (_instFrame % INST_FRAMES) + 1
     local tex = string.format("Incha/resources/instability/frame_%02d.dds",
                               _instFrame)
-    local sz = OSI.GetIconSize and (2 * OSI.GetIconSize()) or nil
-    OSI.SetMechanicIconForUnit(_instDn, tex, sz, { 1.0, 0.6, 0.0 }, nil, nil)
+    MechanicIcons.set(_instDn, tex, { 1.0, 0.6, 0.0 })
 end
 
 local function stopInstAnim()
@@ -36,8 +36,8 @@ local function stopInstAnim()
         EVENT_MANAGER:UnregisterForUpdate(INST_KEY)
         _instActive = false
     end
-    if OSI and _instDn then
-        OSI.RemoveMechanicIconForUnit(_instDn)
+    if _instDn then
+        MechanicIcons.remove(_instDn)
     end
     _instDn = nil
 end
@@ -67,7 +67,6 @@ end
 function Preview.showInstability()
     ensurePanel()
     Panel.alerts.action("Instability!")
-    if not OSI then return end
     local dn = GetUnitDisplayName and GetUnitDisplayName("player") or nil
     if not dn or dn == "" then return end
     stopInstAnim()

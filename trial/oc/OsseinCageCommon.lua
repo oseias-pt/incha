@@ -1,4 +1,4 @@
---- OsseinCageCommon  -  trash-add and cross-boss mechanics for all Ossein Cage arenas.
+﻿--- OsseinCageCommon  -  trash-add and cross-boss mechanics for all Ossein Cage arenas.
 ---
 --- Applies regardless of which boss (Jynorah / Kazpian / Shaper of Flesh) is
 --- active: tank-swap Hindered, Skullmancer Skullstorm cast bar, Spectral-Revenant
@@ -19,7 +19,7 @@
 --- Hindered OSI icon: deferred  -  the unit OSI API requires in-game coordinate
 --- measurement.  An alert fires for tanks instead.
 
-local CA      = require("lib.CA")
+local CA      = require("external-api.CombatAlerts")
 local CastDur = require("lib.CastDur")
 local Lang    = require("core.Lang")
 

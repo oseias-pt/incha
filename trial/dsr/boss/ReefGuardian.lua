@@ -1,4 +1,4 @@
---- ReefGuardian  -  Dreadsail Reef boss 2
+﻿--- ReefGuardian  -  Dreadsail Reef boss 2
 ---
 --- Phase DSR-4: full mechanics
 ---   BuildingStatic (163575 / 169688): GAINED/UPDATED/FADED -> stack tracker
@@ -42,7 +42,7 @@ local ACID_INTERVAL        = 1750     -- ms: acid pool spacing
 local ACID_COUNT           = 5        -- number of acid pools per Reflux
 local SHELTERED_WINDOW     = 3        -- s: keep "CLEANSED" label brief
 
-local CA = require("lib.CA")
+local CA = require("external-api.CombatAlerts")
 local BossBase = require("lib.BossBase")
 
 -- -- CA colour palettes ----------------------------------------------------

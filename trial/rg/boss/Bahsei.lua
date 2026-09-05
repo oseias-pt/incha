@@ -1,4 +1,4 @@
---- Bahsei (Flame-Herald Bahsei)  -  Rockgrove boss 2
+﻿--- Bahsei (Flame-Herald Bahsei)  -  Rockgrove boss 2
 ---
 --- Phase RG-2: RockgroveCommon.handle() (trash mechanics) (done)
 --- Phase RG-4: Bahsei-specific mechanics
@@ -45,7 +45,7 @@ local METEOR_SWARM     = 155357   -- combatRoute: ACTION_RESULT_EFFECT_GAINED_DU
 local EYE_CW           = 153517   -- combatRoute: ACTION_RESULT_EFFECT_GAINED -> CW portal direction
 local EYE_CCW          = 153518   -- combatRoute: ACTION_RESULT_EFFECT_GAINED -> CCW portal direction
 
-local CA = require("lib.CA")
+local CA = require("external-api.CombatAlerts")
 local BossBase = require("lib.BossBase")
 local CastDur = require("lib.CastDur")
 

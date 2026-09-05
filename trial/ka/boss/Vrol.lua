@@ -1,10 +1,11 @@
-local Location = require("core.Location")
+﻿local Location = require("core.Location")
 local Timer    = require("lib.Timer")
 local Lang     = require("core.Lang")
 
-local CA = require("lib.CA")
-local BossBase = require("lib.BossBase")
-local Settings = require("core.Settings")
+local CA            = require("external-api.CombatAlerts")
+local PositionIcons = require("external-api.PositionIcons")
+local BossBase      = require("lib.BossBase")
+local Settings      = require("core.Settings")
 
 -- -- Ability IDs (from BSCHTKA_Vrol.lua) -----------------------------------
 local VROL_PORTAL_CAST  = 133994  -- combatRoute: ACTION_RESULT_BEGIN -> reset portal timer + alert
@@ -66,13 +67,13 @@ end
 
 -- -- Lifecycle -------------------------------------------------------------
 function Vrol:onEnter(context, alerts)
-    if Settings.trial("ka").portalIconVrol and OSI and OSI.CreatePositionIcon then
+    if Settings.trial("ka").portalIconVrol and PositionIcons.isAvailable() then
         -- Deferred so OSI has finished initialising.  Scheduled through
         -- :after so leaving the arena inside the 3.1 s window cancels it,
         -- rather than creating an icon onLeave has already discarded.
         self:after(3100, function()
             if not _portalIcon then
-                _portalIcon = OSI.CreatePositionIcon(
+                _portalIcon = PositionIcons.create(
                     114624, 25764, 71349,
                     "/esoui/art/icons/malatar_agonizingbolts.dds",
                     100, { 1, 1, 1 })
@@ -85,8 +86,8 @@ function Vrol:onLeave(context)
     self:cleanupAlertList()
     CA.castAlertsStop(self.portalKillBarId)
     self.portalKillBarId = false
-    if _portalIcon and OSI and OSI.DiscardPositionIcon then
-        OSI.DiscardPositionIcon(_portalIcon)
+    if _portalIcon then
+        PositionIcons.discard(_portalIcon)
         _portalIcon = false
     end
 end

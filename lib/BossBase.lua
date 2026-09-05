@@ -1,4 +1,4 @@
---- BossBase  -  shared lifecycle mixin for boss classes that track CA cast bars.
+﻿--- BossBase  -  shared lifecycle mixin for boss classes that track CA cast bars.
 ---
 --- Usage:
 ---   local BossBase = require("lib.BossBase")
@@ -18,7 +18,7 @@
 ---   self:cleanupAlertList()
 --- then stop those bars manually.
 
-local CA = require("lib.CA")
+local CA = require("external-api.CombatAlerts")
 
 local BossBase = {}
 BossBase.__index = BossBase

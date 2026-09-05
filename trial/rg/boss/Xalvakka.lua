@@ -1,4 +1,4 @@
---- Xalvakka  -  Rockgrove boss 3
+﻿--- Xalvakka  -  Rockgrove boss 3
 ---
 --- Three-floor fight:
 ---   Floor 1: HP 100-70%  (boss escapes at 70%)
@@ -61,7 +61,7 @@ local RUN1_BOT = 70
 local RUN2_TOP = 45    -- second transition: boss flees at 40%
 local RUN2_BOT = 40
 
-local CA = require("lib.CA")
+local CA = require("external-api.CombatAlerts")
 local BossBase = require("lib.BossBase")
 local CastDur = require("lib.CastDur")
 

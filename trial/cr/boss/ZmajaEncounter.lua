@@ -1,10 +1,11 @@
-local Timer    = require("lib.Timer")
+﻿local Timer    = require("lib.Timer")
 
-local CA = require("lib.CA")
-local BossBase = require("lib.BossBase")
-local CastDur = require("lib.CastDur")
-local Settings = require("core.Settings")
-local Lang = require("core.Lang")
+local CA            = require("external-api.CombatAlerts")
+local MechanicIcons = require("external-api.MechanicIcons")
+local BossBase      = require("lib.BossBase")
+local CastDur       = require("lib.CastDur")
+local Settings      = require("core.Settings")
+local Lang          = require("core.Lang")
 
 -- -- Ability ID sets for mini-boss detection -------------------------------
 -- Any of these firing marks that mini as active (detects +1/+2/+3 variant).
@@ -218,10 +219,8 @@ local function handleGaleHoarfrost(self, context, alerts, result, abilityId,
     if not self.galeActive then self.galeActive = true end
     if result == ACTION_RESULT_EFFECT_GAINED then
         local dname = GetUnitDisplayName and GetUnitDisplayName(unitTag) or nil
-        if OSI and dname and dname ~= "" and Settings.trial("cr").posIconsZmaja then
-            local sz = OSI.GetIconSize and (2 * OSI.GetIconSize()) or nil
-            OSI.SetMechanicIconForUnit(dname, GetAbilityIcon(abilityId), sz,
-                                       {0, 0.87, 0.87}, nil, nil)
+        if dname and dname ~= "" and Settings.trial("cr").posIconsZmaja then
+            MechanicIcons.set(dname, GetAbilityIcon(abilityId), {0, 0.87, 0.87})
         end
         if IsUnitPlayer(unitTag) then
             alerts:showAction(Lang.t("cr_zmaja_gale_frost_you"))
@@ -231,8 +230,8 @@ local function handleGaleHoarfrost(self, context, alerts, result, abilityId,
         end
     elseif result == ACTION_RESULT_EFFECT_FADED then
         local dname = GetUnitDisplayName and GetUnitDisplayName(unitTag) or nil
-        if OSI and dname and dname ~= "" and Settings.trial("cr").posIconsZmaja then
-            OSI.RemoveMechanicIconForUnit(dname)
+        if dname and dname ~= "" and Settings.trial("cr").posIconsZmaja then
+            MechanicIcons.remove(dname)
         end
     end
 end
