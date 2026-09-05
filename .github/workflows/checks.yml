@@ -2,12 +2,14 @@ name: checks
 
 # Static checks for an addon that cannot be run outside the game client.
 # Everything here works with no ESO install, no log file and no secrets, and
-# each step is the same script a developer runs locally:
+# every step is the same script a developer runs locally:
 #
-#   sh   test/checks/syntax.sh
-#   sh   test/checks/encoding.sh
+#   sh     test/checks/syntax.sh
+#   sh     test/checks/encoding.sh
+#   sh     test/checks/branch-name.sh
 #   luajit test/checks/globals.lua
 #   luajit test/checks/manifest.lua
+#   luajit test/checks/lang.lua
 #   luajit test/checks/contracts.lua
 #   luajit test/checks/filters.lua
 #   luajit test/checks/settings-usage.lua
@@ -15,6 +17,11 @@ name: checks
 #
 # ESO runs a Lua 5.1 dialect; LuaJIT is source-compatible and is what the
 # offline test harness already targets.
+#
+# Every check step carries `if: ${{ !cancelled() }}` so a failure does not hide
+# the rest. GitHub stops a job at the first failing step by default, which
+# turns one broken check into one round-trip per remaining problem; this way a
+# single run reports everything that is wrong.
 
 on:
   push:
@@ -22,6 +29,12 @@ on:
   pull_request:
     branches: ["master"]
   workflow_dispatch:
+
+# A second push supersedes the first: cancel the older run rather than paying
+# for both. master is excluded so its history always has a completed run.
+concurrency:
+  group: checks-${{ github.workflow }}-${{ github.head_ref || github.ref }}
+  cancel-in-progress: ${{ github.ref != 'refs/heads/master' }}
 
 permissions:
   contents: read
@@ -39,14 +52,23 @@ jobs:
           sudo apt-get install -y --no-install-recommends luajit
           luajit -v
 
-      # Every .lua file must compile.  Catches the typos ESO reports only by
+      # Branch naming is in README.md and .githooks/pre-push, but that hook
+      # only applies after a manual `git config core.hooksPath .githooks`.
+      # Here it applies to everyone.
+      - name: Branch name
+        if: ${{ !cancelled() }}
+        run: sh test/checks/branch-name.sh
+
+      # Every .lua file must compile. Catches the typos ESO reports only by
       # refusing to load the addon at all.
       - name: Syntax
+        if: ${{ !cancelled() }}
         run: sh test/checks/syntax.sh
 
       # No UTF-8 BOMs. Lua tolerates them, so they survive unnoticed and show
       # up as spurious first-line diffs.
       - name: Encoding
+        if: ${{ !cancelled() }}
         run: sh test/checks/encoding.sh
 
       # No global writes (they leak into the environment shared with every
@@ -54,32 +76,59 @@ jobs:
       # surface (a missing `local X = require(...)` reads nil and throws at
       # the first line that runs).
       - name: Globals
+        if: ${{ !cancelled() }}
         run: luajit test/checks/globals.lua
 
       # incha.txt is the only thing ESO reads to decide what to load: a file
       # that exists but is unlisted never runs, and a listed file that was
       # deleted is skipped silently.
       - name: Manifest
+        if: ${{ !cancelled() }}
         run: luajit test/checks/manifest.lua
+
+      # String table: a duplicate key is silently dropped by Lua, a missing key
+      # shows the player a raw key, and an orphan is dead weight a translator
+      # still has to translate.
+      - name: Lang
+        if: ${{ !cancelled() }}
+        run: luajit test/checks/lang.lua
 
       # Load every Factory and boss class under the offline stubs and assert
       # the lifecycle contract: detectable bosses, resolvable BossBase
       # helpers, and an onDied for any boss that tracks cast bars.
       - name: Contracts
+        if: ${{ !cancelled() }}
         run: luajit test/checks/contracts.lua
 
       # Combat and effect events are registered per ability id, so the sets a
       # boss routes and the sets its common module claims must stay disjoint,
-      # and every handler must have a set to register from.
+      # every handler must have a set to register from, and no routing table
+      # may list an id twice (Lua keeps the last and the first never runs).
       - name: Filters
+        if: ${{ !cancelled() }}
         run: luajit test/checks/filters.lua
 
       # Every settings key needs a reader. A checkbox with no reader is worse
       # than dead code because the player can still click it.
       - name: Settings usage
+        if: ${{ !cancelled() }}
         run: luajit test/checks/settings-usage.lua
 
       # Per-pull state has to be reset by onWipe: Trial reuses the boss instance
       # across a wipe, so a field nothing touches keeps last pull's value.
       - name: State reset
+        if: ${{ !cancelled() }}
         run: luajit test/checks/state-reset.lua
+
+      # ADVISORY, not blocking. luacheck covers the one class the bespoke
+      # checks do not - unused locals, shadowed names, unreachable code - but
+      # its baseline on this tree has never been seen, so it reports without
+      # failing the run. Read the output, fix or ignore what it finds, then
+      # delete `continue-on-error` to make it a gate.
+      # Scope and rationale for the rule selection are in .luacheckrc.
+      - name: Luacheck (advisory)
+        if: ${{ !cancelled() }}
+        continue-on-error: true
+        run: |
+          sudo apt-get install -y --no-install-recommends lua-check
+          luacheck . --codes --ranges || true

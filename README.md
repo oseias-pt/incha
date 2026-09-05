@@ -108,10 +108,11 @@ nine trials, rather than a per-trial `Dispatcher.lua`.
 
 ## Development notes
 
-- Before pushing, run the static checks locally — CI runs the same six:
+- Before pushing, run the static checks locally. CI runs the same scripts, so a clean run here means a green pipeline:
   ```bash
-  sh test/checks/syntax.sh && sh test/checks/encoding.sh && for c in globals manifest contracts filters; do luajit test/checks/$c.lua || break; done
+  sh test/checks/all.sh
   ```
+  It runs every check even when one fails, so a single run reports everything that is wrong. Individual checks live in `test/checks/` and can be run on their own.
 - Boss modules declare `combatRoutes` / `effectRoutes` tables keyed by ability ID, plus optional `onEnter`, `onWipe`, `onLeave`, `onUpdate` and `onPowerUpdate` hooks. `BossBase` supplies `new()` via `fromSchema`, the default `onDied`, `cleanupAlertList`, and `after`/`cancelAfter` for deferred callbacks.
 - Combat and effect events are registered **per ability ID**. An ability missing from a routing table (or from a common module's `combatAbilityIds` / `effectAbilityIds`) is never registered, so its handler is dead code — `test/checks/filters.lua` guards the related invariants.
 - `stateSchema` on each boss defines the saved-variable shape for per-boss persistence.
