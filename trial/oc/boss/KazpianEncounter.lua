@@ -233,23 +233,23 @@ end
 function KazpianEncounter:onUpdate(context, alerts)
     -- Line 1: portal phase
     if self.portalPhase > 0 then
-        alerts:showInfo(1, Lang.t("oc_kazpian_portal_label", self.portalPhase))
+        alerts:setRow(1, Lang.t("oc_kazpian_portal_label", self.portalPhase), nil)
     else
-        alerts:showInfo(1, "")
+        alerts:clearRow(1)
     end
 
     -- Line 2: channelers dead
     if self.channelersDead > 0 then
-        alerts:showInfo(2, Lang.t("oc_kazpian_channelers", self.channelersDead))
+        alerts:setRow(2, Lang.t("oc_kazpian_channelers", self.channelersDead), nil)
     else
-        alerts:showInfo(2, "")
+        alerts:clearRow(2)
     end
 
     OsseinCageCommon.showCarrionInfo(alerts)
-    alerts:showInfo(4, "")
-    alerts:showInfo(5, "")
-    alerts:showInfo(6, "")
-    alerts:showInfo(7, "")
+    alerts:clearRow(4)
+    alerts:clearRow(5)
+    alerts:clearRow(6)
+    alerts:clearRow(7)
 end
 
 package.loaded["trial.oc.boss.KazpianEncounter"] = KazpianEncounter

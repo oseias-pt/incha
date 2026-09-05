@@ -264,24 +264,27 @@ local function showClashLine(self, alerts)
     if self.clashActive then
         local r = self.clashTimer:remaining()
         if r > 0 then
-            alerts:showInfo(1, Fmt.c("FF4444", Lang.t("oc_jynorah_clash_timer", ZO_FormatCountdownTimer(r))))
+            alerts:setRow(1, Fmt.c("FF4444", Lang.t("oc_jynorah_clash_timer")), r)
         else
             self.clashActive = false
-            alerts:showInfo(1, "")
+            alerts:clearRow(1)
         end
     else
-        alerts:showInfo(1, "")
+        alerts:clearRow(1)
     end
 end
 
 -- Line 2: Titanic Leap cooldown; shows "first ~5s" before the first leap is seen.
 local function showLeapLine(self, alerts)
     if self.firstLeap then
-        alerts:showInfo(2, Lang.t("oc_jynorah_leap_first"))
+        alerts:setRow(2, Lang.t("oc_jynorah_leap_first"), nil)
     else
         local r = self.leapTimer:remaining()
-        alerts:showInfo(2, Lang.t("oc_jynorah_leap_label")
-            .. (r > 0 and ZO_FormatCountdownTimer(r) or Lang.t("common_now")))
+        if r > 0 then
+            alerts:setRow(2, Lang.t("oc_jynorah_leap_label"), r)
+        else
+            alerts:setRow(2, Lang.t("oc_jynorah_leap_label") .. " " .. Lang.t("common_now"), nil)
+        end
     end
 end
 
@@ -299,10 +302,10 @@ function JynorahEncounter:onUpdate(context, alerts)
     showClashLine(self, alerts)
     showLeapLine(self, alerts)
     OsseinCageCommon.showCarrionInfo(alerts)
-    alerts:showInfo(4, "")
-    alerts:showInfo(5, "")
-    alerts:showInfo(6, "")
-    alerts:showInfo(7, "")
+    alerts:clearRow(4)
+    alerts:clearRow(5)
+    alerts:clearRow(6)
+    alerts:clearRow(7)
 end
 
 package.loaded["trial.oc.boss.JynorahEncounter"] = JynorahEncounter

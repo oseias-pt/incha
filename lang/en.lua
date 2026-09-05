@@ -505,9 +505,9 @@ M.oc_jynorah_valneer_breath = "Valneer Breath on you! MOVE!"
 M.oc_jynorah_breath_alert   = "BREATH  -  MOVE!"
 M.oc_jynorah_tail_slam_bar  = "Tail Slam → %s"
 -- Info
-M.oc_jynorah_clash_timer    = "CLASH: %s"
+M.oc_jynorah_clash_timer    = "CLASH"
 M.oc_jynorah_leap_first     = "Leap: first ~5s"
-M.oc_jynorah_leap_label     = "Leap: "
+M.oc_jynorah_leap_label     = "Leap"
 
 -- ── Ossein Cage ── KazpianEncounter ──────────────────────────────────────────
 

@@ -14,7 +14,7 @@
 ---       stackCount is the 5th arg added to CombatHandler's handleEffect call.
 ---   .showCarrionInfo(alerts)
 ---       Write Caustic Carrion stack count to info line 3.
----       Each OC boss's onUpdate must call this instead of alerts:showInfo(3, "").
+---       Each OC boss's onUpdate must call this instead of alerts:clearRow(3).
 ---
 --- Hindered OSI icon: deferred  -  the unit OSI API requires in-game coordinate
 --- measurement.  An alert fires for tanks instead.
@@ -93,13 +93,13 @@ function OsseinCageCommon.reset()
 end
 
 -- -- Public: write Caustic Carrion info to panel line 3 --------------------
--- Call from each OC boss's onUpdate in place of alerts:showInfo(3, "").
+-- Call from each OC boss's onUpdate in place of alerts:clearRow(3).
 function OsseinCageCommon.showCarrionInfo(alerts)
     if _carrionStacks > 0 then
         local col = carrionColorCode(_carrionStacks)
-        alerts:showInfo(3, Fmt.c(col, Lang.t("oc_carrion_label", _carrionStacks)))
+        alerts:setRow(3, Fmt.c(col, Lang.t("oc_carrion_label", _carrionStacks)), nil)
     else
-        alerts:showInfo(3, "")
+        alerts:clearRow(3)
     end
 end
 
