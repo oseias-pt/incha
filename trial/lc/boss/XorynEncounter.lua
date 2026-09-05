@@ -143,21 +143,21 @@ local function showCurrentLine(self, alerts)
     if self.holdingCurrent then
         local r = self.currentTimer:remaining()
         if r > 0 then
-            alerts:showInfo(1, Fmt.c(COL_CURRENT, Lang.t("lc_xoryn_current", Fmt.timer(r))))
+            alerts:setRow(1, Fmt.c(COL_CURRENT, Lang.t("lc_xoryn_current")), r)
         else
-            alerts:showInfo(1, Fmt.c(Fmt.RED, Lang.t("lc_xoryn_drop_now")))
+            alerts:setRow(1, Fmt.c(Fmt.RED, Lang.t("lc_xoryn_drop_now")), nil)
         end
     else
-        alerts:showInfo(1, "")
+        alerts:clearRow(1)
     end
 end
 
 -- Line 2: Arcane Knot carrier indicator.
 local function showKnotLine(self, alerts)
     if self.holdingKnot then
-        alerts:showInfo(2, Fmt.c(COL_KNOT, Lang.t("lc_xoryn_carrying_knot")))
+        alerts:setRow(2, Fmt.c(COL_KNOT, Lang.t("lc_xoryn_carrying_knot")), nil)
     else
-        alerts:showInfo(2, "")
+        alerts:clearRow(2)
     end
 end
 

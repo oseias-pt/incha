@@ -81,11 +81,11 @@ end
 
 function RyelazEncounter:onUpdate(context, alerts)
     if self.playerSide == "ryelaz" then
-        alerts:showInfo(1, Fmt.c(COL_DARK,  Lang.t("lc_ryelaz_side_dark")))
+        alerts:setRow(1, Fmt.c(COL_DARK,  Lang.t("lc_ryelaz_side_dark")), nil)
     elseif self.playerSide == "zilyesset" then
-        alerts:showInfo(1, Fmt.c(COL_LIGHT, Lang.t("lc_ryelaz_side_light")))
+        alerts:setRow(1, Fmt.c(COL_LIGHT, Lang.t("lc_ryelaz_side_light")), nil)
     else
-        alerts:showInfo(1, "")
+        alerts:clearRow(1)
     end
     -- Slots 2-7 are not written by this encounter.  Trial:onBossesChanged
     -- clears the panel on every boss transition, so they do not need to be

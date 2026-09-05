@@ -57,13 +57,13 @@ function DarielEncounter:onWipe()
 end
 
 function DarielEncounter:onUpdate(context, alerts)
-    alerts:showInfo(1, "")
-    alerts:showInfo(2, "")
-    alerts:showInfo(3, "")
-    alerts:showInfo(4, "")
-    alerts:showInfo(5, "")
-    alerts:showInfo(6, "")
-    alerts:showInfo(7, "")
+    alerts:clearRow(1)
+    alerts:clearRow(2)
+    alerts:clearRow(3)
+    alerts:clearRow(4)
+    alerts:clearRow(5)
+    alerts:clearRow(6)
+    alerts:clearRow(7)
 end
 
 package.loaded["trial.lc.boss.DarielEncounter"] = DarielEncounter
