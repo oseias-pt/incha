@@ -88,16 +88,16 @@ end
 function ShaperEncounter:onUpdate(context, alerts)
     -- Line 1: Shaper shield status
     if self.shaperShielded then
-        alerts:showInfo(1, Fmt.c("AA44FF", Lang.t("oc_shaper_shielded_info")))
+        alerts:setRow(1, Fmt.c("AA44FF", Lang.t("oc_shaper_shielded_info")), nil)
     else
-        alerts:showInfo(1, "")
+        alerts:clearRow(1)
     end
-    alerts:showInfo(2, "")
+    alerts:clearRow(2)
     OsseinCageCommon.showCarrionInfo(alerts)
-    alerts:showInfo(4, "")
-    alerts:showInfo(5, "")
-    alerts:showInfo(6, "")
-    alerts:showInfo(7, "")
+    alerts:clearRow(4)
+    alerts:clearRow(5)
+    alerts:clearRow(6)
+    alerts:clearRow(7)
 end
 
 package.loaded["trial.oc.boss.ShaperEncounter"] = ShaperEncounter
