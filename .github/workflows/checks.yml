@@ -12,6 +12,7 @@ name: checks
 #   luajit test/checks/filters.lua
 #   luajit test/checks/settings-usage.lua
 #   luajit test/checks/state-reset.lua
+#   luajit test/checks/lang-keys.lua
 #
 # ESO runs a Lua 5.1 dialect; LuaJIT is source-compatible and is what the
 # offline test harness already targets.
@@ -83,3 +84,11 @@ jobs:
       # across a wipe, so a field nothing touches keeps last pull's value.
       - name: State reset
         run: luajit test/checks/state-reset.lua
+
+      # Lang.t returns the key when there is no entry for it.  For a boss that
+      # is not cosmetic: .name is compared against GetUnitName(), so an
+      # unresolvable key means the boss is never detected and its module goes
+      # silent with nothing logged.  Also checks locale parity, because Lang
+      # picks one table per client language with no per-key fallback.
+      - name: Lang keys
+        run: luajit test/checks/lang-keys.lua
