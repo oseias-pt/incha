@@ -22,6 +22,7 @@
 local CA      = require("external-api.CombatAlerts")
 local CastDur = require("lib.CastDur")
 local Lang    = require("core.Lang")
+local Fmt     = require("core.Fmt")
 
 local OsseinCageCommon = {}
 
@@ -76,10 +77,10 @@ local COL_DETONATE = { -2, 0, false, { 1.0,  0.3, 0.0,  0.4 }, { 1.0,  0.3, 0.0,
 
 -- -- Caustic Carrion: colour gradient (6 / 8 / 10 thresholds) --------------
 local function carrionColorCode(n)
-    if     n >= 10 then return "|cff2222"    -- red  -  critical
-    elseif n >=  8 then return "|cff8800"    -- orange  -  danger
-    elseif n >=  6 then return "|cffcc00"    -- yellow  -  warning
-    else                 return "|c66cc44"   -- green  -  safe
+    if     n >= 10 then return "ff2222"    -- red  -  critical
+    elseif n >=  8 then return "ff8800"    -- orange  -  danger
+    elseif n >=  6 then return "ffcc00"    -- yellow  -  warning
+    else                 return "66cc44"   -- green  -  safe
     end
 end
 
@@ -96,7 +97,7 @@ end
 function OsseinCageCommon.showCarrionInfo(alerts)
     if _carrionStacks > 0 then
         local col = carrionColorCode(_carrionStacks)
-        alerts:showInfo(3, col .. Lang.t("oc_carrion_label", _carrionStacks) .. "|r")
+        alerts:showInfo(3, Fmt.c(col, Lang.t("oc_carrion_label", _carrionStacks)))
     else
         alerts:showInfo(3, "")
     end

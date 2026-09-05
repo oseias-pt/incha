@@ -1,6 +1,10 @@
 local Location = require("core.Location")
 local Timer = require("lib.Timer")
 local Lang = require("core.Lang")
+local Fmt  = require("core.Fmt")
+
+local COL_SKIP = "55aa55"   -- medium green (gryphon skip)
+local COL_FAIL = "cc4444"   -- red (gryphon fail HP)
 
 local CA = require("external-api.CombatAlerts")
 local BossBase = require("lib.BossBase")
@@ -102,9 +106,9 @@ function Yandir:onUpdate(context, alerts)
         local earlyTag = self.bGRYPHON_SKIP_TIME > 0
             and Lang.t("ka_yandir_gryphon_early", ZO_FormatCountdownTimer(self.bGRYPHON_SKIP_TIME))
             or ""
-        line2 = Lang.t("ka_yandir_gryphon_label") .. Lang.t("ka_yandir_gryphon_skip") .. earlyTag
+        line2 = Lang.t("ka_yandir_gryphon_label") .. Fmt.c(COL_SKIP, Lang.t("ka_yandir_gryphon_skip")) .. earlyTag
     elseif self.bGRYPHON_SKIP_FAILHP > 0 then
-        line2 = Lang.t("ka_yandir_gryphon_label") .. Lang.t("ka_yandir_gryphon_fail", self.bGRYPHON_SKIP_FAILHP)
+        line2 = Lang.t("ka_yandir_gryphon_label") .. Fmt.c(COL_FAIL, Lang.t("ka_yandir_gryphon_fail", Fmt.pct(self.bGRYPHON_SKIP_FAILHP)))
     else
         local t2 = self.gryphonTimer:remaining()
         line2 = Lang.t("ka_yandir_gryphon_label")

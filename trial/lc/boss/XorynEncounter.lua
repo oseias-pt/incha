@@ -4,6 +4,10 @@ local CA = require("external-api.CombatAlerts")
 local BossBase = require("lib.BossBase")
 local CastDur = require("lib.CastDur")
 local Lang = require("core.Lang")
+local Fmt  = require("core.Fmt")
+
+local COL_CURRENT = "44CCFF"   -- sky-blue (current carrying)
+local COL_KNOT    = "FFAA44"   -- amber (arcane knot)
 
 -- ── Ability IDs ───────────────────────────────────────────────────────────
 local ARCANE_KNOT         = 213477   -- combatRoute: ACTION_RESULT_EFFECT_GAINED_DURATION / FADED → carry knot
@@ -139,9 +143,9 @@ local function showCurrentLine(self, alerts)
     if self.holdingCurrent then
         local r = self.currentTimer:remaining()
         if r > 0 then
-            alerts:showInfo(1, Lang.t("lc_xoryn_current", r))
+            alerts:showInfo(1, Fmt.c(COL_CURRENT, Lang.t("lc_xoryn_current", Fmt.timer(r))))
         else
-            alerts:showInfo(1, Lang.t("lc_xoryn_drop_now"))
+            alerts:showInfo(1, Fmt.c(Fmt.RED, Lang.t("lc_xoryn_drop_now")))
         end
     else
         alerts:showInfo(1, "")
@@ -151,7 +155,7 @@ end
 -- Line 2: Arcane Knot carrier indicator.
 local function showKnotLine(self, alerts)
     if self.holdingKnot then
-        alerts:showInfo(2, Lang.t("lc_xoryn_carrying_knot"))
+        alerts:showInfo(2, Fmt.c(COL_KNOT, Lang.t("lc_xoryn_carrying_knot")))
     else
         alerts:showInfo(2, "")
     end

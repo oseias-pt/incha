@@ -14,6 +14,12 @@
 
 local RockgroveCommon = require("trial.rg.RockgroveCommon")
 local Lang = require("core.Lang")
+local Fmt  = require("core.Fmt")
+
+local COL_BLITZ_LBL  = "ff6030"   -- orange-red (next blitz label)
+local COL_SLUDGE_LBL = "50c050"   -- medium green (next sludge label)
+local COL_ENRAGE     = "ff2020"   -- bright red (boss enrage)
+local COL_ADD_ENRAGE = "ff6020"   -- orange-red (add enrage)
 
 -- -- Ability IDs ------------------------------------------------------------
 local SAVAGE_BLITZ    = 149414   -- combatRoute: ACTION_RESULT_BEGIN -> Savage Blitz caAlertCast
@@ -215,9 +221,9 @@ local function showBlitzLine(self, alerts, now)
     if self.lastBlitz > 0 then
         local T = 36 - (now - self.lastBlitz)
         if T > 0 then
-            alerts:showInfo(1, Lang.t("rg_oaxiltso_next_blitz", T))
+            alerts:showInfo(1, Fmt.c(COL_BLITZ_LBL, Lang.t("rg_oaxiltso_next_blitz", Fmt.timer(T))))
         else
-            alerts:showInfo(1, Lang.t("rg_oaxiltso_next_blitz_inc"))
+            alerts:showInfo(1, Fmt.c(COL_BLITZ_LBL, Lang.t("rg_oaxiltso_next_blitz_inc")))
         end
     else
         alerts:showInfo(1, "")
@@ -229,9 +235,9 @@ local function showSludgeLine(self, alerts, now)
     if self.lastSludge > 0 then
         local T = 28 - (now - self.lastSludge)
         if T > 0 then
-            alerts:showInfo(2, Lang.t("rg_oaxiltso_next_sludge", T))
+            alerts:showInfo(2, Fmt.c(COL_SLUDGE_LBL, Lang.t("rg_oaxiltso_next_sludge", Fmt.timer(T))))
         else
-            alerts:showInfo(2, Lang.t("rg_oaxiltso_next_sludge_inc"))
+            alerts:showInfo(2, Fmt.c(COL_SLUDGE_LBL, Lang.t("rg_oaxiltso_next_sludge_inc")))
         end
     else
         alerts:showInfo(2, "")
@@ -241,11 +247,11 @@ end
 -- Info 3: Enrage state  -  boss enraged, add enraged, or both.
 local function showEnrageLine(self, alerts)
     if self.bossEnraged and self.miniEnraged then
-        alerts:showInfo(3, Lang.t("rg_oaxiltso_boss_add_enrage"))
+        alerts:showInfo(3, Fmt.c(COL_ENRAGE, Lang.t("rg_oaxiltso_boss_add_enrage")))
     elseif self.bossEnraged then
-        alerts:showInfo(3, Lang.t("rg_oaxiltso_boss_enraged"))
+        alerts:showInfo(3, Fmt.c(COL_ENRAGE, Lang.t("rg_oaxiltso_boss_enraged")))
     elseif self.miniEnraged then
-        alerts:showInfo(3, Lang.t("rg_oaxiltso_add_enraged"))
+        alerts:showInfo(3, Fmt.c(COL_ADD_ENRAGE, Lang.t("rg_oaxiltso_add_enraged")))
     else
         alerts:showInfo(3, "")
     end

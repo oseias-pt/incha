@@ -35,6 +35,13 @@
 
 local RockgroveCommon = require("trial.rg.RockgroveCommon")
 local Lang = require("core.Lang")
+local Fmt  = require("core.Fmt")
+
+local COL_JUMP    = "ffaa40"   -- orange-gold (next jump)
+local COL_SOUL    = "ff6600"   -- orange (soul resonance)
+local COL_SHIELD  = "75E6DA"   -- teal (volatile shell shield)
+local COL_MANIFOLD = "AA44ff"  -- purple (manifold curse)
+local COL_RUN     = "ffdd00"   -- yellow (run-in HP threshold)
 
 local SHIELD_EVENT_KEY = ADDON_PREFIX .. "RG_XalvakkaShield"
 
@@ -248,7 +255,7 @@ local function handleManifoldDebuff(self, context, alerts, changeType, abilityId
         if AreUnitsEqual("player", unitTag) then
             self.selfManifold = true
             CA.border(true, 20000, "purple")
-            CA.alert(nil, "|cAA44ffManifold Curse|r on YOU  -  spread!",
+            CA.alert(nil, Fmt.c(COL_MANIFOLD, "Manifold Curse") .. " on YOU  -  spread!",
                 0xAA44FFD9, SOUNDS.DUEL_START, 5000)
             PlaySound(SOUNDS.DUEL_START)
         elseif IsUnitPlayer(unitTag) then
@@ -278,9 +285,9 @@ local function showJumpLine(self, alerts, now, isHM)
     if isHM and self.nextJump > 0 and self.numJumps < 4 then
         local T = self.nextJump - now
         if T > 0 then
-            alerts:showInfo(1, Lang.t("rg_xalvakka_next_jump", T))
+            alerts:showInfo(1, Fmt.c(COL_JUMP, Lang.t("rg_xalvakka_next_jump", Fmt.timer(T))))
         else
-            alerts:showInfo(1, Lang.t("rg_xalvakka_next_jump_inc"))
+            alerts:showInfo(1, Fmt.c(COL_JUMP, Lang.t("rg_xalvakka_next_jump_inc")))
         end
     else
         alerts:showInfo(1, "")
@@ -292,7 +299,7 @@ local function showSoulLine(self, alerts, now)
     if self.soulStart > 0 then
         local T = SOUL_WINDOW - (now - self.soulStart)
         if T > 0 then
-            alerts:showInfo(2, Lang.t("rg_xalvakka_soul_res", T))
+            alerts:showInfo(2, Fmt.c(COL_SOUL, Lang.t("rg_xalvakka_soul_res", Fmt.timer(T, 1))))
         else
             self.soulStart = 0
             alerts:showInfo(2, "")
@@ -308,14 +315,14 @@ local function showManifoldLine(self, alerts)
     if hasManifold then
         local parts = {}
         if self.selfManifold then
-            parts[#parts + 1] = "|cAA44ffYOU|r"
+            parts[#parts + 1] = Fmt.c(COL_MANIFOLD, "YOU")
         end
         for _, name in pairs(self.manifoldOthers) do
-            parts[#parts + 1] = "|cAA44ff" .. name .. "|r"
+            parts[#parts + 1] = Fmt.c(COL_MANIFOLD, name)
         end
         alerts:showInfo(3, Lang.t("rg_xalvakka_manifold", table.concat(parts, ", ")))
     elseif self.shellShield > 0 then
-        alerts:showInfo(3, Lang.t("rg_xalvakka_shield", fmtShield(self.shellShield)))
+        alerts:showInfo(3, Fmt.c(COL_SHIELD, Lang.t("rg_xalvakka_shield", fmtShield(self.shellShield))))
     else
         alerts:showInfo(3, "")
     end
@@ -326,11 +333,11 @@ end
 local function showRunLine(self, alerts, context)
     local hp = context.healthPercent
     if hp and hp > RUN1_BOT and hp <= RUN1_TOP then
-        alerts:showInfo(4, Lang.t("rg_xalvakka_run_in", hp - RUN1_BOT))
+        alerts:showInfo(4, Fmt.c(COL_RUN, Lang.t("rg_xalvakka_run_in", Fmt.pct(hp - RUN1_BOT, 1))))
     elseif hp and hp > RUN2_BOT and hp <= RUN2_TOP then
-        alerts:showInfo(4, Lang.t("rg_xalvakka_run_in", hp - RUN2_BOT))
+        alerts:showInfo(4, Fmt.c(COL_RUN, Lang.t("rg_xalvakka_run_in", Fmt.pct(hp - RUN2_BOT, 1))))
     elseif self.onBlob then
-        alerts:showInfo(4, Lang.t("rg_xalvakka_on_blob"))
+        alerts:showInfo(4, Fmt.c(Fmt.GREEN, Lang.t("rg_xalvakka_on_blob")))
     else
         alerts:showInfo(4, "")
     end

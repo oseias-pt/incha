@@ -7,9 +7,15 @@
 local SunspireCommon = require("trial.ss.SunspireCommon")
 local BossBase       = require("lib.BossBase")
 local Lang           = require("core.Lang")
+local Fmt            = require("core.Fmt")
 local MapUtils       = require("lib.MapUtils")
 local CA             = require("external-api.CombatAlerts")
 local CastDur        = require("lib.CastDur")
+
+local COL_LASER   = "7fffd4"   -- aquamarine (laser countdown)
+local COL_LANDING = "5cd65c"   -- light green (landing countdown)
+local COL_FLY_IN  = "ffa500"   -- orange (can fly in threshold)
+local COL_TAKE    = "d92626"   -- dark red (tomb Take action)
 
 -- -- Ability IDs ------------------------------------------------------------
 local GLACIAL_FIST    = 120838   -- combatRoute: ACTION_RESULT_BEGIN -> Block alert (player/nearby 4.5m)
@@ -21,13 +27,13 @@ local LASER_3         = 122822   -- combatRoute: ACTION_RESULT_BEGIN -> laser 32
 local ICE_EFFECT_CAST = 124687   -- effectRoute: EFFECT_RESULT_GAINED -> TombCast signal
 local ICE_EFFECT_ARM  = 119638   -- effectRoute: EFFECT_RESULT_GAINED / FADED -> TombArmed / TombFaded
 
--- -- IceTomb display strings (from Lang table) --------------------------------
-local sA    = Lang.t("ss_lokke_tomb_slot_a")
-local sB    = Lang.t("ss_lokke_tomb_slot_b")
-local sTake = Lang.t("ss_lokke_tomb_take")
-local sHeal = Lang.t("ss_lokke_tomb_heal")
-local sDone = Lang.t("ss_lokke_tomb_done")
-local sInc  = Lang.t("ss_lokke_tomb_inc")
+-- -- IceTomb display strings (colored at module load; structural, not translatable) --
+local sA    = "[" .. Fmt.c(Fmt.GREEN, "A")    .. "]: "
+local sB    = "[" .. Fmt.c(Fmt.GREEN, "B")    .. "]: "
+local sTake = Fmt.c(COL_TAKE,         "Take") .. " "
+local sHeal = Fmt.c(Fmt.CYAN,         "Heal") .. " "
+local sDone = Fmt.c(Fmt.GREEN,        "Done")
+local sInc  = Fmt.c(Fmt.CYAN,         "inc")
 
 local NEXT_TOMB = { [0]=1, [1]=2, [2]=3, [3]=1 }   -- iceNumber -> next label
 
@@ -289,9 +295,9 @@ local function showLaserLandingLine(self, alerts, now, context)
     local laser   = self.laserTime   - now
     local landing = self.landingTime - now
     if laser > 0 then
-        alerts:showInfo(4, Lang.t("ss_lokke_laser", laser))
+        alerts:showInfo(4, Fmt.c(COL_LASER,   Lang.t("ss_lokke_laser",  Fmt.timer(laser))))
     elseif landing > 0 then
-        alerts:showInfo(4, Lang.t("ss_landing", landing))
+        alerts:showInfo(4, Fmt.c(COL_LANDING, Lang.t("ss_landing",      Fmt.timer(landing))))
     else
         local hp = context.healthPercent
         if hp and hp > 20 then
@@ -301,7 +307,7 @@ local function showLaserLandingLine(self, alerts, now, context)
             elseif hp >= 21 then flyAt = 21
             end
             if flyAt and (hp - flyAt) <= 5 then
-                alerts:showInfo(4, Lang.t("ss_can_fly_in", hp - flyAt))
+                alerts:showInfo(4, Fmt.c(COL_FLY_IN, Lang.t("ss_can_fly_in", Fmt.pct(hp - flyAt, 1))))
             else
                 alerts:showInfo(4, "")
             end
@@ -327,19 +333,24 @@ local function showIceTombLines(self, alerts, now)
             local iN = NEXT_TOMB[self.iceNumber]
             local header
             if T2 <= 0 then
-                header = Lang.t("ss_lokke_tomb_header_inc", iN)
+                header = Fmt.c(Fmt.CYAN, "Ice Tomb") .. " "
+                    .. Fmt.c(Fmt.RED, tostring(iN)) .. " "
+                    .. Fmt.c(Fmt.RED, "INC")
             else
-                header = Lang.t("ss_lokke_tomb_header_cd", iN, T2)
+                header = Fmt.c(Fmt.CYAN, "Ice Tomb") .. " "
+                    .. Fmt.c(Fmt.RED, tostring(iN)) .. " "
+                    .. Fmt.c(Fmt.CYAN, "in")
+                    .. string.format(": %.0f", T2) .. "s"
             end
             alerts:showInfo(1, header)
             alerts:showInfo(2, "")
             alerts:showInfo(3, "")
         end
     else
-        alerts:showInfo(1, Lang.t("ss_lokke_tomb_active", self.iceNumber))
+        alerts:showInfo(1, Fmt.c(Fmt.CYAN, "Ice Tomb") .. " " .. Fmt.c(Fmt.RED, tostring(self.iceNumber)))
         alerts:showInfo(2, formatTombLabel(self.iceTomb[1], sA, now))
         if self.iceDouble then
-            alerts:showInfo(3, sB .. Lang.t("ss_lokke_tomb_double"))
+            alerts:showInfo(3, sB .. Fmt.c(Fmt.GREEN, "Double"))
         else
             alerts:showInfo(3, formatTombLabel(self.iceTomb[2], sB, now))
         end
