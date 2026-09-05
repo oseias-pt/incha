@@ -5,6 +5,7 @@ name: checks
 # each step is the same script a developer runs locally:
 #
 #   sh   test/checks/syntax.sh
+#   luajit test/checks/escapes.lua
 #   sh   test/checks/encoding.sh
 #   luajit test/checks/globals.lua
 #   luajit test/checks/manifest.lua
@@ -43,6 +44,13 @@ jobs:
       # refusing to load the addon at all.
       - name: Syntax
         run: sh test/checks/syntax.sh
+
+      # Compiling is not the same as agreeing.  LuaJIT reads \xHH escapes and
+      # ESO's Lua 5.1 does not, so the same source can be correct here and
+      # wrong in the game with no error anywhere.  This is the only check that
+      # looks at the escape sequences themselves.
+      - name: String escapes
+        run: luajit test/checks/escapes.lua
 
       # No UTF-8 BOMs. Lua tolerates them, so they survive unnoticed and show
       # up as spurious first-line diffs.

@@ -8,13 +8,19 @@ Assertions (expected alerts vs actual) come in Phase 2.
 
 ## Requirements
 
-**LuaJIT** (ESO uses a modified Lua 5.1; LuaJIT is compatible):
+**LuaJIT**:
 
 ```bash
 winget install DEVCOM.LuaJIT
 ```
 
 After installation open a new terminal so `luajit` is on PATH.
+
+LuaJIT is close to ESO's interpreter but it is not equal to it, and the
+difference is not academic: LuaJIT implements `\xHH` and `\uHHHH` string
+escapes and ESO's Lua 5.1 does not, so a string written with them works on a
+developer's machine and in CI while showing `xe2x86x92` to a player.  See
+`test/checks/escapes.lua`, which fails the build on exactly that.
 
 ---
 
@@ -60,6 +66,34 @@ Target trial: KA (zone 1196)
 ```
 
 Exit code `0` = clean run.  Exit code `1` = at least one handler threw an error.
+
+---
+
+## Static checks
+
+`test/checks/` holds the checks that need neither a game client nor a log file.
+They run in CI in this order and each is runnable locally from the repository
+root:
+
+| Check | Catches |
+|-------|---------|
+| `syntax.sh` | a file that does not compile at all |
+| `escapes.lua` | escapes ESO's Lua 5.1 cannot read  -  see the note above |
+| `encoding.sh` | UTF-8 BOMs and CRLF drift |
+| `globals.lua` | a global read or write  -  typically a missing `require` |
+| `manifest.lua` | `incha.txt` disagreeing with the files on disk |
+| `contracts.lua` | a boss module breaking the lifecycle contract |
+| `filters.lua` | ability ids routed by two modules, or a route with no set |
+| `settings-usage.lua` | a settings key that nothing reads |
+| `state-reset.lua` | `stateSchema` state that `onWipe` leaves set |
+
+`syntax.sh`, `encoding.sh` and `manifest.lua` walk the tree with `find`.
+`escapes.lua` and `globals.lua` take their file list from `incha.txt` instead, so
+they cover every shipped file  -  including `bootstrap.lua`, `incha.lua` and
+`external-api/  -  rather than a directory list someone has to remember to
+update.  `globals.lua` exempts `bootstrap.lua` from the global-**write** rule and
+says so in its output; `contracts.lua`, `filters.lua`, `settings-usage.lua` and
+`state-reset.lua` work through the manifest or the trial factories.
 
 ---
 
