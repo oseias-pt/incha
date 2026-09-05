@@ -498,7 +498,7 @@ Lylanar.effectRoutes = {
 
 -- -- Info-line renderers ---------------------------------------------------
 
--- Info 1: Fire bubble (Destructive Ember)  -  stack count and drop countdown.
+-- Row 1: Fire bubble (Destructive Ember)  -  stack count in name column, drop countdown as ETA.
 local function showFireBubbleLine(self, alerts, now, isHM)
     if self.lastDestructiveEmber > 0 then
         local cd     = isHM and BUBBLE_CD_HM or BUBBLE_CD_NORM
@@ -508,19 +508,18 @@ local function showFireBubbleLine(self, alerts, now, isHM)
         local suffix = stks ~= 1 and Lang.t("dsr_lylanar_ember_suffix_p", stks)
                                    or  Lang.t("dsr_lylanar_ember_suffix",   stks)
         if T > 0 then
-            alerts:showInfo(1,
-                Fmt.c(COL_FIRE, "\xf0\x9f\x94\xa5 " .. name) .. suffix ..
-                " (" .. string.format("%.0f", T) .. "s)")
+            alerts:setRow(1, Fmt.c(COL_FIRE, "\xf0\x9f\x94\xa5 " .. name) .. suffix, T)
         else
-            alerts:showInfo(1,
-                Fmt.c(COL_FIRE, "\xf0\x9f\x94\xa5 " .. name) .. suffix .. " " .. Fmt.c(Fmt.RED, Lang.t("dsr_lylanar_drop")))
+            alerts:setRow(1,
+                Fmt.c(COL_FIRE, "\xf0\x9f\x94\xa5 " .. name) .. suffix
+                .. " " .. Fmt.c(Fmt.RED, Lang.t("dsr_lylanar_drop")), nil)
         end
     else
-        alerts:showInfo(1, "")
+        alerts:clearRow(1)
     end
 end
 
--- Info 2: Ice bubble (Piercing Hailstone)  -  stack count and drop countdown.
+-- Row 2: Ice bubble (Piercing Hailstone)  -  stack count in name column, drop countdown as ETA.
 local function showIceBubbleLine(self, alerts, now, isHM)
     if self.lastPiercingHail > 0 then
         local cd     = isHM and BUBBLE_CD_HM or BUBBLE_CD_NORM
@@ -530,62 +529,67 @@ local function showIceBubbleLine(self, alerts, now, isHM)
         local suffix = stks ~= 1 and Lang.t("dsr_lylanar_ember_suffix_p", stks)
                                    or  Lang.t("dsr_lylanar_ember_suffix",   stks)
         if T > 0 then
-            alerts:showInfo(2,
-                Fmt.c(COL_ICE, "\xe2\x9d\x84 " .. name) .. suffix ..
-                " (" .. string.format("%.0f", T) .. "s)")
+            alerts:setRow(2, Fmt.c(COL_ICE, "\xe2\x9d\x84 " .. name) .. suffix, T)
         else
-            alerts:showInfo(2,
-                Fmt.c(COL_ICE, "\xe2\x9d\x84 " .. name) .. suffix .. " " .. Fmt.c(Fmt.RED, Lang.t("dsr_lylanar_drop")))
+            alerts:setRow(2,
+                Fmt.c(COL_ICE, "\xe2\x9d\x84 " .. name) .. suffix
+                .. " " .. Fmt.c(Fmt.RED, Lang.t("dsr_lylanar_drop")), nil)
         end
     else
-        alerts:showInfo(2, "")
+        alerts:clearRow(2)
     end
 end
 
--- Info 3: Fragility debuff countdown  -  fire takes priority over ice.
+-- Row 3: Fragility debuff countdown  -  fire takes priority over ice.
 local function showFragilityLine(self, alerts)
     local fireT = self.fireFragility:remaining()
     local iceT  = self.iceFragility:remaining()
     if fireT > 0 then
-        alerts:showInfo(3, Fmt.c(COL_FIRE, Lang.t("dsr_lylanar_fire_fragility", Fmt.timer(fireT))))
+        alerts:setRow(3, Fmt.c(COL_FIRE, Lang.t("dsr_lylanar_fire_fragility")), fireT)
     elseif iceT > 0 then
-        alerts:showInfo(3, Fmt.c(COL_ICE, Lang.t("dsr_lylanar_ice_fragility", Fmt.timer(iceT))))
+        alerts:setRow(3, Fmt.c(COL_ICE, Lang.t("dsr_lylanar_ice_fragility")), iceT)
     else
-        alerts:showInfo(3, "")
+        alerts:clearRow(3)
     end
 end
 
--- Info 4: Spike cage (priority) > HM weapon cooldowns > Imminent tank/heal warning.
+-- Row 4: Spike cage (priority) > HM weapon cooldowns > Imminent tank/heal warning.
+-- Axe/spike ETA goes in the tracker column; sword (secondary) is appended to name.
 local function showSpikeLine(self, alerts, now, isHM)
     local fireSpikeT = (self.lastMagmaSpike   > 0) and (SPIKE_DUR - (now - self.lastMagmaSpike))   or -1
     local iceSpikeT  = (self.lastGlacialSpike > 0) and (SPIKE_DUR - (now - self.lastGlacialSpike)) or -1
 
     if fireSpikeT > 0 then
-        alerts:showInfo(4, Fmt.c(COL_FIRE, Lang.t("dsr_lylanar_need_fire_dome", Fmt.timer(fireSpikeT, 1))))
+        alerts:setRow(4, Fmt.c(COL_FIRE, Lang.t("dsr_lylanar_need_fire_dome")), fireSpikeT)
     elseif iceSpikeT > 0 then
-        alerts:showInfo(4, Fmt.c(COL_ICE, Lang.t("dsr_lylanar_need_ice_dome", Fmt.timer(iceSpikeT, 1))))
+        alerts:setRow(4, Fmt.c(COL_ICE, Lang.t("dsr_lylanar_need_ice_dome")), iceSpikeT)
     elseif isHM and self.lastIncendiaryAxe > 0 then
         local T = WEAPON_CD - (now - self.lastIncendiaryAxe)
+        -- Sword info (secondary timer) appended to name column if active.
+        local swordPart = ""
+        if self.lastCalamitousSword > 0 then
+            swordPart = Fmt.c(COL_ICE, Lang.t("dsr_lylanar_sword")
+                .. Fmt.timer(math.max(0, WEAPON_CD - (now - self.lastCalamitousSword))))
+        end
         if T > 0 then
-            alerts:showInfo(4,
-                Fmt.c(COL_FIRE, Lang.t("dsr_lylanar_axe", Fmt.timer(T)))
-                .. (self.lastCalamitousSword > 0 and
-                    Fmt.c(COL_ICE, Lang.t("dsr_lylanar_sword",
-                        Fmt.timer(math.max(0, WEAPON_CD - (now - self.lastCalamitousSword))))) or ""))
+            alerts:setRow(4, Fmt.c(COL_FIRE, Lang.t("dsr_lylanar_axe")) .. swordPart, T)
         else
-            alerts:showInfo(4, Fmt.c(COL_FIRE, Lang.t("dsr_lylanar_axe_inc")))
+            alerts:setRow(4,
+                Fmt.c(COL_FIRE, Lang.t("dsr_lylanar_axe")) .. " " .. Fmt.c(Fmt.RED, "INC") .. swordPart, nil)
         end
     else
         local fireImminT = self.fireImminent:remaining()
         local iceImminT  = self.iceImminent:remaining()
         if fireImminT > 0 then
-            alerts:showInfo(4, Fmt.c(COL_FIRE, Lang.t("dsr_lylanar_imm_blister",
-                self.fireImminent:playerName() or "?", Fmt.timer(fireImminT))))
+            alerts:setRow(4,
+                Fmt.c(COL_FIRE, Lang.t("dsr_lylanar_imm_blister")
+                    .. " (" .. (self.fireImminent:playerName() or "?") .. ")"), fireImminT)
         elseif iceImminT > 0 then
-            alerts:showInfo(4, Fmt.c(COL_ICE, Lang.t("dsr_lylanar_imm_chill",
-                self.iceImminent:playerName() or "?", Fmt.timer(iceImminT))))
+            alerts:setRow(4,
+                Fmt.c(COL_ICE, Lang.t("dsr_lylanar_imm_chill")
+                    .. " (" .. (self.iceImminent:playerName() or "?") .. ")"), iceImminT)
         else
-            alerts:showInfo(4, "")
+            alerts:clearRow(4)
         end
     end
 end

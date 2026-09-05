@@ -276,31 +276,32 @@ Taleria.effectRoutes = {
 
 -- -- Info-line renderers ---------------------------------------------------
 
--- Info 1: Maelstrom  -  active heal window (dodge cue near end) or countdown to next cast.
+-- Row 1: Maelstrom  -  active heal window (dodge cue near end) or countdown to next cast.
 local function showMaelstromLine(self, alerts, now)
     if self.lastMaelstrom > 0 then
         local elapsed = now - self.lastMaelstrom
         if elapsed < MAELSTROM_DUR then
             local T = MAELSTROM_DUR - elapsed
             if T <= MAELSTROM_DODGE then
-                alerts:showInfo(1, Fmt.c(Fmt.RED, Lang.t("dsr_taleria_dodge_maelstrom")))
+                alerts:setRow(1, Fmt.c(Fmt.RED, Lang.t("dsr_taleria_dodge_maelstrom")), nil)
             else
-                alerts:showInfo(1, Fmt.c(COL_HEAL, Lang.t("dsr_taleria_heal", Fmt.timer(T))))
+                alerts:setRow(1, Fmt.c(COL_HEAL, Lang.t("dsr_taleria_heal")), T)
             end
         else
             local T = MAELSTROM_CD - elapsed
             if T > 0 then
-                alerts:showInfo(1, Fmt.c(COL_HEAL, Lang.t("dsr_taleria_maelstrom", Fmt.timer(T))))
+                alerts:setRow(1, Fmt.c(COL_HEAL, Lang.t("dsr_taleria_maelstrom")), T)
             else
-                alerts:showInfo(1, Fmt.c(COL_HEAL, Lang.t("dsr_taleria_maelstrom_inc")))
+                alerts:setRow(1,
+                    Fmt.c(COL_HEAL, Lang.t("dsr_taleria_maelstrom")) .. " " .. Fmt.c(Fmt.RED, "INC"), nil)
             end
         end
     else
-        alerts:showInfo(1, "")
+        alerts:clearRow(1)
     end
 end
 
--- Info 2: Next Behemoth summon countdown, or imminent slam alert (<= 3 s).
+-- Row 2: Next Behemoth summon countdown, or imminent slam alert (<= 3 s).
 local function showBehemothLine(self, alerts, now, isHM)
     local behCD = isHM and BEHEMOTH_CD_HM or BEHEMOTH_CD_NORM
     if self.lastBehemothSumm > 0 then
@@ -308,34 +309,36 @@ local function showBehemothLine(self, alerts, now, isHM)
         local slamT   = (self.behemothSlam > 0) and (self.behemothSlam - now) or -1
 
         if slamT >= 0 and slamT <= 3 then
-            alerts:showInfo(2, Fmt.c(COL_BEH, Lang.t("dsr_taleria_behemoth_slam", Fmt.timer(slamT))))
+            alerts:setRow(2, Fmt.c(COL_BEH, Lang.t("dsr_taleria_behemoth_slam")), slamT)
         elseif summonT > 0 then
-            alerts:showInfo(2, Fmt.c(COL_BEH, Lang.t("dsr_taleria_behemoth", Fmt.timer(summonT))))
+            alerts:setRow(2, Fmt.c(COL_BEH, Lang.t("dsr_taleria_behemoth")), summonT)
         else
-            alerts:showInfo(2, Fmt.c(COL_BEH, Lang.t("dsr_taleria_behemoth_inc")))
+            alerts:setRow(2,
+                Fmt.c(COL_BEH, Lang.t("dsr_taleria_behemoth")) .. " " .. Fmt.c(Fmt.RED, "INC"), nil)
         end
     else
-        alerts:showInfo(2, "")
+        alerts:clearRow(2)
     end
 end
 
--- Info 3: Storm Wall direction and spin countdown; suppressed during platform-fall window.
+-- Row 3: Storm Wall direction and spin countdown; suppressed during platform-fall window.
 local function showStormWallLine(self, alerts, now)
     local suppressStorm = (now - self.lastPlatformFall < BRIDGE_WIPE)
     if self.lastStormWall > 0 and not suppressStorm then
         local T = STORM_WALL_DUR - (now - self.lastStormWall)
         if T > 0 then
-            alerts:showInfo(3, Fmt.c(COL_STORM, Lang.t(
-                self.stormWallCW and "dsr_taleria_storm_cw" or "dsr_taleria_storm_ccw", Fmt.timer(T))))
+            alerts:setRow(3, Fmt.c(COL_STORM, Lang.t(
+                self.stormWallCW and "dsr_taleria_storm_cw" or "dsr_taleria_storm_ccw")), T)
         else
-            alerts:showInfo(3, "")
+            alerts:clearRow(3)
         end
     else
-        alerts:showInfo(3, "")
+        alerts:clearRow(3)
     end
 end
 
--- Info 4: Active bridge wipe timers (red when <= 15 s); or next bridge HP threshold.
+-- Row 4: Active bridge wipe timers (label color red when <= 15 s); or next bridge HP threshold.
+-- Multiple bridges are concatenated into the name column (no ETA); bridge HP% is also name-column only.
 local function showBridgeLine(self, alerts, now, context)
     local bridgeLabels = {}
     local names = {
@@ -357,7 +360,7 @@ local function showBridgeLine(self, alerts, now, context)
     end
 
     if #bridgeLabels > 0 then
-        alerts:showInfo(4, table.concat(bridgeLabels, "  "))
+        alerts:setRow(4, table.concat(bridgeLabels, "  "), nil)
     else
         local hp = context.healthPercent
         local nextBridge = nil
@@ -370,9 +373,10 @@ local function showBridgeLine(self, alerts, now, context)
             end
         end
         if nextBridge then
-            alerts:showInfo(4, Fmt.c(Fmt.YELLOW, Lang.t("dsr_taleria_next_bridge", Fmt.pct(nextBridge, 1))))
+            alerts:setRow(4, Fmt.c(Fmt.YELLOW,
+                Lang.t("dsr_taleria_next_bridge") .. Fmt.pct(nextBridge, 1)), nil)
         else
-            alerts:showInfo(4, "")
+            alerts:clearRow(4)
         end
     end
 end
