@@ -25,7 +25,7 @@
 ---
 --- Returns true if the event was consumed (caller should return).
 
-local CA = require("lib.CA")
+local CA = require("external-api.CombatAlerts")
 local CastDur = require("lib.CastDur")
 local DreadsailCommon = {}
 

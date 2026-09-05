@@ -3,6 +3,13 @@
 local Settings    = require("core.Settings")
 local ZoneManager = require("core.ZoneManager")
 
+-- External-API gateways: inject real implementations once ESO globals are live.
+-- configure() calls live in OnAddOnLoaded (below) where CombatAlerts and OSI
+-- are guaranteed to be available.
+local ExtCA = require("external-api.CombatAlerts")
+local ExtMI = require("external-api.MechanicIcons")
+local ExtPI = require("external-api.PositionIcons")
+
 -- Pre-load ui modules at startup so they are never captured as part of a
 -- trial's dependency set  -  the panel must outlive any single trial.
 local Panel = require("ui.Panel")
@@ -31,6 +38,14 @@ local function OnAddOnLoaded(event, addonName)
 
     -- Settings must come first  -  other systems (Log, UI) read from it.
     Settings.init()
+
+    -- Wire external-API gateways to real ESO globals now that they are live.
+    -- CombatAlerts and OSI are optional third-party addons: passing nil here
+    -- leaves the gateway configured as a no-op, which is the safe default.
+    ExtCA.configure(CombatAlerts)
+    ExtMI.configure(OSI)
+    ExtPI.configure(OSI)
+
     Menu.init()
 
     EVENT_MANAGER:RegisterForEvent(ADDON_NAME, EVENT_PLAYER_ACTIVATED, ZoneManager.onZoneChanged)

@@ -14,7 +14,7 @@
 --- Hindered OSI icon: deferred — unit OSI API requires in-game coordinate
 --- measurement.  An alert fires for the tank instead.
 
-local CA      = require("lib.CA")
+local CA      = require("external-api.CombatAlerts")
 local CastDur = require("lib.CastDur")
 local Lang    = require("core.Lang")
 

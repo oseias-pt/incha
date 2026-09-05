@@ -18,7 +18,7 @@
 ---   self:cleanupAlertList()
 --- then stop those bars manually.
 
-local CA = require("lib.CA")
+local CA = require("external-api.CombatAlerts")
 
 local BossBase = {}
 BossBase.__index = BossBase

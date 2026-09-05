@@ -9,7 +9,7 @@
 ---   .handle(alerts, result, abilityId, unitTag, sourceUnitName) -> bool
 ---   handleEffect: not needed (all Rockgrove adds use combat events only)
 
-local CA = require("lib.CA")
+local CA = require("external-api.CombatAlerts")
 local CastDur = require("lib.CastDur")
 local Lang = require("core.Lang")
 local RockgroveCommon = {}

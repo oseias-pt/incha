@@ -88,7 +88,7 @@ local BRAND_DEDUP    = 1.0   -- s: MatchBrands dedup gate
 local BUBBLE_CD_NORM = 15    -- s: bubble drop cooldown (normal)
 local BUBBLE_CD_HM   = 20    -- s: bubble drop cooldown (HM)
 
-local CA = require("lib.CA")
+local CA = require("external-api.CombatAlerts")
 local BossBase = require("lib.BossBase")
 local CastDur = require("lib.CastDur")
 

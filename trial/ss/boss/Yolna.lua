@@ -21,7 +21,7 @@ local NEXT_FLARE_A  = 121722   -- combatRoute: ACTION_RESULT_BEGIN -> nextFlareT
 local NEXT_FLARE_B  = 121459   -- combatRoute: ACTION_RESULT_EFFECT_FADED -> nextFlareTime +30s
 local CATACLYSM     = 122598   -- combatRoute: ACTION_RESULT_BEGIN -> caAlertCast + landing timer
 
-local CA = require("lib.CA")
+local CA = require("external-api.CombatAlerts")
 local CastDur = require("lib.CastDur")
 
 -- -- CA colour palettes -----------------------------------------------------

@@ -1,6 +1,6 @@
 local Timer    = require("lib.Timer")
 
-local CA = require("lib.CA")
+local CA = require("external-api.CombatAlerts")
 local BossBase = require("lib.BossBase")
 local CastDur = require("lib.CastDur")
 local Lang = require("core.Lang")

@@ -8,6 +8,8 @@ local SunspireCommon = require("trial.ss.SunspireCommon")
 local BossBase       = require("lib.BossBase")
 local Lang           = require("core.Lang")
 local MapUtils       = require("lib.MapUtils")
+local CA             = require("external-api.CombatAlerts")
+local CastDur        = require("lib.CastDur")
 
 -- -- Ability IDs ------------------------------------------------------------
 local GLACIAL_FIST    = 120838   -- combatRoute: ACTION_RESULT_BEGIN -> Block alert (player/nearby 4.5m)
@@ -28,10 +30,6 @@ local sDone = Lang.t("ss_lokke_tomb_done")
 local sInc  = Lang.t("ss_lokke_tomb_inc")
 
 local NEXT_TOMB = { [0]=1, [1]=2, [2]=3, [3]=1 }   -- iceNumber -> next label
-
-local CA = require("lib.CA")
-local CastDur = require("lib.CastDur")
-local Lang = require("core.Lang")
 
 local function newTombSlots()
     return {

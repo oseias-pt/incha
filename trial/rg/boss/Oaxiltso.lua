@@ -32,7 +32,7 @@ local MINI_ENRAGE     = 152503   -- effectRoute: EFFECT_RESULT_GAINED / FADED ->
 -- Closer to this point -> left cleanse; farther -> right cleanse.
 local POOL_EX_LEFT = { 91973, 35751, 81764 }
 
-local CA = require("lib.CA")
+local CA = require("external-api.CombatAlerts")
 local BossBase = require("lib.BossBase")
 
 -- -- CA colour palettes -----------------------------------------------------
