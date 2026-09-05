@@ -70,9 +70,8 @@ M.ss_atro_incoming          = "Atro incoming! (Spit)"
 
 -- SS shared tracker-row labels.  These are event names shown in the name column
 -- of the Event Tracker; the ETA countdown is displayed separately.
--- ss_can_fly_in keeps %s because the value is a HP% delta, not a timer.
 M.ss_landing                = "Landing"
-M.ss_can_fly_in             = "Can Fly In: %s"
+M.ss_can_fly_in             = "Can Fly In: "
 
 -- ── Sunspire ── Lokke ────────────────────────────────────────────────────────
 

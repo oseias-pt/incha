@@ -318,7 +318,7 @@ local function showLaserLandingLine(self, alerts, now, context)
             elseif hp >= 21 then flyAt = 21
             end
             if flyAt and (hp - flyAt) <= 5 then
-                alerts:setRow(4, Fmt.c(COL_FLY_IN, Lang.t("ss_can_fly_in", Fmt.pct(hp - flyAt, 1))), nil)
+                alerts:setRow(4, Fmt.c(COL_FLY_IN, Lang.t("ss_can_fly_in") .. Fmt.pct(hp - flyAt, 1)), nil)
             else
                 alerts:clearRow(4)
             end
