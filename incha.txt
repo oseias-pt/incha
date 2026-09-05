@@ -32,6 +32,7 @@ core/EventPipeline.lua
 core/Settings.lua
 core/CombatHandler.lua
 core/Bridge.lua
+core/Fmt.lua
 core/Lang.lua
 
 ui/Panel.lua

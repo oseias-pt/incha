@@ -16,6 +16,12 @@
 local DreadsailCommon = require("trial.dsr.DreadsailCommon")
 local CastDur = require("lib.CastDur")
 local Lang = require("core.Lang")
+local Fmt  = require("core.Fmt")
+
+local COL_ELEC   = "FFD666"   -- gold-yellow (electric stacks)
+local COL_POISON = "66CC66"   -- green (poison stacks)
+local COL_REEF   = "FFD700"   -- gold (reef timer normal)
+local COL_VULN   = "ff8800"   -- orange (acidic vulnerability)
 
 -- -- Ability IDs -----------------------------------------------------------
 local BUILDING_STATIC_1    = 163575   -- effectRoute: EFFECT_RESULT_GAINED/UPDATED/FADED -> lightning stack tracker
@@ -205,7 +211,7 @@ end
 local function handleKingOrgnumFireDbf(self, context, alerts, changeType, abilityId,
                                         unitTag, unitId, unitName, stackCount)
     if changeType == EFFECT_RESULT_GAINED and AreUnitsEqual("player", unitTag) then
-        CA.alert(nil, "|cFF5500King Orgnum fire  -  MOVE!|r",
+        CA.alert(nil, Fmt.c("FF5500", "King Orgnum fire  -  MOVE!"),
             0xFF5500D9, SOUNDS.DUEL_START, 5000)
     end
 end
@@ -236,15 +242,16 @@ ReefGuardian.effectRoutes = {
 local function showLightningStacksLine(self, alerts, now)
     local stacks = self.buildingStaticStacks
     if stacks > 0 then
-        local warn = (stacks >= 7) and Lang.t("dsr_reef_warn") or ""
+        local warn = (stacks >= 7) and (" " .. Fmt.c(Fmt.RED, "!")) or ""
         if self.playerSheltered
            or (now - self.lastShelteredTime < SHELTERED_WINDOW) then
-            alerts:showInfo(1, Lang.t("dsr_reef_elec_cleansed"))
+            alerts:showInfo(1, Fmt.c(COL_ELEC, Lang.t("dsr_reef_elec_cleansed")))
         else
             alerts:showInfo(1,
-                "|cFFD666" .. Lang.t("dsr_reef_elec_label")
-                .. Lang.t(stacks ~= 1 and "dsr_reef_stack_p" or "dsr_reef_stack", stacks)
-                .. warn .. "|r")
+                Fmt.c(COL_ELEC,
+                    Lang.t("dsr_reef_elec_label")
+                    .. Lang.t(stacks ~= 1 and "dsr_reef_stack_p" or "dsr_reef_stack", stacks))
+                .. warn)
         end
     else
         alerts:showInfo(1, "")
@@ -255,15 +262,16 @@ end
 local function showPoisonStacksLine(self, alerts, now)
     local vstacks = self.volatileResidueStacks
     if vstacks > 0 then
-        local warn = (vstacks >= 7) and Lang.t("dsr_reef_warn") or ""
+        local warn = (vstacks >= 7) and (" " .. Fmt.c(Fmt.RED, "!")) or ""
         if self.playerSheltered
            or (now - self.lastShelteredTime < SHELTERED_WINDOW) then
-            alerts:showInfo(2, Lang.t("dsr_reef_poison_cleansed"))
+            alerts:showInfo(2, Fmt.c(COL_POISON, Lang.t("dsr_reef_poison_cleansed")))
         else
             alerts:showInfo(2,
-                "|c66CC66" .. Lang.t("dsr_reef_poison_label")
-                .. Lang.t(vstacks ~= 1 and "dsr_reef_stack_p" or "dsr_reef_stack", vstacks)
-                .. warn .. "|r")
+                Fmt.c(COL_POISON,
+                    Lang.t("dsr_reef_poison_label")
+                    .. Lang.t(vstacks ~= 1 and "dsr_reef_stack_p" or "dsr_reef_stack", vstacks))
+                .. warn)
         end
     else
         alerts:showInfo(2, "")
@@ -286,21 +294,21 @@ local function showReefWipeLines(self, alerts, now)
     end
 
     if timers[1] then
-        local t1 = timers[1]
-        local col1 = (t1.t <= 15) and "|cff0000" or "|cFFD700"
-        alerts:showInfo(3, col1 .. Lang.t("dsr_reef_reef_timer", t1.idx, t1.t) .. "|r")
+        local t1   = timers[1]
+        local col1 = (t1.t <= 15) and Fmt.RED or COL_REEF
+        alerts:showInfo(3, Fmt.c(col1, Lang.t("dsr_reef_reef_timer", t1.idx, Fmt.timer(t1.t))))
     else
         alerts:showInfo(3, "")
     end
 
     if timers[2] then
-        local t2 = timers[2]
-        local col2 = (t2.t <= 15) and "|cff0000" or "|cFFD700"
-        alerts:showInfo(4, col2 .. Lang.t("dsr_reef_reef_timer", t2.idx, t2.t) .. "|r")
+        local t2   = timers[2]
+        local col2 = (t2.t <= 15) and Fmt.RED or COL_REEF
+        alerts:showInfo(4, Fmt.c(col2, Lang.t("dsr_reef_reef_timer", t2.idx, Fmt.timer(t2.t))))
     elseif self.acidicVulnLast > 0 then
         local T = 5 - (now - self.acidicVulnLast)
         if T > 0 then
-            alerts:showInfo(4, Lang.t("dsr_reef_acidic_vuln", T))
+            alerts:showInfo(4, Fmt.c(COL_VULN, Lang.t("dsr_reef_acidic_vuln", Fmt.timer(T, 1))))
         else
             self.acidicVulnLast = 0
             alerts:showInfo(4, "")

@@ -13,6 +13,11 @@ local BossBase       = require("lib.BossBase")
 local MapUtils       = require("lib.MapUtils")
 local Timer          = require("lib.Timer")
 local Lang           = require("core.Lang")
+local Fmt            = require("core.Fmt")
+
+local COL_FLARE   = "e51919"   -- fire-orange (flare / cataclysm)
+local COL_LANDING = "5cd65c"   -- light green (landing countdown)
+local COL_FLY_IN  = "ffa500"   -- orange (can fly in threshold)
 
 -- -- Ability IDs ------------------------------------------------------------
 local ATRO_SPAWN    = 119549   -- combatRoute: ACTION_RESULT_BEGIN -> Kill Atro alert
@@ -150,9 +155,9 @@ local function showFlareLine(self, alerts, now)
     if self.nextFlareTime > 0 then
         local T = self.nextFlareTime - now
         if T > 0 then
-            alerts:showInfo(1, Lang.t("ss_yolna_next_flare", T))
+            alerts:showInfo(1, Fmt.c(COL_FLARE, Lang.t("ss_yolna_next_flare", Fmt.timer(T))))
         else
-            alerts:showInfo(1, Lang.t("ss_yolna_next_flare_inc"))
+            alerts:showInfo(1, Fmt.colored(COL_FLARE, "Next Flare: ", Fmt.RED, "INC"))
         end
     else
         alerts:showInfo(1, "")
@@ -163,7 +168,7 @@ end
 local function showCataLine(self, alerts)
     local cataLeft = self.cataTimer:remaining()
     if cataLeft > 0 then
-        alerts:showInfo(2, Lang.t("ss_yolna_cataclysm_ends", cataLeft))
+        alerts:showInfo(2, Fmt.c(COL_FLARE, Lang.t("ss_yolna_cataclysm_ends", Fmt.timer(cataLeft, 1))))
     else
         alerts:showInfo(2, "")
     end
@@ -173,7 +178,7 @@ end
 local function showLandingOrFlyLine(self, alerts, context)
     local landing = self.landingTimer:remaining()
     if landing > 0 then
-        alerts:showInfo(4, Lang.t("ss_landing", landing))
+        alerts:showInfo(4, Fmt.c(COL_LANDING, Lang.t("ss_landing", Fmt.timer(landing))))
     else
         local hp = context.healthPercent
         if hp and hp > 25 then
@@ -183,7 +188,7 @@ local function showLandingOrFlyLine(self, alerts, context)
             elseif hp >= 26 then flyAt = 26
             end
             if flyAt and (hp - flyAt) <= 5 then
-                alerts:showInfo(4, Lang.t("ss_can_fly_in", hp - flyAt))
+                alerts:showInfo(4, Fmt.c(COL_FLY_IN, Lang.t("ss_can_fly_in", Fmt.pct(hp - flyAt, 1))))
             else
                 alerts:showInfo(4, "")
             end

@@ -1,6 +1,10 @@
 local Location = require("core.Location")
 local Timer    = require("lib.Timer")
 local Lang     = require("core.Lang")
+local Fmt      = require("core.Fmt")
+
+local COL_FOG_SAFE = "6699ff"   -- blue (fog duration safe window)
+local COL_FOG_WARN = "ff6666"   -- pink-red (fog ends soon, <= 5 s)
 
 local CA            = require("external-api.CombatAlerts")
 local PositionIcons = require("external-api.PositionIcons")
@@ -236,8 +240,8 @@ function Vrol:onUpdate(context, alerts)
     local fogRemMs = self.fogEndTime - now
     if fogRemMs > 0 then
         local s = fogRemMs / 1000
-        local col = (s <= 5) and "|cff6666" or "|c6699ff"
-        alerts:showInfo(1, col .. Lang.t("ka_vrol_fog_clears") .. "|r " .. string.format("%.1f", s) .. "s")
+        local col = (s <= 5) and COL_FOG_WARN or COL_FOG_SAFE
+        alerts:showInfo(1, Fmt.c(col, Lang.t("ka_vrol_fog_clears") .. " " .. string.format("%.1f", s) .. "s"))
     else
         if self.fogEndTime > 0 then self.fogEndTime = 0 end   -- auto-clear stale timestamp
         local t1 = self.fogTimer:remaining()

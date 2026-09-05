@@ -4,6 +4,7 @@ local BossBase         = require("lib.BossBase")
 local CastDur          = require("lib.CastDur")
 local OsseinCageCommon = require("trial.oc.OsseinCageCommon")
 local Lang             = require("core.Lang")
+local Fmt              = require("core.Fmt")
 
 -- ── Ability IDs (from OsseinCageHelper) ──────────────────────────────────
 local OGRIM_CHARGE     = 236496   -- combatRoute: ACTION_RESULT_BEGIN → MOVE caAlertCast (player)
@@ -87,7 +88,7 @@ end
 function ShaperEncounter:onUpdate(context, alerts)
     -- Line 1: Shaper shield status
     if self.shaperShielded then
-        alerts:showInfo(1, Lang.t("oc_shaper_shielded_info"))
+        alerts:showInfo(1, Fmt.c("AA44FF", Lang.t("oc_shaper_shielded_info")))
     else
         alerts:showInfo(1, "")
     end

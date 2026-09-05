@@ -3,6 +3,10 @@ local CA = require("external-api.CombatAlerts")
 local BossBase = require("lib.BossBase")
 local CastDur = require("lib.CastDur")
 local Lang = require("core.Lang")
+local Fmt  = require("core.Fmt")
+
+local COL_DARK  = "FFAA44"   -- amber/orange (Ryelaz dark side)
+local COL_LIGHT = "8888FF"   -- periwinkle (Zilyesset light side)
 
 -- ── Ability IDs ───────────────────────────────────────────────────────────
 local BRILLIANT_ANNIHILATION = 214187   -- combatRoute: ACTION_RESULT_BEGIN → light side room wipe; STACK
@@ -77,9 +81,9 @@ end
 
 function RyelazEncounter:onUpdate(context, alerts)
     if self.playerSide == "ryelaz" then
-        alerts:showInfo(1, Lang.t("lc_ryelaz_side_dark"))
+        alerts:showInfo(1, Fmt.c(COL_DARK,  Lang.t("lc_ryelaz_side_dark")))
     elseif self.playerSide == "zilyesset" then
-        alerts:showInfo(1, Lang.t("lc_ryelaz_side_light"))
+        alerts:showInfo(1, Fmt.c(COL_LIGHT, Lang.t("lc_ryelaz_side_light")))
     else
         alerts:showInfo(1, "")
     end

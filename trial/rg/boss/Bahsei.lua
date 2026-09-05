@@ -29,6 +29,16 @@
 
 local RockgroveCommon = require("trial.rg.RockgroveCommon")
 local Lang = require("core.Lang")
+local Fmt  = require("core.Fmt")
+
+local COL_CURSE   = "aa50ff"   -- purple (next curse)
+local COL_PORTAL  = "38bdf8"   -- sky-blue (portal label)
+local COL_PNUM    = "7b82a0"   -- slate-gray (portal number / in-progress)
+local COL_COUNT   = "888888"   -- gray (portal player count)
+local COL_TANK    = "ff2020"   -- bright red (tank exploding)
+local COL_DT      = "6699ff"   -- blue (death touch)
+local COL_NOPORTAL = "ff6030"  -- orange-red (no portal cooldown)
+local COL_SICKLE  = "cc80ff"   -- light purple (next sickle)
 
 -- -- Ability IDs ------------------------------------------------------------
 local CURSED_GROUND    = 152475   -- combatRoute: ACTION_RESULT_BEGIN -> Cursed Ground alert
@@ -283,9 +293,9 @@ local function showCursedGroundLine(self, alerts, now)
     if self.lastCursedGround > 0 then
         local T = 28 - (now - self.lastCursedGround)
         if T > 0 then
-            alerts:showInfo(1, Lang.t("rg_bahsei_next_curse", T))
+            alerts:showInfo(1, Fmt.c(COL_CURSE, Lang.t("rg_bahsei_next_curse", Fmt.timer(T))))
         else
-            alerts:showInfo(1, Lang.t("rg_bahsei_next_curse_inc"))
+            alerts:showInfo(1, Fmt.c(COL_CURSE, Lang.t("rg_bahsei_next_curse_inc")))
         end
     else
         alerts:showInfo(1, "")
@@ -297,13 +307,19 @@ local function showPortalLine(self, alerts, now, isHM)
     if isHM then
         local delta = self.nextPortal - now
         if delta > 0 then
-            alerts:showInfo(2, Lang.t("rg_bahsei_portal_cd", self.portalNumber, delta))
+            alerts:showInfo(2,
+                Fmt.c(COL_PORTAL, "Portal") .. " " ..
+                Fmt.c(COL_PNUM, "(" .. self.portalNumber .. ")") ..
+                ": " .. Fmt.timer(delta))
         else
-            local dir = self.lastPortalCW and Lang.t("rg_bahsei_portal_cw") or Lang.t("rg_bahsei_portal_ccw")
+            local dir = self.lastPortalCW
+                and Fmt.c("00cc00", Lang.t("rg_bahsei_portal_cw"))
+                or  Fmt.c("ff8040", Lang.t("rg_bahsei_portal_ccw"))
             local cnt = self.numPlayersInPortal
-            alerts:showInfo(2, "|c38bdf8Portal|r " .. dir ..
-                " " .. Lang.t("rg_bahsei_portal_progress") ..
-                (cnt > 0 and (" |c888888(" .. cnt .. ")|r") or ""))
+            alerts:showInfo(2,
+                Fmt.c(COL_PORTAL, "Portal") .. " " .. dir ..
+                " " .. Fmt.c(COL_PNUM, Lang.t("rg_bahsei_portal_progress")) ..
+                (cnt > 0 and (" " .. Fmt.c(COL_COUNT, "(" .. cnt .. ")")) or ""))
         end
     else
         alerts:showInfo(2, "")
@@ -316,13 +332,13 @@ local function showDeathTouchLine(self, alerts, now, isHM)
     local explodeDelta = (self.nextMtExplosion > 0) and (self.nextMtExplosion - now) or -1
     local dtDelta      = (self.lastDeathTouch  > 0) and (9 - (now - self.lastDeathTouch)) or -1
     if explodeDelta >= 0 and explodeDelta <= 3 then
-        alerts:showInfo(3, Lang.t("rg_bahsei_tank_exploding", explodeDelta))
+        alerts:showInfo(3, Fmt.c(COL_TANK, Lang.t("rg_bahsei_tank_exploding", Fmt.timer(explodeDelta))))
     elseif dtDelta > 0 then
-        alerts:showInfo(3, Lang.t("rg_bahsei_death_touch", dtDelta))
+        alerts:showInfo(3, Fmt.c(COL_DT, Lang.t("rg_bahsei_death_touch", Fmt.timer(dtDelta, 1))))
     elseif isHM and self.selfDoNotPortalTime > 0 then
         local noPortalDelta = self.selfDoNotPortalTime - now
         if noPortalDelta > 0 then
-            alerts:showInfo(3, Lang.t("rg_bahsei_no_portal", noPortalDelta))
+            alerts:showInfo(3, Fmt.c(COL_NOPORTAL, Lang.t("rg_bahsei_no_portal", Fmt.timer(noPortalDelta))))
         else
             alerts:showInfo(3, "")
         end
@@ -336,9 +352,9 @@ local function showSickleLine(self, alerts, now, isHM)
     if isHM and self.nextSickle > 0 then
         local T = self.nextSickle - now
         if T > 0 and T <= 15 then
-            alerts:showInfo(4, Lang.t("rg_bahsei_next_sickle", T))
+            alerts:showInfo(4, Fmt.c(COL_SICKLE, Lang.t("rg_bahsei_next_sickle", Fmt.timer(T))))
         elseif T <= 0 then
-            alerts:showInfo(4, Lang.t("rg_bahsei_next_sickle_inc"))
+            alerts:showInfo(4, Fmt.c(COL_SICKLE, Lang.t("rg_bahsei_next_sickle_inc")))
         else
             alerts:showInfo(4, "")
         end

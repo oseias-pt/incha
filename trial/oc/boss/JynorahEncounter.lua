@@ -5,6 +5,7 @@ local BossBase         = require("lib.BossBase")
 local CastDur          = require("lib.CastDur")
 local OsseinCageCommon = require("trial.oc.OsseinCageCommon")
 local Lang             = require("core.Lang")
+local Fmt              = require("core.Fmt")
 
 -- -- Ability IDs (from OsseinCageHelper) ----------------------------------------------------------
 -- Dragons (Valneer = fire/orange, Myrinax = lightning/blue)
@@ -263,7 +264,7 @@ local function showClashLine(self, alerts)
     if self.clashActive then
         local r = self.clashTimer:remaining()
         if r > 0 then
-            alerts:showInfo(1, Lang.t("oc_jynorah_clash_timer", ZO_FormatCountdownTimer(r)))
+            alerts:showInfo(1, Fmt.c("FF4444", Lang.t("oc_jynorah_clash_timer", ZO_FormatCountdownTimer(r))))
         else
             self.clashActive = false
             alerts:showInfo(1, "")

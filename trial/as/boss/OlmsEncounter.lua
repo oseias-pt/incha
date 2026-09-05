@@ -1,5 +1,6 @@
 local Timer    = require("lib.Timer")
 local Lang     = require("core.Lang")
+local Fmt      = require("core.Fmt")
 
 local CA       = require("external-api.CombatAlerts")
 local BossBase = require("lib.BossBase")
@@ -269,7 +270,7 @@ OlmsEncounter.effectRoutes = {
 -- Fires a one-shot CA pre-warning when the countdown drops into the 6 s window.
 local function showStormLine(self, alerts)
     if self.protectorUp then
-        alerts:showInfo(1, Lang.t("as_olms_protector_active"))
+        alerts:showInfo(1, Fmt.c(Fmt.YELLOW, Lang.t("as_olms_protector_active")))
         return
     end
     local t = self.stormTimer:remaining()
@@ -347,7 +348,7 @@ function OlmsEncounter:onPowerUpdate(context, healthPercent, alerts)
     if self.nextJumpThreshold > #JUMP_THRESHOLDS then return end
     local threshold = JUMP_THRESHOLDS[self.nextJumpThreshold]
     if healthPercent <= threshold + 3 and healthPercent > threshold then
-        alerts:showInfo(1, Lang.t("as_olms_jump_at", threshold))
+        alerts:showInfo(1, Lang.t("as_olms_jump_at", tostring(threshold)))
     end
 end
 
