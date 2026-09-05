@@ -1,19 +1,29 @@
---- Default overlay panel  -  implements the AlertSink handler vocabulary
---- using plain WINDOW_MANAGER controls owned entirely by Incha.
+--- ui/Panel.lua  —  Two-panel overlay: Alert (centre screen) + Tracker (corner table).
 ---
---- Design rules (from Phase 0 analysis):
+--- Alert panel  (Incha_Alert)
+---   Fires for immediate player actions: "Block!", "Enter Tomb!", "Dodge!".
+---   Auto-clears after ALERT_AUTO_CLEAR_MS.  Manually dismissed by hideAction() / clear().
+---   Draggable; position is NOT persisted (resets to centre on reload).
+---
+--- Tracker panel  (Incha_Panel)
+---   Structured table of upcoming events.
+---   Each row: [20×20 icon placeholder] [event label] [ETA countdown]
+---   ETA colour: grey >10 s · orange 3–10 s · red <3 s.
+---   Draggable; position saved in Settings.overlay.{offsetX,offsetY}.
+---
+--- AlertSink vocabulary handled here:
+---   header(text)         – boss name / HM status (tracker top)
+---   action(text)         – immediate call-out (alert panel); auto-clears 5 s
+---   hideAction()         – force-clear alert panel before timeout
+---   setRow(n, name, eta) – tracker row n: label + seconds remaining (nil = static)
+---   clearRow(n)          – blank tracker row n
+---   clear()              – clear both panels and deactivate
+---   info(n, text)        – backward-compat shim → setRow(n, text, nil)
+---
+--- Design rules:
 ---   - Controls are built ONCE on first enable, never per event.
----   - All steady-state updates are :SetText() / :SetHidden() only.
+---   - All steady-state updates are :SetText() / :SetColor() / :SetHidden() only.
 ---   - No per-tick allocations anywhere in this file.
----
---- Alert vocabulary:
----   header(text)     -  boss name / HM status, small gold line at top
----   info(n, text)    -  timer countdown lines (grey, small)
----   action(text)     -  prominent mid-fight call-out (orange, bold)
----   hideAction()     -  clears action without hiding panel
----   clear()          -  clears all text and hides the panel
----
---- Used by ka/rg/dsr.
 
 local BridgeBase = require("core.Bridge")
 local Log        = require("lib.Log")
@@ -21,38 +31,44 @@ local Settings   = require("core.Settings")
 
 local Panel = {}
 
--- Control bundle  -  nil until first build(), populated exactly once.
-local ctrl = nil
+-- ── Tracker panel dimensions ──────────────────────────────────────────────────
 
--- Track each HUD scene's state separately to avoid callback-order races.
--- When chat/inventory closes, ESO fires both "hud → showing" and
--- "hudui → hiding" in the same frame.  The one that fires last overwrites
--- the shared variable, so the panel could end up hidden while the HUD is
--- fully visible.  OR logic avoids the race: the panel is live whenever
--- either scene is "showing".
-local hudState   = "showing"   -- most recent state of the "hud" scene
-local hudUiState = "showing"   -- most recent state of the "hudui" scene
+local TRACKER_ROW_COUNT = 6       -- max visible event rows
+local TRACKER_W         = 320
+local TRACKER_HEADER_H  = 32      -- gold boss-name header
+local TRACKER_ROW_H     = 26      -- height of each event row
+local TRACKER_PAD_BTM   = 8
+local TRACKER_H = TRACKER_HEADER_H + TRACKER_ROW_COUNT * TRACKER_ROW_H + TRACKER_PAD_BTM
 
--- Info-line slots.  Boss onUpdate methods address these as showInfo(n, text);
--- the busiest encounter currently uses 7, so ten labels were being built and
--- three of them could never receive text.  Raise this if a future boss needs
--- more lines, and raise H to match.
-local INFO_LINE_COUNT = 7
+-- Row column geometry (x from panel left edge; panel width = 320)
+local ICON_X = 8                              -- icon left edge
+local ICON_W = 20
+local ICON_H = 20
+local NAME_X = ICON_X + ICON_W + 6           -- = 34  name label left edge
+local ETA_W  = 74
+local ETA_X  = TRACKER_W - 8 - ETA_W         -- = 238 ETA label left edge
+local NAME_W = ETA_X - NAME_X - 4            -- = 200 name label width
 
--- Panel dimensions (points, scales with ctrl.panel:SetScale).
--- Height budget: header 8+18, info lines from y=28 at 18 px each, action 28 px
--- anchored 10 px off the bottom.  7 lines -> 28 + 7*18 = 154, plus the 38 px
--- action block and 8 px padding.
-local W, H = 320, 200
+-- ── Alert panel dimensions ────────────────────────────────────────────────────
 
--- Show or hide the panel based on two independent gates:
---   ctrl.active    -  trial/boss content should be on screen
---   hudVisible     -  the hud/hudui scene allows it
--- Call this instead of SetHidden directly so both gates stay in sync.
-local function applyVisibility()
+local ALERT_W              = 400
+local ALERT_H              = 56
+local ALERT_AUTO_CLEAR_MS  = 5000
+
+-- ── Shared HUD scene state ────────────────────────────────────────────────────
+
+-- Updated by both scene callbacks; controls both panels via applyXxxVisibility().
+local hudState   = "showing"
+local hudUiState = "showing"
+
+-- ── Tracker panel state ───────────────────────────────────────────────────────
+
+local ctrl = nil   -- populated exactly once by build()
+
+local function applyTrackerVisibility()
     if not ctrl then return end
-    local hudVisible = (hudState == "showing") or (hudUiState == "showing")
-    ctrl.panel:SetHidden(not (ctrl.active and hudVisible))
+    local visible = (hudState == "showing") or (hudUiState == "showing")
+    ctrl.panel:SetHidden(not (ctrl.active and visible))
 end
 
 local function applyPosition(panel)
@@ -62,38 +78,43 @@ local function applyPosition(panel)
         panel:SetAnchor(TOPLEFT, GuiRoot, TOPLEFT, sv.offsetX, sv.offsetY)
     else
         local screenW = GuiRoot:GetWidth()
-        panel:SetAnchor(TOPLEFT, GuiRoot, TOPLEFT, (screenW - W) / 2, 150)
+        panel:SetAnchor(TOPLEFT, GuiRoot, TOPLEFT, (screenW - TRACKER_W) / 2, 150)
     end
 end
 
--- Clear all panel text and deactivate.
--- Callers must guard with `if not ctrl then return end` before calling.
-local function panel_clear()
-    ctrl.header:SetText("") ; ctrl.headerText = ""
-    ctrl.action:SetText("") ; ctrl.actionText = ""
-    for i = 1, INFO_LINE_COUNT do
-        ctrl.info[i]:SetText("")
-        ctrl.infoText[i] = ""
-    end
-    ctrl.active = false
-    applyVisibility()
+-- ── Alert panel state ─────────────────────────────────────────────────────────
+
+local alertCtrl = nil   -- populated exactly once by buildAlert()
+
+-- Incremented each time a new alert fires.  The deferred auto-clear closure
+-- captures its own copy of alertSeq and bails out if it has since changed.
+-- No cancellation API needed: the deferred call is simply a no-op if stale.
+local alertSeq = 0
+
+local function applyAlertVisibility()
+    if not alertCtrl then return end
+    local visible = (hudState == "showing") or (hudUiState == "showing")
+    alertCtrl.panel:SetHidden(not (alertCtrl.active and visible))
 end
+
+local function clearAlertContent()
+    if not alertCtrl then return end
+    alertCtrl.label:SetText("")
+    alertCtrl.text   = ""
+    alertCtrl.active = false
+    applyAlertVisibility()
+end
+
+-- ── Tracker panel builder ─────────────────────────────────────────────────────
 
 local function build()
     if ctrl then return end
 
     local sv = Settings.get().overlay
 
-    -- Outer container  -  the draggable root.
-    --
-    -- Named with the addon prefix on purpose.  ESO keeps top-level controls in
-    -- one flat namespace under GuiRoot, shared with every other installed
-    -- addon, so an unprefixed name is a name two addons can both claim; ZO's
-    -- own controls and the GM panel list them by that string.  Every control
-    -- below this one is created with a nil name because it is only ever
-    -- reached through the `ctrl` table, so this is the only line that matters.
+    -- Root control: draggable, saves position on move-stop.
     local panel = WINDOW_MANAGER:CreateControl("Incha_Panel", GuiRoot, CT_CONTROL)
-    panel:SetDimensions(W, H)
+    panel:SetDimensions(TRACKER_W, TRACKER_H)
     panel:SetClampedToScreen(true)
     panel:SetMouseEnabled(not sv.locked)
     panel:SetMovable(not sv.locked)
@@ -105,93 +126,193 @@ local function build()
         local s = Settings.get().overlay
         s.offsetX = c:GetLeft()
         s.offsetY = c:GetTop()
-        -- No applyPosition() here: the drag has already placed the control,
-        -- and re-anchoring it to the values just read is at best a no-op.
-        -- It is only a no-op if GetLeft/GetTop report in the same space
-        -- SetAnchor consumes; if they do not, the panel would visibly jump on
-        -- every drag AND accumulate the error into the saved offsets.
-        --
-        -- UNVERIFIED at scale ~= 1.0: drag the panel at /incha scale 0.5 and
-        -- again at 2.0, reload, and confirm it returns to where it was left.
-        -- The debug line below prints what was stored.
-        Log.debug("panel: saved offset %d, %d (scale %.2f)",
-            s.offsetX, s.offsetY, s.scale)
+        Log.debug("tracker: saved offset %d, %d (scale %.2f)", s.offsetX, s.offsetY, s.scale)
     end)
 
-    -- Semi-transparent dark background.
+    -- Background
     local bg = WINDOW_MANAGER:CreateControl(nil, panel, CT_BACKDROP)
     bg:SetAnchorFill()
     bg:SetCenterColor(0.04, 0.04, 0.04, 0.82)
-    bg:SetEdgeColor(0.35, 0.35, 0.35, 0.9)
+    bg:SetEdgeColor(0.35, 0.35, 0.35, 0.90)
 
-    -- Header  -  boss name / HM status.  Small, gold.
+    -- Header: boss name / HM status.  Gold, centred.
     local header = WINDOW_MANAGER:CreateControl(nil, panel, CT_LABEL)
-    header:SetFont("ZoFontGameSmall")
+    header:SetFont("EsoUI/Common/Fonts/univers67.otf|20|soft-shadow-thick")
     header:SetColor(1, 0.82, 0.22, 1)
     header:SetHorizontalAlignment(TEXT_ALIGN_CENTER)
-    header:SetAnchor(TOPLEFT, panel, TOPLEFT, 8, 8)
-    header:SetDimensions(W - 16, 18)
+    header:SetVerticalAlignment(TEXT_ALIGN_CENTER)
+    header:SetAnchor(TOPLEFT, panel, TOPLEFT, 0, 0)
+    header:SetDimensions(TRACKER_W, TRACKER_HEADER_H)
     header:SetText("")
 
-    -- Info lines  -  timer countdowns.  Small, grey.
-    -- Stacked below the header with 2px gaps.
-    local info = {}
-    for i = 1, INFO_LINE_COUNT do
-        local lbl = WINDOW_MANAGER:CreateControl(nil, panel, CT_LABEL)
-        lbl:SetFont("ZoFontGameSmall")
-        lbl:SetColor(0.75, 0.75, 0.75, 1)
-        lbl:SetHorizontalAlignment(TEXT_ALIGN_CENTER)
-        lbl:SetAnchor(TOPLEFT, panel, TOPLEFT, 8, 28 + (i - 1) * 18)
-        lbl:SetDimensions(W - 16, 16)
-        lbl:SetText("")
-        info[i] = lbl
+    -- Event rows.  Each row: icon placeholder (texture) + name (left) + ETA (right).
+    local rows = {}
+    for i = 1, TRACKER_ROW_COUNT do
+        local y = TRACKER_HEADER_H + (i - 1) * TRACKER_ROW_H
+
+        -- 20×20 icon placeholder.  Initially hidden; a future patch will set textures.
+        local icon = WINDOW_MANAGER:CreateControl(nil, panel, CT_TEXTURE)
+        icon:SetAnchor(TOPLEFT, panel, TOPLEFT, ICON_X, y + math.floor((TRACKER_ROW_H - ICON_H) / 2))
+        icon:SetDimensions(ICON_W, ICON_H)
+        icon:SetHidden(true)   -- no texture assigned yet; hidden until icons are added
+
+        -- Name label: event label, left-aligned, grey.
+        local nameLbl = WINDOW_MANAGER:CreateControl(nil, panel, CT_LABEL)
+        nameLbl:SetFont("EsoUI/Common/Fonts/univers67.otf|18|soft-shadow-thick")
+        nameLbl:SetColor(0.80, 0.80, 0.80, 1)
+        nameLbl:SetHorizontalAlignment(TEXT_ALIGN_LEFT)
+        nameLbl:SetVerticalAlignment(TEXT_ALIGN_CENTER)
+        nameLbl:SetAnchor(TOPLEFT, panel, TOPLEFT, NAME_X, y)
+        nameLbl:SetDimensions(NAME_W, TRACKER_ROW_H)
+        nameLbl:SetText("")
+
+        -- ETA label: countdown, right-aligned, colour varies by urgency.
+        local etaLbl = WINDOW_MANAGER:CreateControl(nil, panel, CT_LABEL)
+        etaLbl:SetFont("EsoUI/Common/Fonts/univers67.otf|18|soft-shadow-thick")
+        etaLbl:SetColor(0.67, 0.67, 0.67, 1)
+        etaLbl:SetHorizontalAlignment(TEXT_ALIGN_RIGHT)
+        etaLbl:SetVerticalAlignment(TEXT_ALIGN_CENTER)
+        etaLbl:SetAnchor(TOPLEFT, panel, TOPLEFT, ETA_X, y)
+        etaLbl:SetDimensions(ETA_W, TRACKER_ROW_H)
+        etaLbl:SetText("")
+
+        rows[i] = {
+            icon     = icon,
+            nameLbl  = nameLbl,
+            etaLbl   = etaLbl,
+            nameText = "",
+            etaText  = "",
+        }
     end
-
-    -- Action  -  the prominent mid-fight call-out.  Larger, orange.
-    local action = WINDOW_MANAGER:CreateControl(nil, panel, CT_LABEL)
-    action:SetFont("ZoFontGameBold")
-    action:SetColor(1, 0.42, 0.08, 1)
-    action:SetHorizontalAlignment(TEXT_ALIGN_CENTER)
-    action:SetAnchor(BOTTOM, panel, BOTTOM, 0, -10)
-    action:SetDimensions(W - 16, 28)
-    action:SetText("")
-
-    -- Text caches: last string passed to each SetText call.
-    -- Compared on every hot-path tick to skip redundant SetText + applyVisibility
-    -- calls when the displayed value hasn't changed.
-    local infoText = {}
-    for i = 1, INFO_LINE_COUNT do infoText[i] = "" end
 
     ctrl = {
         panel      = panel,
         header     = header,
-        info       = info,
-        action     = action,
-        active     = false,  -- gates applyVisibility()
-        infoText   = infoText,
-        actionText = "",
         headerText = "",
+        rows       = rows,
+        active     = false,
     }
 
-    -- Hide the panel when neither HUD scene is active (escape menu, loading
-    -- screen, etc.) and restore it when either returns to "showing".
-    -- Separate callbacks per scene so each updates only its own state variable;
-    -- a shared callback would let the last-firing scene overwrite the result of
-    -- the first, causing spurious hide when callback order is "hud→showing"
-    -- then "hudui→hiding" (which leaves hudVisible false while HUD is visible).
+    -- Hide/show both panels when the HUD scene changes.
+    -- Two separate callbacks so each updates only its own state variable;
+    -- a shared callback lets the last-firing scene overwrite the result of
+    -- the first (race when "hud→showing" fires before "hudui→hiding").
     SCENE_MANAGER:GetScene("hud"):RegisterCallback("StateChange", function(_, newState)
         hudState = newState
-        applyVisibility()
+        applyTrackerVisibility()
+        applyAlertVisibility()
     end)
     SCENE_MANAGER:GetScene("hudui"):RegisterCallback("StateChange", function(_, newState)
         hudUiState = newState
-        applyVisibility()
+        applyTrackerVisibility()
+        applyAlertVisibility()
     end)
 end
 
--- -- AlertSink handler table ------------------------------------------------
+-- ── Alert panel builder ───────────────────────────────────────────────────────
+
+local function buildAlert()
+    if alertCtrl then return end
+
+    local panel = WINDOW_MANAGER:CreateControl("Incha_Alert", GuiRoot, CT_CONTROL)
+    panel:SetDimensions(ALERT_W, ALERT_H)
+    panel:SetClampedToScreen(true)
+    panel:SetMouseEnabled(true)
+    panel:SetMovable(true)
+    panel:SetHidden(true)
+    -- Default: screen centre, above the player character.
+    -- The player can drag it; position is not persisted in this version.
+    panel:SetAnchor(CENTER, GuiRoot, CENTER, 0, -120)
+
+    -- Subtle dark background with a warm edge.
+    local bg = WINDOW_MANAGER:CreateControl(nil, panel, CT_BACKDROP)
+    bg:SetAnchorFill()
+    bg:SetCenterColor(0.03, 0.01, 0.00, 0.65)
+    bg:SetEdgeColor(0.55, 0.18, 0.04, 0.80)
+
+    -- Main alert label.  Large, orange.
+    local lbl = WINDOW_MANAGER:CreateControl(nil, panel, CT_LABEL)
+    lbl:SetFont("EsoUI/Common/Fonts/univers67.otf|36|soft-shadow-thick")
+    lbl:SetColor(1, 0.42, 0.08, 1)
+    lbl:SetHorizontalAlignment(TEXT_ALIGN_CENTER)
+    lbl:SetVerticalAlignment(TEXT_ALIGN_CENTER)
+    lbl:SetAnchorFill()
+    lbl:SetText("")
+
+    alertCtrl = {
+        panel  = panel,
+        label  = lbl,
+        text   = "",
+        active = false,
+    }
+end
+
+-- ── Internal: tracker clear ───────────────────────────────────────────────────
+
+local function tracker_clear()
+    if not ctrl then return end
+    ctrl.header:SetText(""); ctrl.headerText = ""
+    for i = 1, TRACKER_ROW_COUNT do
+        local row = ctrl.rows[i]
+        row.nameLbl:SetText(""); row.nameText = ""
+        row.etaLbl:SetText("");  row.etaText  = ""
+    end
+    ctrl.active = false
+    applyTrackerVisibility()
+end
+
+-- ── Internal: setRow core ─────────────────────────────────────────────────────
+
+-- Hot path: called up to TRACKER_ROW_COUNT × per 200 ms tick.
+-- Guards every SetText / SetColor call behind a string-compare to avoid
+-- redundant draws (LuaJIT interns strings so ~= is a pointer compare).
+local function setRowInternal(n, name, eta)
+    if not ctrl then return end
+    local row = ctrl.rows[n]
+    if not row then return end
+
+    -- Name column ────────────────────────────────────────────────────────────
+    local nameStr = name or ""
+    if row.nameText ~= nameStr then
+        row.nameText = nameStr
+        row.nameLbl:SetText(nameStr)
+    end
+
+    -- ETA column ─────────────────────────────────────────────────────────────
+    local etaStr
+    if eta and eta > 0 then
+        etaStr = math.ceil(eta) .. "s"
+        local r, g, b
+        if     eta < 3  then r, g, b = 1.00, 0.27, 0.27   -- red    (< 3 s)
+        elseif eta < 10 then r, g, b = 1.00, 0.52, 0.00   -- orange (3–10 s)
+        else                 r, g, b = 0.67, 0.67, 0.67   -- grey   (> 10 s)
+        end
+        -- SetColor is cheap but still skip it when value hasn't changed.
+        -- We use etaText as the colour proxy: a colour only changes when the
+        -- ceiling bucket changes, which is rare, so this under-fires slightly.
+        -- Accept the minor inaccuracy to keep the hot path allocation-free.
+        if row.etaText ~= etaStr then
+            row.etaLbl:SetColor(r, g, b, 1)
+        end
+    else
+        etaStr = ""
+    end
+    if row.etaText ~= etaStr then
+        row.etaText = etaStr
+        row.etaLbl:SetText(etaStr)
+    end
+
+    if not ctrl.active then
+        ctrl.active = true
+        applyTrackerVisibility()
+    end
+end
+
+-- ── AlertSink handler table ───────────────────────────────────────────────────
 
 Panel.alerts = {
+
+    -- header(text)  –  boss name / HM status line at the top of the tracker.
     header = function(text)
         if not ctrl then return end
         local s = text or ""
@@ -201,90 +322,93 @@ Panel.alerts = {
         end
         if not ctrl.active then
             ctrl.active = true
-            applyVisibility()
+            applyTrackerVisibility()
         end
     end,
 
-    -- info(n, text)  -  timer countdown for slot n (1..INFO_LINE_COUNT).
-    -- Out-of-range n is ignored rather than erroring, so a boss writing to a
-    -- slot that does not exist degrades to a missing line instead of throwing
-    -- mid-fight.
-    -- Hot path: called up to INFO_LINE_COUNT times per 200 ms onUpdate tick.  Skip SetText when
-    -- the string is unchanged (LuaJIT interns all strings, so ~= is a pointer
-    -- compare).  Skip applyVisibility when the panel is already active.
-    info = function(n, text)
-        if not ctrl then return end
-        local lbl = ctrl.info[n]
-        if not lbl then return end
-        local s = text or ""
-        if ctrl.infoText[n] ~= s then
-            ctrl.infoText[n] = s
-            lbl:SetText(s)
-        end
-        if not ctrl.active then
-            ctrl.active = true
-            applyVisibility()
-        end
-    end,
-
+    -- action(text)  –  immediate call-out on the alert panel.
+    -- Auto-clears after ALERT_AUTO_CLEAR_MS.  A new call before the timeout
+    -- replaces the previous alert and restarts the timer.
     action = function(text)
-        if not ctrl then return end
+        if not alertCtrl then buildAlert() end
         local s = text or ""
-        if ctrl.actionText ~= s then
-            ctrl.actionText = s
-            ctrl.action:SetText(s)
+        alertSeq = alertSeq + 1
+        local seq = alertSeq
+        if alertCtrl.text ~= s then
+            alertCtrl.text = s
+            alertCtrl.label:SetText(s)
         end
-        if not ctrl.active then
-            ctrl.active = true
-            applyVisibility()
+        alertCtrl.active = (s ~= "")
+        applyAlertVisibility()
+        if s ~= "" then
+            zo_callLater(function()
+                if alertSeq == seq then clearAlertContent() end
+            end, ALERT_AUTO_CLEAR_MS)
         end
     end,
 
+    -- hideAction()  –  force-clear the alert panel before the auto-clear fires.
     hideAction = function()
-        if not ctrl then return end
-        ctrl.action:SetText("")
-        -- Clear the diff cache too: action() above compares against ctrl.actionText
-        -- and skips SetText when the strings match, so leaving the old text cached
-        -- makes the next identical callout a no-op. Mirrors panel_clear().
-        ctrl.actionText = ""
-        -- leave panel visible  -  info lines may still carry timer data
+        alertSeq = alertSeq + 1   -- invalidate any pending deferred clear
+        clearAlertContent()
     end,
 
+    -- setRow(n, name, eta)  –  update tracker row n.
+    -- name: display label (may include |c colour codes).
+    -- eta:  remaining seconds (number > 0), or nil for a static / timer-free row.
+    setRow = function(n, name, eta)
+        setRowInternal(n, name, eta)
+    end,
+
+    -- clearRow(n)  –  blank out tracker row n.
+    clearRow = function(n)
+        setRowInternal(n, "", nil)
+    end,
+
+    -- info(n, text)  –  backward-compat shim for non-migrated bosses.
+    -- Writes the full formatted string to the name column; ETA column is blank.
+    info = function(n, text)
+        setRowInternal(n, text or "", nil)
+    end,
+
+    -- clear()  –  clear both panels and deactivate.
     clear = function()
-        if not ctrl then return end
-        panel_clear()
+        alertSeq = alertSeq + 1
+        clearAlertContent()
+        tracker_clear()
     end,
 }
 
--- -- Bridge lifecycle table -------------------------------------------------
--- Wrapped with BridgeBase so checkHardmode (and any future hook) falls back
--- to the documented no-op rather than silently being absent.
+-- ── Bridge lifecycle ──────────────────────────────────────────────────────────
 
 Panel.bridge = BridgeBase.extend({
     onEnable = function()
-        build()  -- no-op after first call; safe on every zone enter
+        build()       -- idempotent; registers scene callbacks on first call
+        buildAlert()  -- idempotent
     end,
 
     onDisable = function()
-        if not ctrl then return end
-        panel_clear()
+        alertSeq = alertSeq + 1
+        clearAlertContent()
+        tracker_clear()
     end,
 
     onBossEnter = function(boss, context)
         if ctrl then
             ctrl.active = true
-            applyVisibility()
+            applyTrackerVisibility()
         end
     end,
 
     onBossExit = function()
-        if not ctrl then return end
-        panel_clear()
+        alertSeq = alertSeq + 1
+        clearAlertContent()
+        tracker_clear()
     end,
     -- checkHardmode: inherited no-op from BridgeBase (Panel has no HM logic)
 })
 
--- -- Settings refresh -------------------------------------------------------
+-- ── Settings refresh ──────────────────────────────────────────────────────────
 
 function Panel.refresh()
     if not ctrl then return end

@@ -68,22 +68,24 @@ M.ss_block_shield_charge    = "Block! (Shield Charge)"
 M.ss_dodge_breath           = "Dodge! (Breath)"
 M.ss_atro_incoming          = "Atro incoming! (Spit)"
 
--- SS shared (Lokke / Yolna / Nahvii share these info-line format strings)
--- %s receives a pre-formatted timer string from Fmt.timer()
-M.ss_landing                = "Landing: %s"
-M.ss_can_fly_in             = "Can Fly In: %s"
+-- SS shared tracker-row labels.  These are event names shown in the name column
+-- of the Event Tracker; the ETA countdown is displayed separately.
+M.ss_landing                = "Landing"
+M.ss_can_fly_in             = "Can Fly In: "
 
 -- ── Sunspire ── Lokke ────────────────────────────────────────────────────────
 
 M.ss_lokke_block_glacial    = "Block! (Glacial Fist)"
-M.ss_lokke_laser            = "Laser: %s"
-M.ss_lokke_tomb_header_inc  = "Ice Tomb %s INC"
-M.ss_lokke_tomb_header_cd   = "Ice Tomb %s in: %s"
-M.ss_lokke_tomb_active      = "Ice Tomb %s"
-M.ss_lokke_tomb_slot_a      = "[A]: "
-M.ss_lokke_tomb_slot_b      = "[B]: "
-M.ss_lokke_tomb_take        = "Take "
-M.ss_lokke_tomb_heal        = "Heal "
+M.ss_lokke_laser            = "Laser"
+-- Tracker labels for the three Ice Tomb rotation positions.
+M.ss_lokke_tomb_name_1      = "Ice Tomb 1"
+M.ss_lokke_tomb_name_2      = "Ice Tomb 2"
+M.ss_lokke_tomb_name_3      = "Ice Tomb 3"
+-- Slot-state labels shown inside each active tomb row.
+M.ss_lokke_tomb_slot_a      = "[A] "
+M.ss_lokke_tomb_slot_b      = "[B] "
+M.ss_lokke_tomb_take        = "Take"
+M.ss_lokke_tomb_heal        = "Heal"
 M.ss_lokke_tomb_done        = "Done"
 M.ss_lokke_tomb_inc         = "inc"
 M.ss_lokke_tomb_double      = "Double"
@@ -92,28 +94,28 @@ M.ss_lokke_tomb_double      = "Double"
 
 M.ss_yolna_kill_atro        = "Kill Atro!"
 M.ss_yolna_dodge_geyser     = "Dodge! (Geyser)"
-M.ss_yolna_next_flare       = "Next Flare: %s"
-M.ss_yolna_next_flare_inc   = "Next Flare: INC"
-M.ss_yolna_cataclysm_ends   = "Cataclysm Ends: %s"
+M.ss_yolna_next_flare       = "Next Flare"
+M.ss_yolna_cataclysm_ends   = "Cataclysm"
 
 -- ── Sunspire ── Nahvii ───────────────────────────────────────────────────────
 
-M.ss_nahvii_you_meteor      = "YOU -> Meteor!"
+M.ss_nahvii_you_meteor      = "YOU → Meteor!"
 M.ss_nahvii_block_slam      = "Block! (Slam)"
 M.ss_nahvii_block_stonefist = "Block! (Stonefist)"
 M.ss_nahvii_sweep_right     = "> Sweep Breath >>>"
 M.ss_nahvii_sweep_left      = "<<< Sweep Breath <"
 M.ss_nahvii_soul_tear       = "SOUL TEAR!"
 M.ss_nahvii_dodge_negate    = "Dodge! (Negate)"
-M.ss_nahvii_next_meteor     = "Next Meteor: %s"
-M.ss_nahvii_next_meteor_inc = "Next Meteor: INC"
-M.ss_nahvii_interrupt_in    = "Interrupt in: %s"
-M.ss_nahvii_next_pins       = "Next Pins: %s"
-M.ss_nahvii_portal_urgent   = "Portal: %s"
-M.ss_nahvii_portal          = "Portal: %s"
-M.ss_nahvii_fire_storm_begin = "Fire Storm Begin: %s"
-M.ss_nahvii_fire_storm_end  = "Fire Storm End: %s"
-M.ss_nahvii_portal_wipe     = "Portal Wipe: %s"
+M.ss_nahvii_next_meteor     = "Meteor"
+M.ss_nahvii_interrupt_in    = "Interrupt"
+M.ss_nahvii_next_pins       = "Pins"
+-- portal_urgent shows when the player must already be inside (>11 s remaining);
+-- portal shows the plain countdown.  Different labels so the urgency reads clearly.
+M.ss_nahvii_portal_urgent   = "ENTER PORTAL"
+M.ss_nahvii_portal          = "Portal"
+M.ss_nahvii_fire_storm_begin = "Storm Start"
+M.ss_nahvii_fire_storm_end  = "Storm End"
+M.ss_nahvii_portal_wipe     = "Portal Wipe"
 
 -- ── Rockgrove (RG) ── RockgroveCommon.lua ───────────────────────────────────
 

@@ -21,10 +21,30 @@ end
 
 -- info lines take two args (slot index + text), so they can't route through
 -- the single-arg emit().  Handlers receive (n, text) directly.
+-- Deprecated: use setRow(n, name, eta) instead.  Kept for non-migrated bosses.
 function AlertSink:showInfo(n, text)
     local handler = self.handlers.info
     if handler then
         handler(n, text)
+    end
+end
+
+-- setRow(n, name, eta)  -  structured tracker row.
+-- name: display label string (may contain |c colour codes).
+-- eta:  remaining seconds as a number, or nil for a static / no-timer row.
+-- Handlers receive (n, name, eta) directly.
+function AlertSink:setRow(n, name, eta)
+    local handler = self.handlers.setRow
+    if handler then
+        handler(n, name, eta)
+    end
+end
+
+-- clearRow(n)  -  blank tracker row n.
+function AlertSink:clearRow(n)
+    local handler = self.handlers.clearRow
+    if handler then
+        handler(n)
     end
 end
 
