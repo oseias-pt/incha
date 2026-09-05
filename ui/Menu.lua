@@ -10,6 +10,7 @@ local Log      = require("lib.Log")
 local Panel    = require("ui.Panel")
 local Preview  = require("ui.Preview")
 local Settings = require("core.Settings")
+local Fmt      = require("core.Fmt")
 
 local Menu = {}
 
@@ -19,7 +20,7 @@ local PANEL_ID = ADDON_LAM
 local PANEL = {
     type                = "panel",
     name                = ADDON_TITLE,
-    displayName         = "|cFFD700" .. ADDON_TITLE .. "|r",
+    displayName         = Fmt.c(Fmt.GOLD, ADDON_TITLE),
     author              = "Oseias",
     version             = "0.1.0",
     slashCommand        = ADDON_SLASH,
@@ -358,19 +359,19 @@ local function handleSlash(text)
     if cmd == "debug" then
         sv.debug = not sv.debug
         Log.setEnabled(sv.debug)
-        d("|cFFD700[Incha]|r Debug " .. (sv.debug and "|c00FF00ON|r" or "|cFF4444OFF|r"))
+        d(ADDON_TAG .. " Debug " .. (sv.debug and Fmt.c(Fmt.GREEN, "ON") or Fmt.c("FF4444", "OFF")))
 
     elseif cmd == "lock" then
         sv.overlay.locked = not sv.overlay.locked
         Panel.refresh()
-        d("|cFFD700[Incha]|r Overlay " .. (sv.overlay.locked and "locked" or "unlocked"))
+        d(ADDON_TAG .. " Overlay " .. (sv.overlay.locked and "locked" or "unlocked"))
 
     elseif cmd == "scale" then
         local n = tonumber(arg)
         if n and n >= 0.5 and n <= 3.0 then
             sv.overlay.scale = n
             Panel.refresh()
-            d("|cFFD700[Incha]|r Scale -> " .. n)
+            d(ADDON_TAG .. " Scale -> " .. n)
         else
             d(ADDON_TAG .. " Usage: " .. ADDON_SLASH .. " scale <0.5 - 3.0>")
         end
@@ -380,7 +381,7 @@ local function handleSlash(text)
         sv.overlay.offsetY = -1
         sv.overlay.scale   = 1.0
         Panel.refresh()
-        d("|cFFD700[Incha]|r Overlay position reset")
+        d(ADDON_TAG .. " Overlay position reset")
 
     elseif cmd == "preview" then
         local sub = arg:match("^%s*(%S*)")
