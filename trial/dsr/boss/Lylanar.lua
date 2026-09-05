@@ -509,11 +509,11 @@ local function showFireBubbleLine(self, alerts, now, isHM)
                                    or  Lang.t("dsr_lylanar_ember_suffix",   stks)
         if T > 0 then
             alerts:showInfo(1,
-                Fmt.c(COL_FIRE, "\xf0\x9f\x94\xa5 " .. name) .. suffix ..
+                Fmt.c(COL_FIRE, "🔥 " .. name) .. suffix ..
                 " (" .. string.format("%.0f", T) .. "s)")
         else
             alerts:showInfo(1,
-                Fmt.c(COL_FIRE, "\xf0\x9f\x94\xa5 " .. name) .. suffix .. " " .. Fmt.c(Fmt.RED, Lang.t("dsr_lylanar_drop")))
+                Fmt.c(COL_FIRE, "🔥 " .. name) .. suffix .. " " .. Fmt.c(Fmt.RED, Lang.t("dsr_lylanar_drop")))
         end
     else
         alerts:showInfo(1, "")
@@ -531,11 +531,11 @@ local function showIceBubbleLine(self, alerts, now, isHM)
                                    or  Lang.t("dsr_lylanar_ember_suffix",   stks)
         if T > 0 then
             alerts:showInfo(2,
-                Fmt.c(COL_ICE, "\xe2\x9d\x84 " .. name) .. suffix ..
+                Fmt.c(COL_ICE, "❄ " .. name) .. suffix ..
                 " (" .. string.format("%.0f", T) .. "s)")
         else
             alerts:showInfo(2,
-                Fmt.c(COL_ICE, "\xe2\x9d\x84 " .. name) .. suffix .. " " .. Fmt.c(Fmt.RED, Lang.t("dsr_lylanar_drop")))
+                Fmt.c(COL_ICE, "❄ " .. name) .. suffix .. " " .. Fmt.c(Fmt.RED, Lang.t("dsr_lylanar_drop")))
         end
     else
         alerts:showInfo(2, "")
