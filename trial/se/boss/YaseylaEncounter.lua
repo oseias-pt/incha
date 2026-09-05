@@ -249,38 +249,47 @@ YaseylaEncounter.combatRoutes = {
 -- Line 1: Fire Bombs CD; label switches to "Bombs (exec)" once execute phase begins.
 local function showFireBombLine(self, alerts)
     if self.firstFirebomb then
-        alerts:showInfo(1, Lang.t("se_yaseyla_fire_bombs_first"))
+        alerts:setRow(1, Lang.t("se_yaseyla_fire_bombs_first"), nil)
     else
         local r     = self.firebombTimer:remaining()
         local label = self.executePhase
             and Lang.t("se_yaseyla_bombs_exec_name")
             or  Lang.t("se_yaseyla_fire_bombs_name")
-        alerts:showInfo(1, Lang.t("se_yaseyla_fire_bombs_label", label)
-            .. (r > 0 and ZO_FormatCountdownTimer(r) or Lang.t("common_ready")))
+        if r > 0 then
+            alerts:setRow(1, label, r)
+        else
+            alerts:setRow(1, label .. " " .. Lang.t("common_ready"), nil)
+        end
     end
 end
 
 -- Line 3: Frost Bomb CD; shows estimated first-cast window before the ability is seen.
 local function showFrostBombLine(self, alerts)
     if self.firstFrost then
-        alerts:showInfo(3, Lang.t("se_yaseyla_frost_first"))
+        alerts:setRow(3, Lang.t("se_yaseyla_frost_first"), nil)
     else
         local r = self.frostTimer:remaining()
-        alerts:showInfo(3, Lang.t("se_yaseyla_frost_bomb_label")
-            .. (r > 0 and ZO_FormatCountdownTimer(r) or Lang.t("common_ready")))
+        if r > 0 then
+            alerts:setRow(3, Lang.t("se_yaseyla_frost_bomb_label"), r)
+        else
+            alerts:setRow(3, Lang.t("se_yaseyla_frost_bomb_label") .. " " .. Lang.t("common_ready"), nil)
+        end
     end
 end
 
 function YaseylaEncounter:onUpdate(context, alerts)
     showFireBombLine(self, alerts)
     local rc = self.chainTimer:remaining()
-    alerts:showInfo(2, Lang.t("se_yaseyla_chains_label")
-        .. (rc > 0 and ZO_FormatCountdownTimer(rc) or Lang.t("common_ready")))
+    if rc > 0 then
+        alerts:setRow(2, Lang.t("se_yaseyla_chains_label"), rc)
+    else
+        alerts:setRow(2, Lang.t("se_yaseyla_chains_label") .. " " .. Lang.t("common_ready"), nil)
+    end
     showFrostBombLine(self, alerts)
-    alerts:showInfo(4, "")
-    alerts:showInfo(5, "")
-    alerts:showInfo(6, "")
-    alerts:showInfo(7, "")
+    alerts:clearRow(4)
+    alerts:clearRow(5)
+    alerts:clearRow(6)
+    alerts:clearRow(7)
 end
 
 function YaseylaEncounter:onPowerUpdate(context, healthPercent, alerts)
