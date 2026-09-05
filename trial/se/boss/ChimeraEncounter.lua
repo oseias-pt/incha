@@ -207,21 +207,29 @@ local function showChimeraLines(self, alerts)
     if self.chimeraActive then
         local rd = self.despawnTimer:remaining()
         local rc = self.chainTimer:remaining()
-        alerts:showInfo(1, Lang.t("se_chimera_despawn_label") .. (rd > 0 and ZO_FormatCountdownTimer(rd) or Lang.t("common_imminent")))
-        alerts:showInfo(2, Lang.t("se_chimera_chain_label") .. (rc > 0 and ZO_FormatCountdownTimer(rc) or Lang.t("common_ready")))
+        if rd > 0 then
+            alerts:setRow(1, Lang.t("se_chimera_despawn_label"), rd)
+        else
+            alerts:setRow(1, Lang.t("se_chimera_despawn_label") .. " " .. Lang.t("common_imminent"), nil)
+        end
+        if rc > 0 then
+            alerts:setRow(2, Lang.t("se_chimera_chain_label"), rc)
+        else
+            alerts:setRow(2, Lang.t("se_chimera_chain_label") .. " " .. Lang.t("common_ready"), nil)
+        end
     else
-        alerts:showInfo(1, "")
-        alerts:showInfo(2, "")
+        alerts:clearRow(1)
+        alerts:clearRow(2)
     end
 end
 
 function ChimeraEncounter:onUpdate(context, alerts)
     showChimeraLines(self, alerts)
-    alerts:showInfo(3, "")
-    alerts:showInfo(4, "")
-    alerts:showInfo(5, "")
-    alerts:showInfo(6, "")
-    alerts:showInfo(7, "")
+    alerts:clearRow(3)
+    alerts:clearRow(4)
+    alerts:clearRow(5)
+    alerts:clearRow(6)
+    alerts:clearRow(7)
 end
 
 function ChimeraEncounter:onPowerUpdate(context, healthPercent, alerts)

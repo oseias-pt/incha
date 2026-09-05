@@ -331,10 +331,9 @@ M.se_yaseyla_10pct          = "10%% - Wamasu + Archers + Shrapnel!"
 M.se_yaseyla_fire_bombs_first  = "Fire Bombs: first ~7s"
 M.se_yaseyla_fire_bombs_name   = "Fire Bombs"
 M.se_yaseyla_bombs_exec_name   = "Bombs (exec)"
-M.se_yaseyla_fire_bombs_label  = "%s: "    -- label with colon and space (%s = ability name)
 M.se_yaseyla_frost_first       = "Frost: first ~17s"
-M.se_yaseyla_frost_bomb_label  = "Frost Bomb: "
-M.se_yaseyla_chains_label      = "Chains: "
+M.se_yaseyla_frost_bomb_label  = "Frost Bomb"
+M.se_yaseyla_chains_label      = "Chains"
 
 -- ── Sanity's Edge ── AnsuulEncounter ─────────────────────────────────────────
 
@@ -360,9 +359,9 @@ M.se_ansuul_inferno_alert   = "INTERRUPT - Inferno!"
 M.se_ansuul_flare_alert     = "ENRAGED FLARE"
 -- Info strings
 M.se_ansuul_maze_no_cal     = "Maze phase (no Calamity)"
-M.se_ansuul_triplet_cal     = "TRIPLET - Calamity: %s"
+M.se_ansuul_triplet_cal     = "TRIPLET - Calamity"
 M.se_ansuul_calamity_first  = "Calamity: first ~9s"
-M.se_ansuul_calamity_label  = "Calamity: "
+M.se_ansuul_calamity_label  = "Calamity"
 M.se_ansuul_split_phase     = "Split phase - equalize HP!"
 M.se_ansuul_navigate_maze   = "Navigate the maze"
 M.se_ansuul_now             = "now!"
@@ -392,8 +391,8 @@ M.se_chimera_portal_wamasu  = "Wamasu Portal (Green)"
 M.se_chimera_portal_lion    = "Lion Portal (Red)"
 M.se_chimera_portal_gryphon = "Gryphon Portal (Blue)"
 -- Info labels
-M.se_chimera_despawn_label  = "Despawn: "
-M.se_chimera_chain_label    = "Chain Ltng: "
+M.se_chimera_despawn_label  = "Despawn"
+M.se_chimera_chain_label    = "Chain Ltng"
 
 -- ── Lucent Citadel (LC) ── LCCommon.lua ──────────────────────────────────────
 

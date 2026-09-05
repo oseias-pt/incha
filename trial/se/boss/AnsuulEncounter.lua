@@ -187,28 +187,34 @@ AnsuulEncounter.combatRoutes = {
 -- Line 1: Calamity countdown - context-aware: maze suppression, triplet urgency, or normal CD.
 local function showCalamityLine(self, alerts)
     if self.inMaze then
-        alerts:showInfo(1, Lang.t("se_ansuul_maze_no_cal"))
+        alerts:setRow(1, Lang.t("se_ansuul_maze_no_cal"), nil)
     elseif self.inTriplet then
         local r = self.calamityTimer:remaining()
-        alerts:showInfo(1, Lang.t("se_ansuul_triplet_cal",
-            r > 0 and ZO_FormatCountdownTimer(r) or Lang.t("se_ansuul_now")))
+        if r > 0 then
+            alerts:setRow(1, Lang.t("se_ansuul_triplet_cal"), r)
+        else
+            alerts:setRow(1, Lang.t("se_ansuul_triplet_cal") .. " " .. Lang.t("se_ansuul_now"), nil)
+        end
     elseif self.firstCalamity then
-        alerts:showInfo(1, Lang.t("se_ansuul_calamity_first"))
+        alerts:setRow(1, Lang.t("se_ansuul_calamity_first"), nil)
     else
         local r = self.calamityTimer:remaining()
-        alerts:showInfo(1, Lang.t("se_ansuul_calamity_label")
-            .. (r > 0 and ZO_FormatCountdownTimer(r) or Lang.t("common_ready")))
+        if r > 0 then
+            alerts:setRow(1, Lang.t("se_ansuul_calamity_label"), r)
+        else
+            alerts:setRow(1, Lang.t("se_ansuul_calamity_label") .. " " .. Lang.t("common_ready"), nil)
+        end
     end
 end
 
 -- Line 2: Current phase label (triplet split or maze navigation).
 local function showPhaseLine(self, alerts)
     if self.inTriplet then
-        alerts:showInfo(2, Lang.t("se_ansuul_split_phase"))
+        alerts:setRow(2, Lang.t("se_ansuul_split_phase"), nil)
     elseif self.inMaze then
-        alerts:showInfo(2, Lang.t("se_ansuul_navigate_maze"))
+        alerts:setRow(2, Lang.t("se_ansuul_navigate_maze"), nil)
     else
-        alerts:showInfo(2, "")
+        alerts:clearRow(2)
     end
 end
 
@@ -227,11 +233,11 @@ end
 function AnsuulEncounter:onUpdate(context, alerts)
     showCalamityLine(self, alerts)
     showPhaseLine(self, alerts)
-    alerts:showInfo(3, "")
-    alerts:showInfo(4, "")
-    alerts:showInfo(5, "")
-    alerts:showInfo(6, "")
-    alerts:showInfo(7, "")
+    alerts:clearRow(3)
+    alerts:clearRow(4)
+    alerts:clearRow(5)
+    alerts:clearRow(6)
+    alerts:clearRow(7)
 end
 
 function AnsuulEncounter:onPowerUpdate(context, healthPercent, alerts)
