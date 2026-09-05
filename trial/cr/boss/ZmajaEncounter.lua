@@ -538,33 +538,36 @@ ZmajaEncounter.combatRoutes = {
 local function showPortalStatusLine(self, alerts)
     if self.portalActive then
         local r = self.portalTimer:remaining()
-        local t = r > 0 and ZO_FormatCountdownTimer(r) or Lang.t("cr_zmaja_portal_closing")
-        alerts:showInfo(1, Lang.t("cr_zmaja_portal_open_label") .. t)
+        if r > 0 then
+            alerts:setRow(1, Lang.t("cr_zmaja_portal_open_label"), r)
+        else
+            alerts:setRow(1, Lang.t("cr_zmaja_portal_open_label") .. " " .. Lang.t("cr_zmaja_portal_closing"), nil)
+        end
     elseif not self.portalNextTimer:isExpired() then
         local r = self.portalNextTimer:remaining()
-        alerts:showInfo(1, Lang.t("cr_zmaja_portal_next_label") .. ZO_FormatCountdownTimer(r))
+        alerts:setRow(1, Lang.t("cr_zmaja_portal_next_label"), r)
     else
-        alerts:showInfo(1, "")
+        alerts:clearRow(1)
     end
 end
 
 -- Line 2: Current portal group assignment, or execute-phase banner.
 local function showPortalGroupLine(self, alerts)
     if self.executePhase then
-        alerts:showInfo(2, Lang.t("cr_zmaja_execute_phase"))
+        alerts:setRow(2, Lang.t("cr_zmaja_execute_phase"), nil)
     elseif self.portalGroup > 0 then
-        alerts:showInfo(2, Lang.t("cr_zmaja_shadow_group", self.portalGroup))
+        alerts:setRow(2, Lang.t("cr_zmaja_shadow_group", self.portalGroup), nil)
     else
-        alerts:showInfo(2, "")
+        alerts:clearRow(2)
     end
 end
 
 -- Line 4: Olorime Spear count.
 local function showSpearLine(self, alerts)
     if self.spearCount > 0 then
-        alerts:showInfo(4, Lang.t("cr_zmaja_spears_label", self.spearCount))
+        alerts:setRow(4, Lang.t("cr_zmaja_spears_label") .. self.spearCount, nil)
     else
-        alerts:showInfo(4, "")
+        alerts:clearRow(4)
     end
 end
 
@@ -573,11 +576,11 @@ local function showSiroLine(self, alerts)
     if self.siroActive then
         local j  = self.siroJumpTimer:remaining()
         local b  = self.siroBannerTimer:remaining()
-        local jt = j > 0 and ZO_FormatCountdownTimer(j) or Lang.t("common_ready")
-        local bt = b > 0 and ZO_FormatCountdownTimer(b) or Lang.t("common_ready")
-        alerts:showInfo(5, Lang.t("cr_zmaja_siro_label", jt, bt))
+        local jt = j > 0 and (math.ceil(j) .. "s") or Lang.t("common_ready")
+        local bt = b > 0 and (math.ceil(b) .. "s") or Lang.t("common_ready")
+        alerts:setRow(5, Lang.t("cr_zmaja_siro_label", jt, bt), nil)
     else
-        alerts:showInfo(5, "")
+        alerts:clearRow(5)
     end
 end
 
@@ -586,11 +589,11 @@ local function showReleLine(self, alerts)
     if self.releActive then
         local j  = self.releJumpTimer:remaining()
         local b  = self.releBashTimer:remaining()
-        local jt = j > 0 and ZO_FormatCountdownTimer(j) or Lang.t("common_ready")
-        local bt = b > 0 and ZO_FormatCountdownTimer(b) or Lang.t("cr_zmaja_bash_due")
-        alerts:showInfo(6, Lang.t("cr_zmaja_rele_label", jt, bt))
+        local jt = j > 0 and (math.ceil(j) .. "s") or Lang.t("common_ready")
+        local bt = b > 0 and (math.ceil(b) .. "s") or Lang.t("cr_zmaja_bash_due")
+        alerts:setRow(6, Lang.t("cr_zmaja_rele_label", jt, bt), nil)
     else
-        alerts:showInfo(6, "")
+        alerts:clearRow(6)
     end
 end
 
@@ -599,11 +602,11 @@ local function showGaleLine(self, alerts)
     if self.galeActive then
         local j  = self.galeJumpTimer:remaining()
         local b  = self.galeBashTimer:remaining()
-        local jt = j > 0 and ZO_FormatCountdownTimer(j) or Lang.t("common_ready")
-        local bt = b > 0 and ZO_FormatCountdownTimer(b) or Lang.t("cr_zmaja_bash_due")
-        alerts:showInfo(7, Lang.t("cr_zmaja_gale_label", jt, bt))
+        local jt = j > 0 and (math.ceil(j) .. "s") or Lang.t("common_ready")
+        local bt = b > 0 and (math.ceil(b) .. "s") or Lang.t("cr_zmaja_bash_due")
+        alerts:setRow(7, Lang.t("cr_zmaja_gale_label", jt, bt), nil)
     else
-        alerts:showInfo(7, "")
+        alerts:clearRow(7)
     end
 end
 
@@ -623,7 +626,7 @@ end
 function ZmajaEncounter:onUpdate(context, alerts)
     showPortalStatusLine(self, alerts)
     showPortalGroupLine(self, alerts)
-    alerts:showInfo(3, self.coreAlert or "")   -- core alert: persistent until resolved
+    if self.coreAlert then alerts:setRow(3, self.coreAlert, nil) else alerts:clearRow(3) end  -- core alert
     showSpearLine(self, alerts)
     showSiroLine(self, alerts)
     showReleLine(self, alerts)
