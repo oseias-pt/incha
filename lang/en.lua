@@ -423,9 +423,9 @@ M.lc_orphic_color_change         = "Color change! Switch mirror!"
 M.lc_orphic_color_change_alert   = "Color Change!"
 -- Info labels
 M.lc_orphic_thrall_first    = "Thrall: first ~8s"
-M.lc_orphic_thrall_label    = "Thrall: "
+M.lc_orphic_thrall_label    = "Thrall"
 M.lc_orphic_flood_first     = "Flood:  first ~3s"
-M.lc_orphic_flood_label     = "Flood:  "
+M.lc_orphic_flood_label     = "Flood"
 
 -- ── Lucent Citadel ── XynizataEncounter ──────────────────────────────────────
 
@@ -434,9 +434,9 @@ M.lc_xynizata_beam_bar       = "INTERRUPT — Beam!"
 M.lc_xynizata_interrupt_vitr = "INTERRUPT — Vitrify!"
 -- Info labels
 M.lc_xynizata_beam_first    = "Beam: first ~14s"
-M.lc_xynizata_beam_label    = "Beam: "
+M.lc_xynizata_beam_label    = "Beam"
 M.lc_xynizata_vitr_first    = "Vitrify: first ~9s"
-M.lc_xynizata_vitr_label    = "Vitrify: "
+M.lc_xynizata_vitr_label    = "Vitrify"
 
 -- ── Lucent Citadel ── XorynEncounter ─────────────────────────────────────────
 
@@ -460,7 +460,7 @@ M.lc_xoryn_tether_alert     = "TETHER! Move away!"
 M.lc_xoryn_current_alert    = "Hold current! Drop at edge!"
 M.lc_xoryn_drop_alert       = "DROP current!"
 -- Info
-M.lc_xoryn_current          = "Current: %s"
+M.lc_xoryn_current          = "Current"
 M.lc_xoryn_drop_now         = "DROP NOW!"
 M.lc_xoryn_carrying_knot    = "Carrying Arcane Knot"
 

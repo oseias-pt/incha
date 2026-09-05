@@ -120,28 +120,34 @@ end
 function OrphicEncounter:onUpdate(context, alerts)
     if self.xorynActive then
         if self.firstThrall then
-            alerts:showInfo(1, Lang.t("lc_orphic_thrall_first"))
+            alerts:setRow(1, Lang.t("lc_orphic_thrall_first"), nil)
         else
             local r = self.thunderThrallTimer:remaining()
-            alerts:showInfo(1, Lang.t("lc_orphic_thrall_label")
-                .. (r > 0 and ZO_FormatCountdownTimer(r) or Lang.t("common_now")))
+            if r > 0 then
+                alerts:setRow(1, Lang.t("lc_orphic_thrall_label"), r)
+            else
+                alerts:setRow(1, Lang.t("lc_orphic_thrall_label") .. " " .. Lang.t("common_now"), nil)
+            end
         end
         if self.firstFlood then
-            alerts:showInfo(2, Lang.t("lc_orphic_flood_first"))
+            alerts:setRow(2, Lang.t("lc_orphic_flood_first"), nil)
         else
             local r = self.lightningFloodTimer:remaining()
-            alerts:showInfo(2, Lang.t("lc_orphic_flood_label")
-                .. (r > 0 and ZO_FormatCountdownTimer(r) or Lang.t("common_now")))
+            if r > 0 then
+                alerts:setRow(2, Lang.t("lc_orphic_flood_label"), r)
+            else
+                alerts:setRow(2, Lang.t("lc_orphic_flood_label") .. " " .. Lang.t("common_now"), nil)
+            end
         end
     else
-        alerts:showInfo(1, "")
-        alerts:showInfo(2, "")
+        alerts:clearRow(1)
+        alerts:clearRow(2)
     end
-    alerts:showInfo(3, "")
-    alerts:showInfo(4, "")
-    alerts:showInfo(5, "")
-    alerts:showInfo(6, "")
-    alerts:showInfo(7, "")
+    alerts:clearRow(3)
+    alerts:clearRow(4)
+    alerts:clearRow(5)
+    alerts:clearRow(6)
+    alerts:clearRow(7)
 end
 
 package.loaded["trial.lc.boss.OrphicEncounter"] = OrphicEncounter
