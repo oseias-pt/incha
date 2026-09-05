@@ -33,7 +33,7 @@ local Panel = {}
 
 -- ── Tracker panel dimensions ──────────────────────────────────────────────────
 
-local TRACKER_ROW_COUNT = 6       -- max visible event rows
+local TRACKER_ROW_COUNT = 7       -- max visible event rows
 local TRACKER_W         = 320
 local TRACKER_HEADER_H  = 32      -- gold boss-name header
 local TRACKER_ROW_H     = 26      -- height of each event row

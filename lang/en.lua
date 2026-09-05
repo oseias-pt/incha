@@ -268,17 +268,17 @@ M.as_olms_strike_bar        = "Strike → %s"
 M.as_olms_kill_protector    = "Kill the Protector!"
 M.as_olms_shield_down       = "Shield down!"
 M.as_olms_protector_active  = "[!] PROTECTOR ACTIVE"
--- Info labels (intentional trailing spaces for alignment)
-M.as_olms_storm_label       = "Storm:   "
-M.as_olms_steam_label       = "Steam:   "
-M.as_olms_charges_label     = "Charges: "
-M.as_olms_fire_label        = "Fire:    "
-M.as_olms_llothis_dormant   = "Llothis: DORMANT"
-M.as_olms_blast_label       = "Blast:   "
-M.as_olms_bolts_label       = "Bolts:   "
-M.as_olms_felms_dormant     = "Felms:   DORMANT"
-M.as_olms_strike_label      = "Strike:  "
--- %s receives a pre-formatted percentage string from Fmt.pct()
+-- Tracker row labels (name column; ETA column handled by setRow)
+M.as_olms_storm_label       = "Storm"
+M.as_olms_steam_label       = "Steam"
+M.as_olms_charges_label     = "Charges"
+M.as_olms_fire_label        = "Fire"
+M.as_olms_llothis_dormant   = "Llothis DORMANT"
+M.as_olms_blast_label       = "Blast"
+M.as_olms_bolts_label       = "Bolts"
+M.as_olms_felms_dormant     = "Felms DORMANT"
+M.as_olms_strike_label      = "Strike"
+-- %s receives a threshold integer from tostring()
 M.as_olms_jump_at           = "Jump at %s%%!"
 
 -- ── Cloudrest (CR) ── ZmajaEncounter ────────────────────────────────────────

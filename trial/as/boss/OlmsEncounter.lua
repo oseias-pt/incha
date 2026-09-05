@@ -264,13 +264,13 @@ OlmsEncounter.effectRoutes = {
     [STATIC_SHIELD] = handleStaticShield,
 }
 
--- ── Info-line renderers ───────────────────────────────────────────────────
+-- ── Tracker-row renderers ─────────────────────────────────────────────────
 
--- Line 1: Storm timer, displaced by Protector warning when the shield is active.
+-- Row 1: Storm timer, displaced by Protector warning when the shield is active.
 -- Fires a one-shot CA pre-warning when the countdown drops into the 6 s window.
 local function showStormLine(self, alerts)
     if self.protectorUp then
-        alerts:showInfo(1, Fmt.c(Fmt.YELLOW, Lang.t("as_olms_protector_active")))
+        alerts:setRow(1, Fmt.c(Fmt.YELLOW, Lang.t("as_olms_protector_active")), nil)
         return
     end
     local t = self.stormTimer:remaining()
@@ -280,56 +280,78 @@ local function showStormLine(self, alerts)
     elseif t > 6 then
         self.stormPreWarned = false
     end
-    alerts:showInfo(1, Lang.t("as_olms_storm_label")
-        .. (t > 0 and ZO_FormatCountdownTimer(t) or Lang.t("common_ready")))
+    if t > 0 then
+        alerts:setRow(1, Lang.t("as_olms_storm_label"), t)
+    else
+        alerts:setRow(1, Lang.t("as_olms_storm_label") .. " " .. Lang.t("common_ready"), nil)
+    end
 end
 
--- Lines 2-4: Olms core timers (always visible).
+-- Rows 2-4: Olms core timers (2-3 always show ready, 4 clears when expired).
 local function showOlmsLines(self, alerts)
     local t2 = self.steamTimer:remaining()
     local t3 = self.chargesTimer:remaining()
     local t4 = self.fireTimer:remaining()
-    alerts:showInfo(2, Lang.t("as_olms_steam_label")
-        .. (t2 > 0 and ZO_FormatCountdownTimer(t2) or Lang.t("common_ready")))
-    alerts:showInfo(3, Lang.t("as_olms_charges_label")
-        .. (t3 > 0 and ZO_FormatCountdownTimer(t3) or Lang.t("common_ready")))
-    alerts:showInfo(4, t4 > 0 and (Lang.t("as_olms_fire_label") .. ZO_FormatCountdownTimer(t4)) or "")
-end
-
--- Line 5: Llothis — not yet spawned, dormant, or blast timer.
-local function showLlothisLine(self, alerts)
-    if self.llothisSpawnGs == nil then
-        alerts:showInfo(5, "")
-    elseif not self.llothisActive then
-        alerts:showInfo(5, Lang.t("as_olms_llothis_dormant"))
+    if t2 > 0 then
+        alerts:setRow(2, Lang.t("as_olms_steam_label"), t2)
     else
-        local t = self.blastTimer:remaining()
-        alerts:showInfo(5, Lang.t("as_olms_blast_label")
-            .. (t > 0 and ZO_FormatCountdownTimer(t) or Lang.t("common_ready")))
+        alerts:setRow(2, Lang.t("as_olms_steam_label") .. " " .. Lang.t("common_ready"), nil)
+    end
+    if t3 > 0 then
+        alerts:setRow(3, Lang.t("as_olms_charges_label"), t3)
+    else
+        alerts:setRow(3, Lang.t("as_olms_charges_label") .. " " .. Lang.t("common_ready"), nil)
+    end
+    if t4 > 0 then
+        alerts:setRow(4, Lang.t("as_olms_fire_label"), t4)
+    else
+        alerts:clearRow(4)
     end
 end
 
--- Line 6: Llothis interrupt timer (hidden while dormant).
+-- Row 5: Llothis — not yet spawned, dormant, or blast timer.
+local function showLlothisLine(self, alerts)
+    if self.llothisSpawnGs == nil then
+        alerts:clearRow(5)
+    elseif not self.llothisActive then
+        alerts:setRow(5, Lang.t("as_olms_llothis_dormant"), nil)
+    else
+        local t = self.blastTimer:remaining()
+        if t > 0 then
+            alerts:setRow(5, Lang.t("as_olms_blast_label"), t)
+        else
+            alerts:setRow(5, Lang.t("as_olms_blast_label") .. " " .. Lang.t("common_ready"), nil)
+        end
+    end
+end
+
+-- Row 6: Llothis interrupt timer (cleared while dormant).
 local function showBoltsLine(self, alerts)
     if self.llothisActive then
         local t = self.boltsTimer:remaining()
-        alerts:showInfo(6, Lang.t("as_olms_bolts_label")
-            .. (t > 0 and ZO_FormatCountdownTimer(t) or Lang.t("common_interrupt")))
+        if t > 0 then
+            alerts:setRow(6, Lang.t("as_olms_bolts_label"), t)
+        else
+            alerts:setRow(6, Lang.t("as_olms_bolts_label") .. " " .. Lang.t("common_interrupt"), nil)
+        end
     else
-        alerts:showInfo(6, "")
+        alerts:clearRow(6)
     end
 end
 
--- Line 7: Felms — not yet spawned, dormant, or strike timer.
+-- Row 7: Felms — not yet spawned, dormant, or strike timer.
 local function showFelmsLine(self, alerts)
     if self.felmsSpawnGs == nil then
-        alerts:showInfo(7, "")
+        alerts:clearRow(7)
     elseif not self.felmsActive then
-        alerts:showInfo(7, Lang.t("as_olms_felms_dormant"))
+        alerts:setRow(7, Lang.t("as_olms_felms_dormant"), nil)
     else
         local t = self.jumpTimer:remaining()
-        alerts:showInfo(7, Lang.t("as_olms_strike_label")
-            .. (t > 0 and ZO_FormatCountdownTimer(t) or Lang.t("common_ready")))
+        if t > 0 then
+            alerts:setRow(7, Lang.t("as_olms_strike_label"), t)
+        else
+            alerts:setRow(7, Lang.t("as_olms_strike_label") .. " " .. Lang.t("common_ready"), nil)
+        end
     end
 end
 
@@ -348,7 +370,7 @@ function OlmsEncounter:onPowerUpdate(context, healthPercent, alerts)
     if self.nextJumpThreshold > #JUMP_THRESHOLDS then return end
     local threshold = JUMP_THRESHOLDS[self.nextJumpThreshold]
     if healthPercent <= threshold + 3 and healthPercent > threshold then
-        alerts:showInfo(1, Lang.t("as_olms_jump_at", tostring(threshold)))
+        alerts:setRow(1, Lang.t("as_olms_jump_at", tostring(threshold)), nil)
     end
 end
 
