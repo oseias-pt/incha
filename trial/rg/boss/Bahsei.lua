@@ -286,80 +286,81 @@ Bahsei.effectRoutes = {
     [BITTER_MARROW]    = handleBitterMarrow,
 }
 
--- -- Info-line renderers ---------------------------------------------------
+-- -- Tracker-row renderers --------------------------------------------------
 
--- Info 1: Next Cursed Ground (28 s cycle).
+-- Row 1: Next Cursed Ground (28 s cycle).
 local function showCursedGroundLine(self, alerts, now)
     if self.lastCursedGround > 0 then
         local T = 28 - (now - self.lastCursedGround)
         if T > 0 then
-            alerts:showInfo(1, Fmt.c(COL_CURSE, Lang.t("rg_bahsei_next_curse", Fmt.timer(T))))
+            alerts:setRow(1, Fmt.c(COL_CURSE, Lang.t("rg_bahsei_next_curse")), T)
         else
-            alerts:showInfo(1, Fmt.c(COL_CURSE, Lang.t("rg_bahsei_next_curse_inc")))
+            alerts:setRow(1, Fmt.c(COL_CURSE, Lang.t("rg_bahsei_next_curse")) .. " " .. Fmt.c(Fmt.RED, "INC"), nil)
         end
     else
-        alerts:showInfo(1, "")
+        alerts:clearRow(1)
     end
 end
 
--- Info 2 (HM): Next Portal  -  countdown before opening, or direction + in-progress count.
+-- Row 2 (HM): Next Portal countdown, or direction + in-progress count.
 local function showPortalLine(self, alerts, now, isHM)
     if isHM then
         local delta = self.nextPortal - now
         if delta > 0 then
-            alerts:showInfo(2,
+            alerts:setRow(2,
                 Fmt.c(COL_PORTAL, "Portal") .. " " ..
-                Fmt.c(COL_PNUM, "(" .. self.portalNumber .. ")") ..
-                ": " .. Fmt.timer(delta))
+                Fmt.c(COL_PNUM, "(" .. self.portalNumber .. ")"),
+                delta)
         else
             local dir = self.lastPortalCW
                 and Fmt.c("00cc00", Lang.t("rg_bahsei_portal_cw"))
                 or  Fmt.c("ff8040", Lang.t("rg_bahsei_portal_ccw"))
             local cnt = self.numPlayersInPortal
-            alerts:showInfo(2,
+            alerts:setRow(2,
                 Fmt.c(COL_PORTAL, "Portal") .. " " .. dir ..
                 " " .. Fmt.c(COL_PNUM, Lang.t("rg_bahsei_portal_progress")) ..
-                (cnt > 0 and (" " .. Fmt.c(COL_COUNT, "(" .. cnt .. ")")) or ""))
+                (cnt > 0 and (" " .. Fmt.c(COL_COUNT, "(" .. cnt .. ")")) or ""),
+                nil)
         end
     else
-        alerts:showInfo(2, "")
+        alerts:clearRow(2)
     end
 end
 
--- Info 3: Tank Exploding (<= 3 s) > Death Touch personal > No Portal cooldown.
--- Kept on info3 (not showAction) so reactive event alerts (Block!, Dodge!) keep their slot.
+-- Row 3: Tank Exploding (<= 3 s) > Death Touch personal > No Portal cooldown.
+-- Kept on row 3 (not showAction) so reactive event alerts keep their slot.
 local function showDeathTouchLine(self, alerts, now, isHM)
     local explodeDelta = (self.nextMtExplosion > 0) and (self.nextMtExplosion - now) or -1
     local dtDelta      = (self.lastDeathTouch  > 0) and (9 - (now - self.lastDeathTouch)) or -1
     if explodeDelta >= 0 and explodeDelta <= 3 then
-        alerts:showInfo(3, Fmt.c(COL_TANK, Lang.t("rg_bahsei_tank_exploding", Fmt.timer(explodeDelta))))
+        alerts:setRow(3, Fmt.c(COL_TANK, Lang.t("rg_bahsei_tank_exploding")), explodeDelta)
     elseif dtDelta > 0 then
-        alerts:showInfo(3, Fmt.c(COL_DT, Lang.t("rg_bahsei_death_touch", Fmt.timer(dtDelta, 1))))
+        alerts:setRow(3, Fmt.c(COL_DT, Lang.t("rg_bahsei_death_touch")), dtDelta)
     elseif isHM and self.selfDoNotPortalTime > 0 then
         local noPortalDelta = self.selfDoNotPortalTime - now
         if noPortalDelta > 0 then
-            alerts:showInfo(3, Fmt.c(COL_NOPORTAL, Lang.t("rg_bahsei_no_portal", Fmt.timer(noPortalDelta))))
+            alerts:setRow(3, Fmt.c(COL_NOPORTAL, Lang.t("rg_bahsei_no_portal")), noPortalDelta)
         else
-            alerts:showInfo(3, "")
+            alerts:clearRow(3)
         end
     else
-        alerts:showInfo(3, "")
+        alerts:clearRow(3)
     end
 end
 
--- Info 4 (HM): Next Sickle  -  displayed only within the 15 s window before the cast.
+-- Row 4 (HM): Next Sickle  -  displayed only within the 15 s window before the cast.
 local function showSickleLine(self, alerts, now, isHM)
     if isHM and self.nextSickle > 0 then
         local T = self.nextSickle - now
         if T > 0 and T <= 15 then
-            alerts:showInfo(4, Fmt.c(COL_SICKLE, Lang.t("rg_bahsei_next_sickle", Fmt.timer(T))))
+            alerts:setRow(4, Fmt.c(COL_SICKLE, Lang.t("rg_bahsei_next_sickle")), T)
         elseif T <= 0 then
-            alerts:showInfo(4, Fmt.c(COL_SICKLE, Lang.t("rg_bahsei_next_sickle_inc")))
+            alerts:setRow(4, Fmt.c(COL_SICKLE, Lang.t("rg_bahsei_next_sickle")) .. " " .. Fmt.c(Fmt.RED, "INC"), nil)
         else
-            alerts:showInfo(4, "")
+            alerts:clearRow(4)
         end
     else
-        alerts:showInfo(4, "")
+        alerts:clearRow(4)
     end
 end
 

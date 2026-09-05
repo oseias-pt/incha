@@ -126,37 +126,30 @@ M.rg_dodge_scalding         = "Dodge! (Scalding)"
 
 M.rg_oaxiltso_dodge_cone    = "Dodge! (Cone)"
 M.rg_oaxiltso_add_spawning  = "ADD SPAWNING!"
-M.rg_oaxiltso_next_blitz    = "Next Blitz: %s"
-M.rg_oaxiltso_next_blitz_inc = "Next Blitz: INC"
-M.rg_oaxiltso_next_sludge   = "Next Sludge: %s"
-M.rg_oaxiltso_next_sludge_inc = "Next Sludge: INC"
+M.rg_oaxiltso_next_blitz    = "Next Blitz"
+M.rg_oaxiltso_next_sludge   = "Next Sludge"
 M.rg_oaxiltso_boss_add_enrage = "BOSS + ADD ENRAGED"
 M.rg_oaxiltso_boss_enraged  = "BOSS ENRAGED"
 M.rg_oaxiltso_add_enraged   = "ADD ENRAGED"
 
 -- ── Rockgrove ── Bahsei ──────────────────────────────────────────────────────
 
-M.rg_bahsei_next_curse      = "Next Curse: %s"
-M.rg_bahsei_next_curse_inc  = "Next Curse: INC"
--- Portal: reconstructed inline in Lua; this key kept for reference only
-M.rg_bahsei_portal_cd       = "Portal (%s): %s"
+M.rg_bahsei_next_curse      = "Next Curse"
 M.rg_bahsei_portal_cw       = "CW"
 M.rg_bahsei_portal_ccw      = "CCW"
 M.rg_bahsei_portal_progress = "in progress"
-M.rg_bahsei_tank_exploding  = "TANK EXPLODING: %s!"
-M.rg_bahsei_death_touch     = "Death Touch: %s"
-M.rg_bahsei_no_portal       = "No Portal: %s"
-M.rg_bahsei_next_sickle     = "Next Sickle: %s"
-M.rg_bahsei_next_sickle_inc = "Next Sickle: INC"
+M.rg_bahsei_tank_exploding  = "TANK EXPLODING!"
+M.rg_bahsei_death_touch     = "Death Touch"
+M.rg_bahsei_no_portal       = "No Portal"
+M.rg_bahsei_next_sickle     = "Next Sickle"
 
 -- ── Rockgrove ── Xalvakka ────────────────────────────────────────────────────
 
-M.rg_xalvakka_next_jump     = "Next Jump: %s"
-M.rg_xalvakka_next_jump_inc = "Next Jump: INC"
-M.rg_xalvakka_soul_res      = "Soul Resonance: %s"
-M.rg_xalvakka_manifold      = "Manifold: %s"
-M.rg_xalvakka_shield        = "Shield: %s"
-M.rg_xalvakka_run_in        = "RUN IN: %s"
+M.rg_xalvakka_next_jump     = "Next Jump"
+M.rg_xalvakka_soul_res      = "Soul Resonance"
+M.rg_xalvakka_manifold      = "Manifold: "
+M.rg_xalvakka_shield        = "Shield: "
+M.rg_xalvakka_run_in        = "RUN IN: "
 M.rg_xalvakka_on_blob       = "ON BLOB  -  stand still!"
 
 -- ── Dreadsail Reef (DSR) ── Lylanar ─────────────────────────────────────────
