@@ -107,6 +107,69 @@ for _, id in ipairs(TRIALS) do
     end
 end
 
+-- -- 4. No duplicate ability ids inside one routing table --------------------
+--
+-- This has to be a SOURCE scan, not a runtime one.  A Lua table constructor
+-- with the same key twice keeps the last entry and discards the first with no
+-- error, so by the time the module is loaded the duplicate is already gone and
+-- nothing can observe it.  The result is a handler that was written, reviewed
+-- and registered, and simply never runs.
+--
+-- Same failure mode the string table had: eight shadowed keys shipped before
+-- anything looked for them.
+--
+-- Keys are matched as written (`[SOME_CONSTANT]` or `[123456]`), so two
+-- differently-named constants holding the same id are not caught here -
+-- registration would still work for both, and the routes check above covers
+-- whether an id is claimed twice across boss and common tables.
+
+local ROUTE_TABLES = { "combatRoutes", "effectRoutes", "stateSchema" }
+
+local function bossSourceFiles()
+    local files, p = {}, io.popen('find trial -path "*/boss/*.lua" 2>/dev/null')
+    if p then
+        for l in p:lines() do files[#files + 1] = (l:gsub("%s+$", "")) end
+        p:close()
+    end
+    table.sort(files)
+    return files
+end
+
+for _, path in ipairs(bossSourceFiles()) do
+    local f = io.open(path, "r")
+    if f then
+        local current, seen, startLine, lineNo = nil, nil, 0, 0
+        for line in (f:read("*a") .. "\n"):gmatch("([^\n]*)\n") do
+            lineNo = lineNo + 1
+
+            if not current then
+                for _, name in ipairs(ROUTE_TABLES) do
+                    if line:match("%." .. name .. "%s*=%s*{") then
+                        current, seen, startLine = name, {}, lineNo
+                        break
+                    end
+                end
+            elseif line:match("^}") then
+                current = nil
+            else
+                -- `[KEY] =` for routes, `key =` for stateSchema.
+                local key = line:match("^%s*%[%s*([%w_]+)%s*%]%s*=")
+                          or line:match("^%s*([%w_]+)%s*=")
+                if key then
+                    if seen[key] then
+                        fail("DUPLICATE  %s:%d  %s already lists %s at line %d  -  "
+                             .. "Lua keeps the last, the earlier entry never runs",
+                             path, lineNo, current, key, seen[key])
+                    else
+                        seen[key] = lineNo
+                    end
+                end
+            end
+        end
+        f:close()
+    end
+end
+
 if findings == 0 then
     print("filters: clean")
 else
