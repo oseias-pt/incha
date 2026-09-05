@@ -214,46 +214,46 @@ Oaxiltso.effectRoutes = {
     [MINI_ENRAGE]   = handleMiniEnrage,
 }
 
--- -- Info-line renderers ---------------------------------------------------
+-- -- Tracker-row renderers --------------------------------------------------
 
--- Info 1: Next Savage Blitz (36 s cycle).
+-- Row 1: Next Savage Blitz (36 s cycle).
 local function showBlitzLine(self, alerts, now)
     if self.lastBlitz > 0 then
         local T = 36 - (now - self.lastBlitz)
         if T > 0 then
-            alerts:showInfo(1, Fmt.c(COL_BLITZ_LBL, Lang.t("rg_oaxiltso_next_blitz", Fmt.timer(T))))
+            alerts:setRow(1, Fmt.c(COL_BLITZ_LBL, Lang.t("rg_oaxiltso_next_blitz")), T)
         else
-            alerts:showInfo(1, Fmt.c(COL_BLITZ_LBL, Lang.t("rg_oaxiltso_next_blitz_inc")))
+            alerts:setRow(1, Fmt.c(COL_BLITZ_LBL, Lang.t("rg_oaxiltso_next_blitz")) .. " " .. Fmt.c(Fmt.RED, "INC"), nil)
         end
     else
-        alerts:showInfo(1, "")
+        alerts:clearRow(1)
     end
 end
 
--- Info 2: Next Noxious Sludge (28 s cycle).
+-- Row 2: Next Noxious Sludge (28 s cycle).
 local function showSludgeLine(self, alerts, now)
     if self.lastSludge > 0 then
         local T = 28 - (now - self.lastSludge)
         if T > 0 then
-            alerts:showInfo(2, Fmt.c(COL_SLUDGE_LBL, Lang.t("rg_oaxiltso_next_sludge", Fmt.timer(T))))
+            alerts:setRow(2, Fmt.c(COL_SLUDGE_LBL, Lang.t("rg_oaxiltso_next_sludge")), T)
         else
-            alerts:showInfo(2, Fmt.c(COL_SLUDGE_LBL, Lang.t("rg_oaxiltso_next_sludge_inc")))
+            alerts:setRow(2, Fmt.c(COL_SLUDGE_LBL, Lang.t("rg_oaxiltso_next_sludge")) .. " " .. Fmt.c(Fmt.RED, "INC"), nil)
         end
     else
-        alerts:showInfo(2, "")
+        alerts:clearRow(2)
     end
 end
 
--- Info 3: Enrage state  -  boss enraged, add enraged, or both.
+-- Row 3: Enrage state  -  boss enraged, add enraged, or both.
 local function showEnrageLine(self, alerts)
     if self.bossEnraged and self.miniEnraged then
-        alerts:showInfo(3, Fmt.c(COL_ENRAGE, Lang.t("rg_oaxiltso_boss_add_enrage")))
+        alerts:setRow(3, Fmt.c(COL_ENRAGE, Lang.t("rg_oaxiltso_boss_add_enrage")), nil)
     elseif self.bossEnraged then
-        alerts:showInfo(3, Fmt.c(COL_ENRAGE, Lang.t("rg_oaxiltso_boss_enraged")))
+        alerts:setRow(3, Fmt.c(COL_ENRAGE, Lang.t("rg_oaxiltso_boss_enraged")), nil)
     elseif self.miniEnraged then
-        alerts:showInfo(3, Fmt.c(COL_ADD_ENRAGE, Lang.t("rg_oaxiltso_add_enraged")))
+        alerts:setRow(3, Fmt.c(COL_ADD_ENRAGE, Lang.t("rg_oaxiltso_add_enraged")), nil)
     else
-        alerts:showInfo(3, "")
+        alerts:clearRow(3)
     end
 end
 
@@ -263,7 +263,7 @@ function Oaxiltso:onUpdate(context, alerts)
     showBlitzLine(self, alerts, now)
     showSludgeLine(self, alerts, now)
     showEnrageLine(self, alerts)
-    alerts:showInfo(4, "")
+    alerts:clearRow(4)
 end
 
 package.loaded["trial.rg.boss.Oaxiltso"] = Oaxiltso

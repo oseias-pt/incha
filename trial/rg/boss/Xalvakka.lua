@@ -278,38 +278,38 @@ Xalvakka.effectRoutes = {
     [MANIFOLD_DEBUFF] = handleManifoldDebuff,
 }
 
--- -- Info-line renderers ---------------------------------------------------
+-- -- Tracker-row renderers --------------------------------------------------
 
--- Info 1 (HM): Next jump timer; hidden once numJumps >= 4 (pattern established).
+-- Row 1 (HM): Next jump timer; hidden once numJumps >= 4 (pattern established).
 local function showJumpLine(self, alerts, now, isHM)
     if isHM and self.nextJump > 0 and self.numJumps < 4 then
         local T = self.nextJump - now
         if T > 0 then
-            alerts:showInfo(1, Fmt.c(COL_JUMP, Lang.t("rg_xalvakka_next_jump", Fmt.timer(T))))
+            alerts:setRow(1, Fmt.c(COL_JUMP, Lang.t("rg_xalvakka_next_jump")), T)
         else
-            alerts:showInfo(1, Fmt.c(COL_JUMP, Lang.t("rg_xalvakka_next_jump_inc")))
+            alerts:setRow(1, Fmt.c(COL_JUMP, Lang.t("rg_xalvakka_next_jump")) .. " " .. Fmt.c(Fmt.RED, "INC"), nil)
         end
     else
-        alerts:showInfo(1, "")
+        alerts:clearRow(1)
     end
 end
 
--- Info 2: Soul Resonance personal countdown; auto-clears when window expires.
+-- Row 2: Soul Resonance personal countdown; auto-clears when window expires.
 local function showSoulLine(self, alerts, now)
     if self.soulStart > 0 then
         local T = SOUL_WINDOW - (now - self.soulStart)
         if T > 0 then
-            alerts:showInfo(2, Fmt.c(COL_SOUL, Lang.t("rg_xalvakka_soul_res", Fmt.timer(T, 1))))
+            alerts:setRow(2, Fmt.c(COL_SOUL, Lang.t("rg_xalvakka_soul_res")), T)
         else
             self.soulStart = 0
-            alerts:showInfo(2, "")
+            alerts:clearRow(2)
         end
     else
-        alerts:showInfo(2, "")
+        alerts:clearRow(2)
     end
 end
 
--- Info 3: Manifold Curse holders (priority) > Volatile Shell shield value.
+-- Row 3: Manifold Curse holders (priority) > Volatile Shell shield value.
 local function showManifoldLine(self, alerts)
     local hasManifold = self.selfManifold or (next(self.manifoldOthers) ~= nil)
     if hasManifold then
@@ -320,26 +320,26 @@ local function showManifoldLine(self, alerts)
         for _, name in pairs(self.manifoldOthers) do
             parts[#parts + 1] = Fmt.c(COL_MANIFOLD, name)
         end
-        alerts:showInfo(3, Lang.t("rg_xalvakka_manifold", table.concat(parts, ", ")))
+        alerts:setRow(3, Lang.t("rg_xalvakka_manifold") .. table.concat(parts, ", "), nil)
     elseif self.shellShield > 0 then
-        alerts:showInfo(3, Fmt.c(COL_SHIELD, Lang.t("rg_xalvakka_shield", fmtShield(self.shellShield))))
+        alerts:setRow(3, Lang.t("rg_xalvakka_shield") .. fmtShield(self.shellShield), nil)
     else
-        alerts:showInfo(3, "")
+        alerts:clearRow(3)
     end
 end
 
--- Info 4: Run timer near floor-transition HP thresholds (priority) > Blob indicator.
--- Uses info4, not showAction, to avoid clobbering reactive event alerts.
+-- Row 4: Run timer near floor-transition HP thresholds (priority) > Blob indicator.
+-- Uses row 4, not showAction, to avoid clobbering reactive event alerts.
 local function showRunLine(self, alerts, context)
     local hp = context.healthPercent
     if hp and hp > RUN1_BOT and hp <= RUN1_TOP then
-        alerts:showInfo(4, Fmt.c(COL_RUN, Lang.t("rg_xalvakka_run_in", Fmt.pct(hp - RUN1_BOT, 1))))
+        alerts:setRow(4, Fmt.c(COL_RUN, Lang.t("rg_xalvakka_run_in") .. Fmt.pct(hp - RUN1_BOT, 1)), nil)
     elseif hp and hp > RUN2_BOT and hp <= RUN2_TOP then
-        alerts:showInfo(4, Fmt.c(COL_RUN, Lang.t("rg_xalvakka_run_in", Fmt.pct(hp - RUN2_BOT, 1))))
+        alerts:setRow(4, Fmt.c(COL_RUN, Lang.t("rg_xalvakka_run_in") .. Fmt.pct(hp - RUN2_BOT, 1)), nil)
     elseif self.onBlob then
-        alerts:showInfo(4, Fmt.c(Fmt.GREEN, Lang.t("rg_xalvakka_on_blob")))
+        alerts:setRow(4, Fmt.c(Fmt.GREEN, Lang.t("rg_xalvakka_on_blob")), nil)
     else
-        alerts:showInfo(4, "")
+        alerts:clearRow(4)
     end
 end
 
