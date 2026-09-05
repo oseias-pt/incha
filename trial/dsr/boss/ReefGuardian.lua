@@ -238,47 +238,47 @@ ReefGuardian.effectRoutes = {
 
 -- -- Info-line renderers ---------------------------------------------------
 
--- Info 1: Building Static (lightning) stacks; shows CLEANSED during shelter window.
+-- Row 1: Building Static (lightning) stacks; shows CLEANSED during shelter window.
 local function showLightningStacksLine(self, alerts, now)
     local stacks = self.buildingStaticStacks
     if stacks > 0 then
         local warn = (stacks >= 7) and (" " .. Fmt.c(Fmt.RED, "!")) or ""
         if self.playerSheltered
            or (now - self.lastShelteredTime < SHELTERED_WINDOW) then
-            alerts:showInfo(1, Fmt.c(COL_ELEC, Lang.t("dsr_reef_elec_cleansed")))
+            alerts:setRow(1, Fmt.c(COL_ELEC, Lang.t("dsr_reef_elec_cleansed")), nil)
         else
-            alerts:showInfo(1,
+            alerts:setRow(1,
                 Fmt.c(COL_ELEC,
                     Lang.t("dsr_reef_elec_label")
                     .. Lang.t(stacks ~= 1 and "dsr_reef_stack_p" or "dsr_reef_stack", stacks))
-                .. warn)
+                .. warn, nil)
         end
     else
-        alerts:showInfo(1, "")
+        alerts:clearRow(1)
     end
 end
 
--- Info 2: Volatile Residue (poison) stacks; shows CLEANSED during shelter window.
+-- Row 2: Volatile Residue (poison) stacks; shows CLEANSED during shelter window.
 local function showPoisonStacksLine(self, alerts, now)
     local vstacks = self.volatileResidueStacks
     if vstacks > 0 then
         local warn = (vstacks >= 7) and (" " .. Fmt.c(Fmt.RED, "!")) or ""
         if self.playerSheltered
            or (now - self.lastShelteredTime < SHELTERED_WINDOW) then
-            alerts:showInfo(2, Fmt.c(COL_POISON, Lang.t("dsr_reef_poison_cleansed")))
+            alerts:setRow(2, Fmt.c(COL_POISON, Lang.t("dsr_reef_poison_cleansed")), nil)
         else
-            alerts:showInfo(2,
+            alerts:setRow(2,
                 Fmt.c(COL_POISON,
                     Lang.t("dsr_reef_poison_label")
                     .. Lang.t(vstacks ~= 1 and "dsr_reef_stack_p" or "dsr_reef_stack", vstacks))
-                .. warn)
+                .. warn, nil)
         end
     else
-        alerts:showInfo(2, "")
+        alerts:clearRow(2)
     end
 end
 
--- Info 3+4: Active reef wipe timers (red when <= 15 s); info4 falls back to Acidic Vuln window.
+-- Rows 3+4: Active reef wipe timers (label color red when <= 15 s); row 4 falls back to Acidic Vuln.
 local function showReefWipeLines(self, alerts, now)
     local timers = {}
     for i = 1, self.reefNum do
@@ -296,25 +296,25 @@ local function showReefWipeLines(self, alerts, now)
     if timers[1] then
         local t1   = timers[1]
         local col1 = (t1.t <= 15) and Fmt.RED or COL_REEF
-        alerts:showInfo(3, Fmt.c(col1, Lang.t("dsr_reef_reef_timer", t1.idx, Fmt.timer(t1.t))))
+        alerts:setRow(3, Fmt.c(col1, Lang.t("dsr_reef_reef_timer", t1.idx)), t1.t)
     else
-        alerts:showInfo(3, "")
+        alerts:clearRow(3)
     end
 
     if timers[2] then
         local t2   = timers[2]
         local col2 = (t2.t <= 15) and Fmt.RED or COL_REEF
-        alerts:showInfo(4, Fmt.c(col2, Lang.t("dsr_reef_reef_timer", t2.idx, Fmt.timer(t2.t))))
+        alerts:setRow(4, Fmt.c(col2, Lang.t("dsr_reef_reef_timer", t2.idx)), t2.t)
     elseif self.acidicVulnLast > 0 then
         local T = 5 - (now - self.acidicVulnLast)
         if T > 0 then
-            alerts:showInfo(4, Fmt.c(COL_VULN, Lang.t("dsr_reef_acidic_vuln", Fmt.timer(T, 1))))
+            alerts:setRow(4, Fmt.c(COL_VULN, Lang.t("dsr_reef_acidic_vuln")), T)
         else
             self.acidicVulnLast = 0
-            alerts:showInfo(4, "")
+            alerts:clearRow(4)
         end
     else
-        alerts:showInfo(4, "")
+        alerts:clearRow(4)
     end
 end
 
