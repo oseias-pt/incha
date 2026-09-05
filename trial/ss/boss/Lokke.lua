@@ -31,6 +31,13 @@ local ICE_EFFECT_ARM  = 119638   -- effectRoute: EFFECT_RESULT_GAINED / FADED ->
 local sA = Lang.t("ss_lokke_tomb_slot_a")
 local sB = Lang.t("ss_lokke_tomb_slot_b")
 
+-- Full tomb names resolved once at load; no %s substitution at runtime.
+local TOMB_NAMES = {
+    [1] = Lang.t("ss_lokke_tomb_name_1"),
+    [2] = Lang.t("ss_lokke_tomb_name_2"),
+    [3] = Lang.t("ss_lokke_tomb_name_3"),
+}
+
 local NEXT_TOMB = { [0]=1, [1]=2, [2]=3, [3]=1 }   -- iceNumber -> next label
 
 local function newTombSlots()
@@ -333,7 +340,7 @@ local function showIceTombLines(self, alerts, now)
         else
             local T2 = self.iceNext - now
             local iN = NEXT_TOMB[self.iceNumber]
-            local label = Fmt.c(Fmt.CYAN, Lang.t("ss_lokke_tomb_name", iN))
+            local label = Fmt.c(Fmt.CYAN, TOMB_NAMES[iN] or "")
             if T2 <= 0 then
                 -- Tomb cast window is here.  Row stays with no ETA (INC tag).
                 alerts:setRow(1, label .. " " .. Fmt.c(Fmt.RED, "INC"), nil)
@@ -344,7 +351,7 @@ local function showIceTombLines(self, alerts, now)
         end
     else
         -- Active tomb: header + one or two slot rows.
-        local header = Fmt.c(Fmt.CYAN, Lang.t("ss_lokke_tomb_name", self.iceNumber))
+        local header = Fmt.c(Fmt.CYAN, TOMB_NAMES[self.iceNumber] or "")
         alerts:setRow(1, header, nil)
         setTombSlotRow(alerts, 2, sA, self.iceTomb[1], now)
         if self.iceDouble then

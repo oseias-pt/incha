@@ -78,8 +78,10 @@ M.ss_can_fly_in             = "Can Fly In: %s"
 
 M.ss_lokke_block_glacial    = "Block! (Glacial Fist)"
 M.ss_lokke_laser            = "Laser"
--- Tracker label for upcoming / active Ice Tomb.  %s = tomb number.
-M.ss_lokke_tomb_name        = "Ice Tomb %s"
+-- Tracker labels for the three Ice Tomb rotation positions.
+M.ss_lokke_tomb_name_1      = "Ice Tomb 1"
+M.ss_lokke_tomb_name_2      = "Ice Tomb 2"
+M.ss_lokke_tomb_name_3      = "Ice Tomb 3"
 -- Slot-state labels shown inside each active tomb row.
 M.ss_lokke_tomb_slot_a      = "[A] "
 M.ss_lokke_tomb_slot_b      = "[B] "
