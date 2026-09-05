@@ -219,12 +219,12 @@ M.ka_yandir_block_gargoyle  = "Block! (Gargoyle Totem)"
 M.ka_yandir_casts_healing   = "Casts Healing!"
 M.ka_yandir_jump_block      = "(Jump) Block!!"
 M.ka_yandir_dodge_sea_adder = "Dodge! (Sea Adder)"
--- Info-line labels (intentional trailing spaces for column alignment)
-M.ka_yandir_totem_label     = "Totem:   "
-M.ka_yandir_gryphon_label   = "Gryphon: "
+-- Tracker row labels
+M.ka_yandir_totem_label     = "Totem"
+M.ka_yandir_gryphon_label   = "Gryphon"
 M.ka_yandir_gryphon_skip    = "Skip!"
 M.ka_yandir_gryphon_early   = " (%s early)"
-M.ka_yandir_gryphon_fail    = "Fail @ %s"
+M.ka_yandir_gryphon_fail    = "Fail @ "
 
 -- ── Kyne's Aegis ── Vrol ─────────────────────────────────────────────────────
 
@@ -236,19 +236,19 @@ M.ka_vrol_harpoon_action    = "Harpoon!"
 M.ka_vrol_interrupt_apoth   = "Interrupt Apothecary!"
 M.ka_vrol_portal_ok         = "Portal OK!"
 M.ka_vrol_portal_failed     = "Portal Failed!"
--- Info labels (intentional trailing spaces for alignment)
-M.ka_vrol_fog_clears        = "Fog clears:"   -- timer string and urgency color added in Lua
-M.ka_vrol_next_fog          = "Next fog: "
-M.ka_vrol_conduit           = "Conduit: "
-M.ka_vrol_portal_label      = "Portal:  "
+-- Tracker row labels
+M.ka_vrol_fog_clears        = "Fog Clears"
+M.ka_vrol_next_fog          = "Next Fog"
+M.ka_vrol_conduit           = "Conduit"
+M.ka_vrol_portal_label      = "Portal"
 
 -- ── Kyne's Aegis ── Falgravn ─────────────────────────────────────────────────
 
--- Info labels with %s for the timer-or-fallback string
-M.ka_falgravn_instability   = "Instability: %s"
-M.ka_falgravn_blood_ball    = "Blood Ball: %s"
-M.ka_falgravn_open_gates    = "Open Gates: %s"
-M.ka_falgravn_torturer_tp   = "Torturer TP: %s"
+-- Tracker row labels
+M.ka_falgravn_instability   = "Instability"
+M.ka_falgravn_blood_ball    = "Blood Ball"
+M.ka_falgravn_open_gates    = "Open Gates"
+M.ka_falgravn_torturer_tp   = "Torturer TP"
 M.ka_falgravn_hm_suffix     = " [HM: ON]"
 -- Action strings
 M.ka_falgravn_interrupt_inf = "Interrupt Infuser!"

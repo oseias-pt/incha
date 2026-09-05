@@ -94,27 +94,31 @@ function Yandir:onCombatState(context, inCombat, alerts)
     end
 end
 
--- 200ms timer display  -  writes to info lines 1-2.
--- No-op when sink has no info handler (e.g. LegacyUI during the KA transition).
+-- 200ms timer display  -  writes to tracker rows 1-2.
 function Yandir:onUpdate(context, alerts)
     local t1 = self.totemTimer:remaining()
-    alerts:showInfo(1, Lang.t("ka_yandir_totem_label")
-        .. (t1 > 0 and ZO_FormatCountdownTimer(t1) or Lang.t("common_ready")))
-    local line2
+    if t1 > 0 then
+        alerts:setRow(1, Lang.t("ka_yandir_totem_label"), t1)
+    else
+        alerts:setRow(1, Lang.t("ka_yandir_totem_label") .. " " .. Lang.t("common_ready"), nil)
+    end
+
     if self.bGRYPHON_SKIP then
-        -- Show how much time was left on the timer when the skip was detected.
+        -- Static: show how much time was left when the skip fired.
         local earlyTag = self.bGRYPHON_SKIP_TIME > 0
             and Lang.t("ka_yandir_gryphon_early", ZO_FormatCountdownTimer(self.bGRYPHON_SKIP_TIME))
             or ""
-        line2 = Lang.t("ka_yandir_gryphon_label") .. Fmt.c(COL_SKIP, Lang.t("ka_yandir_gryphon_skip")) .. earlyTag
+        alerts:setRow(2, Lang.t("ka_yandir_gryphon_label") .. " " .. Fmt.c(COL_SKIP, Lang.t("ka_yandir_gryphon_skip")) .. earlyTag, nil)
     elseif self.bGRYPHON_SKIP_FAILHP > 0 then
-        line2 = Lang.t("ka_yandir_gryphon_label") .. Fmt.c(COL_FAIL, Lang.t("ka_yandir_gryphon_fail", Fmt.pct(self.bGRYPHON_SKIP_FAILHP)))
+        alerts:setRow(2, Lang.t("ka_yandir_gryphon_label") .. " " .. Fmt.c(COL_FAIL, Lang.t("ka_yandir_gryphon_fail") .. Fmt.pct(self.bGRYPHON_SKIP_FAILHP)), nil)
     else
         local t2 = self.gryphonTimer:remaining()
-        line2 = Lang.t("ka_yandir_gryphon_label")
-            .. (t2 > 0 and ZO_FormatCountdownTimer(t2) or Lang.t("common_ready"))
+        if t2 > 0 then
+            alerts:setRow(2, Lang.t("ka_yandir_gryphon_label"), t2)
+        else
+            alerts:setRow(2, Lang.t("ka_yandir_gryphon_label") .. " " .. Lang.t("common_ready"), nil)
+        end
     end
-    alerts:showInfo(2, line2)
 end
 
 -- -- Routing tables (C3) --------------------------------------------------

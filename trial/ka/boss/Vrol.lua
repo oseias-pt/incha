@@ -232,35 +232,43 @@ Vrol.effectRoutes = {
     [VROL_PORTAL_KTIME] = handlePortalKillTime,
 }
 
--- 200ms timer display  -  writes to info lines 1-3.
+-- 200ms timer display  -  writes to tracker rows 1-3.
 function Vrol:onUpdate(context, alerts)
     local now = GetGameTimeMilliseconds()
 
-    -- Info 1: fog duration while active, otherwise countdown to next cast.
+    -- Row 1: fog duration while active (urgency colour on label), otherwise next-fog countdown.
     local fogRemMs = self.fogEndTime - now
     if fogRemMs > 0 then
-        local s = fogRemMs / 1000
+        local s   = fogRemMs / 1000
         local col = (s <= 5) and COL_FOG_WARN or COL_FOG_SAFE
-        alerts:showInfo(1, Fmt.c(col, Lang.t("ka_vrol_fog_clears") .. " " .. string.format("%.1f", s) .. "s"))
+        alerts:setRow(1, Fmt.c(col, Lang.t("ka_vrol_fog_clears")), s)
     else
         if self.fogEndTime > 0 then self.fogEndTime = 0 end   -- auto-clear stale timestamp
         local t1 = self.fogTimer:remaining()
-        alerts:showInfo(1, Lang.t("ka_vrol_next_fog")
-            .. (t1 > 0 and ZO_FormatCountdownTimer(t1) or Lang.t("common_soon")))
+        if t1 > 0 then
+            alerts:setRow(1, Lang.t("ka_vrol_next_fog"), t1)
+        else
+            alerts:setRow(1, Lang.t("ka_vrol_next_fog") .. " " .. Lang.t("common_soon"), nil)
+        end
     end
 
     local t2 = self.conduitTimer:remaining()
-    alerts:showInfo(2, Lang.t("ka_vrol_conduit")
-        .. (t2 > 0 and ZO_FormatCountdownTimer(t2) or Lang.t("common_ready")))
+    if t2 > 0 then
+        alerts:setRow(2, Lang.t("ka_vrol_conduit"), t2)
+    else
+        alerts:setRow(2, Lang.t("ka_vrol_conduit") .. " " .. Lang.t("common_ready"), nil)
+    end
 
-    -- Portals stop spawning once Vrol drops below 50% HP.  Suppress the
-    -- countdown when bPORTAL_END is set so we don't show stale "ready" text.
+    -- Portals stop spawning once Vrol drops below 50% HP.
     if self.bPORTAL_END then
-        alerts:showInfo(3, "")
+        alerts:clearRow(3)
     else
         local t3 = self.portalTimer:remaining()
-        alerts:showInfo(3, Lang.t("ka_vrol_portal_label")
-            .. (t3 > 0 and ZO_FormatCountdownTimer(t3) or Lang.t("common_ready")))
+        if t3 > 0 then
+            alerts:setRow(3, Lang.t("ka_vrol_portal_label"), t3)
+        else
+            alerts:setRow(3, Lang.t("ka_vrol_portal_label") .. " " .. Lang.t("common_ready"), nil)
+        end
     end
 end
 
