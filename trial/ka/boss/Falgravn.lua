@@ -459,24 +459,39 @@ function Falgravn:onUpdate(context, alerts)
 
     if stage == 1 then
         local ti = self.instabilityTimer:remaining()
-        alerts:showInfo(1, Lang.t("ka_falgravn_instability",
-            ti > 0 and ZO_FormatCountdownTimer(ti) or Lang.t("common_up")))
+        if ti > 0 then
+            alerts:setRow(1, Lang.t("ka_falgravn_instability"), ti)
+        else
+            alerts:setRow(1, Lang.t("ka_falgravn_instability") .. " " .. Lang.t("common_up"), nil)
+        end
 
     elseif stage == 2 then
         local ti  = self.instabilityTimer:remaining()
         local tbb = self.bloodBallTimer:remaining()
-        alerts:showInfo(1, Lang.t("ka_falgravn_instability",
-            ti > 0 and ZO_FormatCountdownTimer(ti) or Lang.t("common_up")))
-        alerts:showInfo(2, Lang.t("ka_falgravn_blood_ball",
-            tbb > 0 and ZO_FormatCountdownTimer(tbb) or Lang.t("common_soon")))
+        if ti > 0 then
+            alerts:setRow(1, Lang.t("ka_falgravn_instability"), ti)
+        else
+            alerts:setRow(1, Lang.t("ka_falgravn_instability") .. " " .. Lang.t("common_up"), nil)
+        end
+        if tbb > 0 then
+            alerts:setRow(2, Lang.t("ka_falgravn_blood_ball"), tbb)
+        else
+            alerts:setRow(2, Lang.t("ka_falgravn_blood_ball") .. " " .. Lang.t("common_soon"), nil)
+        end
 
     elseif stage == 3 then
         local tog = self.openGatesTimer:remaining()
         local ttp = self.torturerTimer:remaining()
-        alerts:showInfo(1, Lang.t("ka_falgravn_open_gates",
-            tog > 0 and ZO_FormatCountdownTimer(tog) or Lang.t("common_soon")))
-        alerts:showInfo(2, ttp > 0 and Lang.t("ka_falgravn_torturer_tp",
-            ZO_FormatCountdownTimer(ttp)) or "")
+        if tog > 0 then
+            alerts:setRow(1, Lang.t("ka_falgravn_open_gates"), tog)
+        else
+            alerts:setRow(1, Lang.t("ka_falgravn_open_gates") .. " " .. Lang.t("common_soon"), nil)
+        end
+        if ttp > 0 then
+            alerts:setRow(2, Lang.t("ka_falgravn_torturer_tp"), ttp)
+        else
+            alerts:clearRow(2)
+        end
     end
 end
 
@@ -590,10 +605,10 @@ local function handleLightning(self, context, alerts, result, abilityId, ...)
     end
 end
 
--- Pulse fades -> clear connection-node info lines 2-4 and hide floor icons.
+-- Pulse fades -> clear connection-node rows 2-4 and hide floor icons.
 local function handlePulse(self, context, alerts, result, abilityId, ...)
     if result == ACTION_RESULT_EFFECT_FADED then
-        alerts:showInfo(2, ""); alerts:showInfo(3, ""); alerts:showInfo(4, "")
+        alerts:clearRow(2); alerts:clearRow(3); alerts:clearRow(4)
         showPosIcons(_posIconConn, false)
     end
 end
@@ -634,7 +649,7 @@ local function handleShatterMid(self, context, alerts, abilityId, ...)
     if self.CURRENT_STAGE ~= 3 then
         self.CURRENT_STAGE = 3
         self.openGatesTimer:reset(INITIAL_OPENGATE_TIME)
-        alerts:showInfo(2, ""); alerts:showInfo(3, ""); alerts:showInfo(4, "")
+        alerts:clearRow(2); alerts:clearRow(3); alerts:clearRow(4)
         -- Floor drops; connection/blood nodes no longer relevant.
         showPosIcons(_posIconConn,  false)
         showPosIcons(_posIconBlood, false)
