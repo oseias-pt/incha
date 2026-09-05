@@ -1,4 +1,4 @@
-﻿--- ui/Preview.lua  -  in-game preview helpers for the Incha overlay.
+--- ui/Preview.lua  -  in-game preview helpers for the Incha overlay.
 --- Called from LAM panel buttons in ui/Menu.lua; no dependency on combat state.
 ---
 --- Each function is self-contained: it builds the Panel if not already built,

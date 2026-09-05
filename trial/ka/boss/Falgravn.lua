@@ -1,4 +1,4 @@
-﻿local Location    = require("core.Location")
+local Location    = require("core.Location")
 local HealthRules = require("core.HealthRules")
 local Settings    = require("core.Settings")
 local Timer       = require("lib.Timer")

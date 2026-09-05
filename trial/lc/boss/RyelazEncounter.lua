@@ -1,4 +1,4 @@
-﻿
+
 local CA = require("external-api.CombatAlerts")
 local BossBase = require("lib.BossBase")
 local CastDur = require("lib.CastDur")

@@ -1,4 +1,4 @@
-﻿--- Xalvakka  -  Rockgrove boss 3
+--- Xalvakka  -  Rockgrove boss 3
 ---
 --- Three-floor fight:
 ---   Floor 1: HP 100-70%  (boss escapes at 70%)

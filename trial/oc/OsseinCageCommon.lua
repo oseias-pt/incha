@@ -1,4 +1,4 @@
-﻿--- OsseinCageCommon  -  trash-add and cross-boss mechanics for all Ossein Cage arenas.
+--- OsseinCageCommon  -  trash-add and cross-boss mechanics for all Ossein Cage arenas.
 ---
 --- Applies regardless of which boss (Jynorah / Kazpian / Shaper of Flesh) is
 --- active: tank-swap Hindered, Skullmancer Skullstorm cast bar, Spectral-Revenant

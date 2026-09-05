@@ -1,4 +1,4 @@
-﻿--- BossBase  -  shared lifecycle mixin for boss classes that track CA cast bars.
+--- BossBase  -  shared lifecycle mixin for boss classes that track CA cast bars.
 ---
 --- Usage:
 ---   local BossBase = require("lib.BossBase")

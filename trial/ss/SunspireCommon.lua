@@ -1,4 +1,4 @@
-﻿--- SunspireCommon  -  mechanics shared across all three Sunspire boss arenas.
+--- SunspireCommon  -  mechanics shared across all three Sunspire boss arenas.
 ---
 --- These abilities appear regardless of which boss (Lokke/Yolna/Nahvii) is
 --- active: boss heavy attacks, cat and 2H-add interrupts, shield charge,

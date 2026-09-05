@@ -1,4 +1,4 @@
-﻿local Location = require("core.Location")
+local Location = require("core.Location")
 local Timer    = require("lib.Timer")
 local Lang     = require("core.Lang")
 

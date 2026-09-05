@@ -1,4 +1,4 @@
-﻿local Timer    = require("lib.Timer")
+local Timer    = require("lib.Timer")
 
 local CA            = require("external-api.CombatAlerts")
 local MechanicIcons = require("external-api.MechanicIcons")

@@ -1,4 +1,4 @@
-﻿--- RockgroveCommon  -  trash-add mechanics shared across all three Rockgrove arenas.
+--- RockgroveCommon  -  trash-add mechanics shared across all three Rockgrove arenas.
 ---
 --- Nine add abilities appear regardless of which boss is active.
 --- Called by CombatHandler.onCombatEvent (boss.common.handle) before route

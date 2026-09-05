@@ -1,4 +1,4 @@
-﻿--- Yolnahkriin  -  Sunspire boss 2 (Fire)
+--- Yolnahkriin  -  Sunspire boss 2 (Fire)
 ---
 --- Phase SS-2: Cross-trial alerts via SunspireCommon
 --- Phase SS-4: Yolna-specific mechanics

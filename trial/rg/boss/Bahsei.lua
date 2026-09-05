@@ -1,4 +1,4 @@
-﻿--- Bahsei (Flame-Herald Bahsei)  -  Rockgrove boss 2
+--- Bahsei (Flame-Herald Bahsei)  -  Rockgrove boss 2
 ---
 --- Phase RG-2: RockgroveCommon.handle() (trash mechanics) (done)
 --- Phase RG-4: Bahsei-specific mechanics

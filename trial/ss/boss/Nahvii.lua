@@ -1,4 +1,4 @@
-﻿--- Nahviintaas  -  Sunspire boss 3 (Lightning / Portal)
+--- Nahviintaas  -  Sunspire boss 3 (Lightning / Portal)
 ---
 --- Phase SS-2: Cross-trial alerts via SunspireCommon
 --- Phase SS-5: Nahvii-specific mechanics

@@ -1,4 +1,4 @@
-﻿--- Lylanar (& Turlassil)  -  Dreadsail Reef boss 1
+--- Lylanar (& Turlassil)  -  Dreadsail Reef boss 1
 ---
 --- Fire (Lylanar) and ice (Turlassil) boss pair fight simultaneously.
 --- Both bosses' ability IDs are handled in this single module.

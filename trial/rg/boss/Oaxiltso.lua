@@ -1,4 +1,4 @@
-﻿--- Oaxiltso  -  Rockgrove boss 1
+--- Oaxiltso  -  Rockgrove boss 1
 ---
 --- Phase RG-2: RockgroveCommon.handle() (trash mechanics) (done)
 --- Phase RG-3: Oaxiltso-specific mechanics

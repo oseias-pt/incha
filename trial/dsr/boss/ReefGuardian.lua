@@ -1,4 +1,4 @@
-﻿--- ReefGuardian  -  Dreadsail Reef boss 2
+--- ReefGuardian  -  Dreadsail Reef boss 2
 ---
 --- Phase DSR-4: full mechanics
 ---   BuildingStatic (163575 / 169688): GAINED/UPDATED/FADED -> stack tracker

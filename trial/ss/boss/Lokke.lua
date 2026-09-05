@@ -1,4 +1,4 @@
-﻿--- Lokkestiiz  -  Sunspire boss 1 (Ice)
+--- Lokkestiiz  -  Sunspire boss 1 (Ice)
 ---
 --- Phase SS-2: Cross-trial alerts via SunspireCommon
 --- Phase SS-3: Lokke-specific mechanics

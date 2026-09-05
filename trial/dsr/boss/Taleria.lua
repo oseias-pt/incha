@@ -1,4 +1,4 @@
-﻿--- Taleria (Tideborn Taleria)  -  Dreadsail Reef boss 3
+--- Taleria (Tideborn Taleria)  -  Dreadsail Reef boss 3
 ---
 --- Phase DSR-5: full mechanics
 ---   RapidDeluge (174959/174960/174961 HM): EFFECT_GAINED + player -> Alert "Move bubble!"
