@@ -25,6 +25,7 @@ Fmt.GREEN  = "00ff00"   -- success / ready / clear
 Fmt.CYAN   = "00ffff"   -- ice / aqua label
 Fmt.AQUA   = "7fffd4"   -- aquamarine / soft info
 Fmt.GOLD   = "FFD700"   -- addon tag / golden accent
+Fmt.PURPLE = "cc80ff"   -- light purple / arcane mechanic accent
 
 -- ── API ──────────────────────────────────────────────────────────────────────
 

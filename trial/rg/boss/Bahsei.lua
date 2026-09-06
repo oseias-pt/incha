@@ -38,7 +38,6 @@ local COL_COUNT   = "888888"   -- gray (portal player count)
 local COL_TANK    = "ff2020"   -- bright red (tank exploding)
 local COL_DT      = "6699ff"   -- blue (death touch)
 local COL_NOPORTAL = "ff6030"  -- orange-red (no portal cooldown)
-local COL_SICKLE  = "cc80ff"   -- light purple (next sickle)
 
 -- -- Ability IDs ------------------------------------------------------------
 local CURSED_GROUND    = 152475   -- combatRoute: ACTION_RESULT_BEGIN -> Cursed Ground alert
@@ -61,7 +60,7 @@ local CastDur = require("lib.CastDur")
 
 -- -- CA colour palettes -----------------------------------------------------
 local COL_INTERRUPT = { -2, 0, true,  { 0.3, 0.6, 1.0, 0.4 }, { 0.3, 0.6, 1.0, 0.8 } }
-local COL_SICKLE    = { -2, 0, false, { 0.7, 0.2, 0.9, 0.4 }, { 0.7, 0.2, 0.9, 0.8 } }
+local CA_SICKLE     = { -2, 0, false, { 0.7, 0.2, 0.9, 0.4 }, { 0.7, 0.2, 0.9, 0.8 } }
 local COL_HAMMER    = { -2, 0, false, { 1.0, 0.5, 0.1, 0.4 }, { 1.0, 0.5, 0.1, 0.8 } }
 local COL_METEOR    = { 1.0, 0.70, 0.0, 0.5 }
 local ACT_METEOR    = { 10000, "KILL SUN!", 0.8, 0.0, 0.0, 0.9, nil }
@@ -179,7 +178,7 @@ local function handleSickle(self, context, alerts, abilityId,
     self.nextSickle = GetGameTimeMilliseconds() / 1000 + 15
     if IsUnitPlayer(unitTag) then
         local dur = CastDur.get(SICKLE, FALLBACK_SICKLE_DUR)
-        CA.alertCast(abilityId, sourceUnitName, dur, COL_SICKLE)
+        CA.alertCast(abilityId, sourceUnitName, dur, CA_SICKLE)
     end
 end
 
@@ -353,9 +352,9 @@ local function showSickleLine(self, alerts, now, isHM)
     if isHM and self.nextSickle > 0 then
         local T = self.nextSickle - now
         if T > 0 and T <= 15 then
-            alerts:setRow(4, Fmt.c(COL_SICKLE, Lang.t("rg_bahsei_next_sickle")), T)
+            alerts:setRow(4, Fmt.c(Fmt.PURPLE, Lang.t("rg_bahsei_next_sickle")), T)
         elseif T <= 0 then
-            alerts:setRow(4, Fmt.c(COL_SICKLE, Lang.t("rg_bahsei_next_sickle")) .. " " .. Fmt.c(Fmt.RED, "INC"), nil)
+            alerts:setRow(4, Fmt.c(Fmt.PURPLE, Lang.t("rg_bahsei_next_sickle")) .. " " .. Fmt.c(Fmt.RED, "INC"), nil)
         else
             alerts:clearRow(4)
         end
