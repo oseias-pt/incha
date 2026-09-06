@@ -72,7 +72,7 @@ JynorahEncounter.stateSchema = {
     clashTimer   = function() return Timer.new(37.5) end,
     firstLeap    = true,
     clashActive  = false,
-    playerCurse  = nil,
+    playerCurse  = false,
 }
 
 function JynorahEncounter.new()
@@ -287,7 +287,7 @@ function JynorahEncounter:onWipe()
     OsseinCageCommon.reset()
     self.leapTimer:clear(); self.clashTimer:clear()
     self.firstLeap  = true; self.clashActive = false
-    self.playerCurse = nil
+    self.playerCurse = false
     CA.border(false, 0, "blue")
     CA.border(false, 0, "red")
     CA.border(false, 0, "yellow")
