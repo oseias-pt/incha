@@ -38,6 +38,15 @@ function CA.configure(impl)
     _impl = impl
 end
 
+--- Fall back to the CombatAlerts ESO global when configure() was called before
+--- CombatAlerts published itself (e.g. if it publishes in EVENT_PLAYER_ACTIVATED
+--- rather than EVENT_ADD_ON_LOADED).  Caches the result so the lookup is
+--- one-time.
+local function getImpl()
+    if not _impl then _impl = CombatAlerts end
+    return _impl
+end
+
 -- ── O(1) lookup tables (built once at load time) ──────────────────────────
 
 local function _caTable(timing, interruptible)
@@ -61,37 +70,37 @@ end)
 --- Show a cast alert: CA auto-detects timing from the ability's range.
 --- action: optional action table { dur, text, r, g, b, a, sound } passed through.
 function CA.cast(abilityId, srcName, dur, color, action)
-    if _impl then return _impl.AlertCast(abilityId, srcName, dur, _cast[color], action) end
+    if getImpl() then return _impl.AlertCast(abilityId, srcName, dur, _cast[color], action) end
 end
 
 --- Show a cast alert with explicit melee timing (-2 = full dodge window).
 --- action: optional action table passed through unchanged.
 function CA.melee(abilityId, srcName, dur, color, action)
-    if _impl then return _impl.AlertCast(abilityId, srcName, dur, _melee[color], action) end
+    if getImpl() then return _impl.AlertCast(abilityId, srcName, dur, _melee[color], action) end
 end
 
 --- Show a cast alert with explicit ranged timing (-3 = 0.8× dodge window).
 --- action: optional action table passed through unchanged.
 function CA.ranged(abilityId, srcName, dur, color, action)
-    if _impl then return _impl.AlertCast(abilityId, srcName, dur, _ranged[color], action) end
+    if getImpl() then return _impl.AlertCast(abilityId, srcName, dur, _ranged[color], action) end
 end
 
 --- Show an interruptible cast bar (auto-detect timing).
 --- action: optional action table passed through unchanged.
 function CA.interrupt(abilityId, srcName, dur, color, action)
-    if _impl then return _impl.AlertCast(abilityId, srcName, dur, _interrupt[color], action) end
+    if getImpl() then return _impl.AlertCast(abilityId, srcName, dur, _interrupt[color], action) end
 end
 
 --- Show an interruptible cast bar with melee timing.
 --- action: optional action table passed through unchanged.
 function CA.interrupt_melee(abilityId, srcName, dur, color, action)
-    if _impl then return _impl.AlertCast(abilityId, srcName, dur, _interrupt_melee[color], action) end
+    if getImpl() then return _impl.AlertCast(abilityId, srcName, dur, _interrupt_melee[color], action) end
 end
 
 --- CastAlertsStart — a freestanding progress bar (not tied to an ability cast).
 --- alpha overrides the default bar opacity (0.4).
 function CA.bar(abilityId, caption, dur, durMax, color, alpha, action)
-    if not _impl then return end
+    if not getImpl() then return end
     local c = _bar[color]
     local rgba = alpha and { c[1], c[2], c[3], alpha } or c
     return _impl.CastAlertsStart(abilityId, caption, dur, durMax, rgba, action)
@@ -101,13 +110,13 @@ end
 --- Guards against nil id — callers can pass the stored id directly without
 --- checking it first.
 function CA.castAlertsStop(id)
-    if _impl and id then _impl.CastAlertsStop(id) end
+    if getImpl() and id then _impl.CastAlertsStop(id) end
 end
 
 -- ── Instant alert ─────────────────────────────────────────────────────────
 
 function CA.alert(...)
-    if _impl then return _impl.Alert(...) end
+    if getImpl() then return _impl.Alert(...) end
 end
 
 -- ── Screen-edge border ────────────────────────────────────────────────────
@@ -118,7 +127,7 @@ end
 --- @param color  table|string  {r, g, b, a} colour table, or a named-colour
 ---                             string accepted by CombatAlerts
 function CA.border(active, dur, color)
-    if _impl then _impl.AlertBorder(active, dur, color) end
+    if getImpl() then _impl.AlertBorder(active, dur, color) end
 end
 
 package.loaded["external-api.CombatAlerts"] = CA
