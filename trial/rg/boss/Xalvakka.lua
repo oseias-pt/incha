@@ -51,8 +51,8 @@ local SOUL_RESONANCE  = 152993   -- effectRoute: EFFECT_RESULT_GAINED / FADED ->
 local UNSTABLE_CHARGE = 153164   -- effectRoute: EFFECT_RESULT_GAINED / FADED -> green border (blob)
 local MANIFOLD_DEBUFF = 157290   -- effectRoute: EFFECT_RESULT_GAINED / FADED -> purple border + tracker
 
-local SCATHING_IDS = { [149180]=true, [153448]=true, [153450]=true }
-local DEADSTAR_IDS = { [149386]=true, [149075]=true }
+-- 149180/153448/153450 (SCATHING_IDS) -- reference: scathing strike detection set (unrouted)
+-- 149386/149075 (DEADSTAR_IDS)        -- reference: dead star detection set (unrouted)
 
 -- Soul resonance display window after GAINED (seconds); approximate; verify in-game.
 local SOUL_WINDOW = 9

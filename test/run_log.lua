@@ -199,15 +199,10 @@ local function replayTrial(cfg, entries, tracker)
 
         -- -- Unit tracking -----------------------------------------------
         elseif et == "UNIT_ADDED" and e.unitId then
-            local info = tracker:addUnit(e)
+            tracker:addUnit(e)
 
             -- Only try to activate a boss while we're inside the trial zone.
             if e.isBoss and EsoApi.getCurrentTime() > 0 then
-                local currentZone = package.loaded["test_current_zone"] or cfg.zoneId
-                -- Check if we're in the right zone (currentZone updated by ZONE_CHANGED above)
-                -- Workaround: use the EsoApi zone and compare against trial's zone.
-                -- We'll rely on the fact that boss UNIT_ADDEDs only occur while in-zone.
-
                 local key = hints[e.name]
                 local bossClass
 
@@ -218,14 +213,13 @@ local function replayTrial(cfg, entries, tracker)
                     bossClass = trial.registry:findByName(e.name)
                 end
 
+                -- Boss units not in this trial's registry are skipped silently
+                -- (Sea Adder, companion mobs, etc. are boss-flagged adds).
                 if bossClass then
                     injectBoss(trial, bossClass)
                     stats.bosses = stats.bosses + 1
                     print(string.format("[%9dms] BOSS    %s activated (key=%s)",
                         e.ms, e.name, bossClass.key or "?"))
-                else
-                    -- Boss unit not in this trial's registry  -  skip silently.
-                    -- (Sea Adder, companion mobs, etc. are boss-flagged adds.)
                 end
             end
 

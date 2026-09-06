@@ -11,9 +11,9 @@ local PIERCING_BEAM = 219165   -- combatRoute: ACTION_RESULT_BEGIN → INTERRUPT
 local VITRIFY       = 219083   -- combatRoute: ACTION_RESULT_BEGIN → INTERRUPT; CD  9s first / 20s steady
 
 -- ── Timer durations (seconds) ─────────────────────────────────────────────
-local BEAM_FIRST_CD    = 14.0
+-- BEAM_FIRST_CD = 14.0    -- reference: first beam delay (proactive timer; unimplemented)
 local BEAM_CD          = 32.0
-local VITRIFY_FIRST_CD =  9.0
+-- VITRIFY_FIRST_CD = 9.0  -- reference: first vitrify delay (proactive timer; unimplemented)
 local VITRIFY_CD       = 20.0
 
 -- ── CA colour palettes ────────────────────────────────────────────────────

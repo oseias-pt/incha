@@ -16,7 +16,7 @@ local Colors = require("core.Colors")
 -- Textures: pulled from the live ability data so they always match the
 -- icon players see in their buff bar.  Evaluated once at load time.
 local ICON_PRISON      = GetAbilityIcon(132473)   -- FALGRAVN_PRISON
-local ICON_INSTABILITY = GetAbilityIcon(140944)   -- FALGRAVN_INSTABILITY
+-- GetAbilityIcon(140944) (ICON_INSTABILITY)  -- reference: instability buff icon (unrouted)
 local ICON_SYNERGY     = GetAbilityIcon(129936)   -- FALGRAVN_BLOPSYNERGIE
 
 

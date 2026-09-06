@@ -46,13 +46,10 @@ local BRIDGE_1         = 166479   -- combatRoute: ACTION_RESULT_BEGIN -> bridge 
 local BRIDGE_2         = 175279   -- combatRoute: ACTION_RESULT_BEGIN -> bridge wipe 60s
 local BRIDGE_3         = 175291   -- combatRoute: ACTION_RESULT_BEGIN -> bridge wipe 60s
 local WHIRLPOOL        = 163896   -- effectRoute: EFFECT_RESULT_GAINED / FADED + player -> green border
--- Portal / aoe debuffs
-local NEMATOCYST_P     = 174679   -- green portal debuff
-local NEMATOCYST_AOE   = 169938
-local SWELTERING_P     = 174689   -- yellow portal debuff
-local SWELTERING_AOE   = 169936
-local SUFFOCATING_P    = 174691   -- purple portal debuff
-local SUFFOCATING_AOE  = 169935
+-- Portal / aoe debuffs (reference: unrouted; player-side portal debuffs for V2.0)
+-- 174679 NEMATOCYST_P, 169938 NEMATOCYST_AOE  -- green portal
+-- 174689 SWELTERING_P, 169936 SWELTERING_AOE  -- yellow portal
+-- 174691 SUFFOCATING_P, 169935 SUFFOCATING_AOE -- purple portal
 
 -- -- Timing constants -----------------------------------------------------
 local MAELSTROM_CD     = 35    -- s: maelstrom cycle
