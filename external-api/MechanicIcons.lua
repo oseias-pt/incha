@@ -9,9 +9,11 @@
 ---
 --- Usage:
 ---   local MechanicIcons = require("external-api.MechanicIcons")
----   MechanicIcons.set(displayName, texture, color)
+---   local Colors        = require("core.Colors")
+---   MechanicIcons.set(displayName, texture, Colors.PURPLE)
 ---   MechanicIcons.remove(displayName)
 
+local ColorDefs = require("external-api.ColorDefs")
 local MechanicIcons = {}
 
 local _impl = nil
@@ -22,14 +24,23 @@ function MechanicIcons.configure(impl)
     _impl = impl
 end
 
+-- ── O(1) RGB lookup (built once at load time) ─────────────────────────────
+
+local _rgb = ColorDefs.build(function(r, g, b)
+    return { r, g, b }
+end)
+
+-- ── API ───────────────────────────────────────────────────────────────────
+
 --- Place or update a mechanic icon over a unit's head.
 --- Size is derived from OSI.GetIconSize() automatically (BSCHTKA convention:
 --- 2 × GetIconSize()).  Falls back to nil if GetIconSize is unavailable.
 --- Silent no-op when not configured or displayName is empty.
+--- @param color string  color name (Colors.*)
 function MechanicIcons.set(displayName, texture, color)
     if not (_impl and displayName and displayName ~= "") then return end
     local sz = _impl.GetIconSize and (2 * _impl.GetIconSize()) or nil
-    _impl.SetMechanicIconForUnit(displayName, texture, sz, color, nil, nil)
+    _impl.SetMechanicIconForUnit(displayName, texture, sz, _rgb[color], nil, nil)
 end
 
 --- Remove the mechanic icon from a unit's head.
