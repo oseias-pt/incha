@@ -60,9 +60,9 @@ KazpianEncounter.stateSchema = {
     portalPhase    = 0,
     channelersDead = 0,
     -- Chain targets: populated on first/second DOMINATORS_CHAINS event,
-    -- cleared after the alert fires. nil = no chain holder tracked yet.
-    chainedA       = nil,
-    chainedB       = nil,
+    -- cleared after the alert fires. false = no chain holder tracked yet.
+    chainedA       = false,
+    chainedB       = false,
 }
 
 function KazpianEncounter.new()
@@ -224,7 +224,7 @@ function KazpianEncounter:onWipe()
     OsseinCageCommon.reset()
     self.bombDebounce:clear()
     self.portalPhase    = 0; self.channelersDead = 0
-    self.chainedA       = nil; self.chainedB = nil
+    self.chainedA       = false; self.chainedB = false
 end
 
 function KazpianEncounter:onUpdate(context, alerts)
