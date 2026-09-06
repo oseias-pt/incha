@@ -120,15 +120,11 @@ jobs:
         if: ${{ !cancelled() }}
         run: luajit test/checks/state-reset.lua
 
-      # ADVISORY, not blocking. luacheck covers the one class the bespoke
-      # checks do not - unused locals, shadowed names, unreachable code - but
-      # its baseline on this tree has never been seen, so it reports without
-      # failing the run. Read the output, fix or ignore what it finds, then
-      # delete `continue-on-error` to make it a gate.
+      # Blocking gate. luacheck covers the one class the bespoke checks do not
+      # — unused locals, shadowed names, unreachable code.
       # Scope and rationale for the rule selection are in .luacheckrc.
-      - name: Luacheck (advisory)
+      - name: Luacheck
         if: ${{ !cancelled() }}
-        continue-on-error: true
         run: |
           sudo apt-get install -y --no-install-recommends lua-check
-          luacheck . --codes --ranges || true
+          luacheck . --codes --ranges

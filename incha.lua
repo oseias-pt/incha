@@ -12,7 +12,7 @@ local ExtPI = require("external-api.PositionIcons")
 
 -- Pre-load ui modules at startup so they are never captured as part of a
 -- trial's dependency set  -  the panel must outlive any single trial.
-local Panel = require("ui.Panel")
+require("ui.Panel")
 local Menu  = require("ui.Menu")
 
 -- Every trial is resident for the whole session.  incha.txt executes each

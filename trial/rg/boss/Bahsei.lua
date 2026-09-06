@@ -38,8 +38,7 @@ local SALVO2           = 152463   -- combatRoute: ACTION_RESULT_BEGIN -> interru
 local SICKLE           = 150067   -- combatRoute: ACTION_RESULT_BEGIN -> nextSickle +15s; player alert
 local HEMORRHAGE       = 150008   -- combatRoute: ACTION_RESULT_BEGIN -> Bleeding alert (player)
 local RANCID_HAMMER    = 149922   -- combatRoute: ACTION_RESULT_BEGIN -> caAlertCast (tanks)
-local MT_ATTACK_IDS    = { [150047]=true, [150048]=true, [150065]=true }
-                                   -- combatRoute: plain -> Bahsei carve/slice/rendflesh MT detection
+-- 150047/150048/150065 (MT_ATTACK_IDS) -- reference: carve/slice/rendflesh MT detection set (unrouted)
 local DEATH_TOUCH      = 150078   -- effectRoute: EFFECT_RESULT_GAINED -> blue border + MT explosion
 local MALIGNANT_MARROW = 153421   -- effectRoute: EFFECT_RESULT_GAINED / FADED -> nextPortal +50s
 local BITTER_MARROW    = 153423   -- effectRoute: EFFECT_RESULT_GAINED / FADED -> numPlayersInPortal

@@ -16,9 +16,9 @@ local XORYN_IMMUNE_1  = 217987   -- combatRoute: ACTION_RESULT_EFFECT_GAINED / F
 local XORYN_IMMUNE_2  = 219545   -- combatRoute: ACTION_RESULT_EFFECT_GAINED / FADED → Xoryn away variant
 
 -- ── Timer durations (seconds) ─────────────────────────────────────────────
-local THRALL_FIRST_CD =  8.0    -- first Thrall after Xoryn returns
+-- THRALL_FIRST_CD = 8.0  -- reference: first Thrall delay after Xoryn returns (proactive timer; unimplemented)
 local THRALL_CD       = 25.5   -- steady-state Thrall CD
-local FLOOD_FIRST_CD  =  3.0    -- first Flood after Xoryn returns
+-- FLOOD_FIRST_CD = 3.0   -- reference: first Flood delay after Xoryn returns (proactive timer; unimplemented)
 local FLOOD_CD        = 21.5   -- steady-state Flood CD
 
 -- ── CA colour palettes ────────────────────────────────────────────────────

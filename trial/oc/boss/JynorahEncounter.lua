@@ -44,13 +44,10 @@ local TAIL_SLAM_2      = 235803   -- combatRoute: ACTION_RESULT_EFFECT_GAINED ->
 local REFLECTIVE_1     = 233321   -- combatRoute: EFFECT_GAINED -> border on; EFFECT_FADED -> border off
 local REFLECTIVE_2     = 233330   -- combatRoute: EFFECT_GAINED -> border on; EFFECT_FADED -> border off
 
-local LEAP_IDS = {
-    [TITANIC_LEAP_1]=true, [TITANIC_LEAP_2]=true, [TITANIC_LEAP_3]=true,
-    [TITANIC_LEAP_4]=true, [TITANIC_LEAP_5]=true, [TITANIC_LEAP_6]=true,
-}
+-- LEAP_IDS = { TITANIC_LEAP_1..6 }  -- reference: leap detection set (IDs routed individually)
+-- LEAP_FIRST_CD = 5.0               -- reference: first leap delay (proactive timer; unimplemented)
 
 -- -- Timer durations (seconds) ---------------------------------------------------------------------
-local LEAP_FIRST_CD = 5.0
 local LEAP_CD       = 48.0
 
 -- -- CA colour palettes ----------------------------------------------------------------------------
