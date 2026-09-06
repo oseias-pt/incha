@@ -373,7 +373,7 @@ function Falgravn:onWipe(context, alerts)
     self.osiInstability = {}
     self.osiSynergy     = {}
 
-    -- Hide world-coord position icons without discarding the handles  - 
+    -- Hide world-coord position icons without discarding the handles  -
     -- they will be shown again when the relevant mechanics fire next pull.
     showPosIcons(_posIconConn,  false)
     showPosIcons(_posIconBlood, false)
