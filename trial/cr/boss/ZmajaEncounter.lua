@@ -8,37 +8,6 @@ local Settings      = require("core.Settings")
 local Lang          = require("core.Lang")
 local Colors = require("core.Colors")
 
--- -- Ability ID sets for mini-boss detection -------------------------------
--- Any of these firing marks that mini as active (detects +1/+2/+3 variant).
-local SIRO_IDS = {
-    [104755]=true, -- HA
-    [106601]=true, -- Jump
-    [104902]=true, -- Banner
-    [103531]=true, -- Flare
-    [110431]=true, -- Flare (execute)
-    [105765]=true, -- Dark Talons
-}
-local RELE_IDS = {
-    [105780]=true, -- HA
-    [105796]=true, -- Flux Burst jump
-    [105380]=true, -- Direct Current (interrupt)
-    [106614]=true, -- Jolt
-    [103555]=true, -- Overload incoming
-    [87346] =true, -- Overload active
-}
-local GALE_IDS = {
-    [106375]=true, -- HA
-    [106682]=true, -- Teleport jump
-    [106405]=true, -- Glacial Spikes (interrupt)
-    [106378]=true, -- Donut
-    [105151]=true, -- Hoarfrost cast
-    [110466]=true, -- Hoarfrost cast (execute)
-    [103695]=true, -- Hoarfrost debuff
-    [110516]=true, -- Hoarfrost debuff (execute)
-    [106374]=true, -- Chilling Comet
-    [106367]=true, -- Chilling Comet variant
-}
-
 -- -- Ability IDs (from HowToCloudrest / CrutchAlerts) ---------------------
 
 -- -- Siroria ---------------------------------------------------------------
