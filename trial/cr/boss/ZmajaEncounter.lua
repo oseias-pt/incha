@@ -37,7 +37,7 @@ local GALE_HOARFROST   = 103695  -- Hoarfrost debuff on player - 6 s drop window
 local GALE_HOARFROST_2 = 110516  -- Hoarfrost debuff execute variant
 local GALE_HOARFROST_SY= 103697  -- Hoarfrost synergy used (drop frost now!)
 local GALE_HOARFROST_S2= 110525  -- Hoarfrost synergy execute variant
-local GALE_HOARFROST_AO= 103765  -- Hoarfrost AoE on ground
+-- 103765 (GALE_HOARFROST_AO)  -- reference: ground AoE zone; passive, no alert needed
 local GALE_COMET       = 106374  -- Chilling Comet on player - 4 s window
 local GALE_COMET_2     = 106367  -- Chilling Comet variant
 
@@ -66,12 +66,9 @@ local ZMAJA_RESET_PORT = 107478  -- Z'Maja portal-phase reset (all portals close
 local CORE_EXPOSED     = 103980
 local CORE_PICKED_UP   = 103989
 local CORE_MISSED      = 110202
-local BEAD_TICK        = 105339
-local BEAD_SPAWN       = 105363
-local BEAD_CHARGE      = 105373
+-- 105339 BEAD_TICK, 105363 BEAD_SPAWN, 105373 BEAD_CHARGE  -- reference: bead sub-mechanics; V2.0
 local OLORIME_SPEAR    = 104018
-local BREAK_AMULET     = 106023
-local MALICIOUS_SPHERE = 105291
+-- 106023 BREAK_AMULET, 105291 MALICIOUS_SPHERE              -- reference: shadow-realm mechanics; V2.0
 
 -- -- Timer durations (seconds) ---------------------------------------------
 local SIRO_JUMP_CD     = 23
@@ -82,9 +79,9 @@ local RELE_JOLT_CD     = 15
 local GALE_JUMP_CD     = 19
 local GALE_BASH_CD     = 22
 local GALE_DONUT_CD    = 22
-local HOARFROST_DROP   = 6     -- seconds until Hoarfrost is droppable
+-- HOARFROST_DROP = 6  -- reference: drop delay (unimplemented proactive timer; V2.0)
 local FLARE_WINDOW     = 7     -- Roaring Flare alert window (seconds)
-local COMET_WINDOW     = 4     -- Chilling Comet window (seconds)
+-- COMET_WINDOW = 4    -- reference: comet alert window (handler uses hardcoded ms; V2.0)
 local PORTAL_OPEN_DUR  = 75    -- portal stays open ~75 s
 local PORTAL_NEXT_CD   = 46    -- seconds until next portal after close
 

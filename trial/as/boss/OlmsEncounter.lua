@@ -34,7 +34,7 @@ local CHARGES_CD  = 12
 local BLAST_CD    = 21   -- Llothis Defiling Blast
 local BOLTS_CD    = 12   -- Llothis Oppressive Bolts (interrupt)
 local JUMP_CD     = 21   -- Felms Teleport Strike
-local DORMANT_CD  = 45   -- Mini-boss dormant phase duration
+-- DORMANT_CD = 45  -- reference: mini-boss dormant phase duration (proactive timer; unimplemented)
 local SPAWN_DELAY = 12   -- Seconds after BOSS_EVENT before first mini ability
 
 -- ── Jump milestone thresholds (%) ────────────────────────────────────────
