@@ -13,12 +13,13 @@
 ---   Fmt.c(Colors.FIRE, "Stomp inbound!")
 ---   Fmt.colored(Fmt.CYAN, "Ice Tomb", Fmt.RED, " INC")
 
-local Colors = require("core.Colors")
+local ColorDefs = require("external-api.ColorDefs")
+local Colors    = require("core.Colors")
 local Fmt = {}
 
 -- ── Hex lookup (built once) ───────────────────────────────────────────────
 
-local _hex = Colors.build(function(r, g, b)
+local _hex = ColorDefs.build(function(r, g, b)
     return string.format("%02x%02x%02x",
         math.floor(r * 255 + 0.5),
         math.floor(g * 255 + 0.5),
@@ -29,7 +30,7 @@ end)
 -- Fmt.FIRE == Colors.FIRE == "FIRE"; the hex string stays private.
 
 for name in pairs(_hex) do
-    Fmt[name] = name
+    Fmt[name] = Colors[name]
 end
 
 -- ── API ───────────────────────────────────────────────────────────────────

@@ -23,6 +23,7 @@ local CA      = require("external-api.CombatAlerts")
 local CastDur = require("lib.CastDur")
 local Lang    = require("core.Lang")
 local Fmt     = require("core.Fmt")
+local Colors = require("core.Colors")
 
 local OsseinCageCommon = {}
 
@@ -111,7 +112,7 @@ function OsseinCageCommon.handle(alerts, result, abilityId, unitTag, sourceUnitN
     -- Skullmancer: Skullstorm (cast bar) -----------------------------------
     if abilityId == SKULLSTORM then
         local dur = CastDur.get(SKULLSTORM, FALL_SKULL)
-        CA.melee(abilityId, sourceUnitName or "Skullstorm", dur, "VOID")
+        CA.melee(abilityId, sourceUnitName or "Skullstorm", dur, Colors.VOID)
         return true
     end
 
@@ -188,7 +189,7 @@ function OsseinCageCommon.handleEffect(alerts, changeType, abilityId, unitTag, s
         if changeType ~= EFFECT_RESULT_FADED then
             local dur = CastDur.get(DETONATE_SOUL_DB, FALL_DETONATE)
             alerts:showAction(Lang.t("oc_detonate_soul"))
-            CA.ranged(DETONATE_SOUL_DB, Lang.t("oc_detonate_soul_bar"), dur, "FIRE")
+            CA.ranged(DETONATE_SOUL_DB, Lang.t("oc_detonate_soul_bar"), dur, Colors.FIRE)
             CA.alert(nil, Lang.t("oc_detonate_soul_bar"), 0xFF4400D9, SOUNDS.NONE, dur)
         end
         return true

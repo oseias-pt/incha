@@ -5,6 +5,7 @@ local BossBase = require("lib.BossBase")
 local CastDur = require("lib.CastDur")
 local Lang = require("core.Lang")
 local Fmt  = require("core.Fmt")
+local Colors = require("core.Colors")
 
 
 -- ── Ability IDs ───────────────────────────────────────────────────────────
@@ -51,7 +52,7 @@ end
 
 local function handleNecroticBarrage(self, context, alerts, abilityId, ...)
     local dur = CastDur.get(abilityId, FALLBACK_BARRAGE_DUR)
-    CA.ranged(abilityId, Lang.t("lc_xoryn_barrage_bar"), dur, "VOID")
+    CA.ranged(abilityId, Lang.t("lc_xoryn_barrage_bar"), dur, Colors.VOID)
 end
 
 local function handleAcceleratingCharge(self, context, alerts, abilityId, ...)
@@ -61,7 +62,7 @@ end
 
 local function handleTempest(self, context, alerts, abilityId, ...)
     local dur = CastDur.get(abilityId, FALLBACK_DUR)
-    CA.ranged(abilityId, Lang.t("lc_xoryn_tempest_bar"), dur, "ICE")
+    CA.ranged(abilityId, Lang.t("lc_xoryn_tempest_bar"), dur, Colors.ICE)
     alerts:showAction(Lang.t("lc_xoryn_tempest"))
 end
 
@@ -70,7 +71,7 @@ local function handleGlassStomp(self, context, alerts, abilityId,
                                  sourceUnitName, unitName)
     local target = (unitName and unitName ~= "") and unitName or "?"
     local dur = CastDur.get(abilityId, FALLBACK_DUR)
-    CA.ranged(abilityId, Lang.t("lc_xoryn_atronach_bar", target), dur, "ORANGE")
+    CA.ranged(abilityId, Lang.t("lc_xoryn_atronach_bar", target), dur, Colors.ORANGE)
     if IsUnitPlayer(unitTag) then
         alerts:showAction(Lang.t("lc_xoryn_atronach_aoe"))
     end

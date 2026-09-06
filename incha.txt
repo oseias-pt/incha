@@ -10,6 +10,7 @@ bootstrap.lua
 
 lang/en.lua
 
+external-api/ColorDefs.lua
 external-api/CombatAlerts.lua
 external-api/MechanicIcons.lua
 external-api/PositionIcons.lua

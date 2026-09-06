@@ -4,6 +4,7 @@ local CA = require("external-api.CombatAlerts")
 local BossBase = require("lib.BossBase")
 local CastDur = require("lib.CastDur")
 local Lang = require("core.Lang")
+local Colors = require("core.Colors")
 
 -- -- Ability IDs --------------------------------------------------------------------
 local SUNBURST         = 199344   -- combatRoute: ACTION_RESULT_BEGIN -> Dodge alert (player only)
@@ -102,12 +103,12 @@ local function handleSunburst(self, context, alerts, abilityId, unitTag, ...)
     if not IsUnitPlayer(unitTag) then return end
     alerts:showAction(Lang.t("se_ansuul_sunburst"))
     local dur = CastDur.get(SUNBURST, FALLBACK_SUNBURST_DUR)
-    CA.ranged(SUNBURST, Lang.t("se_ansuul_sunburst_bar"), dur, "VOID")
+    CA.ranged(SUNBURST, Lang.t("se_ansuul_sunburst_bar"), dur, Colors.VOID)
 end
 
 local function handleWrathstorm(self, context, alerts, abilityId, ...)
     local dur = CastDur.get(WRATHSTORM, FALLBACK_WRATHSTORM_DUR)
-    CA.ranged(WRATHSTORM, Lang.t("se_ansuul_wrathstorm_bar"), dur, "VOID")
+    CA.ranged(WRATHSTORM, Lang.t("se_ansuul_wrathstorm_bar"), dur, Colors.VOID)
 end
 
 local function handlePoisonedMind(self, context, alerts, abilityId,

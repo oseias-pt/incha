@@ -69,6 +69,7 @@ local BRIDGE_HP = { 50.9, 35.9, 20.9 }
 
 local CA = require("external-api.CombatAlerts")
 local BossBase = require("lib.BossBase")
+local Colors = require("core.Colors")
 
 -- -- CA colour palettes ----------------------------------------------------
 local ACT_BREAK  = { 4000, "Break free!", 0.9, 0.1, 0.1, 0.9, nil }
@@ -123,7 +124,7 @@ local function handleCrashingWave(self, context, alerts, abilityId,
                                    sourceUnitName, unitName)
     if not IsUnitPlayer(unitTag) then return end
     local dur = CastDur.get(abilityId, FALLBACK_WAVE_DUR)
-    CA.melee(abilityId, sourceUnitName, dur, "FIRE")
+    CA.melee(abilityId, sourceUnitName, dur, Colors.FIRE)
 end
 
 -- Bridge open: closes over the bridge index.
@@ -146,7 +147,7 @@ local function handleCoralSlam(self, context, alerts, abilityId,
                                sourceUnitName, unitName)
     if not IsUnitPlayer(unitTag) then return end
     local dur = CastDur.get(abilityId, FALLBACK_SLAM_DUR)
-    CA.melee(abilityId, sourceUnitName, dur, "FIRE")
+    CA.melee(abilityId, sourceUnitName, dur, Colors.FIRE)
 end
 
 local function handleBarnacleBlade(self, context, alerts, abilityId,
@@ -154,7 +155,7 @@ local function handleBarnacleBlade(self, context, alerts, abilityId,
                                     sourceUnitName, unitName)
     if not IsUnitPlayer(unitTag) then return end
     local dur = CastDur.get(abilityId, FALLBACK_BLADE_DUR)
-    CA.melee(abilityId, sourceUnitName, dur, "FIRE")
+    CA.melee(abilityId, sourceUnitName, dur, Colors.FIRE)
 end
 
 local function handleMaelstromCast(self, context, alerts, abilityId, ...)
@@ -180,7 +181,7 @@ end
 local function handleLureOfSea(self, context, alerts, abilityId, ...)
     CA.castAlertsStop(self.lureBarId)
     self.lureBarId = CA.bar(
-        abilityId, "Lure of the Sea", 4000, 4000, "VOID", 0.5, ACT_BREAK)
+        abilityId, "Lure of the Sea", 4000, 4000, Colors.VOID, 0.5, ACT_BREAK)
 end
 
 local function handleAspectTerror(self, context, alerts, abilityId,
@@ -188,7 +189,7 @@ local function handleAspectTerror(self, context, alerts, abilityId,
                                    sourceUnitName, unitName)
     if not IsUnitPlayer(unitTag) then return end
     local dur = CastDur.get(abilityId, FALLBACK_FEAR_DUR)
-    CA.ranged(abilityId, sourceUnitName, dur, "VOID")
+    CA.ranged(abilityId, sourceUnitName, dur, Colors.VOID)
 end
 
 Taleria.combatRoutes = {

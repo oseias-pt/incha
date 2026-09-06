@@ -6,6 +6,7 @@ local BossBase      = require("lib.BossBase")
 local CastDur       = require("lib.CastDur")
 local Settings      = require("core.Settings")
 local Lang          = require("core.Lang")
+local Colors = require("core.Colors")
 
 -- -- Ability ID sets for mini-boss detection -------------------------------
 -- Any of these firing marks that mini as active (detects +1/+2/+3 variant).
@@ -204,7 +205,7 @@ local function handleSiroFlare(self, context, alerts, result, abilityId,
     local target = (unitName and unitName ~= "") and unitName or "?"
     alerts:showAction(Lang.t("cr_zmaja_siro_flare", target))
     local dur = CastDur.get(abilityId, math.floor(FLARE_WINDOW * 1000))
-    local cid = CA.ranged(abilityId, Lang.t("cr_zmaja_siro_flare", target), dur, "FIRE")
+    local cid = CA.ranged(abilityId, Lang.t("cr_zmaja_siro_flare", target), dur, Colors.FIRE)
     if cid and unitId then self.alertList[unitId] = cid end
 end
 
@@ -216,7 +217,7 @@ local function handleGaleHoarfrost(self, context, alerts, result, abilityId,
     if result == ACTION_RESULT_EFFECT_GAINED then
         local dname = GetUnitDisplayName and GetUnitDisplayName(unitTag) or nil
         if dname and dname ~= "" and Settings.trial("cr").posIconsZmaja then
-            MechanicIcons.set(dname, GetAbilityIcon(abilityId), "CYAN")
+            MechanicIcons.set(dname, GetAbilityIcon(abilityId), Colors.CYAN)
         end
         if IsUnitPlayer(unitTag) then
             alerts:showAction(Lang.t("cr_zmaja_gale_frost_you"))
@@ -275,7 +276,7 @@ end
 local function handleCrushingDark(self, context, alerts, abilityId, ...)
     alerts:showAction(Lang.t("cr_zmaja_crushing_dark"))
     local dur = CastDur.get(abilityId, FALLBACK_DARK_DUR)
-    CA.ranged(abilityId, Lang.t("cr_zmaja_crushing_kite"), dur, "VOID")
+    CA.ranged(abilityId, Lang.t("cr_zmaja_crushing_kite"), dur, Colors.VOID)
 end
 
 local function handleSiroHa(self, context, alerts, result, abilityId,
@@ -286,7 +287,7 @@ local function handleSiroHa(self, context, alerts, result, abilityId,
     local target = (unitName and unitName ~= "") and unitName or "?"
     alerts:showAction(Lang.t("cr_zmaja_siro_ha", target))
     local dur = CastDur.get(SIRO_HA, FALLBACK_HA_DUR)
-    local cid = CA.ranged(abilityId, Lang.t("cr_zmaja_siro_ha_bar"), dur, "FIRE")
+    local cid = CA.ranged(abilityId, Lang.t("cr_zmaja_siro_ha_bar"), dur, Colors.FIRE)
     if cid and unitId then self.alertList[unitId] = cid end
 end
 
@@ -320,7 +321,7 @@ local function handleReleHa(self, context, alerts, result, abilityId,
     local target = (unitName and unitName ~= "") and unitName or "?"
     alerts:showAction(Lang.t("cr_zmaja_rele_ha", target))
     local dur = CastDur.get(RELE_HA, FALLBACK_HA_DUR)
-    local cid = CA.ranged(abilityId, Lang.t("cr_zmaja_rele_ha_bar"), dur, "ICE")
+    local cid = CA.ranged(abilityId, Lang.t("cr_zmaja_rele_ha_bar"), dur, Colors.ICE)
     if cid and unitId then self.alertList[unitId] = cid end
 end
 
@@ -371,7 +372,7 @@ local function handleGaleHa(self, context, alerts, result, abilityId,
     local target = (unitName and unitName ~= "") and unitName or "?"
     alerts:showAction(Lang.t("cr_zmaja_gale_ha", target))
     local dur = CastDur.get(GALE_HA, FALLBACK_HA_DUR)
-    local cid = CA.ranged(abilityId, Lang.t("cr_zmaja_gale_ha_bar"), dur, "CYAN")
+    local cid = CA.ranged(abilityId, Lang.t("cr_zmaja_gale_ha_bar"), dur, Colors.CYAN)
     if cid and unitId then self.alertList[unitId] = cid end
 end
 
@@ -437,7 +438,7 @@ local FALLBACK_SPLASH_DUR = 3000  -- Shadow Splash cast duration: empirical
 local function handleShadowSplash(self, context, alerts, abilityId, ...)
     alerts:showAction(Lang.t("cr_zmaja_shadow_splash"))
     local dur = CastDur.get(abilityId, FALLBACK_SPLASH_DUR)
-    CA.ranged(abilityId, Lang.t("cr_zmaja_shadow_splash_bar"), dur, "VOID")
+    CA.ranged(abilityId, Lang.t("cr_zmaja_shadow_splash_bar"), dur, Colors.VOID)
     CA.alert(nil, Lang.t("common_interrupt"), 0xFF0000FF, SOUNDS.NONE, 2500)
 end
 

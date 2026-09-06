@@ -5,6 +5,7 @@ local BossBase = require("lib.BossBase")
 local CastDur  = require("lib.CastDur")
 local Lang     = require("core.Lang")
 local Settings = require("core.Settings")
+local Colors = require("core.Colors")
 
 -- -- Ability IDs (from SanitysEdgeHelper / SSEA data) ------------------------------
 local DEFLECT         = 184823   -- combatRoute: ACTION_RESULT_BEGIN -> Shrapnel stack counter
@@ -128,7 +129,7 @@ local function handleFireBombs(self, context, alerts, abilityId,
     local target = (unitName and unitName ~= "") and unitName or "?"
     alerts:showAction(Lang.t("se_yaseyla_fire_bombs_tgt", target))
     local dur = CastDur.get(abilityId, FALLBACK_DUR)
-    local cid = CA.ranged(abilityId, Lang.t("se_yaseyla_fire_bombs_bar"), dur, "FIRE")
+    local cid = CA.ranged(abilityId, Lang.t("se_yaseyla_fire_bombs_bar"), dur, Colors.FIRE)
     if cid and unitId then self.alertList[unitId] = cid end
 end
 
@@ -158,7 +159,7 @@ local function handleKnifeBlast(self, context, alerts, abilityId,
                                  sourceUnitName, unitName)
     local target = (unitName and unitName ~= "") and unitName or "?"
     local dur = CastDur.get(abilityId, FALLBACK_DUR)
-    CA.ranged(abilityId, Lang.t("se_yaseyla_knife_blast_bar", target), dur, "AMBER")
+    CA.ranged(abilityId, Lang.t("se_yaseyla_knife_blast_bar", target), dur, Colors.AMBER)
     alerts:showAction(Lang.t("se_yaseyla_knife_blast", target))
 end
 
@@ -182,7 +183,7 @@ local function handleWamasuCharge(self, context, alerts, abilityId,
                                    sourceUnitName, unitName)
     local target = (unitName and unitName ~= "") and unitName or "?"
     local dur = CastDur.get(abilityId, FALLBACK_DUR)
-    CA.ranged(abilityId, Lang.t("se_yaseyla_charge_bar", target), dur, "FIRE")
+    CA.ranged(abilityId, Lang.t("se_yaseyla_charge_bar", target), dur, Colors.FIRE)
 end
 
 local function handleHeadbutt(self, context, alerts, abilityId,

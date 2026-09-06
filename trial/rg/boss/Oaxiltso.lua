@@ -36,6 +36,7 @@ local POOL_EX_LEFT = { 91973, 35751, 81764 }
 
 local CA = require("external-api.CombatAlerts")
 local BossBase = require("lib.BossBase")
+local Colors = require("core.Colors")
 
 -- -- CA colour palettes -----------------------------------------------------
 
@@ -99,7 +100,7 @@ Oaxiltso.common = RockgroveCommon
 
 local function handleSavageBlitz(self, context, alerts, abilityId, ...)
     self.lastBlitz = GetGameTimeMilliseconds() / 1000
-    CA.bar(abilityId, "Savage Blitz", 2750, 2750, "RED", 0.4)
+    CA.bar(abilityId, "Savage Blitz", 2750, 2750, Colors.RED, 0.4)
 end
 
 local function handleNoxiousSludge(self, context, alerts, abilityId, ...)
@@ -124,14 +125,14 @@ local function handleCinderCleave(self, context, alerts, abilityId,
                                    sourceUnitName, unitName)
     if not IsUnitPlayer(unitTag) then return end
     alerts:showAction(Lang.t("rg_oaxiltso_dodge_cone"))
-    CA.melee(abilityId, sourceUnitName, 2000, "ORANGE")
+    CA.melee(abilityId, sourceUnitName, 2000, Colors.ORANGE)
 end
 
 local function handleEmberChains(self, context, alerts, abilityId,
                                   unitTag, sourceUnitTag, sourceUnitId, unitId,
                                   sourceUnitName, unitName)
     if not IsUnitPlayer(unitTag) then return end
-    CA.ranged(abilityId, sourceUnitName, 750, "PURPLE")
+    CA.ranged(abilityId, sourceUnitName, 750, Colors.PURPLE)
 end
 
 local function handleAddSpawn(self, context, alerts, abilityId, ...)

@@ -47,6 +47,7 @@ local NEGATE_FIELD     = 121411   -- combatRoute: ACTION_RESULT_BEGIN -> Dodge a
 
 local CA = require("external-api.CombatAlerts")
 local CastDur = require("lib.CastDur")
+local Colors = require("core.Colors")
 
 -- -- CA colour palettes -----------------------------------------------------
 
@@ -176,7 +177,7 @@ local function handlePowerfulSlam(self, context, alerts, abilityId,
     if show then
         alerts:showAction(Lang.t("ss_nahvii_block_slam"))
         local dur = CastDur.get(POWERFUL_SLAM, FALLBACK_SLAM_DUR)
-        local cid = CA.melee(abilityId, sourceUnitName, dur, "FIRE")
+        local cid = CA.melee(abilityId, sourceUnitName, dur, Colors.FIRE)
         if cid and sourceUnitId then self.alertList[sourceUnitId] = cid end
     end
 end
@@ -187,7 +188,7 @@ local function handleStonefist(self, context, alerts, abilityId,
     if not (IsUnitPlayer(unitTag) and AreUnitsEqual("player", unitTag)) then return end
     alerts:showAction(Lang.t("ss_nahvii_block_stonefist"))
     local dur = CastDur.get(STONEFIST, FALLBACK_SLAM_DUR)
-    local cid = CA.melee(abilityId, sourceUnitName, dur, "AMBER")
+    local cid = CA.melee(abilityId, sourceUnitName, dur, Colors.AMBER)
     if cid and sourceUnitId then self.alertList[sourceUnitId] = cid end
 end
 
@@ -206,7 +207,7 @@ local function handleThrash(self, context, alerts, abilityId, ...)
     CA.castAlertsStop(self.thrashBarId)
     self.thrashBarId = CA.bar(
         abilityId, "Thrash",
-        dur, dur, "RED", 0.5,
+        dur, dur, Colors.RED, 0.5,
         { dur, "THRASH!", 0.9, 0.1, 0.1, 0.9, SOUNDS.NONE })
     if self.nextMeteorTime > 0 then
         self.nextMeteorTime = self.nextMeteorTime - 1.5

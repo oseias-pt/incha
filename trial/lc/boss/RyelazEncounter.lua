@@ -4,6 +4,7 @@ local BossBase = require("lib.BossBase")
 local CastDur = require("lib.CastDur")
 local Lang = require("core.Lang")
 local Fmt  = require("core.Fmt")
+local Colors = require("core.Colors")
 
 
 -- ── Ability IDs ───────────────────────────────────────────────────────────
@@ -44,7 +45,7 @@ local function makeAnnihilHandler(label)
     return { result = ACTION_RESULT_BEGIN,
         fn = function(self, context, alerts, abilityId, ...)
         local dur = CastDur.get(abilityId, FALLBACK_DUR)
-        CA.ranged(abilityId, Lang.t("lc_ryelaz_annihil_action"), dur, "FLYZONE")
+        CA.ranged(abilityId, Lang.t("lc_ryelaz_annihil_action"), dur, Colors.FLYZONE)
         alerts:showAction(label)
     end }
 end

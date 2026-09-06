@@ -50,6 +50,7 @@ local EYE_CCW          = 153518   -- combatRoute: ACTION_RESULT_EFFECT_GAINED ->
 local CA = require("external-api.CombatAlerts")
 local BossBase = require("lib.BossBase")
 local CastDur = require("lib.CastDur")
+local Colors = require("core.Colors")
 
 -- -- CA colour palettes -----------------------------------------------------
 local ACT_METEOR    = { 10000, "KILL SUN!", 0.8, 0.0, 0.0, 0.9, nil }
@@ -156,7 +157,7 @@ local function handleSalvo(self, context, alerts, abilityId,
     local _, _, isTank = GetPlayerRoles()
     if isTank then
         local dur = CastDur.get(SALVO2, FALLBACK_SALVO_DUR)
-        CA.interrupt_melee(abilityId, sourceUnitName, dur, "ICE")
+        CA.interrupt_melee(abilityId, sourceUnitName, dur, Colors.ICE)
         CA.alert(nil, "Interrupt!", 0xFF2020FF, SOUNDS.CHAMPION_POINTS_COMMITTED, 2000)
     end
 end
@@ -167,7 +168,7 @@ local function handleSickle(self, context, alerts, abilityId,
     self.nextSickle = GetGameTimeMilliseconds() / 1000 + 15
     if IsUnitPlayer(unitTag) then
         local dur = CastDur.get(SICKLE, FALLBACK_SICKLE_DUR)
-        CA.melee(abilityId, sourceUnitName, dur, "VOID")
+        CA.melee(abilityId, sourceUnitName, dur, Colors.VOID)
     end
 end
 
@@ -183,7 +184,7 @@ local function handleRancidHammer(self, context, alerts, abilityId,
     local _, _, isTank = GetPlayerRoles()
     if isTank then
         local dur = CastDur.get(RANCID_HAMMER, FALLBACK_HAMMER_DUR)
-        CA.melee(abilityId, sourceUnitName, dur, "FIRE")
+        CA.melee(abilityId, sourceUnitName, dur, Colors.FIRE)
     end
 end
 
@@ -194,7 +195,7 @@ local function handleMeteorSwarm(self, context, alerts, abilityId, ...)
     CA.castAlertsStop(self.sunBarId)
     self.sunBarId = CA.bar(
         abilityId, "Prime Meteor",
-        13500, 13500, "FLYZONE", 0.4, ACT_METEOR)
+        13500, 13500, Colors.FLYZONE, 0.4, ACT_METEOR)
     PlaySound(SOUNDS.DUEL_START)
 end
 

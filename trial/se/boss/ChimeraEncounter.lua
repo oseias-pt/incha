@@ -4,6 +4,7 @@ local CA = require("external-api.CombatAlerts")
 local BossBase = require("lib.BossBase")
 local CastDur = require("lib.CastDur")
 local Lang = require("core.Lang")
+local Colors = require("core.Colors")
 
 -- -- Ability IDs --------------------------------------------------------------------
 local VIVIFY           = 186000   -- combatRoute: ACTION_RESULT_EFFECT_FADED -> Chimera spawned, reset timers
@@ -131,18 +132,18 @@ local function handleArcticShred(self, context, alerts, abilityId,
     local target = (unitName and unitName ~= "") and unitName or "?"
     alerts:showAction(Lang.t("se_chimera_arctic_shred", target))
     local dur = CastDur.get(abilityId, FALLBACK_SHRED_DUR)
-    CA.ranged(abilityId, Lang.t("se_chimera_arctic_shred_bar"), dur, "ICE")
+    CA.ranged(abilityId, Lang.t("se_chimera_arctic_shred_bar"), dur, Colors.ICE)
 end
 
 local function handleLionDoubleStrike(self, context, alerts, abilityId, ...)
     local dur = CastDur.get(abilityId, FALLBACK_DUR)
-    CA.ranged(abilityId, Lang.t("se_chimera_lion_double_bar"), dur, "ORANGE")
+    CA.ranged(abilityId, Lang.t("se_chimera_lion_double_bar"), dur, Colors.ORANGE)
     alerts:showAction(Lang.t("se_chimera_lion_double"))
 end
 
 local function handleGryphonPeck(self, context, alerts, abilityId, ...)
     local dur = CastDur.get(abilityId, FALLBACK_DUR)
-    CA.ranged(abilityId, Lang.t("se_chimera_gryphon_peck_bar"), dur, "ICE")
+    CA.ranged(abilityId, Lang.t("se_chimera_gryphon_peck_bar"), dur, Colors.ICE)
     alerts:showAction(Lang.t("se_chimera_gryphon_peck"))
 end
 
@@ -152,7 +153,7 @@ local function handleChimeraBolt(self, context, alerts, abilityId,
     local target = (unitName and unitName ~= "") and unitName or "?"
     alerts:showAction(Lang.t("se_chimera_lightning_bolt", target))
     local dur = CastDur.get(abilityId, FALLBACK_DUR)
-    local cid = CA.ranged(abilityId, Lang.t("se_chimera_bolt_bar"), dur, "GOLD")
+    local cid = CA.ranged(abilityId, Lang.t("se_chimera_bolt_bar"), dur, Colors.GOLD)
     if cid and unitId then self.alertList[unitId] = cid end
 end
 

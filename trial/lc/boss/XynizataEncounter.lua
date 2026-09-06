@@ -4,6 +4,7 @@ local CA = require("external-api.CombatAlerts")
 local BossBase = require("lib.BossBase")
 local CastDur = require("lib.CastDur")
 local Lang = require("core.Lang")
+local Colors = require("core.Colors")
 
 -- ── Ability IDs ───────────────────────────────────────────────────────────
 local PIERCING_BEAM = 219165   -- combatRoute: ACTION_RESULT_BEGIN → INTERRUPT; CD 14s first / 32s steady
@@ -50,7 +51,7 @@ local function handlePiercingBeam(self, context, alerts, abilityId, ...)
     self.firstBeam = false
     self.piercingBeamTimer:reset(BEAM_CD)
     local dur = CastDur.get(abilityId, FALLBACK_BEAM_DUR)
-    CA.ranged(abilityId, Lang.t("lc_xynizata_beam_bar"), dur, "RED")
+    CA.ranged(abilityId, Lang.t("lc_xynizata_beam_bar"), dur, Colors.RED)
     alerts:showAction(Lang.t("lc_xynizata_interrupt_beam"))
 end
 
@@ -58,7 +59,7 @@ local function handleVitrify(self, context, alerts, abilityId, ...)
     self.firstVitrify = false
     self.vitrifyTimer:reset(VITRIFY_CD)
     local dur = CastDur.get(abilityId, FALLBACK_VITRIFY_DUR)
-    CA.ranged(abilityId, Lang.t("lc_xynizata_interrupt_vitr"), dur, "RED")
+    CA.ranged(abilityId, Lang.t("lc_xynizata_interrupt_vitr"), dur, Colors.RED)
     alerts:showAction(Lang.t("lc_xynizata_interrupt_vitr"))
 end
 

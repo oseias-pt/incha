@@ -46,6 +46,7 @@ local SHELTERED_WINDOW     = 3        -- s: keep "CLEANSED" label brief
 
 local CA = require("external-api.CombatAlerts")
 local BossBase = require("lib.BossBase")
+local Colors = require("core.Colors")
 
 -- -- CA colour palettes ----------------------------------------------------
 local ACT_ACID    = { 8000, "MOVE OUT!", 0.3, 0.9, 0.1, 0.9, nil }
@@ -97,7 +98,7 @@ local function handleHeavy(self, context, alerts, abilityId,
                             sourceUnitName, unitName)
     if not IsUnitPlayer(unitTag) then return end
     local dur = CastDur.get(abilityId, FALLBACK_DUR)
-    CA.melee(abilityId, sourceUnitName, dur, "FIRE")
+    CA.melee(abilityId, sourceUnitName, dur, Colors.FIRE)
 end
 
 -- Reef portal opening
@@ -115,7 +116,7 @@ end
 local function handleAcidReflux(self, context, alerts, abilityId, ...)
     CA.castAlertsStop(self.acidRefluxBarId)
     self.acidRefluxBarId = CA.bar(
-        abilityId, "Acid Reflux", 10000, 10000, "POISON", 0.5, ACT_ACID)
+        abilityId, "Acid Reflux", 10000, 10000, Colors.POISON, 0.5, ACT_ACID)
     -- Scheduled through BossBase:after so a wipe part-way through the channel
     -- cancels the remaining pool alerts instead of firing them into the reset.
     for i = 1, ACID_COUNT do

@@ -7,6 +7,7 @@ local Fmt  = require("core.Fmt")
 local CA = require("external-api.CombatAlerts")
 local BossBase = require("lib.BossBase")
 local CastDur = require("lib.CastDur")
+local Colors = require("core.Colors")
 
 -- -- Ability IDs (from BSCHTKA_Yandir.lua) ---------------------------------
 local TOTEM_POISON       = 133515  -- combatRoute: ACTION_RESULT_BEGIN -> resets timer + Dodge alert
@@ -145,7 +146,7 @@ local function handlePoisonTotem(self, context, alerts, abilityId,
                                   sourceUnitName, unitName)
     self.totemTimer:reset()
     alerts:showAction(Lang.t("ka_yandir_dodge_poison"))
-    local cid = CA.ranged(abilityId, sourceUnitName, 4300, "POISON")
+    local cid = CA.ranged(abilityId, sourceUnitName, 4300, Colors.POISON)
     if cid and unitId then self.alertList[unitId] = cid end
     self.poisonTotemId = unitId  -- track for delayed second-poison bar
 end
@@ -165,7 +166,7 @@ local function handlePoisonTotemCp(self, context, alerts, abilityId,
         self.poisonTotemTimer = false
         if self.poisonTotemId ~= -1 and IsUnitInCombat("player") then
             self.BTotemCall = false
-            CA.ranged(TOTEM_POISON_CP, capturedSrc, 4300, "POISON")
+            CA.ranged(TOTEM_POISON_CP, capturedSrc, 4300, Colors.POISON)
         end
     end)
 end
@@ -175,7 +176,7 @@ local function handleGargoyleTotem(self, context, alerts, abilityId,
                                     sourceUnitName, unitName)
     alerts:showAction(Lang.t("ka_yandir_block_gargoyle"))
     local dur = CastDur.get(TOTEM_GARGYL, FALLBACK_DUR)
-    local cid = CA.ranged(abilityId, "Block!!", dur, "SILVER")
+    local cid = CA.ranged(abilityId, "Block!!", dur, Colors.SILVER)
     if cid and unitId then self.alertList[unitId] = cid end
 end
 
@@ -188,7 +189,7 @@ local function handleYandirJump(self, context, alerts, abilityId,
                                  unitTag, sourceUnitTag, sourceUnitId, unitId,
                                  sourceUnitName, unitName)
     alerts:showAction(Lang.t("ka_yandir_jump_block"))
-    local cid = CA.ranged(abilityId, Lang.t("ka_yandir_jump_block"), 3000, "SILVER")
+    local cid = CA.ranged(abilityId, Lang.t("ka_yandir_jump_block"), 3000, Colors.SILVER)
     if cid and unitId then self.alertList[unitId] = cid end
 end
 
@@ -197,7 +198,7 @@ local function handleSeaAdderSpray(self, context, alerts, abilityId,
                                     sourceUnitName, unitName)
     if not IsUnitPlayer(unitTag) then return end
     alerts:showAction(Lang.t("ka_yandir_dodge_sea_adder"))
-    local cid = CA.ranged(abilityId, sourceUnitName, 1933, "SILVER")
+    local cid = CA.ranged(abilityId, sourceUnitName, 1933, Colors.SILVER)
     if cid and unitId then self.alertList[unitId] = cid end
 end
 

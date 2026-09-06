@@ -11,6 +11,7 @@ local Fmt            = require("core.Fmt")
 local MapUtils       = require("lib.MapUtils")
 local CA             = require("external-api.CombatAlerts")
 local CastDur        = require("lib.CastDur")
+local Colors = require("core.Colors")
 
 
 -- -- Ability IDs ------------------------------------------------------------
@@ -213,7 +214,7 @@ local function makeLaserHandler(laserDelay, landingAfterLaser)
         self.landingTime = self.laserTime + landingAfterLaser
         self.laserBarId  = CA.bar(
             abilityId, "Laser",
-            laserDelay * 1000, laserDelay * 1000, "FLYZONE", 0.5,
+            laserDelay * 1000, laserDelay * 1000, Colors.FLYZONE, 0.5,
             { laserDelay * 1000, "LASER!", 1, 0.5, 0, 0.9, SOUNDS.NONE })
         -- Reset iceNumber once boss is airborne (~10 s in).
         -- Store the handle so onLeave can cancel it on zone exit.
@@ -239,7 +240,7 @@ local function handleGlacialFist(self, context, alerts, abilityId,
     if show then
         alerts:showAction(Lang.t("ss_lokke_block_glacial"))
         local dur = CastDur.get(GLACIAL_FIST, FALLBACK_FIST_DUR)
-        local cid = CA.melee(abilityId, sourceUnitName, dur, "ICE")
+        local cid = CA.melee(abilityId, sourceUnitName, dur, Colors.ICE)
         if cid and sourceUnitId then self.alertList[sourceUnitId] = cid end
     end
 end

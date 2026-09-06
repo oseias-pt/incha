@@ -5,6 +5,7 @@ local BossBase         = require("lib.BossBase")
 local CastDur          = require("lib.CastDur")
 local OsseinCageCommon = require("trial.oc.OsseinCageCommon")
 local Lang             = require("core.Lang")
+local Colors = require("core.Colors")
 
 -- ── Ability IDs (from OsseinCageHelper) ──────────────────────────────────
 -- Chains
@@ -99,18 +100,18 @@ end
 -- Giant Pulse: shared handler for both variants.
 local function handleGiantPulse(self, context, alerts, abilityId, ...)
     local dur = CastDur.get(abilityId, FALLBACK_DUR)
-    CA.ranged(abilityId, Lang.t("oc_kazpian_giant_sword_bar"), dur, "FLYZONE")
+    CA.ranged(abilityId, Lang.t("oc_kazpian_giant_sword_bar"), dur, Colors.FLYZONE)
 end
 
 local function handleVileLeap(self, context, alerts, abilityId, ...)
     local dur = CastDur.get(abilityId, FALLBACK_DUR)
-    CA.ranged(abilityId, Lang.t("oc_kazpian_vile_leap"), dur, "VOID")
+    CA.ranged(abilityId, Lang.t("oc_kazpian_vile_leap"), dur, Colors.VOID)
     alerts:showAction(Lang.t("oc_kazpian_vile_leap"))
 end
 
 local function handleSeethingLeap(self, context, alerts, abilityId, ...)
     local dur = CastDur.get(abilityId, FALLBACK_DUR)
-    CA.ranged(abilityId, Lang.t("oc_kazpian_seething_bar"), dur, "RED")
+    CA.ranged(abilityId, Lang.t("oc_kazpian_seething_bar"), dur, Colors.RED)
     alerts:showAction(Lang.t("oc_kazpian_seething_leap"))
 end
 
@@ -132,13 +133,13 @@ end
 
 local function handleStormSlam(self, context, alerts, abilityId, ...)
     local dur = CastDur.get(abilityId, FALLBACK_DUR)
-    CA.ranged(abilityId, Lang.t("oc_kazpian_storm_slam_bar"), dur, "FLYZONE")
+    CA.ranged(abilityId, Lang.t("oc_kazpian_storm_slam_bar"), dur, Colors.FLYZONE)
     alerts:showAction(Lang.t("oc_kazpian_storm_slam"))
 end
 
 local function handleStormSurge(self, context, alerts, abilityId, ...)
     local dur = CastDur.get(abilityId, FALLBACK_DUR)
-    CA.ranged(abilityId, Lang.t("oc_kazpian_storm_surge_bar"), dur, "LIGHTNING")
+    CA.ranged(abilityId, Lang.t("oc_kazpian_storm_surge_bar"), dur, Colors.LIGHTNING)
 end
 
 local function handleHeavyShock(self, context, alerts, abilityId,

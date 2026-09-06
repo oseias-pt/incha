@@ -4,6 +4,7 @@ local CA = require("external-api.CombatAlerts")
 local BossBase = require("lib.BossBase")
 local CastDur = require("lib.CastDur")
 local Lang = require("core.Lang")
+local Colors = require("core.Colors")
 
 -- ── Ability IDs ───────────────────────────────────────────────────────────
 local THUNDER_THRALL  = 214383   -- combatRoute: ACTION_RESULT_BEGIN → Xoryn jump; timer 25.5s / 8s first
@@ -81,7 +82,7 @@ end
 
 local function handleBreakout(self, context, alerts, abilityId, unitTag, ...)
     if not IsUnitPlayer(unitTag) then return end
-    CA.ranged(abilityId, Lang.t("lc_orphic_break_out_bar"), 3000, "ARCANE")
+    CA.ranged(abilityId, Lang.t("lc_orphic_break_out_bar"), 3000, Colors.ARCANE)
     alerts:showAction(Lang.t("lc_orphic_break_crystal"))
 end
 
@@ -90,7 +91,7 @@ local function handleShieldThrow(self, context, alerts, abilityId,
                                   sourceUnitName, unitName)
     local target = (unitName and unitName ~= "") and unitName or "?"
     local dur = CastDur.get(abilityId, FALLBACK_DUR)
-    CA.ranged(abilityId, Lang.t("lc_orphic_shield_throw", target), dur, "LIGHTNING")
+    CA.ranged(abilityId, Lang.t("lc_orphic_shield_throw", target), dur, Colors.LIGHTNING)
 end
 
 local function handleColorChange(self, context, alerts, abilityId, ...)

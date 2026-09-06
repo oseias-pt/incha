@@ -12,6 +12,7 @@
 local CA = require("external-api.CombatAlerts")
 local CastDur = require("lib.CastDur")
 local Lang = require("core.Lang")
+local Colors = require("core.Colors")
 local RockgroveCommon = {}
 
 -- -- Ability IDs ------------------------------------------------------------
@@ -79,7 +80,7 @@ function RockgroveCommon.handle(alerts, result, abilityId, unitTag, sourceUnitNa
         if not IsUnitPlayer(unitTag) then return false end
         local dur = CastDur.get(SUNDERING, FALL_MELEE)
         alerts:showAction(Lang.t("rg_block_sundering"))
-        CA.melee(abilityId, sourceUnitName, dur, "FIRE")
+        CA.melee(abilityId, sourceUnitName, dur, Colors.FIRE)
         PlaySound(SOUNDS.DUEL_START)
         return true
     end
@@ -89,7 +90,7 @@ function RockgroveCommon.handle(alerts, result, abilityId, unitTag, sourceUnitNa
         local _, _, isTank = GetPlayerRoles()
         if isTank then
             local dur = CastDur.get(TAKING_AIM, FALL_MELEE)
-            CA.interrupt_melee(abilityId, sourceUnitName, dur, "ICE")
+            CA.interrupt_melee(abilityId, sourceUnitName, dur, Colors.ICE)
             PlaySound(SOUNDS.DUEL_START)
         end
         return true     -- consume for everyone; QRH notes it's too verbose for DDs
@@ -105,7 +106,7 @@ function RockgroveCommon.handle(alerts, result, abilityId, unitTag, sourceUnitNa
     if abilityId == QUICK_STRIKE then
         if not IsUnitPlayer(unitTag) then return false end
         local dur = CastDur.get(QUICK_STRIKE, FALL_MELEE)
-        CA.melee(abilityId, sourceUnitName, dur, "FIRE")
+        CA.melee(abilityId, sourceUnitName, dur, Colors.FIRE)
         return true
     end
 
@@ -115,7 +116,7 @@ function RockgroveCommon.handle(alerts, result, abilityId, unitTag, sourceUnitNa
         if not IsUnitPlayer(unitTag) then return false end
         local dur = CastDur.get(SCALDING, FALL_MELEE)
         alerts:showAction(Lang.t("rg_dodge_scalding"))
-        CA.melee(abilityId, sourceUnitName, dur, "RED")
+        CA.melee(abilityId, sourceUnitName, dur, Colors.RED)
         CA.alert(nil, "Scalding", 0xCC0000D9, SOUNDS.DUEL_START, 9000)
         PlaySound(SOUNDS.DUEL_START)
         return true
@@ -125,7 +126,7 @@ function RockgroveCommon.handle(alerts, result, abilityId, unitTag, sourceUnitNa
     if ASSAULT_IDS[abilityId] then
         local dur = CastDur.get(abilityId, FALL_ASSAULT)
         CA.bar(abilityId, "Hasted Assault (Barbarian)",
-            dur, 4000, "FLYZONE", 0.4, ACT_ASSAULT)
+            dur, 4000, Colors.FLYZONE, 0.4, ACT_ASSAULT)
         PlaySound(SOUNDS.DUEL_START)
         return true
     end
@@ -133,7 +134,7 @@ function RockgroveCommon.handle(alerts, result, abilityId, unitTag, sourceUnitNa
     -- -- Torchcaster: Prime Meteor (10 s to kill or wipe) -----------------
     if abilityId == PRIME_METEOR then
         CA.bar(abilityId, "Prime Meteor",
-            13500, 13500, "FLYZONE", 0.4, ACT_METEOR)
+            13500, 13500, Colors.FLYZONE, 0.4, ACT_METEOR)
         PlaySound(SOUNDS.DUEL_START)
         return true
     end
@@ -141,7 +142,7 @@ function RockgroveCommon.handle(alerts, result, abilityId, unitTag, sourceUnitNa
     -- -- Ash Titan: Molten Rain (kite  -  no dodge text, just bar) ----------
     if abilityId == MOLTEN_RAIN then
         local dur = CastDur.get(MOLTEN_RAIN, FALL_MOLTEN)
-        CA.melee(abilityId, sourceUnitName, dur, "FIRE")
+        CA.melee(abilityId, sourceUnitName, dur, Colors.FIRE)
         return true
     end
 

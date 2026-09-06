@@ -66,6 +66,7 @@ local RUN2_BOT = 40
 local CA = require("external-api.CombatAlerts")
 local BossBase = require("lib.BossBase")
 local CastDur = require("lib.CastDur")
+local Colors = require("core.Colors")
 
 -- -- CA colour palettes -----------------------------------------------------
 
@@ -191,7 +192,7 @@ local function handleScathing(self, context, alerts, abilityId,
                                sourceUnitName, unitName)
     if not IsUnitPlayer(unitTag) then return end
     local dur = CastDur.get(abilityId, FALLBACK_SCATHING_DUR)
-    CA.melee(abilityId, sourceUnitName, dur, "MAGENTA")
+    CA.melee(abilityId, sourceUnitName, dur, Colors.MAGENTA)
 end
 
 -- Deadstar add explosion (2 IDs, shared handler).

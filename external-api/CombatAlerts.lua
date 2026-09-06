@@ -27,7 +27,7 @@
 ---           -2 = melee (full dodge window)
 ---           -3 = ranged (0.8 × dodge window)
 
-local Colors = require("core.Colors")
+local ColorDefs = require("external-api.ColorDefs")
 local CA = {}
 
 local _impl = nil
@@ -41,7 +41,7 @@ end
 -- ── O(1) lookup tables (built once at load time) ──────────────────────────
 
 local function _caTable(timing, interruptible)
-    return Colors.build(function(r, g, b)
+    return ColorDefs.build(function(r, g, b)
         return { timing, 0, interruptible, { r, g, b, 0.4 }, { r, g, b, 0.8 } }
     end)
 end
@@ -52,7 +52,7 @@ local _ranged   = _caTable(-3, false)   -- ranged dodge window
 local _interrupt      = _caTable(-1, true)  -- interruptible, auto
 local _interrupt_melee = _caTable(-2, true) -- interruptible, melee
 
-local _bar = Colors.build(function(r, g, b)
+local _bar = ColorDefs.build(function(r, g, b)
     return { r, g, b, 0.4 }   -- default alpha; callers may override
 end)
 

@@ -6,6 +6,7 @@ local CA       = require("external-api.CombatAlerts")
 local BossBase = require("lib.BossBase")
 local CastDur  = require("lib.CastDur")
 local Settings = require("core.Settings")
+local Colors = require("core.Colors")
 
 -- ── Ability IDs (from AsylumTracker / AsylumPriorityTarget) ───────────────
 -- Olms
@@ -132,7 +133,7 @@ local function handleScaldingRoar(self, context, alerts, abilityId,
                                    unitTag, sourceUnitTag, sourceUnitId, unitId, ...)
     alerts:showAction(Lang.t("as_olms_steam_breath"))
     local dur = CastDur.get(OLMS_SCALDING_ROAR, FALLBACK_ROAR_DUR)
-    local cid = CA.ranged(abilityId, Lang.t("as_olms_steam_breath"), dur, "FIRE")
+    local cid = CA.ranged(abilityId, Lang.t("as_olms_steam_breath"), dur, Colors.FIRE)
     if cid and unitId then self.alertList[unitId] = cid end
     self.steamTimer:reset()
 end
@@ -176,7 +177,7 @@ local function handleDefilingBlast(self, context, alerts, abilityId,
     local target = (unitName and unitName ~= "") and unitName or "?"
     alerts:showAction(Lang.t("as_olms_blast_target", target))
     local dur = CastDur.get(LLOTHIS_DEFILING_BLAST, FALLBACK_BLAST_DUR)
-    local cid = CA.ranged(abilityId, Lang.t("as_olms_blast_bar", target), dur, "VOID")
+    local cid = CA.ranged(abilityId, Lang.t("as_olms_blast_bar", target), dur, Colors.VOID)
     if cid and unitId then self.alertList[unitId] = cid end
     self.blastTimer:reset()
 end
@@ -193,7 +194,7 @@ local function handleTeleportStrike(self, context, alerts, abilityId,
     local target = (unitName and unitName ~= "") and unitName or "?"
     alerts:showAction(Lang.t("as_olms_strike_target", target))
     local dur = CastDur.get(FELMS_TELEPORT_STRIKE, FALLBACK_STRIKE_DUR)
-    local cid = CA.ranged(abilityId, Lang.t("as_olms_strike_bar", target), dur, "TEAL")
+    local cid = CA.ranged(abilityId, Lang.t("as_olms_strike_bar", target), dur, Colors.TEAL)
     if cid and unitId then self.alertList[unitId] = cid end
     self.jumpTimer:reset()
 end

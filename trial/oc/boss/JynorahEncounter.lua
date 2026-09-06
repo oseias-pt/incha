@@ -6,6 +6,7 @@ local CastDur          = require("lib.CastDur")
 local OsseinCageCommon = require("trial.oc.OsseinCageCommon")
 local Lang             = require("core.Lang")
 local Fmt              = require("core.Fmt")
+local Colors = require("core.Colors")
 
 -- -- Ability IDs (from OsseinCageHelper) ----------------------------------------------------------
 -- Dragons (Valneer = fire/orange, Myrinax = lightning/blue)
@@ -109,13 +110,13 @@ local function handleTailSlam(self, context, alerts, abilityId,
                                 sourceUnitName, unitName)
     local target = (unitName and unitName ~= "") and unitName or "?"
     local dur = CastDur.get(abilityId, FALLBACK_DUR)
-    CA.ranged(abilityId, Lang.t("oc_jynorah_tail_slam_bar", target), dur, "RED")
+    CA.ranged(abilityId, Lang.t("oc_jynorah_tail_slam_bar", target), dur, Colors.RED)
 end
 
 local function handleTitanicClash(self, context, alerts, abilityId, ...)
     self.clashActive = true
     self.clashTimer:reset(37.5)
-    CA.ranged(abilityId, Lang.t("oc_jynorah_clash_bar"), 3500, "RED")
+    CA.ranged(abilityId, Lang.t("oc_jynorah_clash_bar"), 3500, Colors.RED)
     alerts:showAction(Lang.t("oc_jynorah_titanic_clash"))
 end
 
@@ -184,11 +185,11 @@ local function handleBrimstoneSurge(self, context, alerts, abilityId,
 end
 
 local function handleColdflameStomp(self, context, alerts, abilityId, ...)
-    CA.ranged(abilityId, Lang.t("oc_jynorah_stomp_bar"), 2000, "ICE")
+    CA.ranged(abilityId, Lang.t("oc_jynorah_stomp_bar"), 2000, Colors.ICE)
 end
 
 local function handleBrimstoneStomp(self, context, alerts, abilityId, ...)
-    CA.ranged(abilityId, Lang.t("oc_jynorah_stomp_bar"), 2000, "ORANGE")
+    CA.ranged(abilityId, Lang.t("oc_jynorah_stomp_bar"), 2000, Colors.ORANGE)
 end
 
 local function handleHeatRay(self, context, alerts, abilityId, unitTag, ...)

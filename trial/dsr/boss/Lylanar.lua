@@ -93,6 +93,7 @@ local BUBBLE_CD_HM   = 20    -- s: bubble drop cooldown (HM)
 local CA = require("external-api.CombatAlerts")
 local BossBase = require("lib.BossBase")
 local CastDur = require("lib.CastDur")
+local Colors = require("core.Colors")
 
 -- -- CA colour palettes ----------------------------------------------------
 
@@ -195,7 +196,7 @@ local function handleBroilingHew(self, context, alerts, abilityId,
                                   sourceUnitName, unitName)
     if not IsUnitPlayer(unitTag) then return end
     local dur = CastDur.get(abilityId, FALLBACK_HEAVY_DUR)
-    CA.melee(abilityId, sourceUnitName, dur, "FIRE")
+    CA.melee(abilityId, sourceUnitName, dur, Colors.FIRE)
 end
 
 local function handleTorridCleave(self, context, alerts, abilityId,
@@ -204,7 +205,7 @@ local function handleTorridCleave(self, context, alerts, abilityId,
     if not IsUnitPlayer(unitTag) then return end
     local dur = CastDur.get(abilityId, FALLBACK_HEAVY_DUR)
     alerts:showAction(Lang.t("dsr_lylanar_dodge_cleave"))
-    CA.melee(abilityId, sourceUnitName, dur, "FIRE")
+    CA.melee(abilityId, sourceUnitName, dur, Colors.FIRE)
 end
 
 local function handleScaldingSwell(self, context, alerts, abilityId, ...)
@@ -232,7 +233,7 @@ local function handleStingingShear(self, context, alerts, abilityId,
                                     sourceUnitName, unitName)
     if not IsUnitPlayer(unitTag) then return end
     local dur = CastDur.get(abilityId, FALLBACK_HEAVY_DUR)
-    CA.melee(abilityId, sourceUnitName, dur, "FROST")
+    CA.melee(abilityId, sourceUnitName, dur, Colors.FROST)
 end
 
 local function handleBriskRip(self, context, alerts, abilityId,
@@ -241,7 +242,7 @@ local function handleBriskRip(self, context, alerts, abilityId,
     if not IsUnitPlayer(unitTag) then return end
     local dur = CastDur.get(abilityId, FALLBACK_HEAVY_DUR)
     alerts:showAction(Lang.t("dsr_lylanar_dodge_cleave"))
-    CA.melee(abilityId, sourceUnitName, dur, "FROST")
+    CA.melee(abilityId, sourceUnitName, dur, Colors.FROST)
 end
 
 local function handleBitingBillow(self, context, alerts, abilityId, ...)

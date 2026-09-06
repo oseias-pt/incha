@@ -13,7 +13,7 @@
 ---   MechanicIcons.set(displayName, texture, Colors.PURPLE)
 ---   MechanicIcons.remove(displayName)
 
-local Colors = require("core.Colors")
+local ColorDefs = require("external-api.ColorDefs")
 local MechanicIcons = {}
 
 local _impl = nil
@@ -26,7 +26,7 @@ end
 
 -- ── O(1) RGB lookup (built once at load time) ─────────────────────────────
 
-local _rgb = Colors.build(function(r, g, b)
+local _rgb = ColorDefs.build(function(r, g, b)
     return { r, g, b }
 end)
 

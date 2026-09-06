@@ -1,82 +1,54 @@
---- core/Colors.lua  -  Colour palette: the single source of truth.
+--- core/Colors.lua  -  Colour name enum.
 ---
---- Defines named colours and their linear RGB (0-1) values.
---- Boss files only ever reference colours by name:
+--- The single source of truth for colour *names*.  Boss files import this
+--- module and reference colours by name:
 ---
 ---   local Colors = require("core.Colors")
 ---   CA.melee(id, name, dur, Colors.FIRE)
 ---   Fmt.c(Colors.PURPLE, "next curse")
 ---
---- Layers (Fmt, CombatAlerts, MechanicIcons, PositionIcons) import the
---- RGB table via Colors.build() to pre-compute their own lookup tables
---- at module-load time, giving O(1) name→native-format conversion.
---- Boss files never call Colors.build() or read Colors._rgb.
+--- Colors.lua knows only names — never RGB values, hex strings, or any
+--- format-specific encoding.  The translation from name to actual colour
+--- value lives in the API layer that needs it (Fmt, CombatAlerts, etc.),
+--- each of which builds its own O(1) lookup table from external-api.ColorDefs.
 
 local Colors = {}
 
--- ── Colour definitions ─────────────────────────────────────────────────────
--- Linear RGB (0-1).  One entry per logical colour; never read by boss files.
+-- Elemental
+Colors.FIRE      = "FIRE"       -- fire orange  (stomp / slam / blast)
+Colors.ICE       = "ICE"        -- frost blue   (ice cast / freeze)
+Colors.LIGHTNING = "LIGHTNING"  -- electric     (shock / surge / arc)
+Colors.VOID      = "VOID"       -- void purple  (shadow / arcane void)
+Colors.POISON    = "POISON"     -- poison green (dot / corrosion)
 
-local _rgb = {
-    -- Elemental
-    FIRE      = { 1.00, 0.35, 0.10 },   -- fire orange  (stomp / slam / blast)
-    ICE       = { 0.30, 0.75, 1.00 },   -- frost blue   (ice cast / freeze)
-    LIGHTNING = { 0.90, 0.90, 0.10 },   -- electric     (shock / surge / arc)
-    VOID      = { 0.70, 0.20, 0.90 },   -- void / arcane purple
-    POISON    = { 0.40, 0.80, 0.40 },   -- poison green (dot / corrosion)
+-- Semantic
+Colors.RED       = "RED"        -- danger / critical / INC
+Colors.ORANGE    = "ORANGE"     -- caution
+Colors.YELLOW    = "YELLOW"     -- warning / gold
+Colors.GREEN     = "GREEN"      -- success / ready / clear
+Colors.CYAN      = "CYAN"       -- aqua label
+Colors.AQUA      = "AQUA"       -- aquamarine (laser / portal labels)
+Colors.GOLD      = "GOLD"       -- addon tag / golden accent
+Colors.PURPLE    = "PURPLE"     -- light purple / arcane accent
+Colors.FROST     = "FROST"      -- light frost blue (paired-boss ice-side)
 
-    -- Semantic
-    RED       = { 1.00, 0.00, 0.00 },   -- danger / critical / INC
-    ORANGE    = { 1.00, 0.53, 0.00 },   -- caution
-    YELLOW    = { 1.00, 0.87, 0.00 },   -- warning / gold
-    GREEN     = { 0.00, 1.00, 0.00 },   -- success / ready / clear
-    CYAN      = { 0.00, 1.00, 1.00 },   -- aqua label
-    AQUA      = { 0.50, 1.00, 0.83 },   -- aquamarine (laser / portal labels)
-    GOLD      = { 1.00, 0.84, 0.00 },   -- addon tag / golden accent
-    PURPLE    = { 0.80, 0.50, 1.00 },   -- light purple / arcane accent
-    FROST     = { 0.60, 0.80, 1.00 },   -- light frost blue (paired-boss ice-side)
+-- Accent
+Colors.AMBER     = "AMBER"      -- warm amber (LC mechanics / phases)
+Colors.ARCANE    = "ARCANE"     -- deep arcane (manifold / curse)
+Colors.TEAL      = "TEAL"       -- teal (shield / safe window)
+Colors.SKY       = "SKY"        -- sky-blue (portal label / teleport)
+Colors.SMOKE     = "SMOKE"      -- slate (in-progress / neutral timer)
+Colors.GRAY      = "GRAY"       -- gray (count / secondary info)
+Colors.PINK      = "PINK"       -- pink-red (soft warning / fog-end)
+Colors.CRIMSON   = "CRIMSON"    -- dark red (fail / hard stop)
+Colors.LEAF      = "LEAF"       -- medium green (skip / ok signal)
+Colors.LANDING   = "LANDING"    -- light green (landing countdown)
+Colors.FLYZONE   = "FLYZONE"    -- orange (fly-in / enter threshold)
 
-    -- Accent
-    AMBER     = { 1.00, 0.67, 0.27 },   -- warm amber (LC mechanics / phases)
-    ARCANE    = { 0.67, 0.27, 1.00 },   -- deep arcane (manifold / curse)
-    TEAL      = { 0.46, 0.90, 0.85 },   -- teal (shield / safe window)
-    SKY       = { 0.22, 0.74, 0.97 },   -- sky-blue (portal label / teleport)
-    SMOKE     = { 0.48, 0.51, 0.63 },   -- slate (in-progress / neutral timer)
-    GRAY      = { 0.53, 0.53, 0.53 },   -- gray (count / secondary info)
-    PINK      = { 1.00, 0.40, 0.40 },   -- pink-red (soft warning / fog-end)
-    CRIMSON   = { 0.80, 0.27, 0.27 },   -- dark red (fail / hard stop)
-    LEAF      = { 0.33, 0.67, 0.33 },   -- medium green (skip / ok signal)
-    LANDING   = { 0.36, 0.84, 0.36 },   -- light green (landing countdown)
-    FLYZONE   = { 1.00, 0.65, 0.00 },   -- orange (fly-in / enter threshold)
-
-    -- Special-use
-    BLUE      = { 0.00, 0.00, 1.00 },   -- pure blue (fog / magical barrier)
-    SILVER    = { 0.70, 0.70, 0.70 },   -- neutral gray (untyped block/dodge bar)
-    MAGENTA   = { 1.00, 0.20, 0.90 },   -- hot pink (urgent dodge signal)
-}
-
--- ── Enum ───────────────────────────────────────────────────────────────────
--- Each name is exported as a string constant equal to itself so boss
--- files get type-safe, autocomplete-friendly colour references.
--- Colors.FIRE == "FIRE", Colors.ICE == "ICE", etc.
-
-for name in pairs(_rgb) do
-    Colors[name] = name
-end
-
--- ── Layer builder ──────────────────────────────────────────────────────────
---- Build a lookup table (name → value) from the RGB definitions.
---- Layers call this once at module load; boss files never call it.
----
---- @param fn function  fn(r, g, b) → value stored under Colors[name]
---- @return table        { [colorName] = fn(r,g,b), ... }
-function Colors.build(fn)
-    local t = {}
-    for name, c in pairs(_rgb) do
-        t[name] = fn(c[1], c[2], c[3])
-    end
-    return t
-end
+-- Special-use
+Colors.BLUE      = "BLUE"       -- pure blue (fog / magical barrier)
+Colors.SILVER    = "SILVER"     -- neutral gray (untyped block/dodge bar)
+Colors.MAGENTA   = "MAGENTA"    -- hot pink (urgent dodge signal)
 
 package.loaded["core.Colors"] = Colors
 return Colors

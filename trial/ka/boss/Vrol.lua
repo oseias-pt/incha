@@ -8,6 +8,7 @@ local CA            = require("external-api.CombatAlerts")
 local PositionIcons = require("external-api.PositionIcons")
 local BossBase      = require("lib.BossBase")
 local Settings      = require("core.Settings")
+local Colors = require("core.Colors")
 
 -- -- Ability IDs (from BSCHTKA_Vrol.lua) -----------------------------------
 local VROL_PORTAL_CAST  = 133994  -- combatRoute: ACTION_RESULT_BEGIN -> reset portal timer + alert
@@ -141,7 +142,7 @@ local function handlePortalCast(self, context, alerts, abilityId,
     self.portalTimer:reset()
     alerts:showAction(Lang.t("ka_vrol_kill_conjurer"))
     -- Use portal kill-time ability ID for the icon (matches BSCHTKA).
-    CA.ranged(VROL_PORTAL_KTIME, sourceUnitName, 3000, "VOID")
+    CA.ranged(VROL_PORTAL_KTIME, sourceUnitName, 3000, Colors.VOID)
 end
 
 local function handleFogCast(self, context, alerts, abilityId,
@@ -151,7 +152,7 @@ local function handleFogCast(self, context, alerts, abilityId,
     self.fogEndTime  = GetGameTimeMilliseconds() + FOG_DURATION * 1000
     self.fogHitCount = 0
     alerts:showAction(Lang.t("ka_vrol_dodge_fog"))
-    local cid = CA.ranged(abilityId, sourceUnitName, 1000, "BLUE")
+    local cid = CA.ranged(abilityId, sourceUnitName, 1000, Colors.BLUE)
     if cid and unitId then self.alertList[unitId] = cid end
 end
 
@@ -172,7 +173,7 @@ local function handleHarpoon(self, context, alerts, abilityId,
     self.conduitTimer:reset()
     alerts:showAction(Lang.t("ka_vrol_kill_harpoon"))
     local cid = CA.bar(abilityId, GetAbilityName(abilityId),
-        16000, 16000, "FLYZONE", 0.5,
+        16000, 16000, Colors.FLYZONE, 0.5,
         { 16000, Lang.t("ka_vrol_harpoon_action"), 0.8, 0, 0, 0.9, SOUNDS.NONE })
     if cid and unitId then self.alertList[unitId] = cid end
 end
@@ -204,7 +205,7 @@ local function handlePortalKillTime(self, context, alerts, changeType, abilityId
         alerts:showAction(Lang.t("ka_vrol_kill_conjurer_20s"))
         self.portalKillBarId = CA.bar(
             abilityId, GetAbilityName(abilityId),
-            20000, 20000, "FLYZONE", 0.5,
+            20000, 20000, Colors.FLYZONE, 0.5,
             { 20000, Lang.t("ka_vrol_kill_conjurer"), 0.8, 0, 0, 0.9, SOUNDS.NONE })
 
     elseif changeType == EFFECT_RESULT_FADED then

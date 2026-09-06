@@ -17,6 +17,7 @@
 local CA      = require("external-api.CombatAlerts")
 local CastDur = require("lib.CastDur")
 local Lang    = require("core.Lang")
+local Colors = require("core.Colors")
 
 local LCCommon = {}
 
@@ -52,7 +53,7 @@ function LCCommon.handle(alerts, result, abilityId, unitTag, sourceUnitName)
     -- Dremora Spellcaster: Solar Flare (cast bar) ──────────────────────────
     if abilityId == SOLAR_FLARE then
         local dur = CastDur.get(SOLAR_FLARE, FALL_SOLAR)
-        CA.melee(abilityId, sourceUnitName or "Solar Flare", dur, "AMBER")
+        CA.melee(abilityId, sourceUnitName or "Solar Flare", dur, Colors.AMBER)
         return true
     end
 

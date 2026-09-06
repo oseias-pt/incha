@@ -27,6 +27,7 @@
 
 local CA = require("external-api.CombatAlerts")
 local CastDur = require("lib.CastDur")
+local Colors = require("core.Colors")
 local DreadsailCommon = {}
 
 -- -- Ability IDs -----------------------------------------------------------
@@ -78,7 +79,7 @@ function DreadsailCommon.handle(alerts, result, abilityId, unitTag, sourceUnitNa
     if abilityId == CASCADE_BOOT then
         if not IsUnitPlayer(unitTag) then return false end
         local dur = CastDur.get(abilityId, DUR_MELEE)
-        CA.melee(abilityId, sourceUnitName, dur, "ICE")
+        CA.melee(abilityId, sourceUnitName, dur, Colors.ICE)
         return true
     end
 
@@ -86,7 +87,7 @@ function DreadsailCommon.handle(alerts, result, abilityId, unitTag, sourceUnitNa
     if abilityId == STORM_CELL then
         if not IsUnitPlayer(unitTag) then return false end
         local dur = CastDur.get(abilityId, DUR_MELEE)
-        CA.melee(abilityId, sourceUnitName, dur, "FIRE", ACT_DONUT)
+        CA.melee(abilityId, sourceUnitName, dur, Colors.FIRE, ACT_DONUT)
         return true
     end
 
@@ -94,7 +95,7 @@ function DreadsailCommon.handle(alerts, result, abilityId, unitTag, sourceUnitNa
     if abilityId == WING_SLICE then
         if not IsUnitPlayer(unitTag) then return false end
         local dur = CastDur.get(abilityId, DUR_MELEE)
-        CA.melee(abilityId, sourceUnitName, dur, "FIRE")
+        CA.melee(abilityId, sourceUnitName, dur, Colors.FIRE)
         return true
     end
 
@@ -102,7 +103,7 @@ function DreadsailCommon.handle(alerts, result, abilityId, unitTag, sourceUnitNa
     if abilityId == HORN_STRIKE_1 or abilityId == HORN_STRIKE_2 then
         if not IsUnitPlayer(unitTag) then return false end
         local dur = CastDur.get(abilityId, DUR_MELEE)
-        CA.melee(abilityId, sourceUnitName, dur, "FIRE")
+        CA.melee(abilityId, sourceUnitName, dur, Colors.FIRE)
         return true
     end
 
@@ -110,7 +111,7 @@ function DreadsailCommon.handle(alerts, result, abilityId, unitTag, sourceUnitNa
     if abilityId == TOXIC_MUCUS then
         if not IsUnitPlayer(unitTag) then return false end
         local dur = CastDur.get(abilityId, DUR_RANGED)
-        CA.melee(abilityId, sourceUnitName, dur, "FIRE")
+        CA.melee(abilityId, sourceUnitName, dur, Colors.FIRE)
         return true
     end
 
@@ -126,7 +127,7 @@ function DreadsailCommon.handleEffect(alerts, changeType, abilityId, unitTag)
     if abilityId == SWASH_TARGETED then
         if changeType == EFFECT_RESULT_GAINED and AreUnitsEqual("player", unitTag) then
             CA.bar(abilityId, "Swashbuckler targets you!",
-                6000, 6000, "LIGHTNING", 0.5, ACT_BLOCK)
+                6000, 6000, Colors.LIGHTNING, 0.5, ACT_BLOCK)
             PlaySound(SOUNDS.DUEL_START)
         end
         return true
@@ -136,7 +137,7 @@ function DreadsailCommon.handleEffect(alerts, changeType, abilityId, unitTag)
     if abilityId == SWASH_APERTURE then
         if changeType == EFFECT_RESULT_GAINED and AreUnitsEqual("player", unitTag) then
             CA.bar(abilityId, "Swashbuckler daggers",
-                5000, 5000, "LIGHTNING", 0.5, ACT_KITE)
+                5000, 5000, Colors.LIGHTNING, 0.5, ACT_KITE)
             PlaySound(SOUNDS.DUEL_START)
         end
         return true

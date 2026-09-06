@@ -3,6 +3,7 @@ local CA = require("external-api.CombatAlerts")
 local BossBase = require("lib.BossBase")
 local CastDur = require("lib.CastDur")
 local Lang = require("core.Lang")
+local Colors = require("core.Colors")
 
 -- ── Ability IDs ───────────────────────────────────────────────────────────
 local POWERFUL_THROW = 218971   -- combatRoute: ACTION_RESULT_BEGIN → caAlertCast; on player → explicit alert
@@ -37,7 +38,7 @@ local function handlePowerfulThrow(self, context, alerts, abilityId,
                                    sourceUnitName, unitName)
     local target = (unitName and unitName ~= "") and unitName or "?"
     local dur = CastDur.get(abilityId, FALLBACK_DUR)
-    CA.ranged(abilityId, Lang.t("lc_dariel_throw_target", target), dur, "ORANGE")
+    CA.ranged(abilityId, Lang.t("lc_dariel_throw_target", target), dur, Colors.ORANGE)
     if IsUnitPlayer(unitTag) then
         alerts:showAction(Lang.t("lc_dariel_throw_you"))
     else

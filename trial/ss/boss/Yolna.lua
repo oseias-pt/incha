@@ -25,6 +25,7 @@ local CATACLYSM     = 122598   -- combatRoute: ACTION_RESULT_BEGIN -> caAlertCas
 
 local CA = require("external-api.CombatAlerts")
 local CastDur = require("lib.CastDur")
+local Colors = require("core.Colors")
 
 
 -- -- Fallback durations (empirical; replace if GetAbilityCastInfo becomes reliable) -
@@ -110,7 +111,7 @@ local function handleLavaGeyser(self, context, alerts, abilityId,
     if show then
         alerts:showAction(Lang.t("ss_yolna_dodge_geyser"))
         local dur = CastDur.get(LAVA_GEYSER, FALLBACK_GEYSER_DUR)
-        CA.melee(abilityId, sourceUnitName, dur, "FIRE")
+        CA.melee(abilityId, sourceUnitName, dur, Colors.FIRE)
     end
 end
 
@@ -130,7 +131,7 @@ local function handleCataclysm(self, context, alerts, abilityId, ...)
     CA.castAlertsStop(self.cataBarId)
     self.cataBarId = CA.bar(
         abilityId, "Cataclysm",
-        dur, dur, "FIRE", 0.5,
+        dur, dur, Colors.FIRE, 0.5,
         { dur, "Cata Ends!", 0.9, 0.2, 0.1, 0.9, SOUNDS.NONE })
 end
 
