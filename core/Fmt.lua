@@ -1,46 +1,44 @@
---- core/Fmt.lua  -  ESO color-markup helpers.
+--- core/Fmt.lua  -  ESO colour-markup and number-format helpers.
 ---
---- Keeps |cRRGGBB...|r codes out of the string table and call sites.
---- Colors are expressed as plain 6-char hex strings; markup is built here.
+--- Colour constants are sourced from core/Palette and re-exported here
+--- so that files which only need Fmt do not need a second require.
 ---
 --- Usage:
 ---   local Fmt = require("core.Fmt")
 ---
----   Fmt.c(Fmt.RED, "INC")          -- "|cff0000INC|r"
----   Fmt.c("ff6030", "Blitz: 12s")  -- inline hex also accepted
----
----   -- Alternating (color, text) pairs:
----   Fmt.colored(Fmt.CYAN, "Ice Tomb", Fmt.RED, " 2 INC")
+---   Fmt.c(Fmt.RED, "INC")                       -- "|cff0000INC|r"
+---   Fmt.c(Palette.FIRE, "Stomp inbound!")        -- via Palette directly
+---   Fmt.colored(Fmt.CYAN, "Ice Tomb", Fmt.RED, " INC")
 
+local Palette = require("core.Palette")
 local Fmt = {}
 
--- ── Common semantic colors ────────────────────────────────────────────────────
--- Use these for cross-trial reusable semantics.  Trial-specific or one-off
--- colors belong as local constants in the encounter file that uses them.
+-- ── Colour re-exports ─────────────────────────────────────────────────────
+-- Aliases kept for files that import Fmt rather than Palette.
+-- Source of truth is core/Palette.lua.
 
-Fmt.RED    = "ff0000"   -- danger / critical / INC
-Fmt.ORANGE = "ff8800"   -- caution / amber
-Fmt.YELLOW = "ffdd00"   -- warning / gold
-Fmt.GREEN  = "00ff00"   -- success / ready / clear
-Fmt.CYAN   = "00ffff"   -- ice / aqua label
-Fmt.AQUA   = "7fffd4"   -- aquamarine / soft info
-Fmt.GOLD   = "FFD700"   -- addon tag / golden accent
-Fmt.PURPLE = "cc80ff"   -- light purple / arcane mechanic accent
+Fmt.RED    = Palette.RED
+Fmt.ORANGE = Palette.ORANGE
+Fmt.YELLOW = Palette.YELLOW
+Fmt.GREEN  = Palette.GREEN
+Fmt.CYAN   = Palette.CYAN
+Fmt.AQUA   = Palette.AQUA
+Fmt.GOLD   = Palette.GOLD
+Fmt.PURPLE = Palette.PURPLE
 
--- ── API ──────────────────────────────────────────────────────────────────────
+-- ── API ───────────────────────────────────────────────────────────────────
 
---- Wrap text in a single ESO color segment.
---- @param color string  6-char hex color code, e.g. "ff0000"
---- @param text  string  text to color
+--- Wrap text in a single ESO colour segment.
+--- @param color string  6-char hex colour code
+--- @param text  string  text to colour
 --- @return string       "|cCOLORtext|r"
 function Fmt.c(color, text)
     return "|c" .. color .. tostring(text) .. "|r"
 end
 
---- Build a multi-segment colored string from alternating (color, text) pairs.
+--- Build a multi-segment coloured string from alternating (color, text) pairs.
 --- Fmt.colored(Fmt.CYAN, "Ice Tomb", Fmt.RED, " 2 INC")
---- → "|c00ffffIce Tomb|r|cff0000 2 INC|r"
---- An odd trailing arg (color without text) is silently ignored.
+--- An odd trailing arg (colour without text) is silently ignored.
 function Fmt.colored(...)
     local args = { ... }
     local parts = {}
@@ -51,7 +49,6 @@ function Fmt.colored(...)
 end
 
 --- Format a timer value as a human-readable string.
---- Keeps %.Nf specifiers out of the string table.
 --- Fmt.timer(3.7)    → "4s"   (0 decimals, default)
 --- Fmt.timer(3.7, 1) → "3.7s"
 function Fmt.timer(n, d)
@@ -59,7 +56,6 @@ function Fmt.timer(n, d)
 end
 
 --- Format a percentage value as a human-readable string.
---- Keeps %.Nf%% specifiers out of the string table.
 --- Fmt.pct(54.3)     → "54%"  (0 decimals, default)
 --- Fmt.pct(37.5, 1)  → "37.5%"
 function Fmt.pct(n, d)
