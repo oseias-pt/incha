@@ -28,7 +28,7 @@ local SHELTERED            = 163571   -- effectRoute: EFFECT_RESULT_GAINED/FADED
 local HEARTBURN            = 163692   -- combatRoute: ACTION_RESULT_BEGIN -> reef portal opens (60 s wipe timer)
 local HEARTBURN_EFFECT     = 166036   -- effectRoute: EFFECT_RESULT_GAINED -> start reef wipe timer
 local ACID_REFLUX          = 163702   -- combatRoute: ACTION_RESULT_BEGIN -> caAlertCast 10 s + 5 pool alerts
-local ACID_POOL            = 165987   -- (unused in routes  -  placed by Acid Reflux; no route needed)
+-- 165987 (ACID_POOL)  -- reference: placed by Acid Reflux; no direct route needed
 local CRAB_MONSTROUS_CLAW  = 166582   -- combatRoute: ACTION_RESULT_BEGIN -> handleHeavy (player caAlertCast)
 local CRAB_SWIPE           = 166584   -- combatRoute: ACTION_RESULT_BEGIN -> handleHeavy (player caAlertCast)
 local CRUSH                = 166019   -- combatRoute: ACTION_RESULT_BEGIN -> handleHeavy (player caAlertCast)

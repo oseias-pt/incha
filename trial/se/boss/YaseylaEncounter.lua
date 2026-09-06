@@ -44,15 +44,15 @@ local HEADBUTT_3      = 185000   -- combatRoute: ACTION_RESULT_BEGIN -> Headbutt
 local OVW_LIGHTNING_1 = 183598   -- combatRoute: ACTION_RESULT_BEGIN -> Lightning alert
 local OVW_LIGHTNING_2 = 198510   -- combatRoute: ACTION_RESULT_BEGIN -> Lightning alert
 local OVW_LIGHTNING_3 = 183599   -- combatRoute: ACTION_RESULT_BEGIN -> Lightning alert
-local ARCHER_TRUE_SHOT= 184802   -- (dead constant - no route registered)
+-- 184802 (ARCHER_TRUE_SHOT)  -- deleted: no route; no mechanic planned
 
 -- -- Timer durations (seconds) -----------------------------------------------------
-local FIREBOMB_FIRST_CD  =  7.5   -- time to first firebombs from combat start
+-- FIREBOMB_FIRST_CD = 7.5  -- reference: first firebombs delay from combat start (proactive timer; unimplemented)
 local FIREBOMB_CD        = 23.5   -- pre-execute CD
 local FIREBOMB_EXEC_CD   = 11     -- execute-phase CD (after <26% HP)
 local FIREBOMB_EXEC_THOLD= 26     -- % HP that marks execute phase
 local CHAIN_CD           = 32     -- chain pull CD
-local FROST_FIRST_CD     = 17     -- first frost bomb delay
+-- FROST_FIRST_CD = 17      -- reference: first frost bomb delay (proactive timer; unimplemented)
 local FROST_CD           = 25     -- subsequent frost bomb CD
 
 -- -- CA colour palettes ------------------------------------------------------------

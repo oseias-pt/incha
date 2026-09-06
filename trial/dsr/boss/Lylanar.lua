@@ -61,7 +61,7 @@ local INCENDIARY_AXE       = 168817   -- combatRoute: ACTION_RESULT_BEGIN -> HM 
 local LYLANAR_MULTILOC     = 166909   -- effectRoute: EFFECT_RESULT_GAINED -> Lylanar teleport alert
 local DESTRUCTIVE_EMBER    = 166210   -- effectRoute: EFFECT_RESULT_GAINED / UPDATED / FADED -> fire bubble stacks
 local SUMMON_FLAME_HOUND   = 169317   -- effectRoute: EFFECT_RESULT_GAINED / FADED -> flameHounds counter
-local PRE_FIREBRAND        = 166355   -- cast before brand placement
+-- 166355 (PRE_FIREBRAND)  -- reference: cast before brand placement; potential early alert
 
 -- -- Ability IDs  -  Ice (Turlassil) -----------------------------------------
 local NUMBING_SHARDS       = 166735   -- effectRoute: EFFECT_RESULT_GAINED / FADED -> interrupt fire dome
@@ -77,7 +77,7 @@ local CALAMITOUS_SWORD     = 168912   -- combatRoute: ACTION_RESULT_BEGIN -> HM 
 local TURLASSIL_MULTILOC   = 166745   -- effectRoute: EFFECT_RESULT_GAINED -> Turlassil teleport alert
 local PIERCING_HAILSTONE   = 166192   -- effectRoute: EFFECT_RESULT_GAINED / UPDATED / FADED -> ice bubble stacks
 local SUMMON_FROST_HOUND   = 169313   -- effectRoute: EFFECT_RESULT_GAINED / FADED -> frostHounds counter
-local PRE_FROSTBRAND       = 166364   -- cast before brand placement
+-- 166364 (PRE_FROSTBRAND) -- reference: cast before brand placement; potential early alert
 
 -- -- Ability IDs  -  Shared --------------------------------------------------
 local HINDERED             = 165972   -- effectRoute: EFFECT_RESULT_GAINED + player -> AlertBorder 12s
