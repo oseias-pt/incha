@@ -12,7 +12,6 @@ local SHAPER_SHIELD    = 232511   -- combatRoute: (plain) EFFECT_RESULT_GAINED/F
 local CHANNELER_SHIELD = 232510   -- combatRoute: ACTION_RESULT_EFFECT_GAINED → channelers alert
 
 -- ── CA colour palettes ────────────────────────────────────────────────────
-local COL_CHARGE = { -3, 0, false, { 1, 0.4, 0, 0.4 }, { 1, 0.4, 0, 0.8 } }
 
 -- ── Fallback durations (empirical; replace if GetAbilityCastInfo becomes reliable) ─
 local FALLBACK_DUR = 2000   -- Ogrim Charge: empirical
@@ -44,7 +43,7 @@ local function handleOgrimCharge(self, context, alerts, abilityId,
                                   sourceUnitName, unitName)
     local target = (unitName and unitName ~= "") and unitName or "?"
     local dur = CastDur.get(abilityId, FALLBACK_DUR)
-    CA.alertCast(abilityId, Lang.t("oc_shaper_ogrim_bar"), dur, COL_CHARGE)
+    CA.ranged(abilityId, Lang.t("oc_shaper_ogrim_bar"), dur, "ORANGE")
     if IsUnitPlayer(unitTag) then
         alerts:showAction(Lang.t("oc_shaper_ogrim_you"))
     else

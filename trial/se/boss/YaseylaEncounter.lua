@@ -55,10 +55,6 @@ local FROST_FIRST_CD     = 17     -- first frost bomb delay
 local FROST_CD           = 25     -- subsequent frost bomb CD
 
 -- -- CA colour palettes ------------------------------------------------------------
-local COL_FIRE  = { -3, 0, false, { 1, 0.34, 0, 0.4 }, { 1, 0.34, 0, 0.8 } }    -- orange-red
-local COL_ICE   = { -3, 0, false, { 0.6, 0.8, 1, 0.4 }, { 0.6, 0.8, 1, 0.8 } }  -- pale blue
-local COL_ELEC  = { -3, 0, false, { 1, 0.9, 0.2, 0.4 }, { 1, 0.9, 0.2, 0.8 } }  -- yellow
-local COL_BLADE = { -3, 0, false, { 0.9, 0.7, 0.3, 0.4 }, { 0.9, 0.7, 0.3, 0.8 } } -- gold
 
 -- -- Fallback durations (empirical; replace if GetAbilityCastInfo becomes reliable) -
 local FALLBACK_DUR = 2000   -- FireBombs / WamasuCharge / KnifeBlast: empirical
@@ -132,7 +128,7 @@ local function handleFireBombs(self, context, alerts, abilityId,
     local target = (unitName and unitName ~= "") and unitName or "?"
     alerts:showAction(Lang.t("se_yaseyla_fire_bombs_tgt", target))
     local dur = CastDur.get(abilityId, FALLBACK_DUR)
-    local cid = CA.alertCast(abilityId, Lang.t("se_yaseyla_fire_bombs_bar"), dur, COL_FIRE)
+    local cid = CA.ranged(abilityId, Lang.t("se_yaseyla_fire_bombs_bar"), dur, "FIRE")
     if cid and unitId then self.alertList[unitId] = cid end
 end
 
@@ -162,7 +158,7 @@ local function handleKnifeBlast(self, context, alerts, abilityId,
                                  sourceUnitName, unitName)
     local target = (unitName and unitName ~= "") and unitName or "?"
     local dur = CastDur.get(abilityId, FALLBACK_DUR)
-    CA.alertCast(abilityId, Lang.t("se_yaseyla_knife_blast_bar", target), dur, COL_BLADE)
+    CA.ranged(abilityId, Lang.t("se_yaseyla_knife_blast_bar", target), dur, "AMBER")
     alerts:showAction(Lang.t("se_yaseyla_knife_blast", target))
 end
 
@@ -186,7 +182,7 @@ local function handleWamasuCharge(self, context, alerts, abilityId,
                                    sourceUnitName, unitName)
     local target = (unitName and unitName ~= "") and unitName or "?"
     local dur = CastDur.get(abilityId, FALLBACK_DUR)
-    CA.alertCast(abilityId, Lang.t("se_yaseyla_charge_bar", target), dur, COL_FIRE)
+    CA.ranged(abilityId, Lang.t("se_yaseyla_charge_bar", target), dur, "FIRE")
 end
 
 local function handleHeadbutt(self, context, alerts, abilityId,

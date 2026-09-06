@@ -38,10 +38,6 @@ local FIREBOMB_DEBUF  = 245264   -- combatRoute: ACTION_RESULT_EFFECT_GAINED_DUR
 local IMMOLATING_SPHERE= 237011   -- combatRoute: ACTION_RESULT_BEGIN → Immolating Sphere alert (player)
 
 -- ── CA colour palettes ────────────────────────────────────────────────────
-local COL_LEAP     = { -3, 0, false, { 0.6, 0,   0.9, 0.4 }, { 0.6, 0,   0.9, 0.8 } }
-local COL_LEAP_RED = { -3, 0, false, { 1,   0.1, 0.1, 0.4 }, { 1,   0.1, 0.1, 0.8 } }
-local COL_SLAM     = { -3, 0, false, { 1,   0.7, 0,   0.4 }, { 1,   0.7, 0,   0.8 } }
-local COL_SURGE    = { -3, 0, false, { 0.9, 0.9, 0.1, 0.4 }, { 0.9, 0.9, 0.1, 0.8 } }
 
 -- ── Fallback durations (empirical; replace if GetAbilityCastInfo becomes reliable) ─
 local FALLBACK_DUR = 2000   -- GiantPulse / VileLeap / SeethingLeap / StormSlam / StormSurge: empirical
@@ -103,18 +99,18 @@ end
 -- Giant Pulse: shared handler for both variants.
 local function handleGiantPulse(self, context, alerts, abilityId, ...)
     local dur = CastDur.get(abilityId, FALLBACK_DUR)
-    CA.alertCast(abilityId, Lang.t("oc_kazpian_giant_sword_bar"), dur, COL_SLAM)
+    CA.ranged(abilityId, Lang.t("oc_kazpian_giant_sword_bar"), dur, "FLYZONE")
 end
 
 local function handleVileLeap(self, context, alerts, abilityId, ...)
     local dur = CastDur.get(abilityId, FALLBACK_DUR)
-    CA.alertCast(abilityId, Lang.t("oc_kazpian_vile_leap"), dur, COL_LEAP)
+    CA.ranged(abilityId, Lang.t("oc_kazpian_vile_leap"), dur, "VOID")
     alerts:showAction(Lang.t("oc_kazpian_vile_leap"))
 end
 
 local function handleSeethingLeap(self, context, alerts, abilityId, ...)
     local dur = CastDur.get(abilityId, FALLBACK_DUR)
-    CA.alertCast(abilityId, Lang.t("oc_kazpian_seething_bar"), dur, COL_LEAP_RED)
+    CA.ranged(abilityId, Lang.t("oc_kazpian_seething_bar"), dur, "RED")
     alerts:showAction(Lang.t("oc_kazpian_seething_leap"))
 end
 
@@ -136,13 +132,13 @@ end
 
 local function handleStormSlam(self, context, alerts, abilityId, ...)
     local dur = CastDur.get(abilityId, FALLBACK_DUR)
-    CA.alertCast(abilityId, Lang.t("oc_kazpian_storm_slam_bar"), dur, COL_SLAM)
+    CA.ranged(abilityId, Lang.t("oc_kazpian_storm_slam_bar"), dur, "FLYZONE")
     alerts:showAction(Lang.t("oc_kazpian_storm_slam"))
 end
 
 local function handleStormSurge(self, context, alerts, abilityId, ...)
     local dur = CastDur.get(abilityId, FALLBACK_DUR)
-    CA.alertCast(abilityId, Lang.t("oc_kazpian_storm_surge_bar"), dur, COL_SURGE)
+    CA.ranged(abilityId, Lang.t("oc_kazpian_storm_surge_bar"), dur, "LIGHTNING")
 end
 
 local function handleHeavyShock(self, context, alerts, abilityId,

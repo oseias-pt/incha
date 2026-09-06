@@ -16,7 +16,6 @@ local VITRIFY_FIRST_CD =  9.0
 local VITRIFY_CD       = 20.0
 
 -- ── CA colour palettes ────────────────────────────────────────────────────
-local COL_INTERRUPT = { -3, 0, false, { 1, 0.1, 0.1, 0.4 }, { 1, 0.1, 0.1, 0.8 } }
 
 -- ── Fallback durations (empirical; replace if GetAbilityCastInfo becomes reliable) ─
 local FALLBACK_BEAM_DUR    = 2500   -- PiercingBeam: empirical
@@ -51,7 +50,7 @@ local function handlePiercingBeam(self, context, alerts, abilityId, ...)
     self.firstBeam = false
     self.piercingBeamTimer:reset(BEAM_CD)
     local dur = CastDur.get(abilityId, FALLBACK_BEAM_DUR)
-    CA.alertCast(abilityId, Lang.t("lc_xynizata_beam_bar"), dur, COL_INTERRUPT)
+    CA.ranged(abilityId, Lang.t("lc_xynizata_beam_bar"), dur, "RED")
     alerts:showAction(Lang.t("lc_xynizata_interrupt_beam"))
 end
 
@@ -59,7 +58,7 @@ local function handleVitrify(self, context, alerts, abilityId, ...)
     self.firstVitrify = false
     self.vitrifyTimer:reset(VITRIFY_CD)
     local dur = CastDur.get(abilityId, FALLBACK_VITRIFY_DUR)
-    CA.alertCast(abilityId, Lang.t("lc_xynizata_interrupt_vitr"), dur, COL_INTERRUPT)
+    CA.ranged(abilityId, Lang.t("lc_xynizata_interrupt_vitr"), dur, "RED")
     alerts:showAction(Lang.t("lc_xynizata_interrupt_vitr"))
 end
 

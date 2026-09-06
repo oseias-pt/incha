@@ -59,28 +59,33 @@ end)
 -- ── Cast-bar methods ───────────────────────────────────────────────────────
 
 --- Show a cast alert: CA auto-detects timing from the ability's range.
-function CA.cast(abilityId, srcName, dur, color)
-    if _impl then return _impl.AlertCast(abilityId, srcName, dur, _cast[color]) end
+--- action: optional action table { dur, text, r, g, b, a, sound } passed through.
+function CA.cast(abilityId, srcName, dur, color, action)
+    if _impl then return _impl.AlertCast(abilityId, srcName, dur, _cast[color], action) end
 end
 
 --- Show a cast alert with explicit melee timing (-2 = full dodge window).
-function CA.melee(abilityId, srcName, dur, color)
-    if _impl then return _impl.AlertCast(abilityId, srcName, dur, _melee[color]) end
+--- action: optional action table passed through unchanged.
+function CA.melee(abilityId, srcName, dur, color, action)
+    if _impl then return _impl.AlertCast(abilityId, srcName, dur, _melee[color], action) end
 end
 
 --- Show a cast alert with explicit ranged timing (-3 = 0.8× dodge window).
-function CA.ranged(abilityId, srcName, dur, color)
-    if _impl then return _impl.AlertCast(abilityId, srcName, dur, _ranged[color]) end
+--- action: optional action table passed through unchanged.
+function CA.ranged(abilityId, srcName, dur, color, action)
+    if _impl then return _impl.AlertCast(abilityId, srcName, dur, _ranged[color], action) end
 end
 
 --- Show an interruptible cast bar (auto-detect timing).
-function CA.interrupt(abilityId, srcName, dur, color)
-    if _impl then return _impl.AlertCast(abilityId, srcName, dur, _interrupt[color]) end
+--- action: optional action table passed through unchanged.
+function CA.interrupt(abilityId, srcName, dur, color, action)
+    if _impl then return _impl.AlertCast(abilityId, srcName, dur, _interrupt[color], action) end
 end
 
 --- Show an interruptible cast bar with melee timing.
-function CA.interrupt_melee(abilityId, srcName, dur, color)
-    if _impl then return _impl.AlertCast(abilityId, srcName, dur, _interrupt_melee[color]) end
+--- action: optional action table passed through unchanged.
+function CA.interrupt_melee(abilityId, srcName, dur, color, action)
+    if _impl then return _impl.AlertCast(abilityId, srcName, dur, _interrupt_melee[color], action) end
 end
 
 --- CastAlertsStart — a freestanding progress bar (not tied to an ability cast).

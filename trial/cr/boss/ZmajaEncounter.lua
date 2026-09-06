@@ -119,10 +119,6 @@ local PORTAL_OPEN_DUR  = 75    -- portal stays open ~75 s
 local PORTAL_NEXT_CD   = 46    -- seconds until next portal after close
 
 -- -- CA colour palettes ----------------------------------------------------
-local COL_SIRO  = { -3, 0, false, { 1, 0.27, 0, 0.4 },    { 1, 0.27, 0, 0.8 } }    -- orange (fire)
-local COL_RELE  = { -3, 0, false, { 0.2, 0.6, 1, 0.4 },   { 0.2, 0.6, 1, 0.8 } }  -- blue (lightning)
-local COL_GALE  = { -3, 0, false, { 0, 0.87, 0.87, 0.4 }, { 0, 0.87, 0.87, 0.8 } } -- cyan (frost)
-local COL_ZMAJA = { -3, 0, false, { 0.6, 0, 0.8, 0.4 },   { 0.6, 0, 0.8, 0.8 } }   -- purple (shadow)
 
 -- -- Fallback durations (empirical; replace if GetAbilityCastInfo becomes reliable) -
 local FALLBACK_DARK_DUR = 6000   -- CrushingDarkness: empirical
@@ -208,7 +204,7 @@ local function handleSiroFlare(self, context, alerts, result, abilityId,
     local target = (unitName and unitName ~= "") and unitName or "?"
     alerts:showAction(Lang.t("cr_zmaja_siro_flare", target))
     local dur = CastDur.get(abilityId, math.floor(FLARE_WINDOW * 1000))
-    local cid = CA.alertCast(abilityId, Lang.t("cr_zmaja_siro_flare", target), dur, COL_SIRO)
+    local cid = CA.ranged(abilityId, Lang.t("cr_zmaja_siro_flare", target), dur, "FIRE")
     if cid and unitId then self.alertList[unitId] = cid end
 end
 
@@ -220,7 +216,7 @@ local function handleGaleHoarfrost(self, context, alerts, result, abilityId,
     if result == ACTION_RESULT_EFFECT_GAINED then
         local dname = GetUnitDisplayName and GetUnitDisplayName(unitTag) or nil
         if dname and dname ~= "" and Settings.trial("cr").posIconsZmaja then
-            MechanicIcons.set(dname, GetAbilityIcon(abilityId), {0, 0.87, 0.87})
+            MechanicIcons.set(dname, GetAbilityIcon(abilityId), "CYAN")
         end
         if IsUnitPlayer(unitTag) then
             alerts:showAction(Lang.t("cr_zmaja_gale_frost_you"))
@@ -279,7 +275,7 @@ end
 local function handleCrushingDark(self, context, alerts, abilityId, ...)
     alerts:showAction(Lang.t("cr_zmaja_crushing_dark"))
     local dur = CastDur.get(abilityId, FALLBACK_DARK_DUR)
-    CA.alertCast(abilityId, Lang.t("cr_zmaja_crushing_kite"), dur, COL_ZMAJA)
+    CA.ranged(abilityId, Lang.t("cr_zmaja_crushing_kite"), dur, "VOID")
 end
 
 local function handleSiroHa(self, context, alerts, result, abilityId,
@@ -290,7 +286,7 @@ local function handleSiroHa(self, context, alerts, result, abilityId,
     local target = (unitName and unitName ~= "") and unitName or "?"
     alerts:showAction(Lang.t("cr_zmaja_siro_ha", target))
     local dur = CastDur.get(SIRO_HA, FALLBACK_HA_DUR)
-    local cid = CA.alertCast(abilityId, Lang.t("cr_zmaja_siro_ha_bar"), dur, COL_SIRO)
+    local cid = CA.ranged(abilityId, Lang.t("cr_zmaja_siro_ha_bar"), dur, "FIRE")
     if cid and unitId then self.alertList[unitId] = cid end
 end
 
@@ -324,7 +320,7 @@ local function handleReleHa(self, context, alerts, result, abilityId,
     local target = (unitName and unitName ~= "") and unitName or "?"
     alerts:showAction(Lang.t("cr_zmaja_rele_ha", target))
     local dur = CastDur.get(RELE_HA, FALLBACK_HA_DUR)
-    local cid = CA.alertCast(abilityId, Lang.t("cr_zmaja_rele_ha_bar"), dur, COL_RELE)
+    local cid = CA.ranged(abilityId, Lang.t("cr_zmaja_rele_ha_bar"), dur, "ICE")
     if cid and unitId then self.alertList[unitId] = cid end
 end
 
@@ -375,7 +371,7 @@ local function handleGaleHa(self, context, alerts, result, abilityId,
     local target = (unitName and unitName ~= "") and unitName or "?"
     alerts:showAction(Lang.t("cr_zmaja_gale_ha", target))
     local dur = CastDur.get(GALE_HA, FALLBACK_HA_DUR)
-    local cid = CA.alertCast(abilityId, Lang.t("cr_zmaja_gale_ha_bar"), dur, COL_GALE)
+    local cid = CA.ranged(abilityId, Lang.t("cr_zmaja_gale_ha_bar"), dur, "CYAN")
     if cid and unitId then self.alertList[unitId] = cid end
 end
 
@@ -441,7 +437,7 @@ local FALLBACK_SPLASH_DUR = 3000  -- Shadow Splash cast duration: empirical
 local function handleShadowSplash(self, context, alerts, abilityId, ...)
     alerts:showAction(Lang.t("cr_zmaja_shadow_splash"))
     local dur = CastDur.get(abilityId, FALLBACK_SPLASH_DUR)
-    CA.alertCast(abilityId, Lang.t("cr_zmaja_shadow_splash_bar"), dur, COL_ZMAJA)
+    CA.ranged(abilityId, Lang.t("cr_zmaja_shadow_splash_bar"), dur, "VOID")
     CA.alert(nil, Lang.t("common_interrupt"), 0xFF0000FF, SOUNDS.NONE, 2500)
 end
 

@@ -48,6 +48,11 @@ local _rgb = {
     LEAF      = { 0.33, 0.67, 0.33 },   -- medium green (skip / ok signal)
     LANDING   = { 0.36, 0.84, 0.36 },   -- light green (landing countdown)
     FLYZONE   = { 1.00, 0.65, 0.00 },   -- orange (fly-in / enter threshold)
+
+    -- Special-use
+    BLUE      = { 0.00, 0.00, 1.00 },   -- pure blue (fog / magical barrier)
+    SILVER    = { 0.70, 0.70, 0.70 },   -- neutral gray (untyped block/dodge bar)
+    MAGENTA   = { 1.00, 0.20, 0.90 },   -- hot pink (urgent dodge signal)
 }
 
 -- ── Enum ───────────────────────────────────────────────────────────────────

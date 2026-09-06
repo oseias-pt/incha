@@ -36,9 +36,6 @@ local CALAMITY_FIRST_CD = 9    -- first calamity after combat start / maze end
 local CALAMITY_CD       = 25   -- subsequent calamity CD
 
 -- -- CA colour palettes ------------------------------------------------------------
-local COL_VOID   = { -3, 0, false, { 0.5, 0, 0.7, 0.4 }, { 0.5, 0, 0.7, 0.8 } }   -- purple
-local COL_GREEN  = { -3, 0, false, { 0.2, 0.8, 0.2, 0.4 }, { 0.2, 0.8, 0.2, 0.8 } } -- green
-local COL_RED    = { -3, 0, false, { 1, 0.1, 0.1, 0.4 }, { 1, 0.1, 0.1, 0.8 } }    -- red
 
 -- -- Fallback durations (empirical; replace if GetAbilityCastInfo becomes reliable) -
 local FALLBACK_SUNBURST_DUR   = 2000   -- Sunburst: empirical
@@ -105,12 +102,12 @@ local function handleSunburst(self, context, alerts, abilityId, unitTag, ...)
     if not IsUnitPlayer(unitTag) then return end
     alerts:showAction(Lang.t("se_ansuul_sunburst"))
     local dur = CastDur.get(SUNBURST, FALLBACK_SUNBURST_DUR)
-    CA.alertCast(SUNBURST, Lang.t("se_ansuul_sunburst_bar"), dur, COL_VOID)
+    CA.ranged(SUNBURST, Lang.t("se_ansuul_sunburst_bar"), dur, "VOID")
 end
 
 local function handleWrathstorm(self, context, alerts, abilityId, ...)
     local dur = CastDur.get(WRATHSTORM, FALLBACK_WRATHSTORM_DUR)
-    CA.alertCast(WRATHSTORM, Lang.t("se_ansuul_wrathstorm_bar"), dur, COL_VOID)
+    CA.ranged(WRATHSTORM, Lang.t("se_ansuul_wrathstorm_bar"), dur, "VOID")
 end
 
 local function handlePoisonedMind(self, context, alerts, abilityId,

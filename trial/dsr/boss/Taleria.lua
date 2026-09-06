@@ -23,9 +23,6 @@ local CastDur = require("lib.CastDur")
 local Lang = require("core.Lang")
 local Fmt  = require("core.Fmt")
 
-local COL_HEAL   = "66CC66"   -- green (maelstrom heal / portal labels)
-local COL_BEH    = "FF8800"   -- orange (behemoth)
-local COL_STORM  = "D672F7"   -- purple (storm wall spin)
 
 -- -- Ability IDs -----------------------------------------------------------
 local RAPID_DELUGE_N   = 174959   -- effectRoute: EFFECT_RESULT_GAINED + player -> Move bubble alert
@@ -74,8 +71,6 @@ local CA = require("external-api.CombatAlerts")
 local BossBase = require("lib.BossBase")
 
 -- -- CA colour palettes ----------------------------------------------------
-local COL_HEAVY  = { -2, 0, false, { 1.0, 0.35, 0.1, 0.4 }, { 1.0, 0.35, 0.1, 0.8 } }
-local COL_FEAR   = { 0.6, 0.0, 0.9, 0.5 }
 local ACT_BREAK  = { 4000, "Break free!", 0.9, 0.1, 0.1, 0.9, nil }
 
 -- -- Fallback durations (empirical; replace if GetAbilityCastInfo becomes reliable) -
@@ -128,7 +123,7 @@ local function handleCrashingWave(self, context, alerts, abilityId,
                                    sourceUnitName, unitName)
     if not IsUnitPlayer(unitTag) then return end
     local dur = CastDur.get(abilityId, FALLBACK_WAVE_DUR)
-    CA.alertCast(abilityId, sourceUnitName, dur, COL_HEAVY)
+    CA.melee(abilityId, sourceUnitName, dur, "FIRE")
 end
 
 -- Bridge open: closes over the bridge index.
@@ -151,7 +146,7 @@ local function handleCoralSlam(self, context, alerts, abilityId,
                                sourceUnitName, unitName)
     if not IsUnitPlayer(unitTag) then return end
     local dur = CastDur.get(abilityId, FALLBACK_SLAM_DUR)
-    CA.alertCast(abilityId, sourceUnitName, dur, COL_HEAVY)
+    CA.melee(abilityId, sourceUnitName, dur, "FIRE")
 end
 
 local function handleBarnacleBlade(self, context, alerts, abilityId,
@@ -159,12 +154,12 @@ local function handleBarnacleBlade(self, context, alerts, abilityId,
                                     sourceUnitName, unitName)
     if not IsUnitPlayer(unitTag) then return end
     local dur = CastDur.get(abilityId, FALLBACK_BLADE_DUR)
-    CA.alertCast(abilityId, sourceUnitName, dur, COL_HEAVY)
+    CA.melee(abilityId, sourceUnitName, dur, "FIRE")
 end
 
 local function handleMaelstromCast(self, context, alerts, abilityId, ...)
     self.lastMaelstrom = GetGameTimeMilliseconds() / 1000
-    CA.alert(nil, Fmt.c(COL_HEAL, Lang.t("dsr_taleria_maelstrom_alert")),
+    CA.alert(nil, Fmt.c(Fmt.POISON, Lang.t("dsr_taleria_maelstrom_alert")),
         0x66CC66D9, SOUNDS.CHAMPION_POINTS_COMMITTED, 6000)
 end
 
@@ -178,14 +173,14 @@ end
 
 local function handleArcticAnnih(self, context, alerts, abilityId, ...)
     self.behemothSlam = GetGameTimeMilliseconds() / 1000 + SLAM_CD
-    CA.alert(nil, Fmt.c(COL_BEH, "Behemoth SLAM!"),
+    CA.alert(nil, Fmt.c(Fmt.ORANGE, "Behemoth SLAM!"),
         0xFF8800D9, SOUNDS.DUEL_START, 3000)
 end
 
 local function handleLureOfSea(self, context, alerts, abilityId, ...)
     CA.castAlertsStop(self.lureBarId)
-    self.lureBarId = CA.castAlertsStart(
-        abilityId, "Lure of the Sea", 4000, 4000, COL_FEAR, ACT_BREAK)
+    self.lureBarId = CA.bar(
+        abilityId, "Lure of the Sea", 4000, 4000, "VOID", 0.5, ACT_BREAK)
 end
 
 local function handleAspectTerror(self, context, alerts, abilityId,
@@ -193,7 +188,7 @@ local function handleAspectTerror(self, context, alerts, abilityId,
                                    sourceUnitName, unitName)
     if not IsUnitPlayer(unitTag) then return end
     local dur = CastDur.get(abilityId, FALLBACK_FEAR_DUR)
-    CA.alertCast(abilityId, sourceUnitName, dur, COL_FEAR)
+    CA.ranged(abilityId, sourceUnitName, dur, "VOID")
 end
 
 Taleria.combatRoutes = {
@@ -285,15 +280,15 @@ local function showMaelstromLine(self, alerts, now)
             if T <= MAELSTROM_DODGE then
                 alerts:setRow(1, Fmt.c(Fmt.RED, Lang.t("dsr_taleria_dodge_maelstrom")), nil)
             else
-                alerts:setRow(1, Fmt.c(COL_HEAL, Lang.t("dsr_taleria_heal")), T)
+                alerts:setRow(1, Fmt.c(Fmt.POISON, Lang.t("dsr_taleria_heal")), T)
             end
         else
             local T = MAELSTROM_CD - elapsed
             if T > 0 then
-                alerts:setRow(1, Fmt.c(COL_HEAL, Lang.t("dsr_taleria_maelstrom")), T)
+                alerts:setRow(1, Fmt.c(Fmt.POISON, Lang.t("dsr_taleria_maelstrom")), T)
             else
                 alerts:setRow(1,
-                    Fmt.c(COL_HEAL, Lang.t("dsr_taleria_maelstrom")) .. " " .. Fmt.c(Fmt.RED, "INC"), nil)
+                    Fmt.c(Fmt.POISON, Lang.t("dsr_taleria_maelstrom")) .. " " .. Fmt.c(Fmt.RED, "INC"), nil)
             end
         end
     else
@@ -309,12 +304,12 @@ local function showBehemothLine(self, alerts, now, isHM)
         local slamT   = (self.behemothSlam > 0) and (self.behemothSlam - now) or -1
 
         if slamT >= 0 and slamT <= 3 then
-            alerts:setRow(2, Fmt.c(COL_BEH, Lang.t("dsr_taleria_behemoth_slam")), slamT)
+            alerts:setRow(2, Fmt.c(Fmt.ORANGE, Lang.t("dsr_taleria_behemoth_slam")), slamT)
         elseif summonT > 0 then
-            alerts:setRow(2, Fmt.c(COL_BEH, Lang.t("dsr_taleria_behemoth")), summonT)
+            alerts:setRow(2, Fmt.c(Fmt.ORANGE, Lang.t("dsr_taleria_behemoth")), summonT)
         else
             alerts:setRow(2,
-                Fmt.c(COL_BEH, Lang.t("dsr_taleria_behemoth")) .. " " .. Fmt.c(Fmt.RED, "INC"), nil)
+                Fmt.c(Fmt.ORANGE, Lang.t("dsr_taleria_behemoth")) .. " " .. Fmt.c(Fmt.RED, "INC"), nil)
         end
     else
         alerts:clearRow(2)
@@ -327,7 +322,7 @@ local function showStormWallLine(self, alerts, now)
     if self.lastStormWall > 0 and not suppressStorm then
         local T = STORM_WALL_DUR - (now - self.lastStormWall)
         if T > 0 then
-            alerts:setRow(3, Fmt.c(COL_STORM, Lang.t(
+            alerts:setRow(3, Fmt.c(Fmt.PURPLE, Lang.t(
                 self.stormWallCW and "dsr_taleria_storm_cw" or "dsr_taleria_storm_ccw")), T)
         else
             alerts:clearRow(3)
