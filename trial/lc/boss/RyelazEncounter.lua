@@ -22,7 +22,7 @@ local RyelazEncounter = {}
 RyelazEncounter.__index = RyelazEncounter
 
 RyelazEncounter.key               = "ryelaz"
-RyelazEncounter.nameAliases       = { Lang.t("boss_count_ryelaz"), Lang.t("boss_zilyesset") }
+RyelazEncounter.nameAliases       = { Lang.t("boss_count_ryelaz"), Lang.t("boss_zilyesset") }   -- TODO: verify via GetUnitName in-game
 RyelazEncounter.hmHealthThreshold = 40000000   -- TODO: verify — round estimate, no measured evidence
 -- location: placeholder — Lucent Citadel arena AABB not yet captured.
 -- Detection falls back to nameAliases (name-based, may fail on non-EN clients).

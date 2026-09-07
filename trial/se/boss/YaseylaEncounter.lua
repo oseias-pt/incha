@@ -64,7 +64,7 @@ local YaseylaEncounter = {}
 YaseylaEncounter.__index = YaseylaEncounter
 
 YaseylaEncounter.key               = "yaseyla"
-YaseylaEncounter.nameAliases       = { Lang.t("boss_yaseyla") }
+YaseylaEncounter.nameAliases       = { Lang.t("boss_yaseyla") }   -- TODO: verify via GetUnitName in-game
 YaseylaEncounter.hmHealthThreshold = 80000000   -- vet ~65M, HM ~97.8M
 -- location: placeholder - Sunken Elder arena AABB not yet captured.
 -- Detection falls back to nameAliases (name-based, may fail on non-EN clients).

@@ -17,7 +17,7 @@ local DarielEncounter = {}
 DarielEncounter.__index = DarielEncounter
 
 DarielEncounter.key               = "dariel"
-DarielEncounter.nameAliases       = { Lang.t("boss_dariel") }
+DarielEncounter.nameAliases       = { Lang.t("boss_dariel") }   -- TODO: verify via GetUnitName in-game
 -- hmHealthThreshold: math.huge until measured in-game on vet HM.
 -- (0 would make detectDifficulty always return HARDMODE.)
 DarielEncounter.hmHealthThreshold = math.huge

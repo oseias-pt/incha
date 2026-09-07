@@ -26,7 +26,7 @@ local XynizataEncounter = {}
 XynizataEncounter.__index = XynizataEncounter
 
 XynizataEncounter.key               = "xynizata"
-XynizataEncounter.nameAliases       = { Lang.t("boss_xynizata") }
+XynizataEncounter.nameAliases       = { Lang.t("boss_xynizata") }   -- TODO: verify via GetUnitName in-game
 -- hmHealthThreshold: math.huge until measured in-game on vet HM.
 -- (0 would make detectDifficulty always return HARDMODE.)
 XynizataEncounter.hmHealthThreshold = math.huge

@@ -106,7 +106,7 @@ Lylanar.__index = Lylanar
 
 Lylanar.key          = "lylanar"
 Lylanar.name         = Lang.t("boss_lylanar")     -- TODO: verify via GetUnitName("boss1") in-game
-Lylanar.nameAliases  = { Lang.t("boss_turlassil") }  -- both bosses active simultaneously
+Lylanar.nameAliases  = { Lang.t("boss_turlassil") }  -- both bosses active simultaneously; TODO: verify via GetUnitName in-game
 -- location: name-based detection intentional  -  dual-boss pair; arenas share the
 -- same room so a single AABB would be ambiguous.  nameAliases covers both names.
 Lylanar.hmHealthThreshold = 100000001   -- TODO: verify exact HM health pool

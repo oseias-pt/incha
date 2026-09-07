@@ -62,7 +62,7 @@ Nahvii.__index = Nahvii
 setmetatable(Nahvii, {__index = BossBase})
 
 Nahvii.key  = "nahvii"
-Nahvii.name = Lang.t("boss_nahviintaas")
+Nahvii.name = Lang.t("boss_nahviintaas")   -- TODO: verify via GetUnitName in-game
 -- location: Sunspire arena is one shared room for all three bosses  -  a single AABB
 -- would be ambiguous.  Name-based detection is intentional; name is well-established
 -- EN string (same client since Elsweyr launch), non-EN risk is low.

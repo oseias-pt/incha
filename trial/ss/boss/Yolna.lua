@@ -38,7 +38,7 @@ Yolna.__index = Yolna
 setmetatable(Yolna, {__index = BossBase})
 
 Yolna.key  = "yolna"
-Yolna.name = Lang.t("boss_yolnahkriin")
+Yolna.name = Lang.t("boss_yolnahkriin")   -- TODO: verify via GetUnitName in-game
 -- location: Sunspire arena is one shared room for all three bosses  -  a single AABB
 -- would be ambiguous.  Name-based detection is intentional; name is well-established
 -- EN string (same client since Elsweyr launch), non-EN risk is low.
