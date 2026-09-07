@@ -12,6 +12,8 @@ local BRILLIANT_ANNIHILATION = 214187   -- combatRoute: ACTION_RESULT_BEGIN → 
 local BLEAK_ANNIHILATION     = 214203   -- combatRoute: ACTION_RESULT_BEGIN → dark side room wipe; STACK
 local PORCIN_LIGHT           = 219329   -- combatRoute: ACTION_RESULT_EFFECT_GAINED_DURATION / FADED → player on Ryelaz (dark) side
 local PORCIN_DARK            = 219330   -- combatRoute: ACTION_RESULT_EFFECT_GAINED_DURATION / FADED → player on Zilyesset (light) side
+local SUMMON_LIGHTWEAVER     = 218113   -- combatRoute: ACTION_RESULT_BEGIN → big add spawned on light side
+local SUMMON_BLACKGUARD      = 218109   -- combatRoute: ACTION_RESULT_BEGIN → big add spawned on dark side
 
 -- ── CA colour palettes ────────────────────────────────────────────────────
 
@@ -66,11 +68,23 @@ local function handlePorcinDark(self, context, alerts, result, abilityId, unitTa
     end
 end
 
+local function handleSummonLightweaver(self, context, alerts, abilityId, ...)
+    CA.alert(nil, Lang.t("lc_ryelaz_add_light"), 0xFFDD44D9, SOUNDS.DUEL_START, 5000)
+    PlaySound(SOUNDS.DUEL_START)
+end
+
+local function handleSummonBlackguard(self, context, alerts, abilityId, ...)
+    CA.alert(nil, Lang.t("lc_ryelaz_add_dark"), 0x8844FFD9, SOUNDS.DUEL_START, 5000)
+    PlaySound(SOUNDS.DUEL_START)
+end
+
 RyelazEncounter.combatRoutes = {
     [BRILLIANT_ANNIHILATION] = makeAnnihilHandler(Lang.t("lc_ryelaz_brilliant")),
     [BLEAK_ANNIHILATION]     = makeAnnihilHandler(Lang.t("lc_ryelaz_bleak")),
     [PORCIN_LIGHT]           = handlePorcinLight,
     [PORCIN_DARK]            = handlePorcinDark,
+    [SUMMON_LIGHTWEAVER]     = { result = ACTION_RESULT_BEGIN, fn = handleSummonLightweaver },
+    [SUMMON_BLACKGUARD]      = { result = ACTION_RESULT_BEGIN, fn = handleSummonBlackguard },
 }
 
 function RyelazEncounter:onWipe()
