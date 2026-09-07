@@ -15,8 +15,12 @@
 ---   header(text)         – boss name / HM status (tracker top)
 ---   action(text)         – immediate call-out (alert panel); auto-clears 5 s
 ---   hideAction()         – force-clear alert panel before timeout
----   setRow(n, name, eta) – tracker row n: label + seconds remaining (nil = static)
----   clearRow(n)          – blank tracker row n
+---   setRow(key, name, eta, priority)
+---                        – tracker row keyed by key; priority (default 0) controls
+---                          display order when more keys than slots exist.
+---                          Numeric keys reproduce the old positional layout
+---                          (key 1 before key 2, etc.) without changing call sites.
+---   clearRow(key)        – remove keyed row; blanks the slot it occupied
 ---   clear()              – clear both panels and deactivate
 ---
 --- Design rules:
@@ -210,6 +214,13 @@ local function build()
         header     = header,
         headerText = "",
         rows       = rows,
+        -- Keyed row data.  key → { name, eta, priority }.
+        -- rowOrder is the sorted key list; rebuilt only when rowDirty is true
+        -- (new key added, key removed, or priority changed).  Plain eta updates
+        -- leave rowOrder intact and skip the sort entirely.
+        rowData    = {},
+        rowOrder   = {},
+        rowDirty   = false,
         active     = false,
     }
 
@@ -280,60 +291,92 @@ end
 local function tracker_clear()
     if not ctrl then return end
     ctrl.header:SetText(""); ctrl.headerText = ""
+    ctrl.rowData  = {}
+    ctrl.rowOrder = {}
+    ctrl.rowDirty = false
     for i = 1, TRACKER_ROW_COUNT do
         local row = ctrl.rows[i]
-        row.nameLbl:SetText(""); row.nameText = ""
-        row.etaLbl:SetText("");  row.etaText  = ""
+        if row.nameText ~= "" then
+            row.nameText = ""
+            row.nameLbl:SetText("")
+            row.icon:SetHidden(true)
+        end
+        if row.etaText ~= "" then
+            row.etaText = ""
+            row.etaLbl:SetText("")
+        end
     end
     ctrl.active = false
     applyTrackerVisibility()
 end
 
--- ── Internal: setRow core ─────────────────────────────────────────────────────
+-- ── Internal: keyed row renderer ─────────────────────────────────────────────
 
--- Hot path: called up to TRACKER_ROW_COUNT × per 200 ms tick.
--- Guards every SetText / SetColor call behind a string-compare to avoid
--- redundant draws (LuaJIT interns strings so ~= is a pointer compare).
-local function setRowInternal(n, name, eta)
-    if not ctrl then return end
-    local row = ctrl.rows[n]
-    if not row then return end
+-- Rebuild the sorted display order from rowData keys.  Called only when the
+-- key set or a priority value changes; skipped on plain eta/name updates.
+-- Sort: higher priority first; among equal-priority keys, numbers before
+-- strings, then natural ascending order within each type.
+-- With all-default priority and numeric keys 1–7, this reproduces the old
+-- positional layout exactly — row 1 at the top, row 7 at the bottom — so
+-- existing setRow(n, …) call sites need no changes.
+local function rebuildRowOrder(c)
+    local order = {}
+    for k in pairs(c.rowData) do order[#order + 1] = k end
+    table.sort(order, function(a, b)
+        local pa = c.rowData[a].priority
+        local pb = c.rowData[b].priority
+        if pa ~= pb then return pa > pb end
+        local ta, tb = type(a), type(b)
+        if ta == tb then return a < b end
+        return ta == "number"   -- numbers before strings
+    end)
+    c.rowOrder = order
+    c.rowDirty = false
+end
 
-    -- Name column ────────────────────────────────────────────────────────────
-    local nameStr = name or ""
-    if row.nameText ~= nameStr then
-        row.nameText = nameStr
-        row.nameLbl:SetText(nameStr)
-        row.icon:SetHidden(nameStr == "")
-    end
+-- Render keyed row data into the fixed physical slot controls.
+-- Hot path: called from setRow and clearRow.  Guards every SetText / SetColor
+-- call behind a string-compare so only real changes touch the UI.
+local function renderTrackerRows(c)
+    if c.rowDirty then rebuildRowOrder(c) end
 
-    -- ETA column ─────────────────────────────────────────────────────────────
-    local etaStr
-    if eta and eta > 0 then
-        etaStr = math.ceil(eta) .. "s"
-        local r, g, b
-        if     eta < 3  then r, g, b = 1.00, 0.27, 0.27   -- red    (< 3 s)
-        elseif eta < 10 then r, g, b = 1.00, 0.52, 0.00   -- orange (3–10 s)
-        else                 r, g, b = 0.67, 0.67, 0.67   -- grey   (> 10 s)
+    for i = 1, TRACKER_ROW_COUNT do
+        local key = c.rowOrder[i]
+        local row = c.rows[i]
+        local d   = key and c.rowData[key]
+
+        -- Name column ────────────────────────────────────────────────────────
+        local nameStr = d and d.name or ""
+        if row.nameText ~= nameStr then
+            row.nameText = nameStr
+            row.nameLbl:SetText(nameStr)
+            row.icon:SetHidden(nameStr == "")
         end
-        -- SetColor is cheap but still skip it when value hasn't changed.
-        -- We use etaText as the colour proxy: a colour only changes when the
-        -- ceiling bucket changes, which is rare, so this under-fires slightly.
-        -- Accept the minor inaccuracy to keep the hot path allocation-free.
+
+        -- ETA column ─────────────────────────────────────────────────────────
+        local eta    = d and d.eta
+        local etaStr
+        if eta and eta > 0 then
+            etaStr = math.ceil(eta) .. "s"
+            local r, g, b
+            if     eta < 3  then r, g, b = 1.00, 0.27, 0.27   -- red    (< 3 s)
+            elseif eta < 10 then r, g, b = 1.00, 0.52, 0.00   -- orange (3–10 s)
+            else                 r, g, b = 0.67, 0.67, 0.67   -- grey   (> 10 s)
+            end
+            -- SetColor is cheap but still skip it when value hasn't changed.
+            -- We use etaText as the colour proxy: a colour only changes when the
+            -- ceiling bucket changes, which is rare, so this under-fires slightly.
+            -- Accept the minor inaccuracy to keep the hot path allocation-free.
+            if row.etaText ~= etaStr then
+                row.etaLbl:SetColor(r, g, b, 1)
+            end
+        else
+            etaStr = ""
+        end
         if row.etaText ~= etaStr then
-            row.etaLbl:SetColor(r, g, b, 1)
+            row.etaText = etaStr
+            row.etaLbl:SetText(etaStr)
         end
-    else
-        etaStr = ""
-    end
-    if row.etaText ~= etaStr then
-        row.etaText = etaStr
-        row.etaLbl:SetText(etaStr)
-    end
-
-    if not ctrl.active then
-        ctrl.active = true
-        applyTrackerVisibility()
     end
 end
 
@@ -382,16 +425,34 @@ Panel.alerts = {
         clearAlertContent()
     end,
 
-    -- setRow(n, name, eta)  –  update tracker row n.
-    -- name: display label (may include |c colour codes).
-    -- eta:  remaining seconds (number > 0), or nil for a static / timer-free row.
-    setRow = function(n, name, eta)
-        setRowInternal(n, name, eta)
+    -- setRow(key, name, eta, priority)  –  update or insert a keyed tracker row.
+    -- key:      opaque row identifier (number or string).  Numeric keys ≤ 7
+    --           reproduce the old positional layout; no call-site changes needed.
+    -- name:     display label (may include |c colour codes).
+    -- eta:      remaining seconds (number > 0), or nil for a static / timer-free row.
+    -- priority: optional sort weight (default 0).  Higher values sort to the top.
+    --           When more keys than slots exist, lower-priority rows are clipped.
+    setRow = function(key, name, eta, priority)
+        if not ctrl then return end
+        priority = priority or 0
+        local existing   = ctrl.rowData[key]
+        local isNew      = existing == nil
+        local prioChange = existing and existing.priority ~= priority
+        ctrl.rowData[key] = { name = name or "", eta = eta, priority = priority }
+        if isNew or prioChange then ctrl.rowDirty = true end
+        renderTrackerRows(ctrl)
+        if not ctrl.active then
+            ctrl.active = true
+            applyTrackerVisibility()
+        end
     end,
 
-    -- clearRow(n)  –  blank out tracker row n.
-    clearRow = function(n)
-        setRowInternal(n, "", nil)
+    -- clearRow(key)  –  remove a keyed row and re-render.
+    clearRow = function(key)
+        if not ctrl or not ctrl.rowData[key] then return end
+        ctrl.rowData[key] = nil
+        ctrl.rowDirty = true
+        renderTrackerRows(ctrl)
     end,
 
     -- clear()  –  clear both panels and deactivate.
