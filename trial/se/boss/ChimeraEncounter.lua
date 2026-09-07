@@ -55,7 +55,7 @@ local ChimeraEncounter = {}
 ChimeraEncounter.__index = ChimeraEncounter
 
 ChimeraEncounter.key               = "chimera"
-ChimeraEncounter.nameAliases       = { Lang.t("boss_chimera") }   -- TODO: verify via GetUnitName in-game
+ChimeraEncounter.nameAliases       = { "Chimera" }   -- TODO: verify via GetUnitName in-game
 ChimeraEncounter.hmHealthThreshold = 70000000   -- vet ~46.5M, HM ~93.1M
 -- location: placeholder - Sunken Elder arena AABB not yet captured.
 -- Detection falls back to nameAliases (name-based, may fail on non-EN clients).

@@ -21,7 +21,7 @@ local ShaperEncounter = {}
 ShaperEncounter.__index = ShaperEncounter
 
 ShaperEncounter.key               = "shaper"
-ShaperEncounter.nameAliases       = { Lang.t("boss_shaper") }   -- TODO: verify via GetUnitName in-game
+ShaperEncounter.nameAliases       = { "Shaper of Flesh" }   -- TODO: verify via GetUnitName in-game
 -- hmHealthThreshold: math.huge until measured in-game on vet HM.
 -- (0 would make detectDifficulty always return HARDMODE.)
 ShaperEncounter.hmHealthThreshold = math.huge

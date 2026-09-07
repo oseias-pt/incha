@@ -96,7 +96,7 @@ ZmajaEncounter.__index = ZmajaEncounter
 setmetatable(ZmajaEncounter, {__index = BossBase})  -- inherit cleanupAlertList, onDied
 
 ZmajaEncounter.key               = "zmaja"
-ZmajaEncounter.nameAliases       = { Lang.t("boss_zmaja") }   -- TODO: verify via GetUnitName in-game
+ZmajaEncounter.nameAliases       = { "Z'Maja" }   -- TODO: verify via GetUnitName in-game
 -- hmHealthThreshold: math.huge until measured in-game on vet HM.
 -- (0 would make detectDifficulty always return HARDMODE.)
 -- To calibrate: pull on vet HM, run /script d(GetUnitPower("boss1", POWERTYPE_HEALTH))
@@ -150,13 +150,13 @@ end
 local function handleShackle(self, context, alerts, abilityId,
                                unitTag, sourceUnitTag, sourceUnitId, unitId,
                                sourceUnitName, unitName)
-    if unitName and unitName:find(Lang.t("boss_siroria"), 1, true) then
+    if unitName and unitName:find("Siroria", 1, true) then
         self.siroActive = false
         self.siroJumpTimer:clear(); self.siroBannerTimer:clear()
-    elseif unitName and unitName:find(Lang.t("boss_relequen"), 1, true) then
+    elseif unitName and unitName:find("Relequen", 1, true) then
         self.releActive = false
         self.releJumpTimer:clear(); self.releBashTimer:clear(); self.releJoltTimer:clear()
-    elseif unitName and unitName:find(Lang.t("boss_galenwe"), 1, true) then
+    elseif unitName and unitName:find("Galenwe", 1, true) then
         self.galeActive = false
         self.galeJumpTimer:clear(); self.galeBashTimer:clear(); self.galeDonutTimer:clear()
     end
