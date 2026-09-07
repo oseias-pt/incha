@@ -17,7 +17,11 @@ local DarielEncounter = {}
 DarielEncounter.__index = DarielEncounter
 
 DarielEncounter.key               = "dariel"
-DarielEncounter.nameAliases       = { Lang.t("boss_dariel") }   -- TODO: verify via GetUnitName in-game
+-- UESP's NPC page is Online:Dariel_Lemonds (full name), so GetUnitName() may return
+-- "Dariel Lemonds" rather than just "Dariel".  Both aliases are tried until one pull
+-- with /incha debug confirms which string the game actually reports.  Remove the wrong
+-- entry after verification.  See #122.
+DarielEncounter.nameAliases       = { Lang.t("boss_dariel"), Lang.t("boss_dariel_lemonds") }   -- TODO: verify via GetUnitName in-game
 -- hmHealthThreshold: math.huge until measured in-game on vet HM.
 -- (0 would make detectDifficulty always return HARDMODE.)
 DarielEncounter.hmHealthThreshold = math.huge

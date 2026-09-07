@@ -43,11 +43,13 @@ M.boss_skorkhif             = "Skorkhif"
 M.boss_kazpian              = "Overfiend Kazpian"
 M.boss_shaper               = "Shaper of Flesh"
 M.boss_xynizata             = "Xynizata"
+M.boss_jresazzel            = "Jresazzel"   -- LC room-7 melee mini-boss; fextralife lists "Jresazzel/Xynizata" together — verify which slots appear in-game
 M.boss_xoryn                = "Xoryn"
 M.boss_count_ryelaz         = "Count Ryelaz"
 M.boss_zilyesset            = "Zilyesset"
 M.boss_orphic               = "Orphic Shattered Shard"
 M.boss_dariel               = "Dariel"
+M.boss_dariel_lemonds       = "Dariel Lemonds"   -- UESP page is Online:Dariel_Lemonds; verify which form GetUnitName() returns
 
 -- ── Common fallback labels ───────────────────────────────────────────────────
 
