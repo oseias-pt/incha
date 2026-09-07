@@ -4,6 +4,7 @@ local Difficulty   = require("core.Difficulty")
 local EventPipeline = require("core.EventPipeline")
 local HealthRules  = require("core.HealthRules")
 local Log          = require("lib.Log")
+local Settings     = require("core.Settings")
 local Throttle     = require("lib.Throttle")
 local TrialContext = require("core.TrialContext")
 local BridgeBase   = require("core.Bridge")
@@ -150,6 +151,13 @@ function Trial:onBossesChanged(forceReset)
                 end
             end
         end
+    end
+
+    -- Per-boss enable gate.  A disabled boss is treated as undetected: no
+    -- alerts, no panel, and no event subscriptions for this encounter.
+    if bossClass and Settings.trial(self.id).bosses[bossClass.key] == false then
+        Log.debug("%s: boss %q is disabled in settings", self.id, bossClass.key)
+        bossClass = nil
     end
 
     -- Detection failing is silent by design  -  no boss, no panel, no error  -

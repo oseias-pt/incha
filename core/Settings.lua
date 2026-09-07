@@ -33,19 +33,80 @@ local DEFAULTS = {
     trials = {
         ka = {
             enabled          = true,
-            showBossUI       = true,   -- show the boss name / HM status panel
-            showPercent      = true,   -- show hp% milestone alerts (Falgravn etc.)
-            portalIconVrol   = true,   -- show floor icon on Vrol portal spawn
+            showPercent      = true,   -- hp% milestone alerts (Falgravn etc.)
+            portalIconVrol   = true,   -- floor icon on Vrol portal spawn
             posIconsFalgravn = true,   -- connection-node / blood-ball / torturer floor markers
+            bosses = {
+                yandir   = true,
+                vrol     = true,
+                falgravn = true,
+            },
         },
-        ss  = { enabled = true, showBossUI = true },
-        rg  = { enabled = true, showBossUI = true },
-        dsr = { enabled = true, showBossUI = true },
-        as  = { enabled = true, showBossUI = true, showPercent = true },  -- showPercent: Olms jump-threshold pre-warnings
-        cr  = { enabled = true, showBossUI = true, posIconsZmaja = true },  -- posIconsZmaja: OSI Frost/Gale mechanic icons
-        se  = { enabled = true, showBossUI = true, showPercent = true },  -- showPercent: Yaseyla phase / add-wave milestones
-        lc  = { enabled = true, showBossUI = true },
-        oc  = { enabled = true, showBossUI = true },
+        ss = {
+            enabled = true,
+            bosses  = {
+                lokke  = true,
+                yolna  = true,
+                nahvii = true,
+            },
+        },
+        rg = {
+            enabled = true,
+            bosses  = {
+                oaxiltso = true,
+                bahsei   = true,
+                xalvakka = true,
+            },
+        },
+        dsr = {
+            enabled = true,
+            bosses  = {
+                lylanar       = true,
+                reef_guardian = true,
+                taleria       = true,
+            },
+        },
+        as = {
+            enabled     = true,
+            showPercent = true,   -- Olms jump-threshold pre-warnings
+            bosses      = {
+                olms = true,
+            },
+        },
+        cr = {
+            enabled       = true,
+            posIconsZmaja = true,   -- OSI Frost/Gale mechanic icons
+            bosses        = {
+                zmaja = true,
+            },
+        },
+        se = {
+            enabled     = true,
+            showPercent = true,   -- Yaseyla phase / add-wave milestones
+            bosses      = {
+                yaseyla = true,
+                chimera = true,
+                ansuul  = true,
+            },
+        },
+        lc = {
+            enabled = true,
+            bosses  = {
+                ryelaz   = true,
+                dariel   = true,
+                orphic   = true,
+                xynizata = true,
+                xoryn    = true,
+            },
+        },
+        oc = {
+            enabled = true,
+            bosses  = {
+                jynorah = true,
+                kazpian = true,
+                shaper  = true,
+            },
+        },
     },
 
     -- Set true once we've attempted a one-time import from BSCHTKA.SV_ACC.

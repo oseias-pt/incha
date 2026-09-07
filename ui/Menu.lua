@@ -97,10 +97,21 @@ local OPTIONS = {
     },
     {
         type    = "checkbox",
-        name    = "Show boss panel",
-        tooltip = "Display boss name and hardmode status on enter.",
-        getFunc = function() return Settings.get().trials.ka.showBossUI end,
-        setFunc = function(v) Settings.get().trials.ka.showBossUI = v end,
+        name    = "Yandir the Butcher",
+        getFunc = function() return Settings.get().trials.ka.bosses.yandir end,
+        setFunc = function(v) Settings.get().trials.ka.bosses.yandir = v end,
+    },
+    {
+        type    = "checkbox",
+        name    = "Captain Vrol",
+        getFunc = function() return Settings.get().trials.ka.bosses.vrol end,
+        setFunc = function(v) Settings.get().trials.ka.bosses.vrol = v end,
+    },
+    {
+        type    = "checkbox",
+        name    = "Lord Falgravn",
+        getFunc = function() return Settings.get().trials.ka.bosses.falgravn end,
+        setFunc = function(v) Settings.get().trials.ka.bosses.falgravn = v end,
     },
     {
         type    = "checkbox",
@@ -138,10 +149,21 @@ local OPTIONS = {
     },
     {
         type    = "checkbox",
-        name    = "Show boss panel",
-        tooltip = "Display boss name and hardmode status on enter.",
-        getFunc = function() return Settings.get().trials.ss.showBossUI end,
-        setFunc = function(v) Settings.get().trials.ss.showBossUI = v end,
+        name    = "Lokkestiiz",
+        getFunc = function() return Settings.get().trials.ss.bosses.lokke end,
+        setFunc = function(v) Settings.get().trials.ss.bosses.lokke = v end,
+    },
+    {
+        type    = "checkbox",
+        name    = "Yolnahkriin",
+        getFunc = function() return Settings.get().trials.ss.bosses.yolna end,
+        setFunc = function(v) Settings.get().trials.ss.bosses.yolna = v end,
+    },
+    {
+        type    = "checkbox",
+        name    = "Nahviintaas",
+        getFunc = function() return Settings.get().trials.ss.bosses.nahvii end,
+        setFunc = function(v) Settings.get().trials.ss.bosses.nahvii = v end,
     },
 
     -- Section: Rockgrove
@@ -157,10 +179,21 @@ local OPTIONS = {
     },
     {
         type    = "checkbox",
-        name    = "Show boss panel",
-        tooltip = "Display boss name and hardmode status on enter.",
-        getFunc = function() return Settings.get().trials.rg.showBossUI end,
-        setFunc = function(v) Settings.get().trials.rg.showBossUI = v end,
+        name    = "Oaxiltso",
+        getFunc = function() return Settings.get().trials.rg.bosses.oaxiltso end,
+        setFunc = function(v) Settings.get().trials.rg.bosses.oaxiltso = v end,
+    },
+    {
+        type    = "checkbox",
+        name    = "Bahsei the Unyielding",
+        getFunc = function() return Settings.get().trials.rg.bosses.bahsei end,
+        setFunc = function(v) Settings.get().trials.rg.bosses.bahsei = v end,
+    },
+    {
+        type    = "checkbox",
+        name    = "Xalvakka",
+        getFunc = function() return Settings.get().trials.rg.bosses.xalvakka end,
+        setFunc = function(v) Settings.get().trials.rg.bosses.xalvakka = v end,
     },
 
     -- Section: Dreadsail Reef
@@ -176,10 +209,21 @@ local OPTIONS = {
     },
     {
         type    = "checkbox",
-        name    = "Show boss panel",
-        tooltip = "Display boss name and hardmode status on enter.",
-        getFunc = function() return Settings.get().trials.dsr.showBossUI end,
-        setFunc = function(v) Settings.get().trials.dsr.showBossUI = v end,
+        name    = "Lylanar and Oraneth",
+        getFunc = function() return Settings.get().trials.dsr.bosses.lylanar end,
+        setFunc = function(v) Settings.get().trials.dsr.bosses.lylanar = v end,
+    },
+    {
+        type    = "checkbox",
+        name    = "The Reef Guardian",
+        getFunc = function() return Settings.get().trials.dsr.bosses.reef_guardian end,
+        setFunc = function(v) Settings.get().trials.dsr.bosses.reef_guardian = v end,
+    },
+    {
+        type    = "checkbox",
+        name    = "Taleria",
+        getFunc = function() return Settings.get().trials.dsr.bosses.taleria end,
+        setFunc = function(v) Settings.get().trials.dsr.bosses.taleria = v end,
     },
 
     -- Section: Asylum Sanctorium
@@ -196,10 +240,9 @@ local OPTIONS = {
     },
     {
         type    = "checkbox",
-        name    = "Show boss panel",
-        tooltip = "Display boss name and hardmode status on enter.",
-        getFunc = function() return Settings.get().trials.as.showBossUI end,
-        setFunc = function(v) Settings.get().trials.as.showBossUI = v end,
+        name    = "Olms the Consummate",
+        getFunc = function() return Settings.get().trials.as.bosses.olms end,
+        setFunc = function(v) Settings.get().trials.as.bosses.olms = v end,
     },
     {
         type    = "checkbox",
@@ -223,10 +266,9 @@ local OPTIONS = {
     },
     {
         type    = "checkbox",
-        name    = "Show boss panel",
-        tooltip = "Display boss name and hardmode status on enter.",
-        getFunc = function() return Settings.get().trials.cr.showBossUI end,
-        setFunc = function(v) Settings.get().trials.cr.showBossUI = v end,
+        name    = "Z'Maja",
+        getFunc = function() return Settings.get().trials.cr.bosses.zmaja end,
+        setFunc = function(v) Settings.get().trials.cr.bosses.zmaja = v end,
     },
     {
         type    = "checkbox",
@@ -250,10 +292,21 @@ local OPTIONS = {
     },
     {
         type    = "checkbox",
-        name    = "Show boss panel",
-        tooltip = "Display boss name and hardmode status on enter.",
-        getFunc = function() return Settings.get().trials.se.showBossUI end,
-        setFunc = function(v) Settings.get().trials.se.showBossUI = v end,
+        name    = "Yaseyla",
+        getFunc = function() return Settings.get().trials.se.bosses.yaseyla end,
+        setFunc = function(v) Settings.get().trials.se.bosses.yaseyla = v end,
+    },
+    {
+        type    = "checkbox",
+        name    = "The Chimera",
+        getFunc = function() return Settings.get().trials.se.bosses.chimera end,
+        setFunc = function(v) Settings.get().trials.se.bosses.chimera = v end,
+    },
+    {
+        type    = "checkbox",
+        name    = "Ansuul the Tormentor",
+        getFunc = function() return Settings.get().trials.se.bosses.ansuul end,
+        setFunc = function(v) Settings.get().trials.se.bosses.ansuul = v end,
     },
     {
         type    = "checkbox",
@@ -277,10 +330,33 @@ local OPTIONS = {
     },
     {
         type    = "checkbox",
-        name    = "Show boss panel",
-        tooltip = "Display boss name and hardmode status on enter.",
-        getFunc = function() return Settings.get().trials.lc.showBossUI end,
-        setFunc = function(v) Settings.get().trials.lc.showBossUI = v end,
+        name    = "Ryelaz",
+        getFunc = function() return Settings.get().trials.lc.bosses.ryelaz end,
+        setFunc = function(v) Settings.get().trials.lc.bosses.ryelaz = v end,
+    },
+    {
+        type    = "checkbox",
+        name    = "Sahdina Dariel",
+        getFunc = function() return Settings.get().trials.lc.bosses.dariel end,
+        setFunc = function(v) Settings.get().trials.lc.bosses.dariel = v end,
+    },
+    {
+        type    = "checkbox",
+        name    = "Orphic Xoryn",
+        getFunc = function() return Settings.get().trials.lc.bosses.orphic end,
+        setFunc = function(v) Settings.get().trials.lc.bosses.orphic = v end,
+    },
+    {
+        type    = "checkbox",
+        name    = "Xynizata",
+        getFunc = function() return Settings.get().trials.lc.bosses.xynizata end,
+        setFunc = function(v) Settings.get().trials.lc.bosses.xynizata = v end,
+    },
+    {
+        type    = "checkbox",
+        name    = "Xoryn the Unbound",
+        getFunc = function() return Settings.get().trials.lc.bosses.xoryn end,
+        setFunc = function(v) Settings.get().trials.lc.bosses.xoryn = v end,
     },
 
     -- Section: Ossein Cage
@@ -297,10 +373,21 @@ local OPTIONS = {
     },
     {
         type    = "checkbox",
-        name    = "Show boss panel",
-        tooltip = "Display boss name and hardmode status on enter.",
-        getFunc = function() return Settings.get().trials.oc.showBossUI end,
-        setFunc = function(v) Settings.get().trials.oc.showBossUI = v end,
+        name    = "Jynorah",
+        getFunc = function() return Settings.get().trials.oc.bosses.jynorah end,
+        setFunc = function(v) Settings.get().trials.oc.bosses.jynorah = v end,
+    },
+    {
+        type    = "checkbox",
+        name    = "Kazpian",
+        getFunc = function() return Settings.get().trials.oc.bosses.kazpian end,
+        setFunc = function(v) Settings.get().trials.oc.bosses.kazpian = v end,
+    },
+    {
+        type    = "checkbox",
+        name    = "Shaper of Flesh",
+        getFunc = function() return Settings.get().trials.oc.bosses.shaper end,
+        setFunc = function(v) Settings.get().trials.oc.bosses.shaper = v end,
     },
 
     -- Section: Preview --------------------------------------------------------

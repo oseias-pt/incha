@@ -7,10 +7,6 @@
 --- still sees a working checkbox that changes nothing, and nothing anywhere
 --- fails.  That is the worst kind of dead code: it is *advertised*.
 ---
---- showBossUI is the precedent: it is declared for all nine trials in
---- core/Settings.lua:34-46 and exposed by nine checkboxes in ui/Menu.lua, and
---- no module in the addon ever reads it.
----
 --- Usage (from the repository root):
 ---   luajit test/checks/settings-usage.lua
 ---
@@ -26,14 +22,8 @@ local NOT_A_READER = {
 }
 
 -- Known findings, kept green on purpose so this check can gate CI from the day
--- it lands and only fail on NEW dead settings.  Remove an entry by fixing it;
--- the check still fails if a grandfathered key is silently removed elsewhere.
---
---   trials.*.showBossUI  declared for 9 trials, read by 0 modules; pending the
---                        decision in the issue (wire it to the overlay show
---                        path, or drop the nine checkboxes).
+-- it lands and only fail on NEW dead settings.  Remove an entry by fixing it.
 local GRANDFATHERED = {
-    showBossUI = true,
 }
 
 local findings = 0
@@ -57,18 +47,22 @@ if not settingsText then
 end
 
 -- -- Collect the per-trial keys ----------------------------------------------
--- Two shapes exist in core/Settings.lua, so track brace depth rather than
--- pattern-matching a shape:
+-- Track brace depth from the opening of the trials block:
 --
---   trials = {                       depth 1 on entry
---       ka = {                  -- one key per line, depth 2 inside
+--   trials = {           depth 1 on entry
+--       ka = {           depth 2 inside each trial sub-table
 --           enabled = true,
+--           bosses = {   depth 3 inside the per-boss sub-table (NOT collected)
+--               yandir = true,
+--           },
 --       },
---       ss = { enabled = true, showBossUI = true },   -- one line, depth 1
 --   }
 --
--- A name is a setting when it is assigned at depth >= 2, or on a trial row line
--- beside the trial code itself.
+-- A name is a setting when it appears at depth == 2 (direct trial key), or on
+-- the trial ID line itself (depth 1, same-line assignments beside the id).
+-- Boss name keys nested inside bosses = { } are at depth 3 and are read
+-- dynamically in Trial.lua via bosses[bossClass.key], so they are not
+-- collected here — only the bosses container key itself is.
 local keys, seen = {}, {}
 local inTrials, depth = false, 0
 for line in settingsText:gmatch("[^\n]+") do
@@ -84,7 +78,7 @@ for line in settingsText:gmatch("[^\n]+") do
         if not line:match("^%s*%-%-") then
             local row = line:match("^%s*(%w+)%s*=%s*{")
             for name in line:gmatch("([%w_]+)%s*=") do
-                local isSetting = before >= 2 or (before == 1 and row and name ~= row)
+                local isSetting = before == 2 or (before == 1 and row and name ~= row)
                 if isSetting and not seen[name] then
                     seen[name] = true
                     keys[#keys + 1] = name
