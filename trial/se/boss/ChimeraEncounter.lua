@@ -78,7 +78,7 @@ function ChimeraEncounter:onLeave(context)
     self:cleanupAlertList()
 end
 
-function ChimeraEncounter:onWipe()
+function ChimeraEncounter:onWipe(context, alerts)
     self:cleanupAlertList()
     self.despawnTimer:clear(); self.chainTimer:clear()
     self.chimeraActive = false; self.firstChain = true

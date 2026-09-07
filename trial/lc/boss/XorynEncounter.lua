@@ -164,7 +164,7 @@ local function showKnotLine(self, alerts)
     end
 end
 
-function XorynEncounter:onWipe()
+function XorynEncounter:onWipe(context, alerts)
     self.currentTimer:clear()
     self.knotCarrierName = false
     self.holdingCurrent  = false

@@ -111,7 +111,7 @@ OrphicEncounter.combatRoutes = {
     [XORYN_IMMUNE_2]  = handleXorynImmune,
 }
 
-function OrphicEncounter:onWipe()
+function OrphicEncounter:onWipe(context, alerts)
     self.thunderThrallTimer:clear(); self.lightningFloodTimer:clear()
     self.xorynActive = false; self.firstThrall = true; self.firstFlood = true
 end

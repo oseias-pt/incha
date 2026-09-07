@@ -56,7 +56,7 @@ DarielEncounter.combatRoutes = {
     [POWERFUL_THROW] = { result = ACTION_RESULT_BEGIN, fn = handlePowerfulThrow },
 }
 
-function DarielEncounter:onWipe()
+function DarielEncounter:onWipe(context, alerts)
     -- stateSchema is empty; no state to reset.
 end
 

@@ -87,7 +87,7 @@ RyelazEncounter.combatRoutes = {
     [SUMMON_BLACKGUARD]      = { result = ACTION_RESULT_BEGIN, fn = handleSummonBlackguard },
 }
 
-function RyelazEncounter:onWipe()
+function RyelazEncounter:onWipe(context, alerts)
     self.playerSide = nil
 end
 

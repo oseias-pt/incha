@@ -571,15 +571,17 @@ local function handleBloodCleave(self, context, alerts, abilityId,
                                   sourceUnitName, unitName)
     alerts:showAction(Lang.t("ka_falgravn_dodge"))
     local dur = CastDur.get(FALGRAVN_M_CLEAVE, FALLBACK_DUR)
-    CA.bar(abilityId, sourceUnitName, dur, dur, Colors.MAGENTA, 0.4,
+    local cid = CA.bar(abilityId, sourceUnitName, dur, dur, Colors.MAGENTA, 0.4,
         { 700, Lang.t("ka_falgravn_dodge"), 1, 0, 0.6, 0.8, SOUNDS.CHAMPION_POINTS_COMMITTED })
+    if cid and sourceUnitId then self.alertList[sourceUnitId] = cid end
 end
 
 local function handleBloodFountain(self, context, alerts, abilityId,
                                     unitTag, sourceUnitTag, sourceUnitId, unitId,
                                     sourceUnitName, unitName)
     alerts:showAction(Lang.t("ka_falgravn_block_fountain"))
-    CA.ranged(FALGRAVN_BLOOD_FOUNT, sourceUnitName, 3033, Colors.MAGENTA)
+    local cid = CA.ranged(FALGRAVN_BLOOD_FOUNT, sourceUnitName, 3033, Colors.MAGENTA)
+    if cid and sourceUnitId then self.alertList[sourceUnitId] = cid end
 end
 
 -- Lightning / connection (plain entry; deduped via bConnect flag).

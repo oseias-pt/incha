@@ -315,7 +315,7 @@ local function showReefWipeLines(self, alerts, now)
     end
 end
 
-function ReefGuardian:onWipe()
+function ReefGuardian:onWipe(context, alerts)
     CA.castAlertsStop(self.acidRefluxBarId)
     self.acidRefluxBarId        = nil
     self.buildingStaticStacks   = 0;    self.buildingStaticEndTime  = 0

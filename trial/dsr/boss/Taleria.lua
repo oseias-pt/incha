@@ -376,7 +376,7 @@ local function showBridgeLine(self, alerts, now, context)
     end
 end
 
-function Taleria:onWipe()
+function Taleria:onWipe(context, alerts)
     CA.castAlertsStop(self.lureBarId)
     self.lureBarId        = nil
     self.lastMaelstrom    = 0;    self.lastBehemothSumm = 0
@@ -385,6 +385,7 @@ function Taleria:onWipe()
     self.bridgeOpen       = { false, false, false }
     self.bridgeWipeStart  = { 0, 0, 0 }
     self.bridgeDone       = { false, false, false }
+    CA.border(false, 0, "green")   -- Whirlpool border: clear if wipe mid-debuff
 end
 
 -- -- 200 ms display loop ---------------------------------------------------
