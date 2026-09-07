@@ -10,6 +10,7 @@ local Colors = require("core.Colors")
 
 -- ── Ability IDs ───────────────────────────────────────────────────────────
 local ARCANE_KNOT         = 213477   -- combatRoute: ACTION_RESULT_EFFECT_GAINED_DURATION / FADED → carry knot
+local ARCANE_CONVEYANCE   = 223024   -- combatRoute: ACTION_RESULT_BEGIN → group-wide tether incoming alert
 local ARCANE_CONV_DEBUFF  = 223060   -- combatRoute: ACTION_RESULT_EFFECT_GAINED_DURATION → tether on player
 local FLUCTUATING_CURRENT = 214597   -- combatRoute: ACTION_RESULT_EFFECT_GAINED_DURATION / FADED → hold (15s max)
 local OVERLOADED_CURRENT  = 214745   -- combatRoute: ACTION_RESULT_EFFECT_GAINED_DURATION → DROP current
@@ -39,9 +40,9 @@ XorynEncounter.hmHealthThreshold = 100000000   -- TODO: verify — round estimat
 -- To calibrate: stand in arena, run /script d(GetUnitWorldPosition("boss1"))
 
 XorynEncounter.stateSchema = {
-    currentTimer    = function() return Timer.new(CURRENT_MAX_DUR) end,
-    holdingKnot     = false,
-    holdingCurrent  = false,
+    currentTimer     = function() return Timer.new(CURRENT_MAX_DUR) end,
+    knotCarrierName  = false,   -- display name of the current knot holder, or false
+    holdingCurrent   = false,
 }
 
 function XorynEncounter.new()
@@ -84,14 +85,19 @@ local function handleLustrousJavelin(self, context, alerts, abilityId, unitTag, 
 end
 
 local function handleArcaneKnot(self, context, alerts, result, abilityId, unitTag, ...)
-    if not IsUnitPlayer(unitTag) then return end
     if result == ACTION_RESULT_EFFECT_GAINED_DURATION then
-        self.holdingKnot = true
-        CA.alert(nil, Lang.t("lc_xoryn_knot_alert"), 0xFFAA44FF, SOUNDS.NONE, 4000)
-        alerts:showAction(Lang.t("lc_xoryn_arcane_knot"))
+        self.knotCarrierName = GetUnitDisplayName(unitTag) or "?"
+        if IsUnitPlayer(unitTag) then
+            CA.alert(nil, Lang.t("lc_xoryn_knot_alert"), 0xFFAA44FF, SOUNDS.NONE, 4000)
+            alerts:showAction(Lang.t("lc_xoryn_arcane_knot"))
+        end
     elseif result == ACTION_RESULT_EFFECT_FADED then
-        self.holdingKnot = false
+        self.knotCarrierName = false
     end
+end
+
+local function handleArcaneConveyance(self, context, alerts, abilityId, ...)
+    CA.alert(nil, Lang.t("lc_xoryn_tethers_cast"), 0xFF4444FF, SOUNDS.NONE, 3000)
 end
 
 local function handleArcaneConvDebuff(self, context, alerts, abilityId, unitTag, ...)
@@ -127,6 +133,7 @@ XorynEncounter.combatRoutes = {
     [GLASS_STOMP_CAST]    = { result = ACTION_RESULT_BEGIN,                    fn = handleGlassStomp },
     [LUSTROUS_JAVELIN]    = { result = ACTION_RESULT_BEGIN,                    fn = handleLustrousJavelin },
     [ARCANE_KNOT]         = handleArcaneKnot,
+    [ARCANE_CONVEYANCE]   = { result = ACTION_RESULT_BEGIN,                    fn = handleArcaneConveyance },
     [ARCANE_CONV_DEBUFF]  = { result = ACTION_RESULT_EFFECT_GAINED_DURATION,   fn = handleArcaneConvDebuff },
     [FLUCTUATING_CURRENT] = handleFluctuatingCurrent,
     [OVERLOADED_CURRENT]  = { result = ACTION_RESULT_EFFECT_GAINED_DURATION,   fn = handleOverloadedCurrent },
@@ -148,10 +155,10 @@ local function showCurrentLine(self, alerts)
     end
 end
 
--- Line 2: Arcane Knot carrier indicator.
+-- Line 2: Arcane Knot carrier name (visible to all group members).
 local function showKnotLine(self, alerts)
-    if self.holdingKnot then
-        alerts:setRow(2, Fmt.c(Fmt.AMBER, Lang.t("lc_xoryn_carrying_knot")), nil)
+    if self.knotCarrierName then
+        alerts:setRow(2, Fmt.c(Fmt.AMBER, Lang.t("lc_xoryn_knot_carrier", self.knotCarrierName)), nil)
     else
         alerts:clearRow(2)
     end
@@ -159,8 +166,8 @@ end
 
 function XorynEncounter:onWipe()
     self.currentTimer:clear()
-    self.holdingKnot    = false
-    self.holdingCurrent = false
+    self.knotCarrierName = false
+    self.holdingCurrent  = false
 end
 
 function XorynEncounter:onUpdate(context, alerts)

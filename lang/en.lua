@@ -409,6 +409,8 @@ M.lc_ryelaz_bleak           = "Bleak Annihilation!"
 M.lc_ryelaz_annihil_action  = "STACK — Annihilation!"
 M.lc_ryelaz_side_dark       = "Ryelaz side (dark)"
 M.lc_ryelaz_side_light      = "Zilyesset side (light)"
+M.lc_ryelaz_add_light       = "Kill Lightweaver! (light side add)"
+M.lc_ryelaz_add_dark        = "Kill Blackguard! (dark side add)"
 
 -- ── Lucent Citadel ── DarielEncounter ────────────────────────────────────────
 
@@ -449,6 +451,7 @@ M.lc_xoryn_atronach_aoe     = "Atronach AOE on YOU!"
 M.lc_xoryn_lustrous_javelin = "Lustrous Javelin on you!"
 M.lc_xoryn_arcane_knot      = "Arcane Knot — carry and pass!"
 M.lc_xoryn_tether           = "Tether on you! Separate from partner!"
+M.lc_xoryn_tethers_cast    = "Tethers!"
 M.lc_xoryn_fluctuating      = "Fluctuating Current — hold, then drop!"
 M.lc_xoryn_overloaded       = "Overloaded — DROP the current!"
 -- CA bar labels
@@ -459,13 +462,13 @@ M.lc_xoryn_atronach_bar     = "Atronach AOE → %s"
 M.lc_xoryn_chain_lightning  = "Chain Lightning incoming!"
 M.lc_xoryn_javelin_alert    = "Javelin on YOU!"
 M.lc_xoryn_knot_alert       = "Carry knot! Pass it!"
+M.lc_xoryn_knot_carrier    = "Knot: %s"
 M.lc_xoryn_tether_alert     = "TETHER! Move away!"
 M.lc_xoryn_current_alert    = "Hold current! Drop at edge!"
 M.lc_xoryn_drop_alert       = "DROP current!"
 -- Info
 M.lc_xoryn_current          = "Current"
 M.lc_xoryn_drop_now         = "DROP NOW!"
-M.lc_xoryn_carrying_knot    = "Carrying Arcane Knot"
 
 -- ── Ossein Cage (OC) ── OsseinCageCommon.lua ─────────────────────────────────
 
