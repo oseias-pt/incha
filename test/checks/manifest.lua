@@ -38,7 +38,9 @@ end
 
 local listed, order = {}, {}
 for line in manifestText:gmatch("[^\r\n]+") do
+    -- Match both .lua and .xml entries; ESO loads both from the manifest.
     local entry = line:match("^%s*([%w_%-/%.]+%.lua)%s*$")
+                  or line:match("^%s*([%w_%-/%.]+%.xml)%s*$")
     if entry then
         entry = entry:gsub("\\", "/")
         if listed[entry] then
@@ -59,8 +61,9 @@ for _, entry in ipairs(order) do
     end
 end
 
--- -- Every source file must be listed ---------------------------------------
-local p = io.popen('find . -name "*.lua" -not -path "./.git/*" '
+-- -- Every source file must be listed (.lua and .xml) ----------------------
+local p = io.popen('find . \\( -name "*.lua" -o -name "*.xml" \\) '
+    .. '-not -path "./.git/*" '
     .. '-not -path "./.claude/*" -not -path "./test/*" 2>/dev/null')
 local onDisk = {}
 for line in p:lines() do
@@ -72,8 +75,10 @@ table.sort(onDisk)
 
 for _, rel in ipairs(onDisk) do
     if not listed[rel] then
+        local ext = rel:match("%.([^.]+)$")
+        local verb = (ext == "xml") and "load" or "execute"
         fail("NOT LOADED    %s exists but is not listed in %s  -  ESO will "
-             .. "never execute it", rel, MANIFEST)
+             .. "never %s it", rel, MANIFEST, verb)
     end
 end
 
