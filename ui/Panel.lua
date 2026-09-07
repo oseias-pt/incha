@@ -54,6 +54,15 @@ local ALERT_W              = 400
 local ALERT_H              = 56
 local ALERT_AUTO_CLEAR_MS  = 5000
 
+-- ── Row icon placeholder ─────────────────────────────────────────────────────
+
+-- Shown in every populated tracker row as a static instability frame until
+-- V2.0 adds per-event textures (#152).  Not semantically correct today —
+-- it always shows the instability icon regardless of which mechanic the row
+-- represents — but it validates the icon column layout and keeps the slot
+-- visible while the real feature is deferred.
+local INST_ICON_TEXTURE = "Incha/resources/instability/frame_01.dds"
+
 -- ── Shared HUD scene state ────────────────────────────────────────────────────
 
 -- Updated by both scene callbacks; controls both panels via applyXxxVisibility().
@@ -159,11 +168,13 @@ local function build()
     for i = 1, TRACKER_ROW_COUNT do
         local y = TRACKER_HEADER_H + (i - 1) * TRACKER_ROW_H
 
-        -- 20×20 icon placeholder.  Initially hidden; a future patch will set textures.
+        -- 20×20 icon slot.  Shown when the row is populated; hidden when blank.
+        -- Texture is the instability placeholder until #152 adds per-event icons.
         local icon = WINDOW_MANAGER:CreateControl(nil, panel, CT_TEXTURE)
         icon:SetAnchor(TOPLEFT, panel, TOPLEFT, ICON_X, y + math.floor((TRACKER_ROW_H - ICON_H) / 2))
         icon:SetDimensions(ICON_W, ICON_H)
-        icon:SetHidden(true)   -- no texture assigned yet; hidden until icons are added
+        icon:SetTexture(INST_ICON_TEXTURE)
+        icon:SetHidden(true)
 
         -- Name label: event label, left-aligned, grey.
         local nameLbl = WINDOW_MANAGER:CreateControl(nil, panel, CT_LABEL)
@@ -293,6 +304,7 @@ local function setRowInternal(n, name, eta)
     if row.nameText ~= nameStr then
         row.nameText = nameStr
         row.nameLbl:SetText(nameStr)
+        row.icon:SetHidden(nameStr == "")
     end
 
     -- ETA column ─────────────────────────────────────────────────────────────
