@@ -254,6 +254,7 @@ M.ka_falgravn_torturer_down = "Torturer Comes Down!"
 M.ka_falgravn_dodge_torturer = "DODGE! (Torturer LA)"
 M.ka_falgravn_torturer_la_label = "Torturer LA's"
 M.ka_falgravn_kill_prison   = "KILL PRISON!"
+M.ka_falgravn_prisoner_warn = "KILL Torturer! (%s fed %s× — dying!)"   -- %s=prisoner name, %s=stack count
 
 -- ── Asylum Sanctorium (AS) ── OlmsEncounter ─────────────────────────────────
 
