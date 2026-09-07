@@ -7,7 +7,7 @@
 ---
 --- Tracker panel  (Incha_Panel)
 ---   Structured table of upcoming events.
----   Each row: [20×20 icon placeholder] [event label] [ETA countdown]
+---   Each row: [20×20 icon (optional)] [event label] [ETA countdown]
 ---   ETA colour: grey >10 s · orange 3–10 s · red <3 s.
 ---   Draggable; position saved in Settings.overlay.{offsetX,offsetY}.
 ---
@@ -15,11 +15,12 @@
 ---   header(text)         – boss name / HM status (tracker top)
 ---   action(text)         – immediate call-out (alert panel); auto-clears 5 s
 ---   hideAction()         – force-clear alert panel before timeout
----   setRow(key, name, eta, priority)
+---   setRow(key, name, eta, priority, iconTexture)
 ---                        – tracker row keyed by key; priority (default 0) controls
 ---                          display order when more keys than slots exist.
 ---                          Numeric keys reproduce the old positional layout
 ---                          (key 1 before key 2, etc.) without changing call sites.
+---                          iconTexture: optional DDS path for the 20×20 slot (nil = hidden).
 ---   clearRow(key)        – remove keyed row; blanks the slot it occupied
 ---   clear()              – clear both panels and deactivate
 ---
@@ -58,14 +59,6 @@ local ALERT_W              = 400
 local ALERT_H              = 56
 local ALERT_AUTO_CLEAR_MS  = 5000
 
--- ── Row icon placeholder ─────────────────────────────────────────────────────
-
--- Shown in every populated tracker row as a static instability frame until
--- V2.0 adds per-event textures (#152).  Not semantically correct today —
--- it always shows the instability icon regardless of which mechanic the row
--- represents — but it validates the icon column layout and keeps the slot
--- visible while the real feature is deferred.
-local INST_ICON_TEXTURE = "Incha/resources/instability/frame_01.dds"
 
 -- ── Shared HUD scene state ────────────────────────────────────────────────────
 
@@ -172,12 +165,10 @@ local function build()
     for i = 1, TRACKER_ROW_COUNT do
         local y = TRACKER_HEADER_H + (i - 1) * TRACKER_ROW_H
 
-        -- 20×20 icon slot.  Shown when the row is populated; hidden when blank.
-        -- Texture is the instability placeholder until #152 adds per-event icons.
+        -- 20×20 icon slot.  Hidden until a setRow caller supplies an iconTexture.
         local icon = WINDOW_MANAGER:CreateControl(nil, panel, CT_TEXTURE)
         icon:SetAnchor(TOPLEFT, panel, TOPLEFT, ICON_X, y + math.floor((TRACKER_ROW_H - ICON_H) / 2))
         icon:SetDimensions(ICON_W, ICON_H)
-        icon:SetTexture(INST_ICON_TEXTURE)
         icon:SetHidden(true)
 
         -- Name label: event label, left-aligned, grey.
@@ -201,11 +192,12 @@ local function build()
         etaLbl:SetText("")
 
         rows[i] = {
-            icon     = icon,
-            nameLbl  = nameLbl,
-            etaLbl   = etaLbl,
-            nameText = "",
-            etaText  = "",
+            icon      = icon,
+            nameLbl   = nameLbl,
+            etaLbl    = etaLbl,
+            nameText  = "",
+            etaText   = "",
+            iconPath  = nil,   -- last texture applied; nil = icon hidden
         }
     end
 
@@ -299,6 +291,9 @@ local function tracker_clear()
         if row.nameText ~= "" then
             row.nameText = ""
             row.nameLbl:SetText("")
+        end
+        if row.iconPath ~= nil then
+            row.iconPath = nil
             row.icon:SetHidden(true)
         end
         if row.etaText ~= "" then
@@ -345,12 +340,23 @@ local function renderTrackerRows(c)
         local row = c.rows[i]
         local d   = key and c.rowData[key]
 
+        -- Icon column ────────────────────────────────────────────────────────
+        local iconPath = d and d.icon or nil
+        if row.iconPath ~= iconPath then
+            row.iconPath = iconPath
+            if iconPath then
+                row.icon:SetTexture(iconPath)
+                row.icon:SetHidden(false)
+            else
+                row.icon:SetHidden(true)
+            end
+        end
+
         -- Name column ────────────────────────────────────────────────────────
         local nameStr = d and d.name or ""
         if row.nameText ~= nameStr then
             row.nameText = nameStr
             row.nameLbl:SetText(nameStr)
-            row.icon:SetHidden(nameStr == "")
         end
 
         -- ETA column ─────────────────────────────────────────────────────────
@@ -425,20 +431,21 @@ Panel.alerts = {
         clearAlertContent()
     end,
 
-    -- setRow(key, name, eta, priority)  –  update or insert a keyed tracker row.
-    -- key:      opaque row identifier (number or string).  Numeric keys ≤ 7
-    --           reproduce the old positional layout; no call-site changes needed.
-    -- name:     display label (may include |c colour codes).
-    -- eta:      remaining seconds (number > 0), or nil for a static / timer-free row.
-    -- priority: optional sort weight (default 0).  Higher values sort to the top.
-    --           When more keys than slots exist, lower-priority rows are clipped.
-    setRow = function(key, name, eta, priority)
+    -- setRow(key, name, eta, priority, iconTexture)  –  update or insert a keyed tracker row.
+    -- key:         opaque row identifier (number or string).  Numeric keys ≤ 7
+    --              reproduce the old positional layout; no call-site changes needed.
+    -- name:        display label (may include |c colour codes).
+    -- eta:         remaining seconds (number > 0), or nil for a static / timer-free row.
+    -- priority:    optional sort weight (default 0).  Higher values sort to the top.
+    --              When more keys than slots exist, lower-priority rows are clipped.
+    -- iconTexture: optional DDS path shown in the 20×20 icon slot.  nil = hidden.
+    setRow = function(key, name, eta, priority, iconTexture)
         if not ctrl then return end
         priority = priority or 0
         local existing   = ctrl.rowData[key]
         local isNew      = existing == nil
         local prioChange = existing and existing.priority ~= priority
-        ctrl.rowData[key] = { name = name or "", eta = eta, priority = priority }
+        ctrl.rowData[key] = { name = name or "", eta = eta, priority = priority, icon = iconTexture }
         if isNew or prioChange then ctrl.rowDirty = true end
         renderTrackerRows(ctrl)
         if not ctrl.active then
