@@ -774,7 +774,15 @@ local function handlePrisonerFeeding(self, context, alerts, abilityId,
     local name = zo_strformat("<<1>>", unitName)
     if self.PRISONERS[name] ~= nil then
         self.PRISONERS[name] = self.PRISONERS[name] + 1
-        if self.PRISONERS[name] == 11 then
+        local stacks = self.PRISONERS[name]
+        -- Pre-wipe warning: prisoner dies at 11 feeds; alert at 9 so raiders
+        -- have 2 more feeds to kill the torturer.
+        -- TODO: evaluate threshold in-game — 9 vs 10 (#126).
+        if stacks == 9 then
+            local msg = Lang.t("ka_falgravn_prisoner_warn", name, stacks)
+            alerts:showAction(msg)
+            CA.alert(nil, msg, 0xFF2200FF, SOUNDS.DUEL_START, 4000)
+        elseif stacks == 11 then
             self.torturerCount = self.torturerCount - 1
             -- 11 stacks = prisoner dead; mark the torturer's icon red.
             updateTorturerIcon(_posIconTorturer, name, TORTURER_TEX.red, Colors.RED)

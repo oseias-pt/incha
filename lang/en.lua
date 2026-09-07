@@ -43,11 +43,13 @@ M.boss_skorkhif             = "Skorkhif"
 M.boss_kazpian              = "Overfiend Kazpian"
 M.boss_shaper               = "Shaper of Flesh"
 M.boss_xynizata             = "Xynizata"
+M.boss_jresazzel            = "Jresazzel"   -- LC room-7 melee mini-boss; fextralife lists "Jresazzel/Xynizata" together — verify which slots appear in-game
 M.boss_xoryn                = "Xoryn"
 M.boss_count_ryelaz         = "Count Ryelaz"
 M.boss_zilyesset            = "Zilyesset"
 M.boss_orphic               = "Orphic Shattered Shard"
 M.boss_dariel               = "Dariel"
+M.boss_dariel_lemonds       = "Dariel Lemonds"   -- UESP page is Online:Dariel_Lemonds; verify which form GetUnitName() returns
 
 -- ── Common fallback labels ───────────────────────────────────────────────────
 
@@ -252,6 +254,7 @@ M.ka_falgravn_torturer_down = "Torturer Comes Down!"
 M.ka_falgravn_dodge_torturer = "DODGE! (Torturer LA)"
 M.ka_falgravn_torturer_la_label = "Torturer LA's"
 M.ka_falgravn_kill_prison   = "KILL PRISON!"
+M.ka_falgravn_prisoner_warn = "KILL Torturer! (%s fed %s× — dying!)"   -- %s=prisoner name, %s=stack count
 
 -- ── Asylum Sanctorium (AS) ── OlmsEncounter ─────────────────────────────────
 

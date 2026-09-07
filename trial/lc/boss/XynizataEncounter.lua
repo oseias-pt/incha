@@ -26,7 +26,11 @@ local XynizataEncounter = {}
 XynizataEncounter.__index = XynizataEncounter
 
 XynizataEncounter.key               = "xynizata"
-XynizataEncounter.nameAliases       = { Lang.t("boss_xynizata") }   -- TODO: verify via GetUnitName in-game
+-- fextralife lists room 7 as "Jresazzel/Xynizata": Jresazzel melee, Xynizata ranged.
+-- Both may appear in boss slots simultaneously (like Ryelaz+Zilyesset).  Either alias
+-- triggers this encounter; verify which slots they occupy with /incha debug and remove
+-- any that never appear in a boss slot.  See #122.
+XynizataEncounter.nameAliases       = { Lang.t("boss_xynizata"), Lang.t("boss_jresazzel") }   -- TODO: verify via GetUnitName in-game
 -- hmHealthThreshold: math.huge until measured in-game on vet HM.
 -- (0 would make detectDifficulty always return HARDMODE.)
 XynizataEncounter.hmHealthThreshold = math.huge
