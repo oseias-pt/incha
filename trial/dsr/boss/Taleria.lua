@@ -32,6 +32,7 @@ local CRASHING_WAVE_1  = 166353   -- combatRoute: ACTION_RESULT_BEGIN + player -
 local CRASHING_WAVE_2  = 174943   -- combatRoute: ACTION_RESULT_BEGIN + player -> caAlertCast
 local CORAL_SLAM       = 163987   -- combatRoute: ACTION_RESULT_BEGIN + player -> caAlertCast (heavy)
 local BARNACLE_BLADE   = 163901   -- combatRoute: ACTION_RESULT_BEGIN + player -> caAlertCast
+local BARNACLE_BLADE_2 = 174801   -- combatRoute: ACTION_RESULT_BEGIN + player -> caAlertCast; TODO: verify ability name in-game (#128)
 local MAELSTROM_CAST   = 166292   -- combatRoute: ACTION_RESULT_BEGIN -> Maelstrom heal 6s
 local BEHEMOTH_SUMMON  = 166928   -- combatRoute: ACTION_RESULT_BEGIN -> behemoth summon tracker
 local ARCTIC_ANNIH     = 165827   -- combatRoute: ACTION_RESULT_BEGIN -> slam timer +17s
@@ -193,7 +194,8 @@ Taleria.combatRoutes = {
     [CRASHING_WAVE_1] = { result = ACTION_RESULT_BEGIN, fn = handleCrashingWave },
     [CRASHING_WAVE_2] = { result = ACTION_RESULT_BEGIN, fn = handleCrashingWave },
     [CORAL_SLAM]      = { result = ACTION_RESULT_BEGIN, fn = handleCoralSlam },
-    [BARNACLE_BLADE]  = { result = ACTION_RESULT_BEGIN, fn = handleBarnacleBlade },
+    [BARNACLE_BLADE]   = { result = ACTION_RESULT_BEGIN, fn = handleBarnacleBlade },
+    [BARNACLE_BLADE_2] = { result = ACTION_RESULT_BEGIN, fn = handleBarnacleBlade },
     [MAELSTROM_CAST]  = { result = ACTION_RESULT_BEGIN, fn = handleMaelstromCast },
     [BEHEMOTH_SUMMON] = { result = ACTION_RESULT_BEGIN, fn = handleBehemothSummon },
     [ARCTIC_ANNIH]    = { result = ACTION_RESULT_BEGIN, fn = handleArcticAnnih },

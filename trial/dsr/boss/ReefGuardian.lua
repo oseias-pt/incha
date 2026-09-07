@@ -31,6 +31,7 @@ local ACID_REFLUX          = 163702   -- combatRoute: ACTION_RESULT_BEGIN -> caA
 -- 165987 (ACID_POOL)  -- reference: placed by Acid Reflux; no direct route needed
 local CRAB_MONSTROUS_CLAW  = 166582   -- combatRoute: ACTION_RESULT_BEGIN -> handleHeavy (player caAlertCast)
 local CRAB_SWIPE           = 166584   -- combatRoute: ACTION_RESULT_BEGIN -> handleHeavy (player caAlertCast)
+local CRAB_HEAVY_3         = 166585   -- combatRoute: ACTION_RESULT_BEGIN -> handleHeavy (player caAlertCast); TODO: verify ability name in-game (#128)
 local CRUSH                = 166019   -- combatRoute: ACTION_RESULT_BEGIN -> handleHeavy (player caAlertCast)
 local CLAW_ATTACK          = 166020   -- combatRoute: ACTION_RESULT_BEGIN -> handleHeavy (player caAlertCast)
 local CRACKDOWN            = 166586   -- combatRoute: ACTION_RESULT_BEGIN -> handleHeavy (player caAlertCast)
@@ -141,6 +142,7 @@ ReefGuardian.combatRoutes = {
     -- Heavy / targeted attacks (5 IDs, shared handler)
     [CRAB_MONSTROUS_CLAW] = { result = ACTION_RESULT_BEGIN, fn = handleHeavy },
     [CRAB_SWIPE]          = { result = ACTION_RESULT_BEGIN, fn = handleHeavy },
+    [CRAB_HEAVY_3]        = { result = ACTION_RESULT_BEGIN, fn = handleHeavy },
     [CRUSH]               = { result = ACTION_RESULT_BEGIN, fn = handleHeavy },
     [CLAW_ATTACK]         = { result = ACTION_RESULT_BEGIN, fn = handleHeavy },
     [CRACKDOWN]           = { result = ACTION_RESULT_BEGIN, fn = handleHeavy },
