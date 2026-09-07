@@ -574,7 +574,7 @@ local function showGaleLine(self, alerts)
 end
 
 -- -- 200 ms display update -------------------------------------------------
-function ZmajaEncounter:onWipe()
+function ZmajaEncounter:onWipe(context, alerts)
     self:cleanupAlertList()
     self.siroJumpTimer:clear();   self.siroBannerTimer:clear()
     self.releJumpTimer:clear();   self.releBashTimer:clear();  self.releJoltTimer:clear()

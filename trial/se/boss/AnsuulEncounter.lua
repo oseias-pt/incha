@@ -220,12 +220,13 @@ function AnsuulEncounter:onLeave(context)
     self:cleanupAlertList()
 end
 
-function AnsuulEncounter:onWipe()
+function AnsuulEncounter:onWipe(context, alerts)
     self:cleanupAlertList()
     self.calamityTimer:clear()
     self.firstCalamity = true
     self.inMaze        = false
     self.inTriplet     = false
+    CA.border(false, 0, "green")
 end
 
 function AnsuulEncounter:onUpdate(context, alerts)

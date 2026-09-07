@@ -591,7 +591,7 @@ local function showSpikeLine(self, alerts, now, isHM)
     end
 end
 
-function Lylanar:onWipe()
+function Lylanar:onWipe(context, alerts)
     self.fireImminent:clear();  self.fireFragility:clear()
     self.iceImminent:clear();   self.iceFragility:clear()
     self.cinderSurgeActive      = false
@@ -607,6 +607,7 @@ function Lylanar:onWipe()
     self.frostbrandTracker      = {};   self.lastBrandMatchIce    = 0
     self.frostHounds            = 0
     self.lastBrandMatch         = 0
+    CA.border(false, 0, "yellow")   -- Hindered border: clear if wipe mid-debuff
 end
 
 -- -- 200 ms display loop ---------------------------------------------------

@@ -220,11 +220,12 @@ KazpianEncounter.combatRoutes = {
     [CHANNELER_RITUAL] = { result = ACTION_RESULT_EFFECT_FADED,        fn = handleChannelerRitual },
 }
 
-function KazpianEncounter:onWipe()
+function KazpianEncounter:onWipe(context, alerts)
     OsseinCageCommon.reset()
     self.bombDebounce:clear()
     self.portalPhase    = 0; self.channelersDead = 0
     self.chainedA       = false; self.chainedB = false
+    CA.border(false, 0, "red")
 end
 
 function KazpianEncounter:onUpdate(context, alerts)

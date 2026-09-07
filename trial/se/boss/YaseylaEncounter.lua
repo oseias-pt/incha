@@ -94,7 +94,7 @@ function YaseylaEncounter:onLeave(context)
     self:cleanupAlertList()
 end
 
-function YaseylaEncounter:onWipe()
+function YaseylaEncounter:onWipe(context, alerts)
     self:cleanupAlertList()
     self.firebombTimer:clear(); self.chainTimer:clear(); self.frostTimer:clear()
     self.executePhase  = false; self.firstFirebomb = true

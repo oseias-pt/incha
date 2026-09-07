@@ -80,7 +80,7 @@ ShaperEncounter.combatRoutes = {
     [CHANNELER_SHIELD] = { result = ACTION_RESULT_EFFECT_GAINED, fn = handleChannelerShield },
 }
 
-function ShaperEncounter:onWipe()
+function ShaperEncounter:onWipe(context, alerts)
     OsseinCageCommon.reset()
     self.shaperShielded = false
 end

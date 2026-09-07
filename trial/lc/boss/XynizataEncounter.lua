@@ -74,7 +74,7 @@ XynizataEncounter.combatRoutes = {
     [VITRIFY]       = { result = ACTION_RESULT_BEGIN, fn = handleVitrify },
 }
 
-function XynizataEncounter:onWipe()
+function XynizataEncounter:onWipe(context, alerts)
     self.piercingBeamTimer:clear(); self.vitrifyTimer:clear()
     self.firstBeam = true; self.firstVitrify = true
 end

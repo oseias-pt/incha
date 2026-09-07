@@ -87,7 +87,7 @@ function OlmsEncounter:onLeave(context)
     self:cleanupAlertList()
 end
 
-function OlmsEncounter:onWipe()
+function OlmsEncounter:onWipe(context, alerts)
     self:cleanupAlertList()
     self.stormTimer:clear()
     self.steamTimer:clear()
