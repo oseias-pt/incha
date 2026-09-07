@@ -469,7 +469,6 @@ M.lc_xoryn_drop_alert       = "DROP current!"
 -- Info
 M.lc_xoryn_current          = "Current"
 M.lc_xoryn_drop_now         = "DROP NOW!"
-M.lc_xoryn_carrying_knot    = "Carrying Arcane Knot"
 
 -- ── Ossein Cage (OC) ── OsseinCageCommon.lua ─────────────────────────────────
 
