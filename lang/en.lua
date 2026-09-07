@@ -17,39 +17,6 @@
 
 local M = {}
 
--- ── Boss unit names ──────────────────────────────────────────────────────────
--- Matched against GetUnitName() results; must match the game client's locale.
-
-M.boss_lokkestiiz           = "Lokkestiiz"
-M.boss_yolnahkriin          = "Yolnahkriin"
-M.boss_nahviintaas          = "Nahviintaas"
-M.boss_bahsei               = "Bahsei"
-M.boss_oaxiltso             = "Oaxiltso"
-M.boss_xalvakka             = "Xalvakka"
-M.boss_lylanar              = "Lylanar"
-M.boss_turlassil            = "Turlassil"
-M.boss_reef_guardian        = "Reef Guardian"
-M.boss_tideborn_taleria     = "Tideborn Taleria"
-M.boss_saint_olms           = "Saint Olms the Just"
-M.boss_zmaja                = "Z'Maja"
-M.boss_siroria              = "Siroria"
-M.boss_relequen             = "Relequen"
-M.boss_galenwe              = "Galenwe"
-M.boss_yaseyla              = "Exarchanic Yaseyla"
-M.boss_chimera              = "Chimera"
-M.boss_ansuul               = "Ansuul the Tormentor"
-M.boss_jynorah              = "Jynorah"
-M.boss_skorkhif             = "Skorkhif"
-M.boss_kazpian              = "Overfiend Kazpian"
-M.boss_shaper               = "Shaper of Flesh"
-M.boss_xynizata             = "Xynizata"
-M.boss_jresazzel            = "Jresazzel"   -- LC room-7 melee mini-boss; fextralife lists "Jresazzel/Xynizata" together — verify which slots appear in-game
-M.boss_xoryn                = "Xoryn"
-M.boss_count_ryelaz         = "Count Ryelaz"
-M.boss_zilyesset            = "Zilyesset"
-M.boss_orphic               = "Orphic Shattered Shard"
-M.boss_dariel               = "Dariel"
-M.boss_dariel_lemonds       = "Dariel Lemonds"   -- UESP page is Online:Dariel_Lemonds; verify which form GetUnitName() returns
 
 -- ── Common fallback labels ───────────────────────────────────────────────────
 

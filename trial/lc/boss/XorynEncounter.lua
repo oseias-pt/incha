@@ -33,7 +33,7 @@ local XorynEncounter = {}
 XorynEncounter.__index = XorynEncounter
 
 XorynEncounter.key               = "xoryn"
-XorynEncounter.nameAliases       = { Lang.t("boss_xoryn") }   -- TODO: verify via GetUnitName in-game
+XorynEncounter.nameAliases       = { "Xoryn" }   -- TODO: verify via GetUnitName in-game
 XorynEncounter.hmHealthThreshold = 100000000   -- TODO: verify — round estimate, no measured evidence
 -- location: placeholder — Lucent Citadel arena AABB not yet captured.
 -- Detection falls back to nameAliases (name-based, may fail on non-EN clients).

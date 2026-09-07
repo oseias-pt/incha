@@ -30,7 +30,7 @@ local OrphicEncounter = {}
 OrphicEncounter.__index = OrphicEncounter
 
 OrphicEncounter.key               = "orphic"
-OrphicEncounter.nameAliases       = { Lang.t("boss_orphic") }   -- TODO: verify via GetUnitName in-game
+OrphicEncounter.nameAliases       = { "Orphic Shattered Shard" }   -- TODO: verify via GetUnitName in-game
 OrphicEncounter.hmHealthThreshold = 80000000   -- TODO: verify — round estimate, no measured evidence
 -- location: placeholder — Lucent Citadel arena AABB not yet captured.
 -- Detection falls back to nameAliases (name-based, may fail on non-EN clients).

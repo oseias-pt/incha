@@ -21,7 +21,7 @@ DarielEncounter.key               = "dariel"
 -- "Dariel Lemonds" rather than just "Dariel".  Both aliases are tried until one pull
 -- with /incha debug confirms which string the game actually reports.  Remove the wrong
 -- entry after verification.  See #122.
-DarielEncounter.nameAliases       = { Lang.t("boss_dariel"), Lang.t("boss_dariel_lemonds") }   -- TODO: verify via GetUnitName in-game
+DarielEncounter.nameAliases       = { "Dariel", "Dariel Lemonds" }   -- TODO: verify via GetUnitName in-game
 -- hmHealthThreshold: math.huge until measured in-game on vet HM.
 -- (0 would make detectDifficulty always return HARDMODE.)
 DarielEncounter.hmHealthThreshold = math.huge

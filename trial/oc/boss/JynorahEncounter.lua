@@ -59,7 +59,7 @@ local JynorahEncounter = {}
 JynorahEncounter.__index = JynorahEncounter
 
 JynorahEncounter.key               = "jynorah"
-JynorahEncounter.nameAliases       = { Lang.t("boss_jynorah"), Lang.t("boss_skorkhif") }   -- TODO: verify via GetUnitName in-game
+JynorahEncounter.nameAliases       = { "Jynorah", "Skorkhif" }   -- TODO: verify via GetUnitName in-game
 -- hmHealthThreshold: math.huge until measured in-game on vet HM.
 -- (0 would make detectDifficulty always return HARDMODE.)
 JynorahEncounter.hmHealthThreshold = math.huge

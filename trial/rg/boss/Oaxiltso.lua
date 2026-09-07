@@ -51,7 +51,7 @@ local Oaxiltso = {}
 Oaxiltso.__index = Oaxiltso
 
 Oaxiltso.key  = "oaxiltso"
-Oaxiltso.name = Lang.t("boss_oaxiltso")   -- TODO: verify exact unit name via GetUnitName("boss1") in-game
+Oaxiltso.name = "Oaxiltso"   -- TODO: verify exact unit name via GetUnitName("boss1") in-game
 -- location: arena AABB not yet captured  -  detection is name-based.
 -- To add AABB: stand in arena, run /script d(GetUnitWorldPosition("boss1"))
 -- hmHealthThreshold: math.huge until measured in-game on vet HM.

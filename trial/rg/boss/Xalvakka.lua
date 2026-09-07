@@ -90,7 +90,7 @@ Xalvakka.__index = Xalvakka
 Xalvakka.common = RockgroveCommon   -- C3: common mechanic dispatch
 
 Xalvakka.key               = "xalvakka"
-Xalvakka.name              = Lang.t("boss_xalvakka")     -- TODO: verify exact unit name via GetUnitName("boss1")
+Xalvakka.name              = "Xalvakka"     -- TODO: verify exact unit name via GetUnitName("boss1")
 -- location: arena AABB not yet captured  -  detection is name-based.
 -- To add AABB: stand in arena, run /script d(GetUnitWorldPosition("boss1"))
 Xalvakka.hmHealthThreshold = 100000001      -- TODO: verify exact HM health pool
