@@ -47,7 +47,7 @@ local KazpianEncounter = {}
 KazpianEncounter.__index = KazpianEncounter
 
 KazpianEncounter.key               = "kazpian"
-KazpianEncounter.nameAliases       = { Lang.t("boss_kazpian") }
+KazpianEncounter.nameAliases       = { Lang.t("boss_kazpian") }   -- TODO: verify via GetUnitName in-game
 -- hmHealthThreshold: math.huge until measured in-game on vet HM.
 -- (0 would make detectDifficulty always return HARDMODE.)
 KazpianEncounter.hmHealthThreshold = math.huge

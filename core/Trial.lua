@@ -158,6 +158,19 @@ function Trial:onBossesChanged(forceReset)
         end
     end
 
+    -- Detection succeeds: log the matched unit name so one vet-normal pull with
+    -- /incha debug confirms the name string against GetUnitName() without needing
+    -- a deliberate mismatch.  See #122 for the verification checklist.
+    if bossClass and Log.isEnabled() then
+        if bossClass.location then
+            Log.debug("%s: matched %q via location (%.0f, %.0f, %.0f)",
+                self.id, bossClass.key, x or 0, y or 0, z or 0)
+        else
+            Log.debug("%s: matched %q via name %q (slot %s)",
+                self.id, bossClass.key, GetUnitName(detectedSlot), detectedSlot)
+        end
+    end
+
     -- Per-boss enable gate.  A disabled boss is treated as undetected: no
     -- alerts, no panel, and no event subscriptions for this encounter.
     if bossClass and Settings.trial(self.id).bosses[bossClass.key] == false then

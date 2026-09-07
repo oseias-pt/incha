@@ -140,7 +140,7 @@ Lokke.__index = Lokke
 setmetatable(Lokke, {__index = BossBase})
 
 Lokke.key  = "lokke"
-Lokke.name = Lang.t("boss_lokkestiiz")
+Lokke.name = Lang.t("boss_lokkestiiz")   -- TODO: verify via GetUnitName in-game
 -- location: Sunspire arena is one shared room for all three bosses  -  a single AABB
 -- would be ambiguous.  Name-based detection is intentional; name is well-established
 -- EN string (same client since Elsweyr launch), non-EN risk is low.

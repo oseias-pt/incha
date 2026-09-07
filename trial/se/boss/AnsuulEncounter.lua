@@ -46,7 +46,7 @@ local AnsuulEncounter = {}
 AnsuulEncounter.__index = AnsuulEncounter
 
 AnsuulEncounter.key               = "ansuul"
-AnsuulEncounter.nameAliases       = { Lang.t("boss_ansuul") }
+AnsuulEncounter.nameAliases       = { Lang.t("boss_ansuul") }   -- TODO: verify via GetUnitName in-game
 AnsuulEncounter.hmHealthThreshold = 100000000  -- vet ~69M, HM ~160.7M
 -- location: placeholder - Sunken Elder arena AABB not yet captured.
 -- Detection falls back to nameAliases (name-based, may fail on non-EN clients).

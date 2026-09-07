@@ -49,7 +49,7 @@ local OlmsEncounter = {}
 OlmsEncounter.__index = OlmsEncounter
 
 OlmsEncounter.key               = "olms"
-OlmsEncounter.nameAliases       = { Lang.t("boss_saint_olms") }
+OlmsEncounter.nameAliases       = { Lang.t("boss_saint_olms") }   -- TODO: verify via GetUnitName in-game
 -- hmHealthThreshold: math.huge until measured in-game on vet HM.
 -- (0 would make detectDifficulty always return HARDMODE.)
 -- To calibrate: pull on vet HM, run /script d(GetUnitPower("boss1", POWERTYPE_HEALTH))

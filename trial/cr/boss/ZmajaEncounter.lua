@@ -96,7 +96,7 @@ ZmajaEncounter.__index = ZmajaEncounter
 setmetatable(ZmajaEncounter, {__index = BossBase})  -- inherit cleanupAlertList, onDied
 
 ZmajaEncounter.key               = "zmaja"
-ZmajaEncounter.nameAliases       = { Lang.t("boss_zmaja") }
+ZmajaEncounter.nameAliases       = { Lang.t("boss_zmaja") }   -- TODO: verify via GetUnitName in-game
 -- hmHealthThreshold: math.huge until measured in-game on vet HM.
 -- (0 would make detectDifficulty always return HARDMODE.)
 -- To calibrate: pull on vet HM, run /script d(GetUnitPower("boss1", POWERTYPE_HEALTH))
