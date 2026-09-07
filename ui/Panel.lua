@@ -3,7 +3,7 @@
 --- Alert panel  (Incha_Alert)
 ---   Fires for immediate player actions: "Block!", "Enter Tomb!", "Dodge!".
 ---   Auto-clears after ALERT_AUTO_CLEAR_MS.  Manually dismissed by hideAction() / clear().
----   Draggable; position is NOT persisted (resets to centre on reload).
+---   Draggable; position saved in Settings.overlay.{alertX,alertY}.
 ---
 --- Tracker panel  (Incha_Panel)
 ---   Structured table of upcoming events.
@@ -78,6 +78,16 @@ local function applyPosition(panel)
     else
         local screenW = GuiRoot:GetWidth()
         panel:SetAnchor(TOPLEFT, GuiRoot, TOPLEFT, (screenW - TRACKER_W) / 2, 150)
+    end
+end
+
+local function applyAlertPosition(panel)
+    local sv = Settings.get().overlay
+    panel:ClearAnchors()
+    if sv.alertX >= 0 then
+        panel:SetAnchor(TOPLEFT, GuiRoot, TOPLEFT, sv.alertX, sv.alertY)
+    else
+        panel:SetAnchor(CENTER, GuiRoot, CENTER, 0, -120)
     end
 end
 
@@ -213,15 +223,23 @@ end
 local function buildAlert()
     if alertCtrl then return end
 
+    local sv = Settings.get().overlay
+
     local panel = WINDOW_MANAGER:CreateControl("Incha_Alert", GuiRoot, CT_CONTROL)
     panel:SetDimensions(ALERT_W, ALERT_H)
     panel:SetClampedToScreen(true)
-    panel:SetMouseEnabled(true)
-    panel:SetMovable(true)
+    panel:SetMouseEnabled(not sv.locked)
+    panel:SetMovable(not sv.locked)
     panel:SetHidden(true)
-    -- Default: screen centre, above the player character.
-    -- The player can drag it; position is not persisted in this version.
-    panel:SetAnchor(CENTER, GuiRoot, CENTER, 0, -120)
+    panel:SetScale(sv.scale)
+    applyAlertPosition(panel)
+
+    panel:SetHandler("OnMoveStop", function(c)
+        local s = Settings.get().overlay
+        s.alertX = c:GetLeft()
+        s.alertY = c:GetTop()
+        Log.debug("alert: saved offset %d, %d (scale %.2f)", s.alertX, s.alertY, s.scale)
+    end)
 
     -- Subtle dark background with a warm edge.
     local bg = WINDOW_MANAGER:CreateControl(nil, panel, CT_BACKDROP)
@@ -404,12 +422,19 @@ Panel.bridge = BridgeBase.extend({
 -- ── Settings refresh ──────────────────────────────────────────────────────────
 
 function Panel.refresh()
-    if not ctrl then return end
     local sv = Settings.get().overlay
-    ctrl.panel:SetMouseEnabled(not sv.locked)
-    ctrl.panel:SetMovable(not sv.locked)
-    ctrl.panel:SetScale(sv.scale)
-    applyPosition(ctrl.panel)
+    if ctrl then
+        ctrl.panel:SetMouseEnabled(not sv.locked)
+        ctrl.panel:SetMovable(not sv.locked)
+        ctrl.panel:SetScale(sv.scale)
+        applyPosition(ctrl.panel)
+    end
+    if alertCtrl then
+        alertCtrl.panel:SetMouseEnabled(not sv.locked)
+        alertCtrl.panel:SetMovable(not sv.locked)
+        alertCtrl.panel:SetScale(sv.scale)
+        applyAlertPosition(alertCtrl.panel)
+    end
 end
 
 package.loaded["ui.Panel"] = Panel

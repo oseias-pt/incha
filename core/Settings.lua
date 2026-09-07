@@ -21,11 +21,13 @@ local DEFAULTS = {
     overlay = {
         locked   = false,
         scale    = 1.0,
-        -- -1 = "not yet positioned by user"; Panel uses a default center-top
-        -- anchor on first show and saves real pixel coords here after the
-        -- first OnMoveStop, at which point both values will be >= 0.
-        offsetX  = -1,
+        -- -1 = "not yet positioned by user"; Panel uses a default anchor on
+        -- first show and saves real pixel coords here after the first
+        -- OnMoveStop, at which point both values will be >= 0.
+        offsetX  = -1,   -- tracker panel
         offsetY  = -1,
+        alertX   = -1,   -- alert panel
+        alertY   = -1,
     },
 
     trials = {
