@@ -54,6 +54,12 @@ Oaxiltso.key  = "oaxiltso"
 Oaxiltso.name = Lang.t("boss_oaxiltso")   -- TODO: verify exact unit name via GetUnitName("boss1") in-game
 -- location: arena AABB not yet captured  -  detection is name-based.
 -- To add AABB: stand in arena, run /script d(GetUnitWorldPosition("boss1"))
+-- hmHealthThreshold: math.huge until measured in-game on vet HM.
+-- To measure: enter vet HM, then /script d(GetUnitMaxPower("boss1", POWERTYPE_HEALTH))
+-- Set threshold between the vet and HM values, recording both in a trailing comment
+-- (see AnsuulEncounter.lua for the convention).  /incha debug also prints the resolved
+-- difficulty with the pool it compared, so one pull yields the numbers automatically.
+Oaxiltso.hmHealthThreshold = math.huge
 
 Oaxiltso.stateSchema = {
     lastBlitz          = 0,

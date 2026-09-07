@@ -144,7 +144,12 @@ Lokke.name = Lang.t("boss_lokkestiiz")
 -- location: Sunspire arena is one shared room for all three bosses  -  a single AABB
 -- would be ambiguous.  Name-based detection is intentional; name is well-established
 -- EN string (same client since Elsweyr launch), non-EN risk is low.
--- hmHealthThreshold: measure in-game
+-- hmHealthThreshold: math.huge until measured in-game on vet HM.
+-- To measure: enter vet HM, then /script d(GetUnitMaxPower("boss1", POWERTYPE_HEALTH))
+-- Set threshold between the vet and HM values, recording both in a trailing comment
+-- (see AnsuulEncounter.lua for the convention).  /incha debug also prints the resolved
+-- difficulty with the pool it compared, so one pull yields the numbers automatically.
+Lokke.hmHealthThreshold = math.huge
 
 Lokke.stateSchema = {
     -- alertList: [sourceUnitId] -> CA bar ID

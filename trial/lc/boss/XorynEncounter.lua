@@ -33,7 +33,7 @@ XorynEncounter.__index = XorynEncounter
 
 XorynEncounter.key               = "xoryn"
 XorynEncounter.nameAliases       = { Lang.t("boss_xoryn") }
-XorynEncounter.hmHealthThreshold = 100000000
+XorynEncounter.hmHealthThreshold = 100000000   -- TODO: verify — round estimate, no measured evidence
 -- location: placeholder — Lucent Citadel arena AABB not yet captured.
 -- Detection falls back to nameAliases (name-based, may fail on non-EN clients).
 -- To calibrate: stand in arena, run /script d(GetUnitWorldPosition("boss1"))
