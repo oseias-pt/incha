@@ -19,22 +19,24 @@ local function emit(self, eventType, text)
 end
 
 
--- setRow(n, name, eta)  -  structured tracker row.
--- name: display label string (may contain |c colour codes).
--- eta:  remaining seconds as a number, or nil for a static / no-timer row.
--- Handlers receive (n, name, eta) directly.
-function AlertSink:setRow(n, name, eta)
+-- setRow(key, name, eta, priority)  -  structured tracker row.
+-- key:      opaque row identifier (number or string).  Numeric keys ≤ 7
+--           reproduce the old positional layout without changing call sites.
+-- name:     display label string (may contain |c colour codes).
+-- eta:      remaining seconds as a number, or nil for a static / no-timer row.
+-- priority: optional sort weight (default 0); higher = shown first.
+function AlertSink:setRow(key, name, eta, priority)
     local handler = self.handlers.setRow
     if handler then
-        handler(n, name, eta)
+        handler(key, name, eta, priority)
     end
 end
 
--- clearRow(n)  -  blank tracker row n.
-function AlertSink:clearRow(n)
+-- clearRow(key)  -  remove keyed tracker row.
+function AlertSink:clearRow(key)
     local handler = self.handlers.clearRow
     if handler then
-        handler(n)
+        handler(key)
     end
 end
 
