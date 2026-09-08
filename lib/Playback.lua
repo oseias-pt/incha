@@ -52,6 +52,18 @@ local CAST_RESULT = {
     BEGIN_CAST = ACTION_RESULT_BEGIN,
 }
 
+-- COMBAT_EVENT log field layout (from log_reader.lua):
+--   f[3]=result  f[4]=dmgType  f[5]=value  f[6]=overflow
+--   f[7]=castTrackId  f[8]=eventId  f[9]=abilityId  f[10]=sourceUnitId
+local COMBAT_EVENT_RESULT = {
+    BEGIN                  = ACTION_RESULT_BEGIN,
+    EFFECT_GAINED          = ACTION_RESULT_EFFECT_GAINED,
+    EFFECT_FADED           = ACTION_RESULT_EFFECT_FADED,
+    EFFECT_GAINED_DURATION = ACTION_RESULT_EFFECT_GAINED_DURATION,
+    INTERRUPT              = ACTION_RESULT_INTERRUPT,
+    DIED                   = ACTION_RESULT_DIED,
+}
+
 local EFFECT_CHANGE = {
     GAINED  = EFFECT_RESULT_GAINED,
     FADED   = EFFECT_RESULT_FADED,
@@ -180,9 +192,44 @@ function Playback.injectLine(line)
         return "EFFECT_CHANGED | abilityId=" .. abilityId
             .. "  " .. changeName .. "  stacks=" .. stackCount
 
+    -- ── COMBAT_EVENT ────────────────────────────────────────────────────────
+    elseif kind == "COMBAT_EVENT" then
+        -- f[3]=result  f[9]=abilityId  f[10]=sourceUnitId
+        if #f < 10 then
+            return "COMBAT_EVENT: need >= 10 fields, got " .. #f
+        end
+        local resultName = (f[3] or ""):upper()
+        local result     = COMBAT_EVENT_RESULT[resultName]
+        if not result then
+            return "COMBAT_EVENT: unknown result: " .. tostring(f[3])
+        end
+        local abilityId    = tonumber(f[9])
+        local sourceUnitId = tonumber(f[10])
+        if not abilityId then
+            return "COMBAT_EVENT: abilityId (f[9]) not numeric: " .. tostring(f[9])
+        end
+
+        local trial = ZoneManager.getActiveTrial()
+        if not trial then return "no active trial — enter a trial zone first" end
+
+        local _, restore, err = prepareBoss(trial, abilityId, true)
+        if err then return err end
+
+        CombatHandler.onCombatEvent(trial, 0,
+            result, false, "", nil, nil,
+            "player",  "Player",
+            "boss1",   "Boss",
+            sourceUnitId or 0, 0,
+            abilityId)
+
+        if restore then restore() end
+
+        return "COMBAT_EVENT | abilityId=" .. abilityId
+            .. "  result=" .. resultName
+
     else
         return "unsupported type: " .. tostring(kind)
-            .. "  (supported: BEGIN_CAST, EFFECT_CHANGED)"
+            .. "  (supported: BEGIN_CAST, COMBAT_EVENT, EFFECT_CHANGED)"
     end
 end
 

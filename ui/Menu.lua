@@ -447,7 +447,7 @@ local function printHelp()
     d("  /ip border         -  flash CA border")
     d("  /ip alert          -  show CA text alert")
     d("  /ip clear          -  clear all preview effects")
-    d("  /ip <log line>     -  replay a raw encounter-log line (BEGIN_CAST / EFFECT_CHANGED)")
+    d("  /ip <log line>     -  replay a raw encounter-log line (BEGIN_CAST / COMBAT_EVENT / EFFECT_CHANGED)")
 end
 
 local function handleSlash(text)
