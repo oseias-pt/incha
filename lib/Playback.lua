@@ -8,35 +8,29 @@
 ---   /ip 12345,EFFECT_CHANGED,GAINED,0,34218181,132473,48707525,...
 ---
 --- Supported entry types:
----   BEGIN_CAST    -> CombatHandler.onCombatEvent with result=ACTION_RESULT_BEGIN
----   EFFECT_CHANGED (GAINED / FADED / UPDATED)
----                 -> CombatHandler.onEffectChanged
+---   BEGIN_CAST    -> result=ACTION_RESULT_BEGIN  via CombatHandler.onCombatEvent
+---   EFFECT_CHANGED (GAINED / FADED / UPDATED)   via CombatHandler.onEffectChanged
 ---
---- Field layout (from ESO encounter-log reference):
+--- Field layout (ESO encounter-log reference):
+---   BEGIN_CAST:    f[1]=ms  f[2]=BEGIN_CAST  f[3]=castDuration  f[4]=channeled
+---                  f[5]=sourceUnitId  f[6]=abilityId  ...
+---   EFFECT_CHANGED: f[1]=ms  f[2]=EFFECT_CHANGED  f[3]=changeType
+---                  f[4]=stackCount  f[5]=sourceUnitId  f[6]=abilityId  f[7]=unitId  ...
 ---
----   BEGIN_CAST:
----     f[1]=ms  f[2]=BEGIN_CAST  f[3]=castDuration  f[4]=channeled(T/F)
----     f[5]=sourceUnitId  f[6]=abilityId  ...
+--- If no boss is currently active (player not in arena), Playback searches the
+--- trial's boss registry for the class that owns the abilityId, creates a fresh
+--- temporary instance, and dispatches through it so alerts fire without needing
+--- a live pull.  The temp instance is discarded immediately after the call.
 ---
----   EFFECT_CHANGED:
----     f[1]=ms  f[2]=EFFECT_CHANGED  f[3]=changeType(GAINED/FADED/UPDATED)
----     f[4]=stackCount  f[5]=sourceUnitId  f[6]=abilityId  f[7]=unitId  ...
----
---- unitTag / unitName / sourceUnitTag / sourceUnitName are faked because the
---- log does not store runtime unit tags.  Routing tables key on abilityId and
---- result/changeType, so the correct handler still fires; CA bars will show
---- "Boss"/"Player" as placeholder names.
----
---- Requires: core.CombatHandler  core.ZoneManager  (both must be loaded first)
+--- unitTag / unitName / sourceUnitName are faked; routing tables key on
+--- abilityId + result/changeType so the correct handler still fires.
 
 local CombatHandler = require("core.CombatHandler")
 local ZoneManager   = require("core.ZoneManager")
 
 local Playback = {}
 
--- ── Field splitter ────────────────────────────────────────────────────────
--- ESO log lines never quote numeric fields; only UNIT_ADDED name fields are
--- quoted, and we do not parse those here.
+-- ── Field splitter ─────────────────────────────────────────────────────────
 local function split(line)
     local fields = {}
     local i, len = 1, #line
@@ -53,28 +47,64 @@ local function split(line)
     return fields
 end
 
--- ── ESO-constant maps (resolved at module-load time so the globals are live) ──
--- ACTION_RESULT_* come from ESO; values match what boss routing tables compare.
+-- ── ESO-constant maps (resolved at module-load time) ─────────────────────
 local CAST_RESULT = {
     BEGIN_CAST = ACTION_RESULT_BEGIN,
-    -- END_CAST produces no useful routing target — boss handlers
-    -- check ACTION_RESULT_BEGIN, not ACTION_RESULT_COMPLETED.
 }
 
--- EFFECT_RESULT_* values (1/2/3) match the log's GAINED/FADED/UPDATED strings
--- AND the ESO EFFECT_RESULT_* globals in ESO's real API.
 local EFFECT_CHANGE = {
     GAINED  = EFFECT_RESULT_GAINED,
     FADED   = EFFECT_RESULT_FADED,
     UPDATED = EFFECT_RESULT_UPDATED,
 }
 
--- ── Public API ────────────────────────────────────────────────────────────
+-- ── Boss lookup ────────────────────────────────────────────────────────────
+--- Return the first boss class in the trial whose combatRoutes or effectRoutes
+--- table contains abilityId.  Returns nil when no boss claims the ability.
+local function findBossClass(trial, abilityId, isCombat)
+    for _, bossClass in ipairs(trial.registry.bosses) do
+        local routes = isCombat and bossClass.combatRoutes or bossClass.effectRoutes
+        if routes and routes[abilityId] then
+            return bossClass
+        end
+    end
+    return nil
+end
+
+--- Ensure an active boss instance exists for dispatching.
+--- If one is already active, returns it untouched (restore = nil).
+--- If none is active and the abilityId belongs to a boss in the registry,
+--- creates a fresh temp instance, injects it, and returns it + a restore fn.
+--- Returns (instance, restore_fn, err_string).
+local function prepareBoss(trial, abilityId, isCombat)
+    local existing = trial:getActiveBoss()
+    if existing then
+        return existing, nil, nil
+    end
+
+    local bossClass = findBossClass(trial, abilityId, isCombat)
+    if not bossClass then
+        return nil, nil,
+            "abilityId=" .. abilityId .. " is not in any boss's routing table"
+            .. " for this trial"
+    end
+
+    local tempInstance = bossClass.new()
+    trial.activeBosses[1] = tempInstance
+
+    local function restore()
+        trial.activeBosses[1] = nil
+    end
+
+    return tempInstance, restore, nil
+end
+
+-- ── Public API ─────────────────────────────────────────────────────────────
 
 --- Parse and inject one raw encounter-log line into the active trial.
 --- Returns a short status string suitable for printing to chat.
 function Playback.injectLine(line)
-    line = line:match("^%s*(.-)%s*$")  -- trim whitespace
+    line = line:gsub("^%s+", ""):gsub("%s+$", "")   -- trim (no lazy patterns)
     if not line or line == "" then return "empty line" end
 
     local f = split(line)
@@ -84,9 +114,8 @@ function Playback.injectLine(line)
 
     local kind = f[2]
 
-    -- ── BEGIN_CAST ────────────────────────────────────────────────────────
+    -- ── BEGIN_CAST ──────────────────────────────────────────────────────────
     if CAST_RESULT[kind] then
-        -- f[5]=sourceUnitId  f[6]=abilityId
         if #f < 6 then
             return kind .. ": need >= 6 fields, got " .. #f
         end
@@ -97,26 +126,27 @@ function Playback.injectLine(line)
         end
 
         local trial = ZoneManager.getActiveTrial()
-        if not trial then return "no active trial — enter a trial zone first" end
+        if not trial then
+            return "no active trial — enter a trial zone first"
+        end
+
+        local _, restore, err = prepareBoss(trial, abilityId, true)
+        if err then return err end
 
         local result = CAST_RESULT[kind]
-        -- unitTag/sourceUnitTag are faked; routing tables key on abilityId+result only.
         CombatHandler.onCombatEvent(trial, 0,
             result, false, "", nil, nil,
-            "player",   "Player",
-            "boss1",    "Boss",
+            "player",  "Player",
+            "boss1",   "Boss",
             sourceUnitId or 0, 0,
             abilityId)
 
-        return kind .. " | abilityId=" .. abilityId
-            .. "  result=" .. result
-            .. (ZoneManager.getActiveTrial():getActiveBoss() and "" or
-                "  (warning: no boss detected — enter boss arena)")
+        if restore then restore() end
 
-    -- ── EFFECT_CHANGED ────────────────────────────────────────────────────
+        return kind .. " | abilityId=" .. abilityId .. "  result=" .. result
+
+    -- ── EFFECT_CHANGED ──────────────────────────────────────────────────────
     elseif kind == "EFFECT_CHANGED" then
-        -- f[3]=changeType  f[4]=stackCount  f[5]=sourceUnitId
-        -- f[6]=abilityId   f[7]=unitId
         if #f < 7 then
             return "EFFECT_CHANGED: need >= 7 fields, got " .. #f
         end
@@ -125,24 +155,30 @@ function Playback.injectLine(line)
         if not changeType then
             return "EFFECT_CHANGED: unknown changeType: " .. tostring(f[3])
         end
-        local stackCount   = tonumber(f[4]) or 0
-        local abilityId    = tonumber(f[6])
-        local unitId       = tonumber(f[7]) or 0
+        local stackCount = tonumber(f[4]) or 0
+        local abilityId  = tonumber(f[6])
+        local unitId     = tonumber(f[7]) or 0
         if not abilityId then
-            return "EFFECT_CHANGED: abilityId (f[6]) is not numeric: " .. tostring(f[6])
+            return "EFFECT_CHANGED: abilityId (f[6]) not numeric: " .. tostring(f[6])
         end
 
         local trial = ZoneManager.getActiveTrial()
-        if not trial then return "no active trial — enter a trial zone first" end
+        if not trial then
+            return "no active trial — enter a trial zone first"
+        end
+
+        local _, restore, err = prepareBoss(trial, abilityId, false)
+        if err then return err end
 
         CombatHandler.onEffectChanged(trial, 0,
             changeType, 0, "", "player",
             0, 0, stackCount, "", 0, 0,
             0, 0, "Player", unitId, abilityId)
 
+        if restore then restore() end
+
         return "EFFECT_CHANGED | abilityId=" .. abilityId
-            .. "  changeType=" .. changeName
-            .. "  stacks=" .. stackCount
+            .. "  " .. changeName .. "  stacks=" .. stackCount
 
     else
         return "unsupported type: " .. tostring(kind)
