@@ -147,7 +147,7 @@ local function handlePoisonTotem(self, context, alerts, abilityId,
     self.totemTimer:reset()
     alerts:showAction(Lang.t("ka_yandir_dodge_poison"))
     local cid = CA.ranged(abilityId, sourceUnitName, 4300, Colors.POISON,
-        { 1000, Lang.t("ka_yandir_dodge_poison"), 0.40, 0.80, 0.40, 1, SOUNDS.NONE })
+        { 1000, Lang.t("ka_yandir_dodge_poison"), 0.40, 0.80, 0.40, 1, SOUNDS.CHAMPION_POINTS_COMMITTED })
     if cid and unitId then self.alertList[unitId] = cid end
     self.poisonTotemId = unitId  -- track for delayed second-poison bar
 end
