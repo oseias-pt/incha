@@ -22,7 +22,7 @@ AABB `x 63200–68900 · y 24300–26300 · z 90500–99600` · HM threshold 72,
 
 | Ability ID | Name | Trigger | Type | Output | Duration | Colour | Sound |
 |------------|------|---------|------|--------|----------|--------|-------|
-| 133515 | Poison Totem | `ACTION_RESULT_BEGIN` | action + ranged | `Dodge! (Poison Totem)` | 4300 ms | POISON | — |
+| 133515 | Poison Totem | `ACTION_RESULT_BEGIN` | action + ranged | `Dodge! (Poison Totem)` · early-warn at 1000 ms | 4300 ms | POISON | — |
 | 133559 | Poison Totem (2nd hit) | `ACTION_RESULT_EFFECT_GAINED` → +26,800 ms delay | ranged | *(same bar, second cast)* | 4300 ms | POISON | — |
 | 133546 | Gargoyle Totem cast | `ACTION_RESULT_BEGIN` | action + ranged | `Block! (Gargoyle Totem)` / bar label `Block!!` | ~5000 ms* | SILVER | — |
 | 133242 | Yandir Healing | `ACTION_RESULT_BEGIN` | action + flash | `Casts Healing!` | 2000 ms | red | — |
