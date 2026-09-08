@@ -179,10 +179,8 @@ local function handlePoisonTotemCp(self, context, alerts, abilityId,
     -- second net on both paths.
     self.poisonTotemTimer = self:after(26800, function()
         self.poisonTotemTimer = false
-        if self.poisonTotemId ~= -1 then
-            self.BTotemCall = false
-            CA.ranged(TOTEM_POISON_CP, capturedSrc, 4300, Colors.POISON)
-        end
+        self.BTotemCall = false
+        CA.ranged(TOTEM_POISON_CP, capturedSrc, 4300, Colors.POISON)
     end)
 end
 
