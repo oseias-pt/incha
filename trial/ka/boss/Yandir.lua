@@ -48,6 +48,8 @@ Yandir.stateSchema = {
     -- zo_callLater handle for the 26.8 s delayed second-poison bar.
     -- Stored so it can be cancelled on wipe or zone exit.
     poisonTotemTimer     = false,
+    -- zo_callLater handle for the 1 s early-warn flash on the first-hit bar.
+    poisonTotemWarnTimer = false,
     -- [unitId] -> CA cast bar ID; cleared and stopped on leave/death.
     alertList            = function() return {} end,
 }
@@ -64,6 +66,8 @@ local function yandir_cleanup(self)
     self:cleanupAlertList()
     self:cancelAfter(self.poisonTotemTimer)
     self.poisonTotemTimer = false
+    self:cancelAfter(self.poisonTotemWarnTimer)
+    self.poisonTotemWarnTimer = false
 end
 
 function Yandir:onLeave(context)
@@ -146,10 +150,18 @@ local function handlePoisonTotem(self, context, alerts, abilityId,
                                   sourceUnitName, unitName)
     self.totemTimer:reset()
     alerts:showAction(Lang.t("ka_yandir_dodge_poison"))
-    local cid = CA.ranged(abilityId, sourceUnitName, 4300, Colors.POISON,
-        { 1000, Lang.t("ka_yandir_dodge_poison"), 0.40, 0.80, 0.40, 1, SOUNDS.CHAMPION_POINTS_COMMITTED })
+    local cid = CA.ranged(abilityId, sourceUnitName, 4300, Colors.POISON)
     if cid and unitId then self.alertList[unitId] = cid end
     self.poisonTotemId = unitId  -- track for delayed second-poison bar
+    -- Early-warn: flash + sound 1 s before the dodge window closes.
+    -- AlertCast does not support the action-table early-warn mechanism;
+    -- schedule it manually so cleanup can cancel on wipe/leave.
+    self:cancelAfter(self.poisonTotemWarnTimer)
+    local warnText = Lang.t("ka_yandir_dodge_poison")
+    self.poisonTotemWarnTimer = self:after(3300, function()
+        self.poisonTotemWarnTimer = false
+        CA.alert(nil, warnText, 0x66CC66FF, SOUNDS.CHAMPION_POINTS_COMMITTED, 1000)
+    end)
 end
 
 local function handlePoisonTotemCp(self, context, alerts, abilityId,
