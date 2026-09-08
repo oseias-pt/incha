@@ -6,11 +6,12 @@
 --- LAM panel ID: ADDON_LAM  (set in bootstrap.lua)
 --- Slash command: ADDON_SLASH  (debug | lock | scale <n> | reset)
 
-local Log      = require("lib.Log")
-local Panel    = require("ui.Panel")
-local Preview  = require("ui.Preview")
-local Settings = require("core.Settings")
-local Fmt      = require("core.Fmt")
+local Log         = require("lib.Log")
+local Panel       = require("ui.Panel")
+local Preview     = require("ui.Preview")
+local Settings    = require("core.Settings")
+local Fmt         = require("core.Fmt")
+local DebugPanel  = require("ui.DebugPanel")
 
 local Menu = {}
 
@@ -454,7 +455,10 @@ local function handleSlash(text)
     local cmd, arg = (text or ""):lower():match("^%s*(%S*)%s*(.*)")
     local sv = Settings.get()
 
-    if cmd == "debug" then
+    if cmd == "dp" then
+        DebugPanel.toggle()
+
+    elseif cmd == "debug" then
         sv.debug = not sv.debug
         Log.setEnabled(sv.debug)
         d(ADDON_TAG .. " Debug " .. (sv.debug and Fmt.c(Fmt.GREEN, "ON") or Fmt.c("FF4444", "OFF")))
