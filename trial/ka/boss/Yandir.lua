@@ -11,7 +11,7 @@ local Colors = require("core.Colors")
 
 -- -- Ability IDs (from BSCHTKA_Yandir.lua) ---------------------------------
 local TOTEM_POISON       = 133515  -- combatRoute: ACTION_RESULT_BEGIN -> resets timer + Dodge alert
-local TOTEM_POISON_CP    = 133559  -- combatRoute: ACTION_RESULT_EFFECT_GAINED -> delayed 26.8s CA bar
+local TOTEM_POISON_CP    = 133559  -- effectRoute: EFFECT_RESULT_GAINED -> delayed 26.8s CA bar
 local TOTEM_HARPY_SPWN   = 133510  -- combatRoute: ACTION_RESULT_BEGIN -> resets totem timer
 local TOTEM_DRAGON_SPWN  = 133045  -- combatRoute: ACTION_RESULT_BEGIN -> resets totem timer
 local TOTEM_GARGYL_SPWN  = 133513  -- combatRoute: ACTION_RESULT_BEGIN -> resets totem timer
@@ -165,13 +165,15 @@ local function handlePoisonTotem(self, context, alerts, abilityId,
 end
 
 local function handlePoisonTotemCp(self, context, alerts, abilityId,
-                                    unitTag, sourceUnitTag, sourceUnitId, unitId,
-                                    sourceUnitName, unitName)
+                                    unitTag, unitId, unitName, stackCount)
     -- Second poison from the same totem ~26.8 s after first cast.
+    -- Routed via effectRoutes (EFFECT_RESULT_GAINED) because the log only
+    -- writes EFFECT_CHANGED,GAINED for this ability — COMBAT_EVENT,EFFECT_GAINED
+    -- never appears when players dodge the hit.
     -- Guard with BTotemCall so only one delayed bar fires per totem spawn.
     if self.BTotemCall then return end
     self.BTotemCall = true
-    local capturedSrc = sourceUnitName or ""
+    local capturedSrc = ""  -- sourceUnitName unavailable in effectRoutes dispatch
     -- Store the handle so yandir_cleanup can cancel it if the zone is exited
     -- or the group wipes before the 26.8 s fires.  Trial:cancelPending is a
     -- second net on both paths.
@@ -216,8 +218,7 @@ local function handleSeaAdderSpray(self, context, alerts, abilityId,
 end
 
 Yandir.combatRoutes = {
-    [TOTEM_POISON]       = { result = ACTION_RESULT_BEGIN,         fn = handlePoisonTotem },
-    [TOTEM_POISON_CP]    = { result = ACTION_RESULT_EFFECT_GAINED, fn = handlePoisonTotemCp },
+    [TOTEM_POISON]       = { result = ACTION_RESULT_BEGIN, fn = handlePoisonTotem },
     [TOTEM_HARPY_SPWN]   = resetTotemTimer,
     [TOTEM_DRAGON_SPWN]  = resetTotemTimer,
     [TOTEM_GARGYL_SPWN]  = resetTotemTimer,
@@ -225,6 +226,10 @@ Yandir.combatRoutes = {
     [YANDIR_HEALING]     = { result = ACTION_RESULT_BEGIN,         fn = handleYandirHealing },
     [YANDIR_JUMP]        = { result = ACTION_RESULT_BEGIN,         fn = handleYandirJump },
     [SEA_ADDER_BILE_SPRAY] = { result = ACTION_RESULT_BEGIN,       fn = handleSeaAdderSpray },
+}
+
+Yandir.effectRoutes = {
+    [TOTEM_POISON_CP] = { changeType = EFFECT_RESULT_GAINED, fn = handlePoisonTotemCp },
 }
 
 function Yandir:onPowerUpdate(context, healthPercent)
