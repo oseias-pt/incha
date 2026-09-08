@@ -42,6 +42,7 @@ ui/Preview.lua
 ui/Menu.lua
 core/Trial.lua
 core/ZoneManager.lua
+lib/Playback.lua
 
 trial/ka/boss/Yandir.lua
 trial/ka/boss/Vrol.lua

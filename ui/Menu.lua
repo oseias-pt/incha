@@ -447,6 +447,7 @@ local function printHelp()
     d("  /ip border         -  flash CA border")
     d("  /ip alert          -  show CA text alert")
     d("  /ip clear          -  clear all preview effects")
+    d("  /ip <log line>     -  replay a raw encounter-log line (BEGIN_CAST / EFFECT_CHANGED)")
 end
 
 local function handleSlash(text)
@@ -497,7 +498,24 @@ end
 -- -- Public API -------------------------------------------------------------
 
 local function handlePreviewSlash(text)
-    local sub = (text or ""):lower():match("^%s*(%S*)")
+    local trimmed = (text or ""):match("^%s*(.-)%s*$") or ""
+
+    -- Log-line replay: if the argument starts with a digit it looks like a raw
+    -- encounter-log line (e.g. "225534,BEGIN_CAST,...").  Dispatch to Playback
+    -- instead of the preview sub-commands.  Playback is loaded after Menu in
+    -- incha.txt, so grab it lazily from package.loaded at call time.
+    if trimmed:match("^%d") then
+        local Playback = package.loaded["lib.Playback"]
+        if not Playback then
+            d(ADDON_TAG .. " /ip replay: Playback module not loaded")
+            return
+        end
+        local status = Playback.injectLine(trimmed)
+        d(ADDON_TAG .. " /ip replay: " .. status)
+        return
+    end
+
+    local sub = trimmed:lower():match("^%s*(%S*)")
     -- Confirm the command was received immediately (visible in chat).
     -- The actual effect is deferred 200 ms so the HUD scene has time to
     -- return to "showing" after the chat input closes before we call
@@ -511,6 +529,7 @@ local function handlePreviewSlash(text)
         zo_callLater(fn, 200)
     else
         d(ADDON_TAG .. " /ip  panel | inst | border | alert | clear")
+        d(ADDON_TAG .. " /ip  <encounter-log line>  — replay event (BEGIN_CAST, EFFECT_CHANGED)")
     end
 end
 
