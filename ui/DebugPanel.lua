@@ -129,7 +129,6 @@ local function ensurePool(n)
         local lbl = btn:GetLabelControl()
         if lbl then
             lbl:SetHorizontalAlignment(TEXT_ALIGN_LEFT)
-            lbl:SetAnchor(LEFT, btn, LEFT, 6, 0)
         end
         btn:SetNormalFontColor(0.85, 0.92, 1, 1)
         btn:SetMouseOverFontColor(1, 0.95, 0.4, 1)
