@@ -36,7 +36,7 @@ local EventDispatcher = {}
 -- Built at module load time (ESO globals are set before addon modules run).
 -- O(1) dispatch from a raw ESO constant to the sub-type bucket name.
 
-local _effectBucket = {
+local _effectChangeSubtype = {
     [EFFECT_RESULT_GAINED]  = "gained",
     [EFFECT_RESULT_FADED]   = "faded",
     [EFFECT_RESULT_UPDATED] = "updated",
@@ -44,7 +44,7 @@ local _effectBucket = {
 
 -- DAMAGE and CRITICAL_DAMAGE both route to the "damage" bucket.
 -- Unknown results fall back to "other" at call time (see dispatchCombatEvent).
-local _combatBucket = {
+local _combatResultSubtype = {
     [ACTION_RESULT_DAMAGE]          = "damage",
     [ACTION_RESULT_CRITICAL_DAMAGE] = "damage",
     [ACTION_RESULT_DODGED]          = "dodged",
@@ -98,7 +98,7 @@ local function handleTimerReset(boss, context, alerts, entry, abilityId, sourceU
     if timer and timer.reset then timer:reset() end
 end
 
-local _stateHandler = {
+local _bossStateHandler = {
     [AlertTypes.IGNORE]      = handleIgnore,
     [AlertTypes.CUSTOM]      = handleCustom,
     [AlertTypes.TIMER_RESET] = handleTimerReset,
@@ -121,7 +121,7 @@ local function caCastBar(abilityId, entry, sourceUnitName)
     return CA.bar(abilityId, entry.text or "", dur, entry.durMax or dur, entry.color)
 end
 
-local _caHandler = {
+local _combatAlertHandler = {
     [AlertTypes.DODGE]     = caRanged,
     [AlertTypes.BLOCK]     = caRanged,
     [AlertTypes.DEBUFF]    = caRanged,
@@ -131,19 +131,19 @@ local _caHandler = {
 
 -- -- runEntry ----------------------------------------------------------------
 -- Single dispatch point for all three entry functions.
--- Checks _stateHandler first (always runs), then _caHandler (silenced-gated).
+-- Checks _bossStateHandler first (always runs), then _combatAlertHandler (silenced-gated).
 
 local function runEntry(entry, boss, context, alerts, abilityId, sourceUnitName, ...)
     local t = entry.type
 
-    local stateHandler = _stateHandler[t]
+    local stateHandler = _bossStateHandler[t]
     if stateHandler then
         return stateHandler(boss, context, alerts, entry, abilityId, sourceUnitName, ...)
     end
 
     if EventDispatcher.silenced then return end
-    local caHandler = _caHandler[t]
-    if caHandler then return caHandler(abilityId, entry, sourceUnitName) end
+    local alertHandler = _combatAlertHandler[t]
+    if alertHandler then return alertHandler(abilityId, entry, sourceUnitName) end
 end
 
 local function lookupAndRun(bucket, subPath, boss, context, alerts, abilityId, sourceUnitName, ...)
@@ -222,7 +222,7 @@ end
 function EventDispatcher.dispatchEffectChanged(boss, context, alerts,
         changeType, abilityId, sourceUnitName, ...)
     if not boss.events or not boss.events.effectChanged then return end
-    local bucketName = _effectBucket[changeType]
+    local bucketName = _effectChangeSubtype[changeType]
     if not bucketName then return end
     local ec = boss.events.effectChanged
     lookupAndRun(ec[bucketName], "effectChanged." .. bucketName,
@@ -235,7 +235,7 @@ end
 function EventDispatcher.dispatchCombatEvent(boss, context, alerts,
         result, abilityId, sourceUnitName, ...)
     if not boss.events or not boss.events.combatEvent then return end
-    local bucketName = _combatBucket[result] or "other"
+    local bucketName = _combatResultSubtype[result] or "other"
     local ce = boss.events.combatEvent
     lookupAndRun(ce[bucketName], "combatEvent." .. bucketName,
         boss, context, alerts, abilityId, sourceUnitName, ...)
