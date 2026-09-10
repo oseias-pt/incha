@@ -83,10 +83,30 @@ local function warnUnknown(subPath, abilityId)
     d("[Incha/Dispatcher] unknown ability " .. tostring(abilityId) .. " in " .. subPath)
 end
 
--- -- CA type handlers -------------------------------------------------------
--- One function per CA call shape.  DODGE, BLOCK, and DEBUFF share caRanged
--- since they all call CA.ranged with the same argument layout.
--- Built at module load time; AlertTypes and CA are both available by then.
+-- -- State handlers ----------------------------------------------------------
+-- Types that mutate boss state or are no-ops.  Always run, even when silenced.
+-- Signature: (boss, context, alerts, entry, abilityId, sourceUnitName, ...)
+
+local function handleIgnore(boss, context, alerts, entry, abilityId, sourceUnitName, ...) end
+
+local function handleCustom(boss, context, alerts, entry, abilityId, sourceUnitName, ...)
+    if entry.fn then entry.fn(boss, context, alerts, abilityId, sourceUnitName, ...) end
+end
+
+local function handleTimerReset(boss, context, alerts, entry, abilityId, sourceUnitName, ...)
+    local timer = entry.timer and boss[entry.timer]
+    if timer and timer.reset then timer:reset() end
+end
+
+local _stateHandler = {
+    [AlertTypes.IGNORE]      = handleIgnore,
+    [AlertTypes.CUSTOM]      = handleCustom,
+    [AlertTypes.TIMER_RESET] = handleTimerReset,
+}
+
+-- -- CA output handlers ------------------------------------------------------
+-- Types that emit a Combat Alerts bar or notification.  Skipped when silenced.
+-- Signature: (abilityId, entry, sourceUnitName)
 
 local function caRanged(abilityId, entry, sourceUnitName)
     return CA.ranged(abilityId, entry.text or sourceUnitName or "", entry.dur or 3000, entry.color)
@@ -111,31 +131,19 @@ local _caHandler = {
 
 -- -- runEntry ----------------------------------------------------------------
 -- Single dispatch point for all three entry functions.
--- abilityId and sourceUnitName are always available; remaining varargs are
--- event-specific and passed through to CUSTOM handlers unchanged.
+-- Checks _stateHandler first (always runs), then _caHandler (silenced-gated).
 
 local function runEntry(entry, boss, context, alerts, abilityId, sourceUnitName, ...)
     local t = entry.type
 
-    if t == AlertTypes.IGNORE then
-        return
-
-    elseif t == AlertTypes.CUSTOM then
-        if entry.fn then
-            entry.fn(boss, context, alerts, abilityId, sourceUnitName, ...)
-        end
-        return
-
-    elseif t == AlertTypes.TIMER_RESET then
-        local timer = entry.timer and boss[entry.timer]
-        if timer and timer.reset then timer:reset() end
-        return
+    local stateHandler = _stateHandler[t]
+    if stateHandler then
+        return stateHandler(boss, context, alerts, entry, abilityId, sourceUnitName, ...)
     end
 
-    -- All remaining types produce CA output — suppressed in parallel mode.
     if EventDispatcher.silenced then return end
-    local handler = _caHandler[t]
-    if handler then return handler(abilityId, entry, sourceUnitName) end
+    local caHandler = _caHandler[t]
+    if caHandler then return caHandler(abilityId, entry, sourceUnitName) end
 end
 
 local function lookupAndRun(bucket, subPath, boss, context, alerts, abilityId, sourceUnitName, ...)
