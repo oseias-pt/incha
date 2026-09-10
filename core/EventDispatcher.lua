@@ -32,6 +32,25 @@ local CA         = require("external-api.CombatAlerts")
 
 local EventDispatcher = {}
 
+-- -- Layer-2 routing tables -------------------------------------------------
+-- Built at module load time (ESO globals are set before addon modules run).
+-- O(1) dispatch from a raw ESO constant to the sub-type bucket name.
+
+local _effectBucket = {
+    [EFFECT_RESULT_GAINED]  = "gained",
+    [EFFECT_RESULT_FADED]   = "faded",
+    [EFFECT_RESULT_UPDATED] = "updated",
+}
+
+-- DAMAGE and CRITICAL_DAMAGE both route to the "damage" bucket.
+-- Unknown results fall back to "other" at call time (see dispatchCombatEvent).
+local _combatBucket = {
+    [ACTION_RESULT_DAMAGE]          = "damage",
+    [ACTION_RESULT_CRITICAL_DAMAGE] = "damage",
+    [ACTION_RESULT_DODGED]          = "dodged",
+    [ACTION_RESULT_BLOCKED_DAMAGE]  = "blocked",
+}
+
 --- Controlled by EventPipeline (Phase 1.3).
 --- When true, all CA calls are suppressed; unknown-event warnings still fire.
 --- Defaults to true so the dispatcher is safe to build before Phase 1.3 wires it in.
@@ -184,45 +203,23 @@ end
 function EventDispatcher.dispatchEffectChanged(boss, context, alerts,
         changeType, abilityId, sourceUnitName, ...)
     if not boss.events or not boss.events.effectChanged then return end
+    local bucketName = _effectBucket[changeType]
+    if not bucketName then return end
     local ec = boss.events.effectChanged
-
-    if changeType == EFFECT_RESULT_GAINED then
-        lookupAndRun(ec.gained, "effectChanged.gained",
-            boss, context, alerts, abilityId, sourceUnitName, ...)
-
-    elseif changeType == EFFECT_RESULT_FADED then
-        lookupAndRun(ec.faded, "effectChanged.faded",
-            boss, context, alerts, abilityId, sourceUnitName, ...)
-
-    elseif changeType == EFFECT_RESULT_UPDATED then
-        lookupAndRun(ec.updated, "effectChanged.updated",
-            boss, context, alerts, abilityId, sourceUnitName, ...)
-    end
+    lookupAndRun(ec[bucketName], "effectChanged." .. bucketName,
+        boss, context, alerts, abilityId, sourceUnitName, ...)
 end
 
 --- Dispatch an EVENT_COMBAT_EVENT (non-BEGIN_CAST result) on a registered ability.
 --- result: one of the ACTION_RESULT_* constants (DAMAGE, DODGED, BLOCKED_DAMAGE, …)
+--- Unknown results fall through to the "other" bucket.
 function EventDispatcher.dispatchCombatEvent(boss, context, alerts,
         result, abilityId, sourceUnitName, ...)
     if not boss.events or not boss.events.combatEvent then return end
+    local bucketName = _combatBucket[result] or "other"
     local ce = boss.events.combatEvent
-
-    if result == ACTION_RESULT_DAMAGE or result == ACTION_RESULT_CRITICAL_DAMAGE then
-        lookupAndRun(ce.damage, "combatEvent.damage",
-            boss, context, alerts, abilityId, sourceUnitName, ...)
-
-    elseif result == ACTION_RESULT_DODGED then
-        lookupAndRun(ce.dodged, "combatEvent.dodged",
-            boss, context, alerts, abilityId, sourceUnitName, ...)
-
-    elseif result == ACTION_RESULT_BLOCKED_DAMAGE then
-        lookupAndRun(ce.blocked, "combatEvent.blocked",
-            boss, context, alerts, abilityId, sourceUnitName, ...)
-
-    else
-        lookupAndRun(ce.other, "combatEvent.other",
-            boss, context, alerts, abilityId, sourceUnitName, ...)
-    end
+    lookupAndRun(ce[bucketName], "combatEvent." .. bucketName,
+        boss, context, alerts, abilityId, sourceUnitName, ...)
 end
 
 -- -- Load-time validation ---------------------------------------------------
