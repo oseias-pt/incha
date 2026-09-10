@@ -60,6 +60,12 @@ ACTION_RESULT_EFFECT_FADED           = 5
 ACTION_RESULT_EFFECT_GAINED          = 6
 ACTION_RESULT_EFFECT_GAINED_DURATION = 7
 ACTION_RESULT_INTERRUPT              = 65
+-- Additional constants needed by EventDispatcher.dispatchCombatEvent.
+ACTION_RESULT_DAMAGE                 = 2
+ACTION_RESULT_CRITICAL_DAMAGE        = 3
+ACTION_RESULT_DODGED                 = 35
+ACTION_RESULT_BLOCKED_DAMAGE         = 37
+ACTION_RESULT_ABILITY_ON_COOLDOWN    = 17
 
 -- -- ESO effect-change constants -------------------------------------------
 EFFECT_RESULT_GAINED  = 1
