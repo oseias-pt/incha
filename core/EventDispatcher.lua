@@ -92,17 +92,21 @@ local function caRanged(abilityId, entry, sourceUnitName)
     return CA.ranged(abilityId, entry.text or sourceUnitName or "", entry.dur or 3000, entry.color)
 end
 
+local function caInterrupt(abilityId, entry, sourceUnitName)
+    return CA.interrupt(abilityId, entry.text or sourceUnitName or "", entry.dur or 2000, entry.color)
+end
+
+local function caCastBar(abilityId, entry, sourceUnitName)
+    local dur = entry.dur or 3000
+    return CA.bar(abilityId, entry.text or "", dur, entry.durMax or dur, entry.color)
+end
+
 local _caHandler = {
     [AlertTypes.DODGE]     = caRanged,
     [AlertTypes.BLOCK]     = caRanged,
     [AlertTypes.DEBUFF]    = caRanged,
-    [AlertTypes.INTERRUPT] = function(abilityId, entry, sourceUnitName)
-        return CA.interrupt(abilityId, entry.text or sourceUnitName or "", entry.dur or 2000, entry.color)
-    end,
-    [AlertTypes.CAST_BAR]  = function(abilityId, entry, sourceUnitName)
-        local dur = entry.dur or 3000
-        return CA.bar(abilityId, entry.text or "", dur, entry.durMax or dur, entry.color)
-    end,
+    [AlertTypes.INTERRUPT] = caInterrupt,
+    [AlertTypes.CAST_BAR]  = caCastBar,
 }
 
 -- -- runEntry ----------------------------------------------------------------
