@@ -83,8 +83,30 @@ local function warnUnknown(subPath, abilityId)
     d("[Incha/Dispatcher] unknown ability " .. tostring(abilityId) .. " in " .. subPath)
 end
 
--- -- Standard type handlers --------------------------------------------------
--- runEntry is the single dispatch point from all three entry functions.
+-- -- CA type handlers -------------------------------------------------------
+-- One function per CA call shape.  DODGE, BLOCK, and DEBUFF share caRanged
+-- since they all call CA.ranged with the same argument layout.
+-- Built at module load time; AlertTypes and CA are both available by then.
+
+local function caRanged(abilityId, entry, sourceUnitName)
+    return CA.ranged(abilityId, entry.text or sourceUnitName or "", entry.dur or 3000, entry.color)
+end
+
+local _caHandler = {
+    [AlertTypes.DODGE]     = caRanged,
+    [AlertTypes.BLOCK]     = caRanged,
+    [AlertTypes.DEBUFF]    = caRanged,
+    [AlertTypes.INTERRUPT] = function(abilityId, entry, sourceUnitName)
+        return CA.interrupt(abilityId, entry.text or sourceUnitName or "", entry.dur or 2000, entry.color)
+    end,
+    [AlertTypes.CAST_BAR]  = function(abilityId, entry, sourceUnitName)
+        local dur = entry.dur or 3000
+        return CA.bar(abilityId, entry.text or "", dur, entry.durMax or dur, entry.color)
+    end,
+}
+
+-- -- runEntry ----------------------------------------------------------------
+-- Single dispatch point for all three entry functions.
 -- abilityId and sourceUnitName are always available; remaining varargs are
 -- event-specific and passed through to CUSTOM handlers unchanged.
 
@@ -108,23 +130,8 @@ local function runEntry(entry, boss, context, alerts, abilityId, sourceUnitName,
 
     -- All remaining types produce CA output — suppressed in parallel mode.
     if EventDispatcher.silenced then return end
-
-    if t == AlertTypes.DODGE then
-        return CA.ranged(abilityId, entry.text or sourceUnitName or "", entry.dur or 3000, entry.color)
-
-    elseif t == AlertTypes.BLOCK then
-        return CA.ranged(abilityId, entry.text or sourceUnitName or "", entry.dur or 3000, entry.color)
-
-    elseif t == AlertTypes.DEBUFF then
-        return CA.ranged(abilityId, entry.text or sourceUnitName or "", entry.dur or 3000, entry.color)
-
-    elseif t == AlertTypes.INTERRUPT then
-        return CA.interrupt(abilityId, entry.text or sourceUnitName or "", entry.dur or 2000, entry.color)
-
-    elseif t == AlertTypes.CAST_BAR then
-        local dur = entry.dur or 3000
-        return CA.bar(abilityId, entry.text or "", dur, entry.durMax or dur, entry.color)
-    end
+    local handler = _caHandler[t]
+    if handler then return handler(abilityId, entry, sourceUnitName) end
 end
 
 local function lookupAndRun(bucket, subPath, boss, context, alerts, abilityId, sourceUnitName, ...)
