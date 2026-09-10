@@ -200,7 +200,7 @@ function EventDispatcher.dispatchBeginCast(boss, context, alerts,
         local capturedAlerts   = alerts
 
         local handle
-        handle = zo_callLater(function()
+        local function onInterruptTimerFired()
             -- Guard against a T event that arrived and cancelled us between
             -- the timer firing and the callback running.
             local p = _pending[key]
@@ -211,8 +211,8 @@ function EventDispatcher.dispatchBeginCast(boss, context, alerts,
                         abilityId, sourceUnitName)
                 end
             end
-        end, castTime)
-
+        end
+        handle = zo_callLater(onInterruptTimerFired, castTime)
         _pending[key] = { handle = handle }
     end
 end
