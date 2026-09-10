@@ -1,0 +1,58 @@
+name: Close linked issues on PR merge
+
+# GitHub's built-in "Closes #N" keyword only auto-closes issues when a PR
+# merges into the repository's default branch (master).  Our migration PRs
+# target the integration branch (feature/event-dispatch-migration), so this
+# workflow handles the closing for every merge target.
+
+on:
+  pull_request:
+    types: [closed]
+
+jobs:
+  close-issues:
+    if: github.event.pull_request.merged == true
+    runs-on: ubuntu-latest
+    permissions:
+      issues: write
+
+    steps:
+      - name: Close issues referenced in PR body
+        uses: actions/github-script@v7
+        with:
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          script: |
+            const body   = context.payload.pull_request.body || '';
+            const prNum  = context.payload.pull_request.number;
+            const base   = context.payload.pull_request.base.ref;
+
+            // Match: closes/fixes/resolves (optionally followed by) #N
+            const pattern = /(?:closes|fixes|resolves)[^\S\r\n]+#(\d+)/gi;
+            const seen    = new Set();
+            let match;
+
+            while ((match = pattern.exec(body)) !== null) {
+              const issueNumber = parseInt(match[1], 10);
+              if (seen.has(issueNumber)) continue;
+              seen.add(issueNumber);
+
+              console.log(`Closing issue #${issueNumber} (referenced by PR #${prNum} -> ${base})`);
+
+              await github.rest.issues.update({
+                owner:        context.repo.owner,
+                repo:         context.repo.repo,
+                issue_number: issueNumber,
+                state:        'closed',
+              });
+
+              await github.rest.issues.createComment({
+                owner:        context.repo.owner,
+                repo:         context.repo.repo,
+                issue_number: issueNumber,
+                body: `Closed by PR #${prNum} (merged into \`${base}\`).`,
+              });
+            }
+
+            if (seen.size === 0) {
+              console.log('No "Closes #N" references found in PR body.');
+            }

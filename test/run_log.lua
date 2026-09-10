@@ -105,6 +105,17 @@ local function injectBoss(trial, bossClass)
     trial.context:setBoss(instance)
     trial.context.inCombat = false
 
+    -- When a boss has already been migrated to the new events table (Phase 2+),
+    -- validate it at activation time so structural errors surface during replay.
+    if instance.events then
+        local EventDispatcher = require("core.EventDispatcher")
+        local ok, err = pcall(EventDispatcher.build, instance)
+        if not ok then
+            io.stderr:write(string.format("[harness] EventDispatcher.build failed for %s: %s\n",
+                bossClass.key or "?", tostring(err)))
+        end
+    end
+
     if instance.onEnter then
         pcall(instance.onEnter, instance, trial.context, trial.alerts)
     end
