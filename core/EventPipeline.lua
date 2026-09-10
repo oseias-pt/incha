@@ -1,6 +1,12 @@
 local EventPipeline = {}
 EventPipeline.__index = EventPipeline
 
+--- When true, EventPipeline-aware handlers also call EventDispatcher after
+--- the legacy CombatHandler path.  EventDispatcher.silenced defaults to true
+--- so no CA output is produced  -  console warnings for unknown events still fire.
+--- Toggle at runtime: /incha parallel
+EventPipeline.parallelDispatch = false
+
 function EventPipeline.new(eventPrefix, handlers)
     return setmetatable({
         eventPrefix = eventPrefix,
