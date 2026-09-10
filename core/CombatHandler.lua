@@ -37,7 +37,30 @@
 --- only guards with no abilityId filter); the fallback fires only when no
 --- combatRoutes entry matches.
 
+local EventPipeline   = require("core.EventPipeline")
+local EventDispatcher = require("core.EventDispatcher")
+
 local CombatHandler = {}
+
+-- -- Parallel dispatch helpers -----------------------------------------------
+-- Called after the legacy CombatHandler path when EventPipeline.parallelDispatch
+-- is true.  These only fire when the boss has declared an events table (i.e. has
+-- been at least partially migrated), so unrelated bosses produce no noise.
+
+local function parallelDispatchCombat(boss, context, alerts, result, sourceUnitId, abilityId, sourceUnitName)
+    if result == ACTION_RESULT_BEGIN then
+        local castTime = GetAbilityCastInfo(abilityId)
+        EventDispatcher.dispatchBeginCast(boss, context, alerts,
+            castTime, false, sourceUnitId, abilityId, sourceUnitName)
+    else
+        EventDispatcher.dispatchCombatEvent(boss, context, alerts,
+            result, abilityId, sourceUnitName)
+    end
+end
+
+local function parallelDispatchEffect(boss, context, alerts, changeType, abilityId, unitName)
+    EventDispatcher.dispatchEffectChanged(boss, context, alerts, changeType, abilityId, unitName)
+end
 
 -- -- D8: dispatch helpers --------------------------------------------------
 -- Extracted from the identical type(entry) branches in onCombatEvent and
@@ -165,15 +188,21 @@ function CombatHandler.onCombatEventFiltered(trial, eventCode,
 
     local context, alerts = trial.context, trial.alerts
 
-    if boss.common and boss.common.handle(alerts, result, abilityId, unitTag, sourceUnitName) then
-        return
+    local handledByCommon = boss.common
+        and boss.common.handle(alerts, result, abilityId, unitTag, sourceUnitName)
+
+    if not handledByCommon then
+        local entry = boss.combatRoutes and boss.combatRoutes[abilityId]
+        if entry then
+            dispatchCombatEntry(boss, context, alerts, entry, result,
+                abilityId, unitTag, sourceUnitTag, sourceUnitId, unitId,
+                sourceUnitName, unitName)
+        end
     end
 
-    local entry = boss.combatRoutes and boss.combatRoutes[abilityId]
-    if not entry then return end
-    dispatchCombatEntry(boss, context, alerts, entry, result,
-        abilityId, unitTag, sourceUnitTag, sourceUnitId, unitId,
-        sourceUnitName, unitName)
+    if EventPipeline.parallelDispatch and boss.events then
+        parallelDispatchCombat(boss, context, alerts, result, sourceUnitId, abilityId, sourceUnitName)
+    end
 end
 
 function CombatHandler.onDiedCombatEvent(trial, eventCode,
@@ -254,21 +283,24 @@ function CombatHandler.onEffectChangedFiltered(trial, eventCode,
     local boss = trial:getActiveBoss()
     if not boss then return end
 
-    if boss.common and boss.common.handleEffect
-    and boss.common.handleEffect(trial.alerts, changeType, abilityId, unitTag, stackCount) then
-        return
+    local context, alerts = trial.context, trial.alerts
+
+    local handledByCommon = boss.common and boss.common.handleEffect
+        and boss.common.handleEffect(alerts, changeType, abilityId, unitTag, stackCount)
+
+    if not handledByCommon then
+        local entry = boss.effectRoutes and boss.effectRoutes[abilityId]
+        if entry then
+            dispatchEffectEntry(boss, context, alerts, entry, changeType,
+                abilityId, unitTag, unitId, unitName, stackCount)
+        elseif boss.onEffectChanged then
+            boss:onEffectChanged(context, alerts,
+                changeType, abilityId, unitTag, unitId, unitName, stackCount)
+        end
     end
 
-    local entry = boss.effectRoutes and boss.effectRoutes[abilityId]
-    if entry then
-        dispatchEffectEntry(boss, trial.context, trial.alerts, entry, changeType,
-            abilityId, unitTag, unitId, unitName, stackCount)
-        return
-    end
-
-    if boss.onEffectChanged then
-        boss:onEffectChanged(trial.context, trial.alerts,
-            changeType, abilityId, unitTag, unitId, unitName, stackCount)
+    if EventPipeline.parallelDispatch and boss.events then
+        parallelDispatchEffect(boss, context, alerts, changeType, abilityId, unitName)
     end
 end
 
