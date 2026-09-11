@@ -1,13 +1,14 @@
-local Location = require("core.Location")
-local Timer = require("lib.Timer")
-local Lang = require("core.Lang")
-local Fmt  = require("core.Fmt")
+local Location    = require("core.Location")
+local Timer       = require("lib.Timer")
+local Lang        = require("core.Lang")
+local Fmt         = require("core.Fmt")
 
-
-local CA = require("external-api.CombatAlerts")
-local BossBase = require("lib.BossBase")
-local CastDur = require("lib.CastDur")
-local Colors = require("core.Colors")
+local AlertTypes      = require("core.AlertTypes")
+local CA              = require("external-api.CombatAlerts")
+local BossBase        = require("lib.BossBase")
+local CastDur         = require("lib.CastDur")
+local Colors          = require("core.Colors")
+local EventDispatcher = require("core.EventDispatcher")
 
 -- -- Ability IDs (from BSCHTKA_Yandir.lua) ---------------------------------
 local TOTEM_POISON       = 133515  -- combatRoute: ACTION_RESULT_BEGIN -> resets timer + Dodge alert
@@ -136,83 +137,97 @@ function Yandir:onDied(context, alerts,
     end
 end
 
--- Any totem spawn (Harpy/Dragon/Gargoyle spawn IDs) resets the recurring timer.
-local function resetTotemTimer(self, context, alerts, result, abilityId, ...)
-    if result == ACTION_RESULT_BEGIN then self.totemTimer:reset() end
-end
+-- -- Handlers (new-style: boss as first arg, sourceUnitName before unit args) --
 
-local function handlePoisonTotem(self, context, alerts, abilityId,
-                                  unitTag, sourceUnitTag, sourceUnitId, unitId,
-                                  sourceUnitName, unitName)
-    self.totemTimer:reset()
+-- Any totem spawn (Harpy/Dragon/Gargoyle spawn IDs) resets the recurring timer.
+-- Declared as TIMER_RESET in events.beginCast; no explicit handler function needed.
+
+local function handlePoisonTotem(boss, context, alerts, abilityId, sourceUnitName,
+                                  unitTag, unitId, sourceUnitId, unitName)
+    boss.totemTimer:reset()
     alerts:showAction(Lang.t("ka_yandir_dodge_poison"))
     local cid = CA.ranged(abilityId, sourceUnitName, 4300, Colors.POISON)
-    if cid and unitId then self.alertList[unitId] = cid end
-    self.poisonTotemId = unitId  -- track for delayed second-poison bar
+    if cid and unitId then boss.alertList[unitId] = cid end
+    boss.poisonTotemId = unitId  -- track for delayed second-poison bar
 end
 
-local function handlePoisonTotemCp(self, context, alerts, abilityId,
-                                    unitTag, sourceUnitTag, sourceUnitId, unitId,
-                                    sourceUnitName, unitName)
+local function handlePoisonTotemCp(boss, context, alerts, abilityId, sourceUnitName, ...)
     -- Second poison from the same totem ~26.8 s after first cast.
     -- Guard with BTotemCall so only one delayed bar fires per totem spawn.
-    if self.BTotemCall then return end
-    self.BTotemCall = true
+    if boss.BTotemCall then return end
+    boss.BTotemCall = true
     local capturedSrc = sourceUnitName or ""
     -- Store the handle so yandir_cleanup can cancel it if the zone is exited
     -- or the group wipes before the 26.8 s fires.  Trial:cancelPending is a
     -- second net on both paths.
-    self.poisonTotemTimer = self:after(26800, function()
-        self.poisonTotemTimer = false
-        if self.poisonTotemId ~= -1 and IsUnitInCombat("player") then
-            self.BTotemCall = false
+    boss.poisonTotemTimer = boss:after(26800, function()
+        boss.poisonTotemTimer = false
+        if boss.poisonTotemId ~= -1 and IsUnitInCombat("player") then
+            boss.BTotemCall = false
             CA.ranged(TOTEM_POISON_CP, capturedSrc, 4300, Colors.POISON)
         end
     end)
 end
 
-local function handleGargoyleTotem(self, context, alerts, abilityId,
-                                    unitTag, sourceUnitTag, sourceUnitId, unitId,
-                                    sourceUnitName, unitName)
+local function handleGargoyleTotem(boss, context, alerts, abilityId, sourceUnitName,
+                                    unitTag, unitId, sourceUnitId, unitName)
     alerts:showAction(Lang.t("ka_yandir_block_gargoyle"))
     local dur = CastDur.get(TOTEM_GARGYL, FALLBACK_DUR)
     local cid = CA.ranged(abilityId, "Block!!", dur, Colors.SILVER)
-    if cid and unitId then self.alertList[unitId] = cid end
+    if cid and unitId then boss.alertList[unitId] = cid end
 end
 
-local function handleYandirHealing(self, context, alerts, abilityId, ...)
+local function handleYandirHealing(boss, context, alerts, abilityId, ...)
     alerts:showAction(Lang.t("ka_yandir_casts_healing"))
     CA.alert(nil, Lang.t("ka_yandir_casts_healing"), 0x991111FF, SOUNDS.NONE, 2000)
 end
 
-local function handleYandirJump(self, context, alerts, abilityId,
-                                 unitTag, sourceUnitTag, sourceUnitId, unitId,
-                                 sourceUnitName, unitName)
+local function handleYandirJump(boss, context, alerts, abilityId, sourceUnitName,
+                                 unitTag, unitId, sourceUnitId, unitName)
     alerts:showAction(Lang.t("ka_yandir_jump_block"))
     local cid = CA.ranged(abilityId, Lang.t("ka_yandir_jump_block"), 3000, Colors.SILVER)
-    if cid and unitId then self.alertList[unitId] = cid end
+    if cid and unitId then boss.alertList[unitId] = cid end
 end
 
-local function handleSeaAdderSpray(self, context, alerts, abilityId,
-                                    unitTag, sourceUnitTag, sourceUnitId, unitId,
-                                    sourceUnitName, unitName)
+local function handleSeaAdderSpray(boss, context, alerts, abilityId, sourceUnitName,
+                                    unitTag, unitId, sourceUnitId, unitName)
     if not IsUnitPlayer(unitTag) then return end
     alerts:showAction(Lang.t("ka_yandir_dodge_sea_adder"))
     local cid = CA.ranged(abilityId, sourceUnitName, 1933, Colors.SILVER)
-    if cid and unitId then self.alertList[unitId] = cid end
+    if cid and unitId then boss.alertList[unitId] = cid end
 end
 
-Yandir.combatRoutes = {
-    [TOTEM_POISON]       = { result = ACTION_RESULT_BEGIN,         fn = handlePoisonTotem },
-    [TOTEM_POISON_CP]    = { result = ACTION_RESULT_EFFECT_GAINED, fn = handlePoisonTotemCp },
-    [TOTEM_HARPY_SPWN]   = resetTotemTimer,
-    [TOTEM_DRAGON_SPWN]  = resetTotemTimer,
-    [TOTEM_GARGYL_SPWN]  = resetTotemTimer,
-    [TOTEM_GARGYL]       = { result = ACTION_RESULT_BEGIN,         fn = handleGargoyleTotem },
-    [YANDIR_HEALING]     = { result = ACTION_RESULT_BEGIN,         fn = handleYandirHealing },
-    [YANDIR_JUMP]        = { result = ACTION_RESULT_BEGIN,         fn = handleYandirJump },
-    [SEA_ADDER_BILE_SPRAY] = { result = ACTION_RESULT_BEGIN,       fn = handleSeaAdderSpray },
+-- -- Events table (replaces combatRoutes / effectRoutes) --------------------
+-- All former combatRoutes used ACTION_RESULT_BEGIN, so they live in both the
+-- instant and started beginCast buckets (cast time is not known at migration
+-- time; covering both ensures the alert fires regardless).
+-- TOTEM_POISON_CP was ACTION_RESULT_EFFECT_GAINED via combat; migrated to
+-- effectChanged.gained for the weekend validation run.
+
+local _beginCastEntry = {
+    [TOTEM_POISON]         = { type = AlertTypes.CUSTOM, fn = handlePoisonTotem },
+    [TOTEM_HARPY_SPWN]     = { type = AlertTypes.TIMER_RESET, timer = "totemTimer" },
+    [TOTEM_DRAGON_SPWN]    = { type = AlertTypes.TIMER_RESET, timer = "totemTimer" },
+    [TOTEM_GARGYL_SPWN]    = { type = AlertTypes.TIMER_RESET, timer = "totemTimer" },
+    [TOTEM_GARGYL]         = { type = AlertTypes.CUSTOM, fn = handleGargoyleTotem },
+    [YANDIR_HEALING]       = { type = AlertTypes.CUSTOM, fn = handleYandirHealing },
+    [YANDIR_JUMP]          = { type = AlertTypes.CUSTOM, fn = handleYandirJump },
+    [SEA_ADDER_BILE_SPRAY] = { type = AlertTypes.CUSTOM, fn = handleSeaAdderSpray },
 }
+
+Yandir.events = {
+    beginCast = {
+        instant = _beginCastEntry,
+        started = _beginCastEntry,
+    },
+    effectChanged = {
+        gained = {
+            [TOTEM_POISON_CP] = { type = AlertTypes.CUSTOM, fn = handlePoisonTotemCp },
+        },
+    },
+}
+
+EventDispatcher.build(Yandir)
 
 function Yandir:onPowerUpdate(context, healthPercent)
     if healthPercent < 60 and not self.gryphonTimer:isExpired() then
