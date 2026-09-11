@@ -3,12 +3,13 @@ local Timer    = require("lib.Timer")
 local Lang     = require("core.Lang")
 local Fmt      = require("core.Fmt")
 
-
-local CA            = require("external-api.CombatAlerts")
-local PositionIcons = require("external-api.PositionIcons")
-local BossBase      = require("lib.BossBase")
-local Settings      = require("core.Settings")
-local Colors = require("core.Colors")
+local AlertTypes      = require("core.AlertTypes")
+local CA              = require("external-api.CombatAlerts")
+local PositionIcons   = require("external-api.PositionIcons")
+local BossBase        = require("lib.BossBase")
+local Settings        = require("core.Settings")
+local Colors          = require("core.Colors")
+local EventDispatcher = require("core.EventDispatcher")
 
 -- -- Ability IDs (from BSCHTKA_Vrol.lua) -----------------------------------
 local VROL_PORTAL_CAST  = 133994  -- combatRoute: ACTION_RESULT_BEGIN -> reset portal timer + alert
@@ -136,96 +137,111 @@ function Vrol:onDied(context, alerts,
     end
 end
 
-local function handlePortalCast(self, context, alerts, abilityId,
-                                 unitTag, sourceUnitTag, sourceUnitId, unitId,
-                                 sourceUnitName, unitName)
-    self.portalTimer:reset()
+-- -- Handlers (new-style: boss as first arg, sourceUnitName before unit args) --
+
+local function handlePortalCast(boss, context, alerts, abilityId, sourceUnitName,
+                                 unitTag, unitId, sourceUnitId, unitName)
+    boss.portalTimer:reset()
     alerts:showAction(Lang.t("ka_vrol_kill_conjurer"))
     -- Use portal kill-time ability ID for the icon (matches BSCHTKA).
     CA.ranged(VROL_PORTAL_KTIME, sourceUnitName, 3000, Colors.VOID)
 end
 
-local function handleFogCast(self, context, alerts, abilityId,
-                              unitTag, sourceUnitTag, sourceUnitId, unitId,
-                              sourceUnitName, unitName)
-    self.fogTimer:reset()
-    self.fogEndTime  = GetGameTimeMilliseconds() + FOG_DURATION * 1000
-    self.fogHitCount = 0
+local function handleFogCast(boss, context, alerts, abilityId, sourceUnitName,
+                              unitTag, unitId, sourceUnitId, unitName)
+    boss.fogTimer:reset()
+    boss.fogEndTime  = GetGameTimeMilliseconds() + FOG_DURATION * 1000
+    boss.fogHitCount = 0
     alerts:showAction(Lang.t("ka_vrol_dodge_fog"))
     local cid = CA.ranged(abilityId, sourceUnitName, 1000, Colors.BLUE)
-    if cid and unitId then self.alertList[unitId] = cid end
+    if cid and unitId then boss.alertList[unitId] = cid end
 end
 
-local function handleFogIncrease(self, context, alerts, abilityId, ...)
+local function handleFogIncrease(boss, context, alerts, abilityId, ...)
     -- Each group of FOG_EXTEND_HITS pulses extends the active fog by FOG_EXTEND_SECS.
-    if self.fogEndTime > 0 then
-        self.fogHitCount = self.fogHitCount + 1
-        if self.fogHitCount >= FOG_EXTEND_HITS then
-            self.fogHitCount = 0
-            self.fogEndTime  = self.fogEndTime + FOG_EXTEND_SECS * 1000
+    if boss.fogEndTime > 0 then
+        boss.fogHitCount = boss.fogHitCount + 1
+        if boss.fogHitCount >= FOG_EXTEND_HITS then
+            boss.fogHitCount = 0
+            boss.fogEndTime  = boss.fogEndTime + FOG_EXTEND_SECS * 1000
         end
     end
 end
 
-local function handleHarpoon(self, context, alerts, abilityId,
-                              unitTag, sourceUnitTag, sourceUnitId, unitId,
-                              sourceUnitName, unitName)
-    self.conduitTimer:reset()
+local function handleHarpoon(boss, context, alerts, abilityId, sourceUnitName,
+                              unitTag, unitId, sourceUnitId, unitName)
+    boss.conduitTimer:reset()
     alerts:showAction(Lang.t("ka_vrol_kill_harpoon"))
     local cid = CA.bar(abilityId, GetAbilityName(abilityId),
         16000, 16000, Colors.FLYZONE, 0.5,
         { 16000, Lang.t("ka_vrol_harpoon_action"), 0.8, 0, 0, 0.9, SOUNDS.NONE })
-    if cid and unitId then self.alertList[unitId] = cid end
+    if cid and unitId then boss.alertList[unitId] = cid end
 end
 
-local function handleApothecary(self, context, alerts, abilityId, ...)
+local function handleApothecary(boss, context, alerts, abilityId, ...)
     alerts:showAction(Lang.t("ka_vrol_interrupt_apoth"))
     CA.alert(nil, Lang.t("ka_vrol_interrupt_apoth"), 0x0099FFFF,
         SOUNDS.CHAMPION_POINTS_COMMITTED, 2000)
 end
 
-Vrol.combatRoutes = {
-    [VROL_PORTAL_CAST]  = { result = ACTION_RESULT_BEGIN, fn = handlePortalCast },
-    [VROL_FOG_CAST]     = { result = ACTION_RESULT_BEGIN, fn = handleFogCast },
-    [VROL_FOG_INCREASE] = { result = ACTION_RESULT_BEGIN, fn = handleFogIncrease },
-    [VROL_HARPOON]      = { result = ACTION_RESULT_BEGIN, fn = handleHarpoon },
-    [VROL_APOTHECARY]   = { result = ACTION_RESULT_BEGIN, fn = handleApothecary },
-}
-
--- Portal kill-timer debuff on the local player (EVENT_EFFECT_CHANGED).
--- GAINED = player entered portal -> 20 s to kill the Conjurer.
--- FADED  = debuff removed -> check if Conjurer was killed in time.
-local function handlePortalKillTime(self, context, alerts, changeType, abilityId,
-                                     unitTag, unitId, unitName, stackCount)
-    -- Only react to the local player's portal debuff.
+-- Portal kill-timer debuff: GAINED = entered portal, FADED = debuff cleared.
+-- Separated into two handlers, one per effectChanged bucket.
+-- unitName here is the affected unit's name (the player inside the portal).
+-- unitTag is the player's tag, used to guard against other players' debuff events.
+local function handlePortalKillTimeGained(boss, context, alerts, abilityId, unitName,
+                                          unitTag, unitId, stackCount)
     if unitTag ~= GetLocalPlayerGroupUnitTag() then return end
-
-    if changeType == EFFECT_RESULT_GAINED then
-        self.portalKillExpires = GetGameTimeMilliseconds() + 20000
-        alerts:showAction(Lang.t("ka_vrol_kill_conjurer_20s"))
-        self.portalKillBarId = CA.bar(
-            abilityId, GetAbilityName(abilityId),
-            20000, 20000, Colors.FLYZONE, 0.5,
-            { 20000, Lang.t("ka_vrol_kill_conjurer"), 0.8, 0, 0, 0.9, SOUNDS.NONE })
-
-    elseif changeType == EFFECT_RESULT_FADED then
-        CA.castAlertsStop(self.portalKillBarId)
-        self.portalKillBarId = false
-
-        if GetGameTimeMilliseconds() < self.portalKillExpires then
-            alerts:showAction(Lang.t("ka_vrol_portal_ok"))
-            CA.alert(nil, Lang.t("ka_vrol_portal_ok"), 0x119911FF, SOUNDS.DUEL_WON, 2000)
-        else
-            alerts:showAction(Lang.t("ka_vrol_portal_failed"))
-            CA.alert(nil, Lang.t("ka_vrol_portal_failed"), 0x991111FF, SOUNDS.DUEL_FORFEIT, 2000)
-        end
-        self.portalKillExpires = 0
-    end
+    boss.portalKillExpires = GetGameTimeMilliseconds() + 20000
+    alerts:showAction(Lang.t("ka_vrol_kill_conjurer_20s"))
+    boss.portalKillBarId = CA.bar(
+        abilityId, GetAbilityName(abilityId),
+        20000, 20000, Colors.FLYZONE, 0.5,
+        { 20000, Lang.t("ka_vrol_kill_conjurer"), 0.8, 0, 0, 0.9, SOUNDS.NONE })
 end
 
-Vrol.effectRoutes = {
-    [VROL_PORTAL_KTIME] = handlePortalKillTime,
+local function handlePortalKillTimeFaded(boss, context, alerts, abilityId, unitName,
+                                         unitTag, unitId, stackCount)
+    if unitTag ~= GetLocalPlayerGroupUnitTag() then return end
+    CA.castAlertsStop(boss.portalKillBarId)
+    boss.portalKillBarId = false
+    if GetGameTimeMilliseconds() < boss.portalKillExpires then
+        alerts:showAction(Lang.t("ka_vrol_portal_ok"))
+        CA.alert(nil, Lang.t("ka_vrol_portal_ok"), 0x119911FF, SOUNDS.DUEL_WON, 2000)
+    else
+        alerts:showAction(Lang.t("ka_vrol_portal_failed"))
+        CA.alert(nil, Lang.t("ka_vrol_portal_failed"), 0x991111FF, SOUNDS.DUEL_FORFEIT, 2000)
+    end
+    boss.portalKillExpires = 0
+end
+
+-- -- Events table (replaces combatRoutes / effectRoutes) --------------------
+-- All former combatRoutes used ACTION_RESULT_BEGIN; placed in both instant and
+-- started beginCast buckets so the alert fires regardless of cast time.
+
+local _beginCastEntry = {
+    [VROL_PORTAL_CAST]  = { type = AlertTypes.CUSTOM, fn = handlePortalCast },
+    [VROL_FOG_CAST]     = { type = AlertTypes.CUSTOM, fn = handleFogCast },
+    [VROL_FOG_INCREASE] = { type = AlertTypes.CUSTOM, fn = handleFogIncrease },
+    [VROL_HARPOON]      = { type = AlertTypes.CUSTOM, fn = handleHarpoon },
+    [VROL_APOTHECARY]   = { type = AlertTypes.CUSTOM, fn = handleApothecary },
 }
+
+Vrol.events = {
+    beginCast = {
+        instant = _beginCastEntry,
+        started = _beginCastEntry,
+    },
+    effectChanged = {
+        gained = {
+            [VROL_PORTAL_KTIME] = { type = AlertTypes.CUSTOM, fn = handlePortalKillTimeGained },
+        },
+        faded = {
+            [VROL_PORTAL_KTIME] = { type = AlertTypes.CUSTOM, fn = handlePortalKillTimeFaded },
+        },
+    },
+}
+
+EventDispatcher.build(Vrol)
 
 -- 200ms timer display  -  writes to tracker rows 1-3.
 function Vrol:onUpdate(context, alerts)

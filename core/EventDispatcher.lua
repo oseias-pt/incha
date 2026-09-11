@@ -296,5 +296,95 @@ function EventDispatcher.build(boss)
     validateBucket(ce.other,       "combatEvent.other")
 end
 
+-- -- Pipeline entry points (Phase 2.5) --------------------------------------
+-- These replace CombatHandler's pipeline functions when a trial is cut over
+-- to the new events-table system.  Passed to Trial.create as options.*;
+-- Trial wraps each one so the first arg it receives at runtime is `trial`.
+--
+-- Handler signature for CUSTOM fns called from effectChanged buckets:
+--   fn(boss, context, alerts, abilityId, unitName, unitTag, unitId, stackCount)
+-- Handler signature for CUSTOM fns called from beginCast / combatEvent buckets:
+--   fn(boss, context, alerts, abilityId, sourceUnitName, unitTag, unitId, sourceUnitId, unitName)
+
+--- Returns two sets of ability IDs the EventPipeline must register for a boss:
+--- { combat ids } and { effect ids }, built from boss.events buckets.
+function EventDispatcher.abilityIdsFor(boss)
+    local combat, effect = {}, {}
+    if not boss then return combat, effect end
+    local e = boss.events
+    if not e then return combat, effect end
+
+    local bc = e.beginCast or {}
+    for _, sub in ipairs({ "instant", "started", "executed", "interrupted" }) do
+        for id in pairs(bc[sub] or {}) do combat[id] = true end
+    end
+    local ce = e.combatEvent or {}
+    for _, sub in ipairs({ "damage", "dodged", "blocked", "other" }) do
+        for id in pairs(ce[sub] or {}) do combat[id] = true end
+    end
+    local ec = e.effectChanged or {}
+    for _, sub in ipairs({ "gained", "faded", "updated" }) do
+        for id in pairs(ec[sub] or {}) do effect[id] = true end
+    end
+
+    return combat, effect
+end
+
+--- Ability-filtered combat event handler.  Called by EventPipeline for every
+--- EVENT_COMBAT_EVENT whose abilityId the boss declared.
+--- ESO signature (modern API):
+---   eventCode, result, isError, abilityName, abilityGraphic, hitStatus,
+---   unitTag, unitName, sourceUnitTag, sourceUnitName,
+---   sourceUnitId, unitId, abilityId, overflow
+function EventDispatcher.onCombatEventFiltered(trial, eventCode,
+        result, isError, abilityName, abilityGraphic, hitStatus,
+        unitTag, unitName, sourceUnitTag, sourceUnitName,
+        sourceUnitId, unitId, abilityId)
+    local boss = trial:getActiveBoss()
+    if not boss or not boss.events then return end
+    -- ACTION_RESULT_DIED is handled exclusively by onDiedCombatEvent below.
+    if result == ACTION_RESULT_DIED then return end
+    local context, alerts = trial.context, trial.alerts
+    if result == ACTION_RESULT_BEGIN then
+        local castTime = GetAbilityCastInfo(abilityId)
+        EventDispatcher.dispatchBeginCast(boss, context, alerts,
+            castTime, false, sourceUnitId, abilityId, sourceUnitName,
+            unitTag, unitId, sourceUnitId, unitName)
+    else
+        EventDispatcher.dispatchCombatEvent(boss, context, alerts,
+            result, abilityId, sourceUnitName,
+            unitTag, unitId, sourceUnitId, unitName)
+    end
+end
+
+--- Result-filtered combat event handler for ACTION_RESULT_DIED.
+function EventDispatcher.onDiedCombatEvent(trial, eventCode,
+        result, isError, abilityName, abilityGraphic, hitStatus,
+        unitTag, unitName, sourceUnitTag, sourceUnitName,
+        sourceUnitId, unitId, abilityId)
+    local boss = trial:getActiveBoss()
+    if not boss or not boss.onDied then return end
+    boss:onDied(trial.context, trial.alerts,
+        unitTag, sourceUnitTag, sourceUnitId, unitId,
+        sourceUnitName, unitName)
+end
+
+--- Ability-filtered effect changed handler.
+--- ESO signature:
+---   eventCode, changeType, effectSlot, effectName, unitTag,
+---   beginTime, endTime, stackCount, iconName, buffType, effectType,
+---   abilityType, statusEffectType, unitName, unitId, abilityId, sourceType
+--- Extra args passed to CUSTOM handlers: unitTag, unitId, stackCount
+function EventDispatcher.onEffectChangedFiltered(trial, eventCode,
+        changeType, effectSlot, effectName, unitTag,
+        beginTime, endTime, stackCount, iconName, buffType, effectType,
+        abilityType, statusEffectType, unitName, unitId, abilityId)
+    local boss = trial:getActiveBoss()
+    if not boss or not boss.events then return end
+    EventDispatcher.dispatchEffectChanged(boss, trial.context, trial.alerts,
+        changeType, abilityId, unitName,
+        unitTag, unitId, stackCount)
+end
+
 package.loaded["core.EventDispatcher"] = EventDispatcher
 return EventDispatcher
