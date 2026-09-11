@@ -4,13 +4,15 @@ local Settings    = require("core.Settings")
 local Timer       = require("lib.Timer")
 local Lang        = require("core.Lang")
 
-local CA            = require("external-api.CombatAlerts")
-local MechanicIcons = require("external-api.MechanicIcons")
-local PositionIcons = require("external-api.PositionIcons")
-local BossBase      = require("lib.BossBase")
-local CastDur       = require("lib.CastDur")
-local Log           = require("lib.Log")
-local Colors = require("core.Colors")
+local AlertTypes      = require("core.AlertTypes")
+local CA              = require("external-api.CombatAlerts")
+local MechanicIcons   = require("external-api.MechanicIcons")
+local PositionIcons   = require("external-api.PositionIcons")
+local BossBase        = require("lib.BossBase")
+local CastDur         = require("lib.CastDur")
+local Log             = require("lib.Log")
+local Colors          = require("core.Colors")
+local EventDispatcher = require("core.EventDispatcher")
 
 -- -- OSI helpers (OdySupportIcons, optional) -------------------------------
 -- Textures: pulled from the live ability data so they always match the
@@ -493,7 +495,7 @@ function Falgravn:onUpdate(context, alerts)
     end
 end
 
--- -- Handlers ------------------------------------------------------------
+-- -- Handlers (new-style: boss as first arg, sourceUnitName before unit args) --
 -- (Falgravn has no shared common module.)
 
 -- DIED: stop CA bars for the dead unit and its killer.
@@ -510,273 +512,266 @@ function Falgravn:onDied(context, alerts,
     end
 end
 
-local function handleInfuserCasts(self, context, alerts, abilityId,
-                                   unitTag, sourceUnitTag, sourceUnitId, unitId,
-                                   sourceUnitName, unitName)
+-- -- Combat event handlers --------------------------------------------------
+
+local function handleInfuserCasts(boss, context, alerts, abilityId, sourceUnitName,
+                                   unitTag, unitId, sourceUnitId, unitName)
     alerts:showAction(Lang.t("ka_falgravn_interrupt_inf"))
     local cid = CA.ranged(abilityId, sourceUnitName, 1000, Colors.BLUE)
-    if cid and sourceUnitId then self.alertList[sourceUnitId] = cid end
+    if cid and sourceUnitId then boss.alertList[sourceUnitId] = cid end
 end
 
-local function handleInfuserBuff(self, context, alerts, abilityId, ...)
-    alerts:showAction(Lang.t("ka_falgravn_inf_buff"))
-    CA.alert(nil, Lang.t("ka_falgravn_inf_buff"), 0xFF8800FF, SOUNDS.DUEL_START, 3000)
+-- HM gained/faded: split into two handlers, one per effectChanged bucket.
+local function handleFalgravnHmGained(boss, context, alerts, abilityId, ...)
+    boss.bHM = true
+    alerts:showHeader(GetUnitName("boss1") .. Lang.t("ka_falgravn_hm_suffix"))
 end
 
--- HM confirmation ability (plain entry: receives result).
-local function handleFalgravnHm(self, context, alerts, result, abilityId, ...)
-    if result == ACTION_RESULT_EFFECT_GAINED then
-        self.bHM = true
-        alerts:showHeader(GetUnitName("boss1") .. Lang.t("ka_falgravn_hm_suffix"))
-    elseif result == ACTION_RESULT_EFFECT_FADED then
-        alerts:showHeader(GetUnitName("boss1"))
-        self:after(2000, function()
-            if not IsUnitInCombat("player") then self.bHM = false end
-        end)
-    end
+local function handleFalgravnHmFaded(boss, context, alerts, abilityId, ...)
+    alerts:showHeader(GetUnitName("boss1"))
+    boss:after(2000, function()
+        if not IsUnitInCombat("player") then boss.bHM = false end
+    end)
 end
 
--- Njordal: Move AoE (plain entry; deduped via bMove flag).
-local function handleNjordalMove(self, context, alerts, result, abilityId,
-                                  unitTag, sourceUnitTag, sourceUnitId, unitId, ...)
-    if result == ACTION_RESULT_BEGIN and self.bMove then
-        self.bMove = false
+-- Njordal: Move AoE  -  BEGIN fires the alert, EFFECT_FADED resets the dedup flag.
+-- The EFFECT_FADED case arrives via combatEvent.other (ACTION_RESULT_EFFECT_FADED).
+local function handleNjordalMoveBegin(boss, context, alerts, abilityId, sourceUnitName,
+                                       unitTag, unitId, sourceUnitId, unitName)
+    if boss.bMove then
+        boss.bMove = false
         alerts:showAction(Lang.t("ka_falgravn_move"))
         local cid = CA.bar(abilityId, GetAbilityName(abilityId),
             12000, 12000, Colors.FLYZONE, 0.5,
             { 12000, Lang.t("ka_falgravn_move"), 0.8, 0, 0, 0.9, SOUNDS.NONE })
-        if cid and sourceUnitId then self.alertList[sourceUnitId] = cid end
-    elseif result == ACTION_RESULT_EFFECT_FADED and not self.bMove then
-        self.bMove = true
+        if cid and sourceUnitId then boss.alertList[sourceUnitId] = cid end
     end
 end
 
--- Njordal: Block Cast (plain entry; deduped; icon uses heavy-attack ID).
-local function handleNjordalBlock(self, context, alerts, result, abilityId,
-                                   unitTag, sourceUnitTag, sourceUnitId, unitId, ...)
-    if result == ACTION_RESULT_BEGIN and self.bBlock then
-        self.bBlock = false
+local function handleNjordalMoveFaded(boss, context, alerts, abilityId, ...)
+    if not boss.bMove then boss.bMove = true end
+end
+
+-- Njordal: Block Cast  -  same dedup pattern as Move.
+local function handleNjordalBlockBegin(boss, context, alerts, abilityId, sourceUnitName,
+                                        unitTag, unitId, sourceUnitId, unitName)
+    if boss.bBlock then
+        boss.bBlock = false
         alerts:showAction(Lang.t("ka_falgravn_block_cast"))
         local cid = CA.bar(FALGRAVN_M_BLOCK_HEAVY, "Bloody Frenzy",
             6500, 6500, Colors.FLYZONE, 0.5,
             { 6500, Lang.t("ka_falgravn_block_cast"), 0.8, 0, 0, 0.9, SOUNDS.NONE })
-        if cid and sourceUnitId then self.alertList[sourceUnitId] = cid end
-    elseif result == ACTION_RESULT_EFFECT_FADED and not self.bBlock then
-        self.bBlock = true
+        if cid and sourceUnitId then boss.alertList[sourceUnitId] = cid end
     end
 end
 
-local function handleBloodCleave(self, context, alerts, abilityId,
-                                  unitTag, sourceUnitTag, sourceUnitId, unitId,
-                                  sourceUnitName, unitName)
+local function handleNjordalBlockFaded(boss, context, alerts, abilityId, ...)
+    if not boss.bBlock then boss.bBlock = true end
+end
+
+local function handleBloodCleave(boss, context, alerts, abilityId, sourceUnitName,
+                                  unitTag, unitId, sourceUnitId, unitName)
     alerts:showAction(Lang.t("ka_falgravn_dodge"))
     local dur = CastDur.get(FALGRAVN_M_CLEAVE, FALLBACK_DUR)
     local cid = CA.bar(abilityId, sourceUnitName, dur, dur, Colors.MAGENTA, 0.4,
         { 700, Lang.t("ka_falgravn_dodge"), 1, 0, 0.6, 0.8, SOUNDS.CHAMPION_POINTS_COMMITTED })
-    if cid and sourceUnitId then self.alertList[sourceUnitId] = cid end
+    if cid and sourceUnitId then boss.alertList[sourceUnitId] = cid end
 end
 
-local function handleBloodFountain(self, context, alerts, abilityId,
-                                    unitTag, sourceUnitTag, sourceUnitId, unitId,
-                                    sourceUnitName, unitName)
+local function handleBloodFountain(boss, context, alerts, abilityId, sourceUnitName,
+                                    unitTag, unitId, sourceUnitId, unitName)
     alerts:showAction(Lang.t("ka_falgravn_block_fountain"))
     local cid = CA.ranged(FALGRAVN_BLOOD_FOUNT, sourceUnitName, 3033, Colors.MAGENTA)
-    if cid and sourceUnitId then self.alertList[sourceUnitId] = cid end
+    if cid and sourceUnitId then boss.alertList[sourceUnitId] = cid end
 end
 
--- Lightning / connection (plain entry; deduped via bConnect flag).
--- BEGIN -> show connection-node floor icons so players can see which nodes to stand on.
-local function handleLightning(self, context, alerts, result, abilityId, ...)
-    if result == ACTION_RESULT_BEGIN and self.bConnect then
-        self.bConnect = false
+-- Lightning / connection  -  BEGIN shows floor icons, EFFECT_FADED resets flag.
+-- EFFECT_FADED arrives via combatEvent.other (ACTION_RESULT_EFFECT_FADED path).
+local function handleLightningBegin(boss, context, alerts, abilityId, ...)
+    if boss.bConnect then
+        boss.bConnect = false
         showPosIcons(_posIconConn, true)
-        -- DEBUG: log Falgravn's world position when the conga-line mechanic fires
-        -- so we can verify GetUnitWorldPosition("boss1") returns meaningful values.
         local _, bx, by, bz = GetUnitWorldPosition("boss1")
         Log.debug("[LN-DEBUG] Lightning BEGIN | boss1 world: x=%.0f y=%.0f z=%.0f",
             bx or -1, by or -1, bz or -1)
-    elseif result == ACTION_RESULT_EFFECT_FADED and not self.bConnect then
-        self.bConnect = true
     end
 end
 
--- Pulse fades -> clear connection-node rows 2-4 and hide floor icons.
-local function handlePulse(self, context, alerts, result, abilityId, ...)
-    if result == ACTION_RESULT_EFFECT_FADED then
-        alerts:clearRow(2); alerts:clearRow(3); alerts:clearRow(4)
-        showPosIcons(_posIconConn, false)
-    end
+local function handleLightningFaded(boss, context, alerts, abilityId, ...)
+    if not boss.bConnect then boss.bConnect = true end
 end
 
--- Instability timer reset (plain entry: fires on EFFECT_GAINED_DURATION).
-local function handleInstabilityCombat(self, context, alerts, result, abilityId, ...)
-    if result == ACTION_RESULT_EFFECT_GAINED_DURATION then
-        self.instabilityTimer:reset(NEXT_INSTABILITY)
-    end
+-- Pulse fades: clear connection-node display rows and hide floor icons.
+local function handlePulse(boss, context, alerts, abilityId, ...)
+    alerts:clearRow(2); alerts:clearRow(3); alerts:clearRow(4)
+    showPosIcons(_posIconConn, false)
 end
 
-local function handleUnwPower(self, context, alerts, abilityId, ...)
-    self.bloodBallTimer:reset(INITIAL_BLOODBALL_DELAY)
-    self.instabilityTimer:reset(INSTABILITY_INITIAL_DELAY)
+-- Instability timer reset (fires via COMBAT_EVENT ACTION_RESULT_EFFECT_GAINED_DURATION).
+local function handleInstabilityTimerReset(boss, context, alerts, abilityId, ...)
+    boss.instabilityTimer:reset(NEXT_INSTABILITY)
 end
 
--- Blood Ball (plain entry: updates Stage 2 state and bloodBallTimer).
--- EFFECT_GAINED_DURATION -> show blood-node floor icons; ensure torturer icons are up too.
-local function handleBloodBall(self, context, alerts, result, abilityId, ...)
-    if self.CURRENT_STAGE ~= 2 then self.CURRENT_STAGE = 2 end
-    if result == ACTION_RESULT_EFFECT_GAINED_DURATION then
-        self.bloodBallTimer:reset(30)
-        showPosIcons(_posIconBlood, true)
-        showPosIcons(_posIconTorturer, true)   -- arm if handleStartStage2 didn't fire
-    elseif result == ACTION_RESULT_EFFECT_FADED then
-        self.bloodBallTimer:reset(NEXT_BLOODBALL)
-    end
+local function handleUnwPower(boss, context, alerts, abilityId, ...)
+    boss.bloodBallTimer:reset(INITIAL_BLOODBALL_DELAY)
+    boss.instabilityTimer:reset(INSTABILITY_INITIAL_DELAY)
 end
 
-local function handleStartStage2(self, context, alerts, abilityId, ...)
-    if self.CURRENT_STAGE ~= 2 then
-        self.CURRENT_STAGE = 2
+-- Blood Ball: gained/faded split  -  migrated to effectChanged path.
+local function handleBloodBallGained(boss, context, alerts, abilityId, unitName, ...)
+    if boss.CURRENT_STAGE ~= 2 then boss.CURRENT_STAGE = 2 end
+    boss.bloodBallTimer:reset(30)
+    showPosIcons(_posIconBlood, true)
+    showPosIcons(_posIconTorturer, true)   -- arm if handleStartStage2 didn't fire
+end
+
+local function handleBloodBallFaded(boss, context, alerts, abilityId, unitName, ...)
+    if boss.CURRENT_STAGE ~= 2 then boss.CURRENT_STAGE = 2 end
+    boss.bloodBallTimer:reset(NEXT_BLOODBALL)
+end
+
+local function handleStartStage2(boss, context, alerts, abilityId, ...)
+    if boss.CURRENT_STAGE ~= 2 then
+        boss.CURRENT_STAGE = 2
         showPosIcons(_posIconTorturer, true)
     end
 end
 
-local function handleShatterMid(self, context, alerts, abilityId, ...)
-    if self.CURRENT_STAGE ~= 3 then
-        self.CURRENT_STAGE = 3
-        self.openGatesTimer:reset(INITIAL_OPENGATE_TIME)
+local function handleShatterMid(boss, context, alerts, abilityId, ...)
+    if boss.CURRENT_STAGE ~= 3 then
+        boss.CURRENT_STAGE = 3
+        boss.openGatesTimer:reset(INITIAL_OPENGATE_TIME)
         alerts:clearRow(2); alerts:clearRow(3); alerts:clearRow(4)
-        -- Floor drops; connection/blood nodes no longer relevant.
         showPosIcons(_posIconConn,  false)
         showPosIcons(_posIconBlood, false)
     end
 end
 
 -- Open Gates: recurring timer + 25 s delayed heavy-attack alert for tanks.
-local function handleOpenDoor(self, context, alerts, abilityId,
-                               unitTag, sourceUnitTag, sourceUnitId, unitId,
-                               sourceUnitName, unitName)
-    self.openGatesTimer:reset(NEXT_OPENGATE_TIME)
-    self.torturerTimer:reset(NEXT_TORTURER_TP)
+local function handleOpenDoor(boss, context, alerts, abilityId, sourceUnitName,
+                               unitTag, unitId, sourceUnitId, unitName)
+    boss.openGatesTimer:reset(NEXT_OPENGATE_TIME)
+    boss.torturerTimer:reset(NEXT_TORTURER_TP)
     alerts:showAction(Lang.t("ka_falgravn_open_gates_action"))
     CA.alert(nil, Lang.t("ka_falgravn_open_gates_action"), 0x991111FF,
         SOUNDS.CHAMPION_POINTS_COMMITTED, 2000)
     local capturedSrc = sourceUnitName or ""
-    -- Re-arming mechanic: drop the previous window before opening a new one.
-    self:cancelAfter(self.openGatesDelayTimer)
-    self.openGatesDelayTimer = self:after(25000, function()
-        self.openGatesDelayTimer = false
+    boss:cancelAfter(boss.openGatesDelayTimer)
+    boss.openGatesDelayTimer = boss:after(25000, function()
+        boss.openGatesDelayTimer = false
         if not IsUnitInCombat("player") then return end
         CA.ranged(FALGRAVN_OPEN_DOOR, capturedSrc, 7500, Colors.BLUE)
     end)
 end
 
--- Torturer feeding: kill countdown (plain entry; deduped per feed cycle).
--- EFFECT_GAINED -> mark the feeding torturer's floor icon yellow.
-local function handleTorturerFeed(self, context, alerts, result, abilityId,
-                                   unitTag, sourceUnitTag, sourceUnitId, unitId,
-                                   sourceUnitName, unitName)
-    if result == ACTION_RESULT_EFFECT_GAINED then
-        if self.bStartTorturerCD then
-            self.bStartTorturerCD = false
-            alerts:showAction(Lang.t("ka_falgravn_kill_torturer"))
-            local cid = CA.bar(abilityId, GetAbilityName(abilityId),
-                10000, 10000, Colors.FLYZONE, 0.5,
-                { 10000, Lang.t("ka_falgravn_kill_torturer"), 0.8, 0, 0, 0.9, SOUNDS.NONE })
-            if cid and sourceUnitId then self.alertList[sourceUnitId] = cid end
-        end
-        -- Turn the active torturer's icon yellow so raiders can see which one to kill.
-        -- unitName is the prisoner (target of the feed ability), which keys TORTURER_NODES.
-        local name = zo_strformat("<<1>>", unitName)
-        if name and name ~= "" then
-            self.activeFeedTorturer = name
-            updateTorturerIcon(_posIconTorturer, name, TORTURER_TEX.yellow, Colors.YELLOW)
-        end
-    elseif result == ACTION_RESULT_EFFECT_FADED then
-        self.bStartTorturerCD  = true
-        self.activeFeedTorturer = false
+-- Torturer feeding: gained/faded split  -  migrated to effectChanged path.
+-- unitName (first variadic after abilityId in effect handler) is the prisoner
+-- (target of the feed effect), matching the TORTURER_NODES key.
+local function handleTorturerFeedGained(boss, context, alerts, abilityId, unitName,
+                                         unitTag, unitId, stackCount)
+    if boss.bStartTorturerCD then
+        boss.bStartTorturerCD = false
+        alerts:showAction(Lang.t("ka_falgravn_kill_torturer"))
+        local cid = CA.bar(abilityId, GetAbilityName(abilityId),
+            10000, 10000, Colors.FLYZONE, 0.5,
+            { 10000, Lang.t("ka_falgravn_kill_torturer"), 0.8, 0, 0, 0.9, SOUNDS.NONE })
+        if cid and unitId then boss.alertList[unitId] = cid end
     end
-end
-
--- Prisoner saved (plain entry; decrements torturer count).
--- Use unitName (the saved prisoner's name, which matches the torturer node
--- key) directly from the event, rather than relying on activeFeedTorturer
--- state  -  this avoids the stale-name risk when two feeds overlap in Stage 3.
-local function handleSacrifice(self, context, alerts, result, abilityId,
-                                unitTag, sourceUnitTag, sourceUnitId, unitId,
-                                sourceUnitName, unitName)
-    self.torturerCount = self.torturerCount - 1
     local name = zo_strformat("<<1>>", unitName)
     if name and name ~= "" then
-        updateTorturerIcon(_posIconTorturer, name,
-                           TORTURER_TEX.green, Colors.GREEN)
+        boss.activeFeedTorturer = name
+        updateTorturerIcon(_posIconTorturer, name, TORTURER_TEX.yellow, Colors.YELLOW)
     end
-    self.activeFeedTorturer = false
 end
 
-local function handleTorturerEsc(self, context, alerts, abilityId, ...)
+local function handleTorturerFeedFaded(boss, context, alerts, abilityId, unitName, ...)
+    boss.bStartTorturerCD  = true
+    boss.activeFeedTorturer = false
+end
+
+-- Prisoner saved: unitName is the prisoner whose torturer node to mark green.
+local function handleSacrifice(boss, context, alerts, abilityId, sourceUnitName,
+                                unitTag, unitId, sourceUnitId, unitName)
+    boss.torturerCount = boss.torturerCount - 1
+    local name = zo_strformat("<<1>>", unitName)
+    if name and name ~= "" then
+        updateTorturerIcon(_posIconTorturer, name, TORTURER_TEX.green, Colors.GREEN)
+    end
+    boss.activeFeedTorturer = false
+end
+
+local function handleTorturerEsc(boss, context, alerts, abilityId, ...)
     alerts:showAction(Lang.t("ka_falgravn_torturer_down"))
     CA.alert(nil, Lang.t("ka_falgravn_torturer_down"), 0xFF8800FF,
         SOUNDS.CHAMPION_POINTS_COMMITTED, 3000)
 end
 
-local function handleTorturerLa(self, context, alerts, abilityId, unitTag, ...)
+local function handleTorturerLa(boss, context, alerts, abilityId, sourceUnitName,
+                                  unitTag, unitId, sourceUnitId, unitName)
     if IsUnitPlayer(unitTag) and GetSelectedLFGRole() ~= LFG_ROLE_TANK then
         alerts:showAction(Lang.t("ka_falgravn_dodge_torturer"))
-        CA.alert(Lang.t("ka_falgravn_torturer_la_label"), Lang.t("ka_falgravn_dodge"), 0xFF0000FF, SOUNDS.DUEL_START, 1000)
+        CA.alert(Lang.t("ka_falgravn_torturer_la_label"), Lang.t("ka_falgravn_dodge"),
+            0xFF0000FF, SOUNDS.DUEL_START, 1000)
     end
 end
 
--- Instability animated icon: shared handler for HM (140944) and non-HM (140941).
--- Starts the 40-frame animation cycle on EFFECT_GAINED; stops it on EFFECT_FADED.
-local function handleInstabilityEffect(self, context, alerts, changeType, abilityId,
-                                        unitTag, unitId, unitName, stackCount)
+-- -- Effect handlers ---------------------------------------------------------
+
+-- Infuser buff: migrated from combatRoutes EFFECT_GAINED to effectChanged.gained.
+local function handleInfuserBuff(boss, context, alerts, abilityId, unitName, ...)
+    alerts:showAction(Lang.t("ka_falgravn_inf_buff"))
+    CA.alert(nil, Lang.t("ka_falgravn_inf_buff"), 0xFF8800FF, SOUNDS.DUEL_START, 3000)
+end
+
+-- Instability animated icon: shared by HM (140944) and non-HM (140941).
+-- Separated into gained/faded handlers; unitTag identifies which player.
+local function handleInstabilityEffectGained(boss, context, alerts, abilityId, unitName,
+                                              unitTag, unitId, stackCount)
     if not IsUnitPlayer(unitTag) then return end
-    if changeType == EFFECT_RESULT_GAINED then
-        local dn = GetUnitDisplayName(unitTag)
-        if dn and dn ~= "" then
-            self.osiInstability[unitTag] = dn
-            startInstAnim(unitTag, dn)
-        end
-    elseif changeType == EFFECT_RESULT_FADED then
-        stopInstAnim(unitTag)
-        osiRemove(self.osiInstability[unitTag])
-        self.osiInstability[unitTag] = nil
+    local dn = GetUnitDisplayName(unitTag)
+    if dn and dn ~= "" then
+        boss.osiInstability[unitTag] = dn
+        startInstAnim(unitTag, dn)
     end
 end
 
-local function handlePrisonEffect(self, context, alerts, changeType, abilityId,
-                                   unitTag, unitId, unitName, stackCount)
-    -- Prison can be active on more than one player at a time, so the bar id
-    -- is keyed by unitTag alongside the OSI icon.  A single shared field
-    -- meant the second GAINED overwrote the first player's id, leaving that
-    -- bar running until its own duration expired while the following FADED
-    -- stopped the second bar twice.
-    if changeType == EFFECT_RESULT_GAINED then
-        alerts:showAction(Lang.t("ka_falgravn_kill_prison"))
-        local dur = 8000
-        -- Re-application on the same player: drop the stale bar first.
-        CA.castAlertsStop(self.prisonBars[unitTag])
-        self.prisonBars[unitTag] = CA.bar(
-            abilityId, GetAbilityName(abilityId),
-            dur, dur, Colors.FLYZONE, 0.5,
-            { dur, Lang.t("ka_falgravn_kill_prison"), 0.8, 0, 0, 0.9, SOUNDS.NONE })
-        local dn = GetUnitDisplayName(unitTag)
-        osiSet(dn, ICON_PRISON, Colors.PURPLE)
-        if dn and dn ~= "" then self.osiPrison[unitTag] = dn end
-    elseif changeType == EFFECT_RESULT_FADED then
-        CA.castAlertsStop(self.prisonBars[unitTag])
-        self.prisonBars[unitTag] = nil
-        osiRemove(self.osiPrison[unitTag])
-        self.osiPrison[unitTag] = nil
-    end
+local function handleInstabilityEffectFaded(boss, context, alerts, abilityId, unitName,
+                                             unitTag, unitId, stackCount)
+    if not IsUnitPlayer(unitTag) then return end
+    stopInstAnim(unitTag)
+    osiRemove(boss.osiInstability[unitTag])
+    boss.osiInstability[unitTag] = nil
 end
 
-local function handlePrisonerFeeding(self, context, alerts, abilityId,
-                                      unitTag, unitId, unitName, stackCount)
+-- Prison: bar keyed by unitTag so multiple simultaneous prisons each track correctly.
+local function handlePrisonEffectGained(boss, context, alerts, abilityId, unitName,
+                                         unitTag, unitId, stackCount)
+    alerts:showAction(Lang.t("ka_falgravn_kill_prison"))
+    local dur = 8000
+    CA.castAlertsStop(boss.prisonBars[unitTag])
+    boss.prisonBars[unitTag] = CA.bar(
+        abilityId, GetAbilityName(abilityId),
+        dur, dur, Colors.FLYZONE, 0.5,
+        { dur, Lang.t("ka_falgravn_kill_prison"), 0.8, 0, 0, 0.9, SOUNDS.NONE })
+    local dn = GetUnitDisplayName(unitTag)
+    osiSet(dn, ICON_PRISON, Colors.PURPLE)
+    if dn and dn ~= "" then boss.osiPrison[unitTag] = dn end
+end
+
+local function handlePrisonEffectFaded(boss, context, alerts, abilityId, unitName,
+                                        unitTag, unitId, stackCount)
+    CA.castAlertsStop(boss.prisonBars[unitTag])
+    boss.prisonBars[unitTag] = nil
+    osiRemove(boss.osiPrison[unitTag])
+    boss.osiPrison[unitTag] = nil
+end
+
+local function handlePrisonerFeeding(boss, context, alerts, abilityId, unitName,
+                                      unitTag, unitId, stackCount)
     local name = zo_strformat("<<1>>", unitName)
-    if self.PRISONERS[name] ~= nil then
-        self.PRISONERS[name] = self.PRISONERS[name] + 1
-        local stacks = self.PRISONERS[name]
+    if boss.PRISONERS[name] ~= nil then
+        boss.PRISONERS[name] = boss.PRISONERS[name] + 1
+        local stacks = boss.PRISONERS[name]
         -- Pre-wipe warning: prisoner dies at 11 feeds; alert at 9 so raiders
         -- have 2 more feeds to kill the torturer.
         -- TODO: evaluate threshold in-game — 9 vs 10 (#126).
@@ -785,37 +780,30 @@ local function handlePrisonerFeeding(self, context, alerts, abilityId,
             alerts:showAction(msg)
             CA.alert(nil, msg, 0xFF2200FF, SOUNDS.DUEL_START, 4000)
         elseif stacks == 11 then
-            self.torturerCount = self.torturerCount - 1
-            -- 11 stacks = prisoner dead; mark the torturer's icon red.
+            boss.torturerCount = boss.torturerCount - 1
             updateTorturerIcon(_posIconTorturer, name, TORTURER_TEX.red, Colors.RED)
         end
     end
 end
 
-local function handleBlopSynergie(self, context, alerts, changeType, abilityId,
-                                   unitTag, unitId, unitName, stackCount)
+local function handleBlopSynergieGained(boss, context, alerts, abilityId, unitName,
+                                         unitTag, unitId, stackCount)
     if not IsUnitPlayer(unitTag) then return end
-    if changeType == EFFECT_RESULT_GAINED then
-        local dn = GetUnitDisplayName(unitTag)
-        osiSet(dn, ICON_SYNERGY, Colors.CRIMSON)
-        if dn and dn ~= "" then self.osiSynergy[unitTag] = dn end
-    elseif changeType == EFFECT_RESULT_FADED then
-        osiRemove(self.osiSynergy[unitTag])
-        self.osiSynergy[unitTag] = nil
-    end
+    local dn = GetUnitDisplayName(unitTag)
+    osiSet(dn, ICON_SYNERGY, Colors.CRIMSON)
+    if dn and dn ~= "" then boss.osiSynergy[unitTag] = dn end
 end
 
--- DEBUG: Lightning Conduit position probe.
--- FALGRAVN_LINK_EFFECT (133433) is placed on each Lightning Conduit OBJECT
--- when a conga line spawns (source = Falgravn, target = conduit unitTag).
--- This handler dumps the conduit's world position so we can verify:
---   a) GetUnitWorldPosition works on OBJECT-type units from effect events, and
---   b) the quadrant of the position (x vs 0.5 / y vs 0.5 on the normalised map)
---      reliably identifies which of the 4 lines (LN/LS/RN/RS) spawned.
--- Remove this once conduit identification is confirmed and the real routing is built.
-local function handleLinkEffect(self, context, alerts, changeType, abilityId,
-                                 unitTag, unitId, unitName, stackCount)
-    if changeType ~= EFFECT_RESULT_GAINED then return end
+local function handleBlopSynergieFaded(boss, context, alerts, abilityId, unitName,
+                                        unitTag, unitId, stackCount)
+    if not IsUnitPlayer(unitTag) then return end
+    osiRemove(boss.osiSynergy[unitTag])
+    boss.osiSynergy[unitTag] = nil
+end
+
+-- DEBUG: Lightning Conduit position probe.  Remove after LN/LS/RN/RS identification.
+local function handleLinkEffect(boss, context, alerts, abilityId, unitName,
+                                 unitTag, unitId, stackCount)
     local valid = IsUnitValid(unitTag)
     local name  = GetUnitName(unitTag) or "?"
     local _, cx, cy, cz = GetUnitWorldPosition(unitTag)
@@ -824,49 +812,87 @@ local function handleLinkEffect(self, context, alerts, changeType, abilityId,
         cx or -1, cy or -1, cz or -1)
 end
 
--- -- Routing tables (C3) --------------------------------------------------
+-- -- Events table (replaces combatRoutes / effectRoutes) --------------------
+-- Handlers that previously guarded on ACTION_RESULT_BEGIN are in both instant
+-- and started beginCast buckets.  Handlers that guarded on EFFECT_GAINED /
+-- EFFECT_FADED results via COMBAT_EVENT are migrated to effectChanged buckets
+-- (BLOOTBALL, TUT_FEED, HM, INFUSER_BUFF) for weekend validation.  Handlers
+-- that guard on EFFECT_FADED via COMBAT_EVENT remain in combatEvent.other
+-- (M_MOVE, M_BLOCK, LIGHTNING, PULSE, INSTABILITY timer reset, UNW_POWER).
 
-Falgravn.combatRoutes = {
-    -- -- Infuser trash ------------------------------------------------------
-    [INFUSER_CASTS]        = { result = ACTION_RESULT_BEGIN,         fn = handleInfuserCasts },
-    [INFUSER_BUFF]         = { result = ACTION_RESULT_EFFECT_GAINED, fn = handleInfuserBuff },
-    -- -- HM confirmation ability --------------------------------------------
-    [FALGRAVN_HM]          = handleFalgravnHm,
-    -- -- Njordal ------------------------------------------------------------
-    [FALGRAVN_M_MOVE]      = handleNjordalMove,
-    [FALGRAVN_M_BLOCK]     = handleNjordalBlock,
-    [FALGRAVN_M_CLEAVE]    = { result = ACTION_RESULT_BEGIN,         fn = handleBloodCleave },
-    [FALGRAVN_BLOOD_FOUNT] = { result = ACTION_RESULT_BEGIN,         fn = handleBloodFountain },
-    -- -- Lightning / connection ---------------------------------------------
-    [FALGRAVN_LIGHTNING]   = handleLightning,
-    [FALGRAVN_PULSE]       = handlePulse,
-    -- -- Instability --------------------------------------------------------
-    [FALGRAVN_INSTABILITY] = handleInstabilityCombat,
-    -- -- Stage 2 ------------------------------------------------------------
-    [FALGRAVN_UNW_POWER]   = { result = ACTION_RESULT_EFFECT_FADED,  fn = handleUnwPower },
-    [FALGRAVN_BLOOTBALL]   = handleBloodBall,
-    [FALGRAVN_START_STAGE2]= { result = ACTION_RESULT_BEGIN,         fn = handleStartStage2 },
-    -- -- Stage 3 ------------------------------------------------------------
-    [FALGRAVN_SHATTER_MID] = { result = ACTION_RESULT_BEGIN,         fn = handleShatterMid },
-    [FALGRAVN_OPEN_DOOR]   = { result = ACTION_RESULT_BEGIN,         fn = handleOpenDoor },
-    -- -- Torturer ------------------------------------------------------------
-    [FALGRAVN_TUT_FEED]    = handleTorturerFeed,
-    [FALGRAVN_SACRIFICE]   = handleSacrifice,
-    [FALGRAVN_TORTURER_ESC]= { result = ACTION_RESULT_BEGIN,         fn = handleTorturerEsc },
-    [FALGRAVN_TORTURER_LA] = { result = ACTION_RESULT_BEGIN,         fn = handleTorturerLa },
+local _beginCastEntry = {
+    -- Infuser trash
+    [INFUSER_CASTS]         = { type = AlertTypes.CUSTOM, fn = handleInfuserCasts },
+    -- Njordal
+    [FALGRAVN_M_MOVE]       = { type = AlertTypes.CUSTOM, fn = handleNjordalMoveBegin },
+    [FALGRAVN_M_BLOCK]      = { type = AlertTypes.CUSTOM, fn = handleNjordalBlockBegin },
+    [FALGRAVN_M_CLEAVE]     = { type = AlertTypes.CUSTOM, fn = handleBloodCleave },
+    [FALGRAVN_BLOOD_FOUNT]  = { type = AlertTypes.CUSTOM, fn = handleBloodFountain },
+    -- Lightning / connection
+    [FALGRAVN_LIGHTNING]    = { type = AlertTypes.CUSTOM, fn = handleLightningBegin },
+    -- Stage 2
+    [FALGRAVN_START_STAGE2] = { type = AlertTypes.CUSTOM, fn = handleStartStage2 },
+    -- Stage 3
+    [FALGRAVN_SHATTER_MID]  = { type = AlertTypes.CUSTOM, fn = handleShatterMid },
+    [FALGRAVN_OPEN_DOOR]    = { type = AlertTypes.CUSTOM, fn = handleOpenDoor },
+    -- Torturer
+    [FALGRAVN_SACRIFICE]    = { type = AlertTypes.CUSTOM, fn = handleSacrifice },
+    [FALGRAVN_TORTURER_ESC] = { type = AlertTypes.CUSTOM, fn = handleTorturerEsc },
+    [FALGRAVN_TORTURER_LA]  = { type = AlertTypes.CUSTOM, fn = handleTorturerLa },
 }
 
--- -- Effect routing tables (C3) -------------------------------------------
-
-Falgravn.effectRoutes = {
-    [FALGRAVN_PRISON]       = handlePrisonEffect,
-    [FALGRAVN_INSTABILITY]  = handleInstabilityEffect,
-    [FALGRAVN_INSTABILITY2] = handleInstabilityEffect,
-    [FALGRAVN_PRISONER_F]   = { changeType = EFFECT_RESULT_GAINED, fn = handlePrisonerFeeding },
-    [FALGRAVN_BLOPSYNERGIE] = handleBlopSynergie,
-    -- DEBUG: conduit position probe; remove after LN/LS/RN/RS identification is confirmed.
-    [FALGRAVN_LINK_EFFECT]  = { changeType = EFFECT_RESULT_GAINED, fn = handleLinkEffect },
+Falgravn.events = {
+    beginCast = {
+        instant = _beginCastEntry,
+        started = _beginCastEntry,
+    },
+    combatEvent = {
+        -- EFFECT_FADED results via COMBAT_EVENT path (ACTION_RESULT_EFFECT_FADED).
+        -- INSTABILITY fires here on ACTION_RESULT_EFFECT_GAINED_DURATION.
+        other = {
+            [FALGRAVN_M_MOVE]      = { type = AlertTypes.CUSTOM, fn = handleNjordalMoveFaded },
+            [FALGRAVN_M_BLOCK]     = { type = AlertTypes.CUSTOM, fn = handleNjordalBlockFaded },
+            [FALGRAVN_LIGHTNING]   = { type = AlertTypes.CUSTOM, fn = handleLightningFaded },
+            [FALGRAVN_PULSE]       = { type = AlertTypes.CUSTOM, fn = handlePulse },
+            [FALGRAVN_INSTABILITY] = { type = AlertTypes.CUSTOM, fn = handleInstabilityTimerReset },
+            [FALGRAVN_UNW_POWER]   = { type = AlertTypes.CUSTOM, fn = handleUnwPower },
+        },
+    },
+    effectChanged = {
+        gained = {
+            -- Infuser buff (migrated from combatRoutes EFFECT_GAINED)
+            [INFUSER_BUFF]          = { type = AlertTypes.CUSTOM, fn = handleInfuserBuff },
+            -- HM confirmation (migrated from combatRoutes)
+            [FALGRAVN_HM]           = { type = AlertTypes.CUSTOM, fn = handleFalgravnHmGained },
+            -- Blood Ball (migrated from combatRoutes EFFECT_GAINED_DURATION)
+            [FALGRAVN_BLOOTBALL]    = { type = AlertTypes.CUSTOM, fn = handleBloodBallGained },
+            -- Torturer feed (migrated from combatRoutes EFFECT_GAINED)
+            [FALGRAVN_TUT_FEED]     = { type = AlertTypes.CUSTOM, fn = handleTorturerFeedGained },
+            -- Effect-side handlers (former effectRoutes)
+            [FALGRAVN_INSTABILITY]  = { type = AlertTypes.CUSTOM, fn = handleInstabilityEffectGained },
+            [FALGRAVN_INSTABILITY2] = { type = AlertTypes.CUSTOM, fn = handleInstabilityEffectGained },
+            [FALGRAVN_PRISON]       = { type = AlertTypes.CUSTOM, fn = handlePrisonEffectGained },
+            [FALGRAVN_PRISONER_F]   = { type = AlertTypes.CUSTOM, fn = handlePrisonerFeeding },
+            [FALGRAVN_BLOPSYNERGIE] = { type = AlertTypes.CUSTOM, fn = handleBlopSynergieGained },
+            [FALGRAVN_LINK_EFFECT]  = { type = AlertTypes.CUSTOM, fn = handleLinkEffect },
+        },
+        faded = {
+            -- HM confirmation
+            [FALGRAVN_HM]           = { type = AlertTypes.CUSTOM, fn = handleFalgravnHmFaded },
+            -- Blood Ball
+            [FALGRAVN_BLOOTBALL]    = { type = AlertTypes.CUSTOM, fn = handleBloodBallFaded },
+            -- Torturer feed
+            [FALGRAVN_TUT_FEED]     = { type = AlertTypes.CUSTOM, fn = handleTorturerFeedFaded },
+            -- Effect-side handlers
+            [FALGRAVN_INSTABILITY]  = { type = AlertTypes.CUSTOM, fn = handleInstabilityEffectFaded },
+            [FALGRAVN_INSTABILITY2] = { type = AlertTypes.CUSTOM, fn = handleInstabilityEffectFaded },
+            [FALGRAVN_PRISON]       = { type = AlertTypes.CUSTOM, fn = handlePrisonEffectFaded },
+            [FALGRAVN_BLOPSYNERGIE] = { type = AlertTypes.CUSTOM, fn = handleBlopSynergieFaded },
+        },
+    },
 }
+
+EventDispatcher.build(Falgravn)
 
 package.loaded["trial.ka.boss.Falgravn"] = Falgravn
 return Falgravn

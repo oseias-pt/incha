@@ -29,6 +29,8 @@ core/AlertSink.lua
 core/HealthRules.lua
 core/TrialContext.lua
 core/BossRegistry.lua
+core/AlertTypes.lua
+core/EventDispatcher.lua
 core/EventPipeline.lua
 core/Settings.lua
 core/CombatHandler.lua
