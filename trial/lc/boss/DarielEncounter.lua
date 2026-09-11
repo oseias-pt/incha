@@ -1,33 +1,22 @@
-
-local CA = require("external-api.CombatAlerts")
-local BossBase = require("lib.BossBase")
-local CastDur = require("lib.CastDur")
-local Lang = require("core.Lang")
-local Colors = require("core.Colors")
+local AlertTypes      = require("core.AlertTypes")
+local EventDispatcher = require("core.EventDispatcher")
+local CA              = require("external-api.CombatAlerts")
+local BossBase        = require("lib.BossBase")
+local CastDur         = require("lib.CastDur")
+local Lang            = require("core.Lang")
+local Colors          = require("core.Colors")
 
 -- ── Ability IDs ───────────────────────────────────────────────────────────
-local POWERFUL_THROW = 218971   -- combatRoute: ACTION_RESULT_BEGIN → caAlertCast; on player → explicit alert
+local POWERFUL_THROW = 218971
 
--- ── CA colour palettes ────────────────────────────────────────────────────
-
--- ── Fallback durations (empirical; replace if GetAbilityCastInfo becomes reliable) ─
-local FALLBACK_DUR = 2500   -- PowerfulThrow: empirical
+local FALLBACK_DUR = 2500
 
 local DarielEncounter = {}
 DarielEncounter.__index = DarielEncounter
 
 DarielEncounter.key               = "dariel"
--- UESP's NPC page is Online:Dariel_Lemonds (full name), so GetUnitName() may return
--- "Dariel Lemonds" rather than just "Dariel".  Both aliases are tried until one pull
--- with /incha debug confirms which string the game actually reports.  Remove the wrong
--- entry after verification.  See #122.
-DarielEncounter.nameAliases       = { "Dariel", "Dariel Lemonds" }   -- TODO: verify via GetUnitName in-game
--- hmHealthThreshold: math.huge until measured in-game on vet HM.
--- (0 would make detectDifficulty always return HARDMODE.)
+DarielEncounter.nameAliases       = { "Dariel", "Dariel Lemonds" }
 DarielEncounter.hmHealthThreshold = math.huge
--- location: placeholder — Lucent Citadel arena AABB not yet captured.
--- Detection falls back to nameAliases (name-based, may fail on non-EN clients).
--- To calibrate: stand in arena, run /script d(GetUnitWorldPosition("boss1"))
 
 DarielEncounter.stateSchema = {}
 
@@ -35,11 +24,9 @@ function DarielEncounter.new()
     return BossBase.fromSchema(DarielEncounter)
 end
 
--- ── Handlers ────────────────────────────────────────────────────────────
+-- ── Handlers: beginCast ──────────────────────────────────────────────────
 
-local function handlePowerfulThrow(self, context, alerts, abilityId,
-                                   unitTag, sourceUnitTag, sourceUnitId, unitId,
-                                   sourceUnitName, unitName)
+local function handlePowerfulThrow(boss, ctx, alerts, abilityId, sourceUnitName, unitTag, unitId, sourceUnitId, unitName)
     local target = (unitName and unitName ~= "") and unitName or "?"
     local dur = CastDur.get(abilityId, FALLBACK_DUR)
     CA.ranged(abilityId, Lang.t("lc_dariel_throw_target", target), dur, Colors.ORANGE)
@@ -50,10 +37,16 @@ local function handlePowerfulThrow(self, context, alerts, abilityId,
     end
 end
 
--- ── Routing tables (C3) ──────────────────────────────────────────────────
+-- ── Event tables ─────────────────────────────────────────────────────────
 
-DarielEncounter.combatRoutes = {
-    [POWERFUL_THROW] = { result = ACTION_RESULT_BEGIN, fn = handlePowerfulThrow },
+local _beginCastEntry = {
+    [POWERFUL_THROW] = { type = AlertTypes.CUSTOM, fn = handlePowerfulThrow },
+}
+
+DarielEncounter.events = {
+    beginCast     = { instant = _beginCastEntry, started = _beginCastEntry },
+    effectChanged = { gained = {}, faded = {}, updated = {} },
+    combatEvent   = { damage = {}, dodged = {}, blocked = {}, other = {} },
 }
 
 function DarielEncounter:onWipe(context, alerts)
@@ -69,6 +62,8 @@ function DarielEncounter:onUpdate(context, alerts)
     alerts:clearRow(6)
     alerts:clearRow(7)
 end
+
+EventDispatcher.build(DarielEncounter)
 
 package.loaded["trial.lc.boss.DarielEncounter"] = DarielEncounter
 return DarielEncounter
