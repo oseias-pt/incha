@@ -1,6 +1,7 @@
 local Trial         = require("core.Trial")
 local Panel         = require("ui.Panel")
-local CombatHandler = require("core.CombatHandler")
+
+local EventDispatcher = require("core.EventDispatcher")
 local ZmajaEncounter = require("trial.cr.boss.ZmajaEncounter")
 
 local crTrial = Trial.create({
@@ -10,11 +11,10 @@ local crTrial = Trial.create({
     bosses          = { ZmajaEncounter },
     bridge          = Panel.bridge,
     alerts          = Panel.alerts,
-    abilityIdsFor           = CombatHandler.abilityIdsFor,
-    onCombatEventFiltered   = CombatHandler.onCombatEventFiltered,
-    onEffectChangedFiltered = CombatHandler.onEffectChangedFiltered,
-    onDiedCombatEvent       = CombatHandler.onDiedCombatEvent,
-    onLegacyCombatEvent     = CombatHandler.onLegacyCombatEvent,
+    abilityIdsFor           = EventDispatcher.abilityIdsFor,
+    onCombatEventFiltered   = EventDispatcher.onCombatEventFiltered,
+    onEffectChangedFiltered = EventDispatcher.onEffectChangedFiltered,
+    onDiedCombatEvent       = EventDispatcher.onDiedCombatEvent,
 })
 
 package.loaded["trial.cr.Factory"] = crTrial

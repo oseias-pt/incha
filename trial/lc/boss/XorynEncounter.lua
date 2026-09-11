@@ -1,75 +1,66 @@
-local Timer    = require("lib.Timer")
-
-local CA = require("external-api.CombatAlerts")
-local BossBase = require("lib.BossBase")
-local CastDur = require("lib.CastDur")
-local Lang = require("core.Lang")
-local Fmt  = require("core.Fmt")
-local Colors = require("core.Colors")
-
+local AlertTypes      = require("core.AlertTypes")
+local EventDispatcher = require("core.EventDispatcher")
+local Timer           = require("lib.Timer")
+local CA              = require("external-api.CombatAlerts")
+local BossBase        = require("lib.BossBase")
+local CastDur         = require("lib.CastDur")
+local Lang            = require("core.Lang")
+local Fmt             = require("core.Fmt")
+local Colors          = require("core.Colors")
 
 -- ── Ability IDs ───────────────────────────────────────────────────────────
-local ARCANE_KNOT         = 213477   -- combatRoute: ACTION_RESULT_EFFECT_GAINED_DURATION / FADED → carry knot
-local ARCANE_CONVEYANCE   = 223024   -- combatRoute: ACTION_RESULT_BEGIN → group-wide tether incoming alert
-local ARCANE_CONV_DEBUFF  = 223060   -- combatRoute: ACTION_RESULT_EFFECT_GAINED_DURATION → tether on player
-local FLUCTUATING_CURRENT = 214597   -- combatRoute: ACTION_RESULT_EFFECT_GAINED_DURATION / FADED → hold (15s max)
-local OVERLOADED_CURRENT  = 214745   -- combatRoute: ACTION_RESULT_EFFECT_GAINED_DURATION → DROP current
-local NECROTIC_BARRAGE    = 223198   -- combatRoute: ACTION_RESULT_BEGIN → caAlertCast
-local ACCELERATING_CHARGE = 214542   -- combatRoute: ACTION_RESULT_BEGIN → chain lightning incoming
-local TEMPEST             = 215107   -- combatRoute: ACTION_RESULT_BEGIN → MOVE from mirror line
-local GLASS_STOMP_CAST    = 219797   -- combatRoute: ACTION_RESULT_BEGIN → Crystal Atronach AOE on tank
-local LUSTROUS_JAVELIN    = 223546   -- combatRoute: ACTION_RESULT_BEGIN → javelin on player
+local ARCANE_KNOT         = 213477
+local ARCANE_CONVEYANCE   = 223024
+local ARCANE_CONV_DEBUFF  = 223060
+local FLUCTUATING_CURRENT = 214597
+local OVERLOADED_CURRENT  = 214745
+local NECROTIC_BARRAGE    = 223198
+local ACCELERATING_CHARGE = 214542
+local TEMPEST             = 215107
+local GLASS_STOMP_CAST    = 219797
+local LUSTROUS_JAVELIN    = 223546
 
--- ── Constants ─────────────────────────────────────────────────────────────
-local CURRENT_MAX_DUR = 15.0   -- holding Fluctuating Current beyond this = death
+local CURRENT_MAX_DUR = 15.0
 
--- ── CA colour palettes ────────────────────────────────────────────────────
-
--- ── Fallback durations (empirical; replace if GetAbilityCastInfo becomes reliable) ─
-local FALLBACK_BARRAGE_DUR = 3000   -- NecroticBarrage: empirical
-local FALLBACK_DUR         = 2000   -- Tempest / GlassStomp: empirical
+local FALLBACK_BARRAGE_DUR = 3000
+local FALLBACK_DUR         = 2000
 
 local XorynEncounter = {}
 XorynEncounter.__index = XorynEncounter
 
 XorynEncounter.key               = "xoryn"
-XorynEncounter.nameAliases       = { "Xoryn" }   -- TODO: verify via GetUnitName in-game
-XorynEncounter.hmHealthThreshold = 100000000   -- TODO: verify — round estimate, no measured evidence
--- location: placeholder — Lucent Citadel arena AABB not yet captured.
--- Detection falls back to nameAliases (name-based, may fail on non-EN clients).
--- To calibrate: stand in arena, run /script d(GetUnitWorldPosition("boss1"))
+XorynEncounter.nameAliases       = { "Xoryn" }
+XorynEncounter.hmHealthThreshold = 100000000
 
 XorynEncounter.stateSchema = {
-    currentTimer     = function() return Timer.new(CURRENT_MAX_DUR) end,
-    knotCarrierName  = false,   -- display name of the current knot holder, or false
-    holdingCurrent   = false,
+    currentTimer    = function() return Timer.new(CURRENT_MAX_DUR) end,
+    knotCarrierName = false,
+    holdingCurrent  = false,
 }
 
 function XorynEncounter.new()
     return BossBase.fromSchema(XorynEncounter)
 end
 
--- ── Handlers ────────────────────────────────────────────────────────────
+-- ── Handlers: beginCast ──────────────────────────────────────────────────
 
-local function handleNecroticBarrage(self, context, alerts, abilityId, ...)
+local function handleNecroticBarrage(boss, ctx, alerts, abilityId, ...)
     local dur = CastDur.get(abilityId, FALLBACK_BARRAGE_DUR)
     CA.ranged(abilityId, Lang.t("lc_xoryn_barrage_bar"), dur, Colors.VOID)
 end
 
-local function handleAcceleratingCharge(self, context, alerts, abilityId, ...)
+local function handleAcceleratingCharge(boss, ctx, alerts, abilityId, ...)
     CA.alert(nil, Lang.t("lc_xoryn_chain_lightning"), 0xFFFF44FF, SOUNDS.NONE, 3000)
     alerts:showAction(Lang.t("lc_xoryn_accel_charge"))
 end
 
-local function handleTempest(self, context, alerts, abilityId, ...)
+local function handleTempest(boss, ctx, alerts, abilityId, ...)
     local dur = CastDur.get(abilityId, FALLBACK_DUR)
     CA.ranged(abilityId, Lang.t("lc_xoryn_tempest_bar"), dur, Colors.ICE)
     alerts:showAction(Lang.t("lc_xoryn_tempest"))
 end
 
-local function handleGlassStomp(self, context, alerts, abilityId,
-                                 unitTag, sourceUnitTag, sourceUnitId, unitId,
-                                 sourceUnitName, unitName)
+local function handleGlassStomp(boss, ctx, alerts, abilityId, sourceUnitName, unitTag, unitId, sourceUnitId, unitName)
     local target = (unitName and unitName ~= "") and unitName or "?"
     local dur = CastDur.get(abilityId, FALLBACK_DUR)
     CA.ranged(abilityId, Lang.t("lc_xoryn_atronach_bar", target), dur, Colors.ORANGE)
@@ -78,70 +69,92 @@ local function handleGlassStomp(self, context, alerts, abilityId,
     end
 end
 
-local function handleLustrousJavelin(self, context, alerts, abilityId, unitTag, ...)
+local function handleLustrousJavelin(boss, ctx, alerts, abilityId, sourceUnitName, unitTag, ...)
     if not IsUnitPlayer(unitTag) then return end
     CA.alert(nil, Lang.t("lc_xoryn_javelin_alert"), 0xFF8844FF, SOUNDS.NONE, 3000)
     alerts:showAction(Lang.t("lc_xoryn_lustrous_javelin"))
 end
 
-local function handleArcaneKnot(self, context, alerts, result, abilityId, unitTag, ...)
-    if result == ACTION_RESULT_EFFECT_GAINED_DURATION then
-        self.knotCarrierName = GetUnitDisplayName(unitTag) or "?"
-        if IsUnitPlayer(unitTag) then
-            CA.alert(nil, Lang.t("lc_xoryn_knot_alert"), 0xFFAA44FF, SOUNDS.NONE, 4000)
-            alerts:showAction(Lang.t("lc_xoryn_arcane_knot"))
-        end
-    elseif result == ACTION_RESULT_EFFECT_FADED then
-        self.knotCarrierName = false
-    end
-end
-
-local function handleArcaneConveyance(self, context, alerts, abilityId, ...)
+local function handleArcaneConveyance(boss, ctx, alerts, abilityId, ...)
     CA.alert(nil, Lang.t("lc_xoryn_tethers_cast"), 0xFF4444FF, SOUNDS.NONE, 3000)
 end
 
-local function handleArcaneConvDebuff(self, context, alerts, abilityId, unitTag, ...)
+-- ── Handlers: combatEvent.other ──────────────────────────────────────────
+-- combatEvent sig: (boss, ctx, alerts, abilityId, sourceUnitName, unitTag, unitId, sourceUnitId, unitName)
+
+-- ARCANE_CONV_DEBUFF fires as EFFECT_GAINED_DURATION (combat path) → combatEvent.other
+local function handleArcaneConvDebuff(boss, ctx, alerts, abilityId, sourceUnitName, unitTag, ...)
     if not IsUnitPlayer(unitTag) then return end
     CA.alert(nil, Lang.t("lc_xoryn_tether_alert"), 0xFF4444FF, SOUNDS.NONE, 3000)
     alerts:showAction(Lang.t("lc_xoryn_tether"))
 end
 
-local function handleFluctuatingCurrent(self, context, alerts, result, abilityId, unitTag, ...)
-    if not IsUnitPlayer(unitTag) then return end
-    if result == ACTION_RESULT_EFFECT_GAINED_DURATION then
-        self.holdingCurrent = true
-        self.currentTimer:reset(CURRENT_MAX_DUR)
-        CA.alert(nil, Lang.t("lc_xoryn_current_alert"), 0x44CCFFFF, SOUNDS.NONE, 3000)
-        alerts:showAction(Lang.t("lc_xoryn_fluctuating"))
-    elseif result == ACTION_RESULT_EFFECT_FADED then
-        self.holdingCurrent = false
-        self.currentTimer:clear()
+-- ARCANE_KNOT fires EFFECT_GAINED_DURATION (picking up) and EFFECT_FADED (releasing).
+-- Both reach combatEvent.other; toggle via knotCarrierName truthiness.
+local function handleArcaneKnot(boss, ctx, alerts, abilityId, sourceUnitName, unitTag, ...)
+    if not boss.knotCarrierName then
+        -- EFFECT_GAINED_DURATION: player/unit gained knot
+        boss.knotCarrierName = GetUnitDisplayName(unitTag) or "?"
+        if IsUnitPlayer(unitTag) then
+            CA.alert(nil, Lang.t("lc_xoryn_knot_alert"), 0xFFAA44FF, SOUNDS.NONE, 4000)
+            alerts:showAction(Lang.t("lc_xoryn_arcane_knot"))
+        end
+    else
+        -- EFFECT_FADED: knot released or transferred
+        boss.knotCarrierName = false
     end
 end
 
-local function handleOverloadedCurrent(self, context, alerts, abilityId, unitTag, ...)
+-- FLUCTUATING_CURRENT fires EFFECT_GAINED_DURATION (gaining) and EFFECT_FADED (dropping).
+-- Both reach combatEvent.other; toggle via holdingCurrent flag.
+local function handleFluctuatingCurrent(boss, ctx, alerts, abilityId, sourceUnitName, unitTag, ...)
+    if not IsUnitPlayer(unitTag) then return end
+    if not boss.holdingCurrent then
+        -- EFFECT_GAINED_DURATION: player gained current
+        boss.holdingCurrent = true
+        boss.currentTimer:reset(CURRENT_MAX_DUR)
+        CA.alert(nil, Lang.t("lc_xoryn_current_alert"), 0x44CCFFFF, SOUNDS.NONE, 3000)
+        alerts:showAction(Lang.t("lc_xoryn_fluctuating"))
+    else
+        -- EFFECT_FADED: player dropped current
+        boss.holdingCurrent = false
+        boss.currentTimer:clear()
+    end
+end
+
+-- OVERLOADED_CURRENT fires as EFFECT_GAINED_DURATION (combat path) → combatEvent.other
+local function handleOverloadedCurrent(boss, ctx, alerts, abilityId, sourceUnitName, unitTag, ...)
     if not IsUnitPlayer(unitTag) then return end
     CA.alert(nil, Lang.t("lc_xoryn_drop_alert"), 0xFF0000FF, SOUNDS.NONE, 2000)
     alerts:showAction(Lang.t("lc_xoryn_overloaded"))
 end
 
--- ── Routing tables (C3) ──────────────────────────────────────────────────
-XorynEncounter.combatRoutes = {
-    [NECROTIC_BARRAGE]    = { result = ACTION_RESULT_BEGIN,                    fn = handleNecroticBarrage },
-    [ACCELERATING_CHARGE] = { result = ACTION_RESULT_BEGIN,                    fn = handleAcceleratingCharge },
-    [TEMPEST]             = { result = ACTION_RESULT_BEGIN,                    fn = handleTempest },
-    [GLASS_STOMP_CAST]    = { result = ACTION_RESULT_BEGIN,                    fn = handleGlassStomp },
-    [LUSTROUS_JAVELIN]    = { result = ACTION_RESULT_BEGIN,                    fn = handleLustrousJavelin },
-    [ARCANE_KNOT]         = handleArcaneKnot,
-    [ARCANE_CONVEYANCE]   = { result = ACTION_RESULT_BEGIN,                    fn = handleArcaneConveyance },
-    [ARCANE_CONV_DEBUFF]  = { result = ACTION_RESULT_EFFECT_GAINED_DURATION,   fn = handleArcaneConvDebuff },
-    [FLUCTUATING_CURRENT] = handleFluctuatingCurrent,
-    [OVERLOADED_CURRENT]  = { result = ACTION_RESULT_EFFECT_GAINED_DURATION,   fn = handleOverloadedCurrent },
+-- ── Event tables ─────────────────────────────────────────────────────────
+
+local _beginCastEntry = {
+    [NECROTIC_BARRAGE]    = { type = AlertTypes.CUSTOM, fn = handleNecroticBarrage },
+    [ACCELERATING_CHARGE] = { type = AlertTypes.CUSTOM, fn = handleAcceleratingCharge },
+    [TEMPEST]             = { type = AlertTypes.CUSTOM, fn = handleTempest },
+    [GLASS_STOMP_CAST]    = { type = AlertTypes.CUSTOM, fn = handleGlassStomp },
+    [LUSTROUS_JAVELIN]    = { type = AlertTypes.CUSTOM, fn = handleLustrousJavelin },
+    [ARCANE_CONVEYANCE]   = { type = AlertTypes.CUSTOM, fn = handleArcaneConveyance },
+}
+
+local _combatOtherEntry = {
+    [ARCANE_CONV_DEBUFF]  = { type = AlertTypes.CUSTOM, fn = handleArcaneConvDebuff },
+    [ARCANE_KNOT]         = { type = AlertTypes.CUSTOM, fn = handleArcaneKnot },
+    [FLUCTUATING_CURRENT] = { type = AlertTypes.CUSTOM, fn = handleFluctuatingCurrent },
+    [OVERLOADED_CURRENT]  = { type = AlertTypes.CUSTOM, fn = handleOverloadedCurrent },
+}
+
+XorynEncounter.events = {
+    beginCast     = { instant = _beginCastEntry, started = _beginCastEntry },
+    effectChanged = { gained = {}, faded = {}, updated = {} },
+    combatEvent   = { damage = {}, dodged = {}, blocked = {}, other = _combatOtherEntry },
 }
 
 -- ── Info-line renderers ───────────────────────────────────────────────────
 
--- Line 1: Fluctuating Current countdown; "DROP NOW!" when the 15 s window expires.
 local function showCurrentLine(self, alerts)
     if self.holdingCurrent then
         local r = self.currentTimer:remaining()
@@ -155,7 +168,6 @@ local function showCurrentLine(self, alerts)
     end
 end
 
--- Line 2: Arcane Knot carrier name (visible to all group members).
 local function showKnotLine(self, alerts)
     if self.knotCarrierName then
         alerts:setRow(2, Fmt.c(Fmt.AMBER, Lang.t("lc_xoryn_knot_carrier", self.knotCarrierName)), nil)
@@ -173,10 +185,9 @@ end
 function XorynEncounter:onUpdate(context, alerts)
     showCurrentLine(self, alerts)
     showKnotLine(self, alerts)
-    -- Slots 3-7 are not written by this encounter.  Trial:onBossesChanged
-    -- clears the panel on every boss transition, so they do not need to be
-    -- blanked on each tick.
 end
+
+EventDispatcher.build(XorynEncounter)
 
 package.loaded["trial.lc.boss.XorynEncounter"] = XorynEncounter
 return XorynEncounter
