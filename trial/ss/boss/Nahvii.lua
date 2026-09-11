@@ -8,7 +8,7 @@
 ---   Thrash (118562): CA cast bar + nudge NextMeteor -1.5 s
 ---   SoulTear (117526): 2 s caAlert "SOUL TEAR"
 ---   FireStorm (118884): skip-first; stormTime +13.7 s, landing +6.6 s
----   NextMeteor (117251/123067 EFFECT_GAINED_DURATION -> +14.5 s; 117308 BEGIN -> +10.5 s)
+---   NextMeteor (117251/123067 effectChanged.gained -> +14.5 s; 117308 BEGIN -> +10.5 s)
 ---   MarkForDeath (117938): nudge NextMeteor +1.5 s
 ---   Portal (121676): 14 s window + 98 s wipe countdown
 ---   PortalInterrupt (121436): interrupt countdown -> 20 s pins after bash
@@ -24,34 +24,33 @@ local MapUtils       = require("lib.MapUtils")
 local Timer          = require("lib.Timer")
 local Lang           = require("core.Lang")
 local Fmt            = require("core.Fmt")
+local CA             = require("external-api.CombatAlerts")
+local CastDur        = require("lib.CastDur")
+local Colors         = require("core.Colors")
+local AlertTypes     = require("core.AlertTypes")
+local EventDispatcher = require("core.EventDispatcher")
 
 
 -- -- Ability IDs ------------------------------------------------------------
-local POWERFUL_SLAM    = 120542   -- combatRoute: ACTION_RESULT_BEGIN -> Block alert (player/nearby 7m)
-local STONEFIST        = 120567   -- combatRoute: ACTION_RESULT_BEGIN -> Block alert (player only)
-local SWEEP_RIGHT      = 120188   -- combatRoute: ACTION_RESULT_BEGIN -> >>> Sweep Breath alert
-local SWEEP_LEFT       = 118743   -- combatRoute: ACTION_RESULT_BEGIN -> <<< Sweep Breath alert
-local THRASH           = 118562   -- combatRoute: ACTION_RESULT_BEGIN -> caAlertCast; nextMeteor -1.5s
-local SOUL_TEAR        = 117526   -- combatRoute: ACTION_RESULT_BEGIN -> SOUL TEAR alert
-local FIRE_STORM       = 118884   -- combatRoute: ACTION_RESULT_BEGIN -> stormTime + 13.7s
-local NEXT_METEOR_A    = 117251   -- combatRoute: ACTION_RESULT_EFFECT_GAINED_DURATION -> +14.5s
-local NEXT_METEOR_B    = 123067   -- combatRoute: ACTION_RESULT_EFFECT_GAINED_DURATION -> +14.5s
-local NEXT_METEOR_C    = 117308   -- combatRoute: ACTION_RESULT_BEGIN -> nextMeteor +10.5s
-local MARK_FOR_DEATH   = 117938   -- combatRoute: ACTION_RESULT_BEGIN -> nextMeteor +1.5s
-local PORTAL           = 121676   -- combatRoute: ACTION_RESULT_BEGIN -> portal 14s + wipe 98s
-local PORTAL_ENTER     = 121213   -- combatRoute: ACTION_RESULT_EFFECT_GAINED_DURATION -> inPortal
-local PORTAL_EXIT      = 121254   -- combatRoute: ACTION_RESULT_EFFECT_GAINED_DURATION -> exit portal
-local PORTAL_INTERRUPT = 121436   -- combatRoute: ACTION_RESULT_EFFECT_GAINED_DURATION -> interrupt timer
-local WIPE_FINISHED    = 121216   -- combatRoute: ACTION_RESULT_EFFECT_FADED -> clear wipeTime
-local NEGATE_FIELD     = 121411   -- combatRoute: ACTION_RESULT_BEGIN -> Dodge alert (player only)
+local POWERFUL_SLAM    = 120542   -- beginCast: Block alert (player/nearby 7m)
+local STONEFIST        = 120567   -- beginCast: Block alert (player only)
+local SWEEP_RIGHT      = 120188   -- beginCast: >>> Sweep Breath alert
+local SWEEP_LEFT       = 118743   -- beginCast: <<< Sweep Breath alert
+local THRASH           = 118562   -- beginCast: caAlertCast; nextMeteor -1.5s
+local SOUL_TEAR        = 117526   -- beginCast: SOUL TEAR alert
+local FIRE_STORM       = 118884   -- beginCast: stormTime + 13.7s
+local NEXT_METEOR_A    = 117251   -- effectChanged: gained -> +14.5s; faded -> clear target
+local NEXT_METEOR_B    = 123067   -- effectChanged: gained -> +14.5s; faded -> clear target
+local NEXT_METEOR_C    = 117308   -- beginCast: nextMeteor +10.5s
+local MARK_FOR_DEATH   = 117938   -- beginCast: nextMeteor +1.5s
+local PORTAL           = 121676   -- beginCast: portal 14s + wipe 98s
+local PORTAL_ENTER     = 121213   -- combatEvent.other: EFFECT_GAINED_DURATION -> inPortal
+local PORTAL_EXIT      = 121254   -- combatEvent.other: EFFECT_GAINED_DURATION -> exit portal
+local PORTAL_INTERRUPT = 121436   -- combatEvent.other: EFFECT_GAINED_DURATION (arm) + INTERRUPT (bash)
+local WIPE_FINISHED    = 121216   -- combatEvent.other: EFFECT_FADED -> clear wipeTime
+local NEGATE_FIELD     = 121411   -- beginCast: Dodge alert (player only)
 
-local CA = require("external-api.CombatAlerts")
-local CastDur = require("lib.CastDur")
-local Colors = require("core.Colors")
-
--- -- CA colour palettes -----------------------------------------------------
-
--- -- Fallback durations (empirical; replace if GetAbilityCastInfo becomes reliable) -
+-- -- Fallback cast durations (empirical; replace if GetAbilityCastInfo becomes reliable) -
 local FALLBACK_SLAM_DUR      = 2000   -- PowerfulSlam / Stonefist: empirical
 local FALLBACK_THRASH_DUR    = 2500   -- Thrash: empirical
 local FALLBACK_INTERRUPT_DUR = 6000   -- PortalInterrupt: empirical
@@ -132,46 +131,45 @@ function Nahvii:onWipe(context, alerts)
     self.meteorDisplayEnd_ms = 0
 end
 
--- -- Routing tables (C3) --------------------------------------------------
--- Shared cross-trial mechanic handler.
-Nahvii.common = SunspireCommon
+-- -- Handlers (new-style: boss as first arg, sourceUnitName before unit args) --
 
--- NextMeteor A+B share: EFFECT_GAINED_DURATION -> timer + target tracking;
--- EFFECT_FADED -> remove target entry.
-local function handleNextMeteor(self, context, alerts, result, abilityId,
-                                  unitTag, sourceUnitTag, sourceUnitId, unitId,
-                                  sourceUnitName, unitName)
-    if result == ACTION_RESULT_EFFECT_GAINED_DURATION then
-        self.nextMeteorTime = GetGameTimeMilliseconds() / 1000 + 14.5
-        if IsUnitPlayer(unitTag) and unitTag and unitTag ~= "" then
-            local name
-            if AreUnitsEqual("player", unitTag)
-            then name = Fmt.c(Fmt.AMBER, "== YOU ==")
-            else name = Fmt.c(Fmt.AMBER, GetUnitDisplayName(unitTag) or unitName or "?")
-            end
-            self.meteorTargets[unitTag] = name
-            self.meteorDisplayEnd_ms = GetGameTimeMilliseconds() + 4000
-            if AreUnitsEqual("player", unitTag) then
-                alerts:showAction(Lang.t("ss_nahvii_you_meteor"))
-                CA.alert(nil, "Meteor on YOU!", 0xFF2200FF, SOUNDS.NONE, 4000)
-            end
+-- NextMeteor A+B: effectChanged handlers
+-- Migrated from combatRoute (EFFECT_GAINED_DURATION / EFFECT_FADED via COMBAT_EVENT)
+-- to effectChanged (EFFECT_RESULT_GAINED / FADED via EFFECT_CHANGED).
+-- TODO: validate in-game that EFFECT_CHANGED fires for NEXT_METEOR_A/B.
+local function handleNextMeteorGained(boss, context, alerts, abilityId, unitName,
+                                       unitTag, unitId, stackCount)
+    boss.nextMeteorTime = GetGameTimeMilliseconds() / 1000 + 14.5
+    if IsUnitPlayer(unitTag) and unitTag and unitTag ~= "" then
+        local name
+        if AreUnitsEqual("player", unitTag)
+        then name = Fmt.c(Fmt.AMBER, "== YOU ==")
+        else name = Fmt.c(Fmt.AMBER, GetUnitDisplayName(unitTag) or unitName or "?")
         end
-    elseif result == ACTION_RESULT_EFFECT_FADED then
-        if unitTag then self.meteorTargets[unitTag] = nil end
+        boss.meteorTargets[unitTag] = name
+        boss.meteorDisplayEnd_ms = GetGameTimeMilliseconds() + 4000
+        if AreUnitsEqual("player", unitTag) then
+            alerts:showAction(Lang.t("ss_nahvii_you_meteor"))
+            CA.alert(nil, "Meteor on YOU!", 0xFF2200FF, SOUNDS.NONE, 4000)
+        end
     end
 end
 
-local function handleNextMeteorC(self, context, alerts, abilityId, ...)
-    self.nextMeteorTime = GetGameTimeMilliseconds() / 1000 + 10.5
+local function handleNextMeteorFaded(boss, context, alerts, abilityId, unitName,
+                                      unitTag, unitId, stackCount)
+    if unitTag then boss.meteorTargets[unitTag] = nil end
 end
 
-local function handleMarkForDeath(self, context, alerts, abilityId, ...)
-    self.nextMeteorTime = self.nextMeteorTime + 1.5
+local function handleNextMeteorC(boss, context, alerts, abilityId, ...)
+    boss.nextMeteorTime = GetGameTimeMilliseconds() / 1000 + 10.5
 end
 
-local function handlePowerfulSlam(self, context, alerts, abilityId,
-                                   unitTag, sourceUnitTag, sourceUnitId, unitId,
-                                   sourceUnitName, unitName)
+local function handleMarkForDeath(boss, context, alerts, abilityId, ...)
+    boss.nextMeteorTime = boss.nextMeteorTime + 1.5
+end
+
+local function handlePowerfulSlam(boss, context, alerts, abilityId, sourceUnitName,
+                                   unitTag, unitId, sourceUnitId, unitName)
     local show = false
     if IsUnitPlayer(unitTag) then
         if AreUnitsEqual("player", unitTag) then
@@ -184,145 +182,176 @@ local function handlePowerfulSlam(self, context, alerts, abilityId,
         alerts:showAction(Lang.t("ss_nahvii_block_slam"))
         local dur = CastDur.get(POWERFUL_SLAM, FALLBACK_SLAM_DUR)
         local cid = CA.melee(abilityId, sourceUnitName, dur, Colors.FIRE)
-        if cid and sourceUnitId then self.alertList[sourceUnitId] = cid end
+        if cid and sourceUnitId then boss.alertList[sourceUnitId] = cid end
     end
 end
 
-local function handleStonefist(self, context, alerts, abilityId,
-                                unitTag, sourceUnitTag, sourceUnitId, unitId,
-                                sourceUnitName, unitName)
+local function handleStonefist(boss, context, alerts, abilityId, sourceUnitName,
+                                unitTag, unitId, sourceUnitId, unitName)
     if not (IsUnitPlayer(unitTag) and AreUnitsEqual("player", unitTag)) then return end
     alerts:showAction(Lang.t("ss_nahvii_block_stonefist"))
     local dur = CastDur.get(STONEFIST, FALLBACK_SLAM_DUR)
     local cid = CA.melee(abilityId, sourceUnitName, dur, Colors.AMBER)
-    if cid and sourceUnitId then self.alertList[sourceUnitId] = cid end
+    if cid and sourceUnitId then boss.alertList[sourceUnitId] = cid end
 end
 
-local function handleSweepRight(self, context, alerts, abilityId, ...)
+local function handleSweepRight(boss, context, alerts, abilityId, ...)
     local dir = Lang.t("ss_nahvii_sweep_right")
     alerts:showAction(dir); CA.alert(nil, dir, 0xFF8833FF, SOUNDS.NONE, 2000)
 end
 
-local function handleSweepLeft(self, context, alerts, abilityId, ...)
+local function handleSweepLeft(boss, context, alerts, abilityId, ...)
     local dir = Lang.t("ss_nahvii_sweep_left")
     alerts:showAction(dir); CA.alert(nil, dir, 0xFF8833FF, SOUNDS.NONE, 2000)
 end
 
-local function handleThrash(self, context, alerts, abilityId, ...)
+local function handleThrash(boss, context, alerts, abilityId, ...)
     local dur = CastDur.get(THRASH, FALLBACK_THRASH_DUR)
-    CA.castAlertsStop(self.thrashBarId)
-    self.thrashBarId = CA.bar(
+    CA.castAlertsStop(boss.thrashBarId)
+    boss.thrashBarId = CA.bar(
         abilityId, "Thrash",
         dur, dur, Colors.RED, 0.5,
         { dur, "THRASH!", 0.9, 0.1, 0.1, 0.9, SOUNDS.NONE })
-    if self.nextMeteorTime > 0 then
-        self.nextMeteorTime = self.nextMeteorTime - 1.5
+    if boss.nextMeteorTime > 0 then
+        boss.nextMeteorTime = boss.nextMeteorTime - 1.5
     end
 end
 
-local function handleSoulTear(self, context, alerts, abilityId, ...)
+local function handleSoulTear(boss, context, alerts, abilityId, ...)
     alerts:showAction(Lang.t("ss_nahvii_soul_tear"))
     CA.alert(nil, "SOUL TEAR!", 0x9966FFFF, SOUNDS.NONE, 2000)
 end
 
-local function handleFireStorm(self, context, alerts, abilityId, ...)
-    if not self.firstStormTrig then
-        self.firstStormTrig = true
+local function handleFireStorm(boss, context, alerts, abilityId, ...)
+    if not boss.firstStormTrig then
+        boss.firstStormTrig = true
         return
     end
-    self.firstStormTrig = false
+    boss.firstStormTrig = false
     local now        = GetGameTimeMilliseconds() / 1000
-    self.stormTime   = now + 13.7
-    self.landingTime = self.stormTime + 6.6
+    boss.stormTime   = now + 13.7
+    boss.landingTime = boss.stormTime + 6.6
 end
 
-local function handlePortal(self, context, alerts, abilityId, ...)
+local function handlePortal(boss, context, alerts, abilityId, ...)
     local now       = GetGameTimeMilliseconds() / 1000
-    self.portalTime = now + 14
-    self.wipeTime   = now + 98
-    self.cptPortal  = 0
+    boss.portalTime = now + 14
+    boss.wipeTime   = now + 98
+    boss.cptPortal  = 0
 end
 
-local function handlePortalEnter(self, context, alerts, abilityId, unitTag, ...)
+local function handlePortalEnter(boss, context, alerts, abilityId, sourceUnitName,
+                                  unitTag, unitId, sourceUnitId, unitName)
     if IsUnitPlayer(unitTag) then
         if AreUnitsEqual("player", unitTag) then
-            self.inPortal  = true
-            self.cptPortal = 0
+            boss.inPortal  = true
+            boss.cptPortal = 0
         else
-            self.cptPortal = self.cptPortal + 1
-            if self.cptPortal >= 3 then
-                self.inPortal  = true
-                self.cptPortal = 0
+            boss.cptPortal = boss.cptPortal + 1
+            if boss.cptPortal >= 3 then
+                boss.inPortal  = true
+                boss.cptPortal = 0
             end
         end
     end
 end
 
-local function handlePortalExit(self, context, alerts, abilityId, unitTag, ...)
+local function handlePortalExit(boss, context, alerts, abilityId, sourceUnitName,
+                                 unitTag, unitId, sourceUnitId, unitName)
     if IsUnitPlayer(unitTag) and AreUnitsEqual("player", unitTag) then
-        self.inPortal        = false
-        self.interruptTimer:clear()
-        self.interruptUnitId = false
-        self.pinsTime        = 0
+        boss.inPortal        = false
+        boss.interruptTimer:clear()
+        boss.interruptUnitId = false
+        boss.pinsTime        = 0
     end
 end
 
-local function handlePortalInterrupt(self, context, alerts, abilityId,
-                                     unitTag, sourceUnitTag, sourceUnitId, unitId, ...)
-    local dur = CastDur.get(PORTAL_INTERRUPT, FALLBACK_INTERRUPT_DUR)
-    self.interruptTimer:reset(dur / 1000)
-    self.interruptUnitId = unitId
-    self.pinsTime        = 0
+-- PortalInterrupt: fires in combatEvent.other for both
+--   ACTION_RESULT_EFFECT_GAINED_DURATION (conjurer starts casting) and
+--   ACTION_RESULT_INTERRUPT (conjurer is bashed).
+-- The two cases are distinguished by whether unitId matches interruptUnitId:
+--   no match -> new cast, arm the countdown timer;
+--   match    -> bash success, clear timer and start pins countdown.
+local function handlePortalInterrupt(boss, context, alerts, abilityId, sourceUnitName,
+                                      unitTag, unitId, sourceUnitId, unitName)
+    if unitId and unitId == boss.interruptUnitId then
+        -- Bash success: conjurer was interrupted
+        boss.interruptTimer:clear()
+        boss.interruptUnitId = false
+        boss.pinsTime        = GetGameTimeMilliseconds() / 1000 + 20
+    else
+        -- New cast started (ACTION_RESULT_EFFECT_GAINED_DURATION)
+        local dur = CastDur.get(PORTAL_INTERRUPT, FALLBACK_INTERRUPT_DUR)
+        boss.interruptTimer:reset(dur / 1000)
+        boss.interruptUnitId = unitId
+        boss.pinsTime        = 0
+    end
 end
 
-local function handleWipeFinished(self, context, alerts, result, abilityId, ...)
-    if result == ACTION_RESULT_EFFECT_FADED then self.wipeTime = 0 end
+-- WipeFinished fires with ACTION_RESULT_EFFECT_FADED.
+-- combatEvent.other is entered for any non-damage/dodged/blocked result,
+-- so no result check is needed here.
+local function handleWipeFinished(boss, context, alerts, abilityId, ...)
+    boss.wipeTime = 0
 end
 
-local function handleNegateField(self, context, alerts, abilityId, unitTag, ...)
+local function handleNegateField(boss, context, alerts, abilityId, sourceUnitName,
+                                  unitTag, unitId, sourceUnitId, unitName)
     if IsUnitPlayer(unitTag) and AreUnitsEqual("player", unitTag) then
         alerts:showAction(Lang.t("ss_nahvii_dodge_negate"))
         CA.alert(nil, "Dodge Negate!", 0x9966FFFF, SOUNDS.NONE, 2500)
     end
 end
 
-Nahvii.combatRoutes = {
-    [NEXT_METEOR_A]    = handleNextMeteor,
-    [NEXT_METEOR_B]    = handleNextMeteor,
-    [NEXT_METEOR_C]    = { result = ACTION_RESULT_BEGIN,                  fn = handleNextMeteorC },
-    [MARK_FOR_DEATH]   = { result = ACTION_RESULT_BEGIN,                  fn = handleMarkForDeath },
-    [POWERFUL_SLAM]    = { result = ACTION_RESULT_BEGIN,                  fn = handlePowerfulSlam },
-    [STONEFIST]        = { result = ACTION_RESULT_BEGIN,                  fn = handleStonefist },
-    [SWEEP_RIGHT]      = { result = ACTION_RESULT_BEGIN,                  fn = handleSweepRight },
-    [SWEEP_LEFT]       = { result = ACTION_RESULT_BEGIN,                  fn = handleSweepLeft },
-    [THRASH]           = { result = ACTION_RESULT_BEGIN,                  fn = handleThrash },
-    [SOUL_TEAR]        = { result = ACTION_RESULT_BEGIN,                  fn = handleSoulTear },
-    [FIRE_STORM]       = { result = ACTION_RESULT_BEGIN,                  fn = handleFireStorm },
-    [PORTAL]           = { result = ACTION_RESULT_BEGIN,                  fn = handlePortal },
-    [PORTAL_ENTER]     = { result = ACTION_RESULT_EFFECT_GAINED_DURATION, fn = handlePortalEnter },
-    [PORTAL_EXIT]      = { result = ACTION_RESULT_EFFECT_GAINED_DURATION, fn = handlePortalExit },
-    [PORTAL_INTERRUPT] = { result = ACTION_RESULT_EFFECT_GAINED_DURATION, fn = handlePortalInterrupt },
-    [WIPE_FINISHED]    = handleWipeFinished,
-    [NEGATE_FIELD]     = { result = ACTION_RESULT_BEGIN,                  fn = handleNegateField },
+-- -- Events table (replaces combatRoutes / effectRoutes) --------------------
+-- PORTAL_ENTER, PORTAL_EXIT, PORTAL_INTERRUPT, WIPE_FINISHED stay in
+-- combatEvent.other to preserve their COMBAT_EVENT path.
+-- NEXT_METEOR_A/B migrated to effectChanged (validate in-game).
+
+local _beginCastEntry = {
+    [NEXT_METEOR_C]  = { type = AlertTypes.CUSTOM, fn = handleNextMeteorC },
+    [MARK_FOR_DEATH] = { type = AlertTypes.CUSTOM, fn = handleMarkForDeath },
+    [POWERFUL_SLAM]  = { type = AlertTypes.CUSTOM, fn = handlePowerfulSlam },
+    [STONEFIST]      = { type = AlertTypes.CUSTOM, fn = handleStonefist },
+    [SWEEP_RIGHT]    = { type = AlertTypes.CUSTOM, fn = handleSweepRight },
+    [SWEEP_LEFT]     = { type = AlertTypes.CUSTOM, fn = handleSweepLeft },
+    [THRASH]         = { type = AlertTypes.CUSTOM, fn = handleThrash },
+    [SOUL_TEAR]      = { type = AlertTypes.CUSTOM, fn = handleSoulTear },
+    [FIRE_STORM]     = { type = AlertTypes.CUSTOM, fn = handleFireStorm },
+    [PORTAL]         = { type = AlertTypes.CUSTOM, fn = handlePortal },
+    [NEGATE_FIELD]   = { type = AlertTypes.CUSTOM, fn = handleNegateField },
 }
 
--- Catch-all fallback: bash detection has no abilityId filter and cannot be routed.
--- CombatHandler invokes this ONLY when abilityId is not in combatRoutes.
--- Catch-all guarded on a combat RESULT rather than an ability id, so it
--- cannot be reached through an ability-filtered registration.  Declaring the
--- results here lets EventPipeline give it a REGISTER_FILTER_COMBAT_RESULT
--- registration instead of forcing an unfiltered one for the whole trial.
-Nahvii.combatResults = { ACTION_RESULT_INTERRUPT }
-
-function Nahvii:onCombatEvent(context, alerts, result, abilityId,
-                               unitTag, sourceUnitTag, sourceUnitId, unitId,
-                               sourceUnitName, unitName)
-    if result == ACTION_RESULT_INTERRUPT and unitId and unitId == self.interruptUnitId then
-        self.interruptTimer:clear()
-        self.interruptUnitId = false
-        self.pinsTime        = GetGameTimeMilliseconds() / 1000 + 20
-    end
+for k, v in pairs(SunspireCommon.beginCastEntries) do
+    _beginCastEntry[k] = v
 end
+
+Nahvii.events = {
+    beginCast = {
+        instant = _beginCastEntry,
+        started = _beginCastEntry,
+    },
+    combatEvent = {
+        other = {
+            [PORTAL_ENTER]     = { type = AlertTypes.CUSTOM, fn = handlePortalEnter },
+            [PORTAL_EXIT]      = { type = AlertTypes.CUSTOM, fn = handlePortalExit },
+            [PORTAL_INTERRUPT] = { type = AlertTypes.CUSTOM, fn = handlePortalInterrupt },
+            [WIPE_FINISHED]    = { type = AlertTypes.CUSTOM, fn = handleWipeFinished },
+        },
+    },
+    effectChanged = {
+        gained = {
+            [NEXT_METEOR_A] = { type = AlertTypes.CUSTOM, fn = handleNextMeteorGained },
+            [NEXT_METEOR_B] = { type = AlertTypes.CUSTOM, fn = handleNextMeteorGained },
+        },
+        faded = {
+            [NEXT_METEOR_A] = { type = AlertTypes.CUSTOM, fn = handleNextMeteorFaded },
+            [NEXT_METEOR_B] = { type = AlertTypes.CUSTOM, fn = handleNextMeteorFaded },
+        },
+    },
+}
+
+EventDispatcher.build(Nahvii)
 
 -- -- Tracker-row renderers -------------------------------------------------
 
