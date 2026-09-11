@@ -98,7 +98,7 @@ local sandbox = setmetatable({ require = recordRequire }, { __index = _G })
 
 -- -- Run the manifest --------------------------------------------------------
 local deps = 0
-for pos, entry in ipairs(order) do
+for _, entry in ipairs(order) do  -- why: only the entry is used; the index was never read
     currentFile = entry
     askedFor[entry] = {}
 
