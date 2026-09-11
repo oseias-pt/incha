@@ -51,8 +51,7 @@ local FALLBACK_SLAM_DUR  = 1500
 local FALLBACK_BLADE_DUR = 1000
 local FALLBACK_FEAR_DUR  = 2000
 
--- Portal labels/colors (shared between handlers built at module load)
-local PORTAL_LABELS = nil   -- initialized below after Lang is available
+-- Portal colors (shared between handlers built at module load)
 local PORTAL_COLORS = { 0x22CC22D9, 0xDDCC00D9, 0x8822DDD9 }
 
 local Taleria = {}
@@ -191,7 +190,7 @@ end
 -- Portal effect handlers (3 named functions, replaces makePortalEffectHandler factory)
 -- Each is GAINED only; no unit args needed.
 -- Labels initialized here so Lang is available (module-level after require).
-PORTAL_LABELS = {
+local PORTAL_LABELS = {
     Fmt.c("22CC22", Lang.t("dsr_taleria_portal_green")),
     Fmt.c("DDCC00", Lang.t("dsr_taleria_portal_yellow")),
     Fmt.c("8822DD", Lang.t("dsr_taleria_portal_purple")),

@@ -95,6 +95,8 @@ DreadsailCommon.effectChangedEntries = {
         [SWASH_TARGETED] = { type = AlertTypes.CUSTOM, fn = handleSwashTargetedGained },
         [SWASH_APERTURE] = { type = AlertTypes.CUSTOM, fn = handleSwashApertureGained },
     },
+    faded   = {},
+    updated = {},
 }
 
 package.loaded["trial.dsr.DreadsailCommon"] = DreadsailCommon
