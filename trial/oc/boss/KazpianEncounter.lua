@@ -1,66 +1,59 @@
 local Timer    = require("lib.Timer")
 
+local AlertTypes       = require("core.AlertTypes")
+local EventDispatcher  = require("core.EventDispatcher")
 local CA               = require("external-api.CombatAlerts")
 local BossBase         = require("lib.BossBase")
 local CastDur          = require("lib.CastDur")
 local OsseinCageCommon = require("trial.oc.OsseinCageCommon")
 local Lang             = require("core.Lang")
-local Colors = require("core.Colors")
+local Colors           = require("core.Colors")
 
--- ── Ability IDs (from OsseinCageHelper) ──────────────────────────────────
--- Chains
-local CHAINS_1        = 232773   -- combatRoute: ACTION_RESULT_EFFECT_GAINED_DURATION → chain pair detection + alert
-local CHAINS_2        = 232775   -- combatRoute: ACTION_RESULT_EFFECT_GAINED_DURATION → chain pair detection + alert
-local TORTUOUS_CHAINS = 236338   -- combatRoute: ACTION_RESULT_EFFECT_GAINED → red border (player)
+-- ── Ability IDs ──────────────────────────────────────────────────────────────────────────────────
+-- Chains (combatEvent.other: EFFECT_GAINED_DURATION)
+local CHAINS_1        = 232773
+local CHAINS_2        = 232775
+local TORTUOUS_CHAINS = 236338   -- combatEvent.other: EFFECT_GAINED
 -- Vile Leap
-local VILE_LEAP       = 235557   -- combatRoute: ACTION_RESULT_BEGIN → Vile Leap caAlertCast
-local SEETHING_LEAP   = 245208   -- combatRoute: ACTION_RESULT_BEGIN → Seething Vile Leap caAlertCast (enrage)
+local VILE_LEAP       = 235557
+local SEETHING_LEAP   = 245208
 -- Agonizer Bombs
-local AGONIZER_BOMBS  = 237149   -- combatRoute: ACTION_RESULT_BEGIN → Agonizer Bombs alert (debounced 5s)
--- Biting Blaze (6-target fire)
-local BITING_BLAZE_1  = 235354   -- combatRoute: ACTION_RESULT_BEGIN → Biting Blaze targeted alert
-local BITING_BLAZE_2  = 246009   -- combatRoute: ACTION_RESULT_BEGIN → Biting Blaze targeted alert
+local AGONIZER_BOMBS  = 237149
+-- Biting Blaze
+local BITING_BLAZE_1  = 235354
+local BITING_BLAZE_2  = 246009
 -- Giant Sword / cones
-local GIANT_PULSE_1   = 235495   -- combatRoute: ACTION_RESULT_BEGIN → Giant Sword caAlertCast
-local GIANT_PULSE_2   = 244937   -- combatRoute: ACTION_RESULT_BEGIN → Giant Sword caAlertCast
-local GIANT_CONES     = 232574   -- combatRoute: ACTION_RESULT_BEGIN → Dodge cones! alert
-local SHOCK_SPEAR     = 235514   -- combatRoute: ACTION_RESULT_BEGIN → Dodge spear! alert
+local GIANT_PULSE_1   = 235495
+local GIANT_PULSE_2   = 244937
+local GIANT_CONES     = 232574
+local SHOCK_SPEAR     = 235514
 -- Molag Kena adds
-local STORM_SLAM      = 235201   -- combatRoute: ACTION_RESULT_BEGIN → DODGE caAlertCast + alert
-local STORM_SURGE     = 235205   -- combatRoute: ACTION_RESULT_BEGIN → Storm Surge caAlertCast
-local HEAVY_SHOCK     = 235206   -- combatRoute: ACTION_RESULT_BEGIN → Heavy Shock alert (player)
+local STORM_SLAM      = 235201
+local STORM_SURGE     = 235205
+local HEAVY_SHOCK     = 235206
 -- Portal / teleport
-local VILE_TELEPORT   = 232969   -- combatRoute: ACTION_RESULT_BEGIN → portal phase++ alert
--- Channelers (each EFFECT_FADED = one channeler killed)
-local CHANNELER_RITUAL = 234349  -- combatRoute: ACTION_RESULT_EFFECT_FADED → channeler killed counter
--- Debuffs on player
-local STRICKEN        = 235594   -- combatRoute: ACTION_RESULT_EFFECT_GAINED_DURATION → Stricken alert (player)
-local FIREBOMB_DEBUF  = 245264   -- combatRoute: ACTION_RESULT_EFFECT_GAINED_DURATION → Firebomb alert (player)
-local IMMOLATING_SPHERE= 237011   -- combatRoute: ACTION_RESULT_BEGIN → Immolating Sphere alert (player)
+local VILE_TELEPORT   = 232969
+-- Channelers (combatEvent.other: EFFECT_FADED)
+local CHANNELER_RITUAL = 234349
+-- Debuffs on player (combatEvent.other: EFFECT_GAINED_DURATION)
+local STRICKEN        = 235594
+local FIREBOMB_DEBUF  = 245264
+local IMMOLATING_SPHERE= 237011
 
--- ── CA colour palettes ────────────────────────────────────────────────────
-
--- ── Fallback durations (empirical; replace if GetAbilityCastInfo becomes reliable) ─
-local FALLBACK_DUR = 2000   -- GiantPulse / VileLeap / SeethingLeap / StormSlam / StormSurge: empirical
+-- ── Fallback durations ────────────────────────────────────────────────────────────────────────────
+local FALLBACK_DUR = 2000
 
 local KazpianEncounter = {}
 KazpianEncounter.__index = KazpianEncounter
 
 KazpianEncounter.key               = "kazpian"
-KazpianEncounter.nameAliases       = { "Overfiend Kazpian" }   -- TODO: verify via GetUnitName in-game
--- hmHealthThreshold: math.huge until measured in-game on vet HM.
--- (0 would make detectDifficulty always return HARDMODE.)
+KazpianEncounter.nameAliases       = { "Overfiend Kazpian" }
 KazpianEncounter.hmHealthThreshold = math.huge
--- location: placeholder — Oathsworn Pit arena AABB not yet captured.
--- Detection falls back to nameAliases (name-based, may fail on non-EN clients).
--- To calibrate: stand in arena, run /script d(GetUnitWorldPosition("boss1"))
 
 KazpianEncounter.stateSchema = {
     bombDebounce   = function() return Timer.new(5.0) end,
     portalPhase    = 0,
     channelersDead = 0,
-    -- Chain targets: populated on first/second DOMINATORS_CHAINS event,
-    -- cleared after the alert fires. false = no chain holder tracked yet.
     chainedA       = false,
     chainedB       = false,
 }
@@ -69,155 +62,149 @@ function KazpianEncounter.new()
     return BossBase.fromSchema(KazpianEncounter)
 end
 
--- ── Handlers ────────────────────────────────────────────────────────────
+-- ── Handlers ─────────────────────────────────────────────────────────────────────────────────────
 
--- Chains: pairs two chained players and alerts when the pair is formed.
-local function handleChains(self, context, alerts, abilityId,
-                              unitTag, sourceUnitTag, sourceUnitId, unitId,
-                              sourceUnitName, unitName)
+local function handleChains(boss, ctx, alerts, abilityId, sourceUnitName, unitTag, unitId, sourceUnitId, unitName)
     local name = IsUnitPlayer(unitTag) and Lang.t("common_you") or (unitName or "?")
-    if not self.chainedA then
-        self.chainedA = name
-    elseif not self.chainedB then
-        self.chainedB = name
-        alerts:showAction(Lang.t("oc_kazpian_chains", self.chainedA, self.chainedB))
-        if self.chainedA == Lang.t("common_you") or self.chainedB == Lang.t("common_you") then
+    if not boss.chainedA then
+        boss.chainedA = name
+    elseif not boss.chainedB then
+        boss.chainedB = name
+        alerts:showAction(Lang.t("oc_kazpian_chains", boss.chainedA, boss.chainedB))
+        if boss.chainedA == Lang.t("common_you") or boss.chainedB == Lang.t("common_you") then
             CA.alert(nil, Lang.t("oc_kazpian_chained_alert"), 0xFF4444FF, SOUNDS.NONE, 4000)
         end
-        self.chainedA = nil
-        self.chainedB = nil
+        boss.chainedA = nil
+        boss.chainedB = nil
     end
 end
 
--- Biting Blaze: shared handler for both variants.
-local function handleBitingBlaze(self, context, alerts, abilityId,
-                                  unitTag, sourceUnitTag, sourceUnitId, unitId,
-                                  sourceUnitName, unitName)
+local function handleBitingBlaze(boss, ctx, alerts, abilityId, sourceUnitName, unitTag, unitId, sourceUnitId, unitName)
     local target = (unitName and unitName ~= "") and unitName or "?"
     alerts:showAction(Lang.t("oc_kazpian_biting_blaze", target))
 end
 
--- Giant Pulse: shared handler for both variants.
-local function handleGiantPulse(self, context, alerts, abilityId, ...)
+local function handleGiantPulse(boss, ctx, alerts, abilityId, ...)
     local dur = CastDur.get(abilityId, FALLBACK_DUR)
     CA.ranged(abilityId, Lang.t("oc_kazpian_giant_sword_bar"), dur, Colors.FLYZONE)
 end
 
-local function handleVileLeap(self, context, alerts, abilityId, ...)
+local function handleVileLeap(boss, ctx, alerts, abilityId, ...)
     local dur = CastDur.get(abilityId, FALLBACK_DUR)
     CA.ranged(abilityId, Lang.t("oc_kazpian_vile_leap"), dur, Colors.VOID)
     alerts:showAction(Lang.t("oc_kazpian_vile_leap"))
 end
 
-local function handleSeethingLeap(self, context, alerts, abilityId, ...)
+local function handleSeethingLeap(boss, ctx, alerts, abilityId, ...)
     local dur = CastDur.get(abilityId, FALLBACK_DUR)
     CA.ranged(abilityId, Lang.t("oc_kazpian_seething_bar"), dur, Colors.RED)
     alerts:showAction(Lang.t("oc_kazpian_seething_leap"))
 end
 
-local function handleAgonizerBombs(self, context, alerts, abilityId, ...)
-    if self.bombDebounce:isExpired() then
-        self.bombDebounce:reset(5.0)
+local function handleAgonizerBombs(boss, ctx, alerts, abilityId, ...)
+    if boss.bombDebounce:isExpired() then
+        boss.bombDebounce:reset(5.0)
         CA.alert(nil, Lang.t("oc_kazpian_agonizer"), 0xFF8844FF, SOUNDS.NONE, 3000)
         alerts:showAction(Lang.t("oc_kazpian_agonizer"))
     end
 end
 
-local function handleGiantCones(self, context, alerts, abilityId, ...)
+local function handleGiantCones(boss, ctx, alerts, abilityId, ...)
     CA.alert(nil, Lang.t("oc_kazpian_dodge_cones"), 0xFFFF44FF, SOUNDS.NONE, 2500)
 end
 
-local function handleShockSpear(self, context, alerts, abilityId, ...)
+local function handleShockSpear(boss, ctx, alerts, abilityId, ...)
     CA.alert(nil, Lang.t("oc_kazpian_dodge_spear"), 0x44CCFFFF, SOUNDS.NONE, 2500)
 end
 
-local function handleStormSlam(self, context, alerts, abilityId, ...)
+local function handleStormSlam(boss, ctx, alerts, abilityId, ...)
     local dur = CastDur.get(abilityId, FALLBACK_DUR)
     CA.ranged(abilityId, Lang.t("oc_kazpian_storm_slam_bar"), dur, Colors.FLYZONE)
     alerts:showAction(Lang.t("oc_kazpian_storm_slam"))
 end
 
-local function handleStormSurge(self, context, alerts, abilityId, ...)
+local function handleStormSurge(boss, ctx, alerts, abilityId, ...)
     local dur = CastDur.get(abilityId, FALLBACK_DUR)
     CA.ranged(abilityId, Lang.t("oc_kazpian_storm_surge_bar"), dur, Colors.LIGHTNING)
 end
 
-local function handleHeavyShock(self, context, alerts, abilityId,
-                                 unitTag, ...)
+local function handleHeavyShock(boss, ctx, alerts, abilityId, sourceUnitName, unitTag, ...)
     if not IsUnitPlayer(unitTag) then return end
     CA.alert(nil, Lang.t("oc_kazpian_heavy_shock_alert"), 0x44CCFFFF, SOUNDS.NONE, 2500)
     alerts:showAction(Lang.t("oc_kazpian_heavy_shock"))
 end
 
-local function handleImmolating(self, context, alerts, abilityId,
-                                 unitTag, ...)
+local function handleImmolating(boss, ctx, alerts, abilityId, sourceUnitName, unitTag, ...)
     if not IsUnitPlayer(unitTag) then return end
     CA.alert(nil, Lang.t("oc_kazpian_immolating_alert"), 0xFF6600FF, SOUNDS.NONE, 3000)
     alerts:showAction(Lang.t("oc_kazpian_immolating"))
 end
 
-local function handleVileTeleport(self, context, alerts, abilityId, ...)
-    self.portalPhase = self.portalPhase + 1
-    alerts:showAction(Lang.t("oc_kazpian_portal_phase", self.portalPhase))
+local function handleVileTeleport(boss, ctx, alerts, abilityId, ...)
+    boss.portalPhase = boss.portalPhase + 1
+    alerts:showAction(Lang.t("oc_kazpian_portal_phase", boss.portalPhase))
 end
 
-local function handleStricken(self, context, alerts, abilityId,
-                               unitTag, ...)
+local function handleStricken(boss, ctx, alerts, abilityId, sourceUnitName, unitTag, ...)
     if not IsUnitPlayer(unitTag) then return end
     CA.alert(nil, Lang.t("oc_kazpian_stricken_alert"), 0xFF4444FF, SOUNDS.NONE, 4000)
     alerts:showAction(Lang.t("oc_kazpian_stricken"))
 end
 
-local function handleFirebombDebuf(self, context, alerts, abilityId,
-                                    unitTag, ...)
+local function handleFirebombDebuf(boss, ctx, alerts, abilityId, sourceUnitName, unitTag, ...)
     if not IsUnitPlayer(unitTag) then return end
     CA.alert(nil, Lang.t("oc_kazpian_firebomb_alert"), 0xFF6600FF, SOUNDS.NONE, 3000)
     alerts:showAction(Lang.t("oc_kazpian_firebomb"))
 end
 
-local function handleTortuousChains(self, context, alerts, abilityId,
-                                     unitTag, ...)
+local function handleTortuousChains(boss, ctx, alerts, abilityId, sourceUnitName, unitTag, ...)
     if not IsUnitPlayer(unitTag) then return end
     CA.border(true, 5000, "red")
     alerts:showAction(Lang.t("oc_kazpian_tort_chains"))
 end
 
-local function handleChannelerRitual(self, context, alerts, abilityId, ...)
-    self.channelersDead = self.channelersDead + 1
-    alerts:showAction(Lang.t("oc_kazpian_channeler_down", self.channelersDead))
+local function handleChannelerRitual(boss, ctx, alerts, abilityId, ...)
+    boss.channelersDead = boss.channelersDead + 1
+    alerts:showAction(Lang.t("oc_kazpian_channeler_down", boss.channelersDead))
 end
 
--- ── Routing tables (C3) ──────────────────────────────────────────────────
+-- ── Event tables ─────────────────────────────────────────────────────────────────────────────────
 
--- Shared trash-mechanic handler.
-KazpianEncounter.common = OsseinCageCommon
+local _beginCastEntry = {}
+for k, v in pairs(OsseinCageCommon.beginCastEntries) do _beginCastEntry[k] = v end
+_beginCastEntry[VILE_LEAP]         = { type = AlertTypes.CUSTOM, fn = handleVileLeap }
+_beginCastEntry[SEETHING_LEAP]     = { type = AlertTypes.CUSTOM, fn = handleSeethingLeap }
+_beginCastEntry[AGONIZER_BOMBS]    = { type = AlertTypes.CUSTOM, fn = handleAgonizerBombs }
+_beginCastEntry[BITING_BLAZE_1]    = { type = AlertTypes.CUSTOM, fn = handleBitingBlaze }
+_beginCastEntry[BITING_BLAZE_2]    = { type = AlertTypes.CUSTOM, fn = handleBitingBlaze }
+_beginCastEntry[GIANT_CONES]       = { type = AlertTypes.CUSTOM, fn = handleGiantCones }
+_beginCastEntry[GIANT_PULSE_1]     = { type = AlertTypes.CUSTOM, fn = handleGiantPulse }
+_beginCastEntry[GIANT_PULSE_2]     = { type = AlertTypes.CUSTOM, fn = handleGiantPulse }
+_beginCastEntry[SHOCK_SPEAR]       = { type = AlertTypes.CUSTOM, fn = handleShockSpear }
+_beginCastEntry[STORM_SLAM]        = { type = AlertTypes.CUSTOM, fn = handleStormSlam }
+_beginCastEntry[STORM_SURGE]       = { type = AlertTypes.CUSTOM, fn = handleStormSurge }
+_beginCastEntry[HEAVY_SHOCK]       = { type = AlertTypes.CUSTOM, fn = handleHeavyShock }
+_beginCastEntry[IMMOLATING_SPHERE] = { type = AlertTypes.CUSTOM, fn = handleImmolating }
+_beginCastEntry[VILE_TELEPORT]     = { type = AlertTypes.CUSTOM, fn = handleVileTeleport }
 
-KazpianEncounter.combatRoutes = {
-    -- Leaps
-    [VILE_LEAP]     = { result = ACTION_RESULT_BEGIN,                  fn = handleVileLeap },
-    [SEETHING_LEAP] = { result = ACTION_RESULT_BEGIN,                  fn = handleSeethingLeap },
-    -- Agonizer Bombs (debounced)
-    [AGONIZER_BOMBS]   = { result = ACTION_RESULT_BEGIN,               fn = handleAgonizerBombs },
-    [BITING_BLAZE_1]   = { result = ACTION_RESULT_BEGIN,               fn = handleBitingBlaze },
-    [BITING_BLAZE_2]   = { result = ACTION_RESULT_BEGIN,               fn = handleBitingBlaze },
-    [GIANT_CONES]      = { result = ACTION_RESULT_BEGIN,               fn = handleGiantCones },
-    [GIANT_PULSE_1]    = { result = ACTION_RESULT_BEGIN,               fn = handleGiantPulse },
-    [GIANT_PULSE_2]    = { result = ACTION_RESULT_BEGIN,               fn = handleGiantPulse },
-    [SHOCK_SPEAR]      = { result = ACTION_RESULT_BEGIN,               fn = handleShockSpear },
-    [STORM_SLAM]       = { result = ACTION_RESULT_BEGIN,               fn = handleStormSlam },
-    [STORM_SURGE]      = { result = ACTION_RESULT_BEGIN,               fn = handleStormSurge },
-    [HEAVY_SHOCK]      = { result = ACTION_RESULT_BEGIN,               fn = handleHeavyShock },
-    [IMMOLATING_SPHERE] = { result = ACTION_RESULT_BEGIN,               fn = handleImmolating },
-    [VILE_TELEPORT]    = { result = ACTION_RESULT_BEGIN,               fn = handleVileTeleport },
-    -- Chains (EFFECT_GAINED_DURATION)
-    [CHAINS_1]         = { result = ACTION_RESULT_EFFECT_GAINED_DURATION, fn = handleChains },
-    [CHAINS_2]         = { result = ACTION_RESULT_EFFECT_GAINED_DURATION, fn = handleChains },
-    [STRICKEN]         = { result = ACTION_RESULT_EFFECT_GAINED_DURATION, fn = handleStricken },
-    [FIREBOMB_DEBUF]   = { result = ACTION_RESULT_EFFECT_GAINED_DURATION, fn = handleFirebombDebuf },
-    -- Tortuous Chains (EFFECT_GAINED)
-    [TORTUOUS_CHAINS]  = { result = ACTION_RESULT_EFFECT_GAINED,       fn = handleTortuousChains },
-    -- Channeler ritual (EFFECT_FADED = channeler killed)
-    [CHANNELER_RITUAL] = { result = ACTION_RESULT_EFFECT_FADED,        fn = handleChannelerRitual },
+local _combatOtherEntry = {
+    [CHAINS_1]         = { type = AlertTypes.CUSTOM, fn = handleChains },
+    [CHAINS_2]         = { type = AlertTypes.CUSTOM, fn = handleChains },
+    [STRICKEN]         = { type = AlertTypes.CUSTOM, fn = handleStricken },
+    [FIREBOMB_DEBUF]   = { type = AlertTypes.CUSTOM, fn = handleFirebombDebuf },
+    [TORTUOUS_CHAINS]  = { type = AlertTypes.CUSTOM, fn = handleTortuousChains },
+    [CHANNELER_RITUAL] = { type = AlertTypes.CUSTOM, fn = handleChannelerRitual },
+}
+
+local _effectGainedEntry = {}
+for k, v in pairs(OsseinCageCommon.effectChangedEntries.gained) do _effectGainedEntry[k] = v end
+local _effectFadedEntry = {}
+for k, v in pairs(OsseinCageCommon.effectChangedEntries.faded) do _effectFadedEntry[k] = v end
+
+KazpianEncounter.events = {
+    beginCast     = { instant = _beginCastEntry, started = _beginCastEntry },
+    effectChanged = { gained = _effectGainedEntry, faded = _effectFadedEntry, updated = {} },
+    combatEvent   = { damage = {}, dodged = {}, blocked = {}, other = _combatOtherEntry },
 }
 
 function KazpianEncounter:onWipe(context, alerts)
@@ -229,14 +216,12 @@ function KazpianEncounter:onWipe(context, alerts)
 end
 
 function KazpianEncounter:onUpdate(context, alerts)
-    -- Line 1: portal phase
     if self.portalPhase > 0 then
         alerts:setRow(1, Lang.t("oc_kazpian_portal_label", self.portalPhase), nil)
     else
         alerts:clearRow(1)
     end
 
-    -- Line 2: channelers dead
     if self.channelersDead > 0 then
         alerts:setRow(2, Lang.t("oc_kazpian_channelers", self.channelersDead), nil)
     else
@@ -249,6 +234,8 @@ function KazpianEncounter:onUpdate(context, alerts)
     alerts:clearRow(6)
     alerts:clearRow(7)
 end
+
+EventDispatcher.build(KazpianEncounter)
 
 package.loaded["trial.oc.boss.KazpianEncounter"] = KazpianEncounter
 return KazpianEncounter

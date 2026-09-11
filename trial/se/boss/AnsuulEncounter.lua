@@ -1,126 +1,130 @@
-local Timer    = require("lib.Timer")
-
-local CA = require("external-api.CombatAlerts")
-local BossBase = require("lib.BossBase")
-local CastDur = require("lib.CastDur")
-local Lang = require("core.Lang")
-local Colors = require("core.Colors")
+local AlertTypes      = require("core.AlertTypes")
+local EventDispatcher = require("core.EventDispatcher")
+local Timer           = require("lib.Timer")
+local CA              = require("external-api.CombatAlerts")
+local BossBase        = require("lib.BossBase")
+local CastDur         = require("lib.CastDur")
+local Lang            = require("core.Lang")
+local Colors          = require("core.Colors")
 
 -- -- Ability IDs --------------------------------------------------------------------
-local SUNBURST         = 199344   -- combatRoute: ACTION_RESULT_BEGIN -> Dodge alert (player only)
-local WRACK            = 184621   -- combatRoute: ACTION_RESULT_BEGIN -> Kite alert
-local WRATHSTORM       = 198759   -- combatRoute: ACTION_RESULT_BEGIN -> caAlertCast
-local CALAMITY         = 186728   -- combatRoute: ACTION_RESULT_BEGIN -> Calamity Stack alert
-local EXECUTE          = 198797   -- combatRoute: ACTION_RESULT_BEGIN -> INTERRUPT alert
--- Poisoned Mind  -  4 variants (+184710 kept for safety)
-local POISONED_MIND_1  = 184707   -- combatRoute: ACTION_RESULT_EFFECT_GAINED_DURATION -> green border
-local POISONED_MIND_2  = 184709   -- combatRoute: ACTION_RESULT_EFFECT_GAINED_DURATION -> green border
-local POISONED_MIND_3  = 199644   -- combatRoute: ACTION_RESULT_EFFECT_GAINED_DURATION -> green border
-local POISONED_MIND_4  = 184711   -- combatRoute: ACTION_RESULT_EFFECT_GAINED_DURATION -> green border
-local POISONED_MIND_5  = 184710   -- combatRoute: ACTION_RESULT_EFFECT_GAINED_DURATION -> green border (extra variant)
+local SUNBURST        = 199344
+local WRACK           = 184621
+local WRATHSTORM      = 198759
+local CALAMITY        = 186728
+local EXECUTE         = 198797
+-- Poisoned Mind  -  5 variants
+local POISONED_MIND_1 = 184707
+local POISONED_MIND_2 = 184709
+local POISONED_MIND_3 = 199644
+local POISONED_MIND_4 = 184711
+local POISONED_MIND_5 = 184710
 -- Manic Phobia  -  4 variants
-local MANIC_PHOBIA_1   = 185117   -- combatRoute: ACTION_RESULT_EFFECT_GAINED_DURATION -> fear marker alert
-local MANIC_PHOBIA_2   = 185123   -- combatRoute: ACTION_RESULT_EFFECT_GAINED_DURATION -> fear marker alert
-local MANIC_PHOBIA_3   = 185171   -- combatRoute: ACTION_RESULT_EFFECT_GAINED_DURATION -> fear marker alert
-local MANIC_PHOBIA_4   = 185251   -- combatRoute: ACTION_RESULT_EFFECT_GAINED_DURATION -> fear marker alert
+local MANIC_PHOBIA_1  = 185117
+local MANIC_PHOBIA_2  = 185123
+local MANIC_PHOBIA_3  = 185171
+local MANIC_PHOBIA_4  = 185251
 -- Enraged Atronachs
-local ENRAGED_INFERNO  = 183778   -- combatRoute: ACTION_RESULT_BEGIN -> Interrupt! alert
-local ENRAGED_FLARE    = 183784   -- combatRoute: ACTION_RESULT_BEGIN -> alert
+local ENRAGED_INFERNO = 183778
+local ENRAGED_FLARE   = 183784
 -- Phase transitions
-local THE_RITUAL       = 183855   -- combatRoute: multi-result -> maze phase
-local BREAKDOWN_RED    = 188766   -- combatRoute: multi-result -> split phase
-local BREAKDOWN_BLUE   = 188768   -- combatRoute: multi-result -> split phase
-local BREAKDOWN_GREEN  = 188769   -- combatRoute: multi-result -> split phase
+local THE_RITUAL      = 183855
+local BREAKDOWN_RED   = 188766
+local BREAKDOWN_BLUE  = 188768
+local BREAKDOWN_GREEN = 188769
 
 -- -- Timer durations (seconds) -----------------------------------------------------
-local CALAMITY_FIRST_CD = 9    -- first calamity after combat start / maze end
-local CALAMITY_CD       = 25   -- subsequent calamity CD
+local CALAMITY_FIRST_CD = 9
+local CALAMITY_CD       = 25
 
--- -- CA colour palettes ------------------------------------------------------------
-
--- -- Fallback durations (empirical; replace if GetAbilityCastInfo becomes reliable) -
-local FALLBACK_SUNBURST_DUR   = 2000   -- Sunburst: empirical
-local FALLBACK_WRATHSTORM_DUR = 4000   -- Wrathstorm: empirical
+local FALLBACK_SUNBURST_DUR   = 2000
+local FALLBACK_WRATHSTORM_DUR = 4000
 
 local AnsuulEncounter = {}
 AnsuulEncounter.__index = AnsuulEncounter
 
 AnsuulEncounter.key               = "ansuul"
-AnsuulEncounter.nameAliases       = { "Ansuul the Tormentor" }   -- TODO: verify via GetUnitName in-game
-AnsuulEncounter.hmHealthThreshold = 100000000  -- vet ~69M, HM ~160.7M
--- location: placeholder - Sunken Elder arena AABB not yet captured.
--- Detection falls back to nameAliases (name-based, may fail on non-EN clients).
--- To calibrate: stand in arena, run /script d(GetUnitWorldPosition("boss1"))
+AnsuulEncounter.nameAliases       = { "Ansuul the Tormentor" }
+AnsuulEncounter.hmHealthThreshold = 100000000
 
 AnsuulEncounter.stateSchema = {
-    calamityTimer  = function() return Timer.new(CALAMITY_CD) end,
-    firstCalamity  = true,
-    inMaze         = false,
-    inTriplet      = false,
-    alertList      = function() return {} end,
+    calamityTimer = function() return Timer.new(CALAMITY_CD) end,
+    firstCalamity = true,
+    inMaze        = false,
+    inTriplet     = false,
+    alertList     = function() return {} end,
 }
 
 function AnsuulEncounter.new()
     return BossBase.fromSchema(AnsuulEncounter)
 end
 
--- -- Routing tables (C3) -----------------------------------------------------------
-
--- Breakdown (split phase): shared handler for red/blue/green clones.
-local function handleBreakdown(self, context, alerts, result, abilityId, ...)
-    if result == ACTION_RESULT_EFFECT_GAINED then
-        if not self.inTriplet then
-            self.inTriplet = true
-            self.firstCalamity = true
-            self.calamityTimer:reset(CALAMITY_FIRST_CD)
-            alerts:showHeader(Lang.t("se_ansuul_triplet_header"))
-        end
-    elseif result == ACTION_RESULT_EFFECT_FADED then
-        self.inTriplet = false
-        self.firstCalamity = true
-        self.calamityTimer:reset(CALAMITY_CD)
-        alerts:showAction(Lang.t("se_ansuul_triplet_ended"))
-    end
+function AnsuulEncounter:onLeave(context)
+    self:cleanupAlertList()
 end
 
-local function handleCalamity(self, context, alerts, abilityId, ...)
-    self.firstCalamity = false
-    self.calamityTimer:reset(CALAMITY_CD)
+function AnsuulEncounter:onWipe(context, alerts)
+    self:cleanupAlertList()
+    self.calamityTimer:clear()
+    self.firstCalamity = true
+    self.inMaze        = false
+    self.inTriplet     = false
+    CA.border(false, 0, "green")
+end
+
+-- -- Handlers: beginCast ------------------------------------------------------------
+
+local function handleCalamity(boss, ctx, alerts, abilityId, ...)
+    boss.firstCalamity = false
+    boss.calamityTimer:reset(CALAMITY_CD)
     alerts:showAction(Lang.t("se_ansuul_calamity_stack"))
 end
 
-local function handleWrack(self, context, alerts, abilityId, ...)
+local function handleWrack(boss, ctx, alerts, abilityId, ...)
     alerts:showAction(Lang.t("se_ansuul_kite_wrack"))
     CA.alert(nil, Lang.t("se_ansuul_kite_alert"), 0xFFD666FF, SOUNDS.NONE, 3000)
 end
 
-local function handleExecute(self, context, alerts, abilityId, ...)
+local function handleExecute(boss, ctx, alerts, abilityId, ...)
     alerts:showAction(Lang.t("se_ansuul_interrupt_exec"))
     CA.alert(nil, Lang.t("common_interrupt"), 0xFF0033FF, SOUNDS.NONE, 2500)
 end
 
-local function handleSunburst(self, context, alerts, abilityId, unitTag, ...)
+local function handleSunburst(boss, ctx, alerts, abilityId, sourceUnitName, unitTag, ...)
     if not IsUnitPlayer(unitTag) then return end
     alerts:showAction(Lang.t("se_ansuul_sunburst"))
     local dur = CastDur.get(SUNBURST, FALLBACK_SUNBURST_DUR)
     CA.ranged(SUNBURST, Lang.t("se_ansuul_sunburst_bar"), dur, Colors.VOID)
 end
 
-local function handleWrathstorm(self, context, alerts, abilityId, ...)
+local function handleWrathstorm(boss, ctx, alerts, abilityId, ...)
     local dur = CastDur.get(WRATHSTORM, FALLBACK_WRATHSTORM_DUR)
     CA.ranged(WRATHSTORM, Lang.t("se_ansuul_wrathstorm_bar"), dur, Colors.VOID)
 end
 
-local function handlePoisonedMind(self, context, alerts, abilityId,
-                                   unitTag, ...)
+local function handleEnragedInferno(boss, ctx, alerts, abilityId, ...)
+    alerts:showAction(Lang.t("se_ansuul_interrupt_inf"))
+    CA.alert(nil, Lang.t("se_ansuul_inferno_alert"), 0xFF0033FF, SOUNDS.NONE, 2500)
+end
+
+local function handleEnragedFlare(boss, ctx, alerts, abilityId, sourceUnitName, unitTag, unitId, sourceUnitId, unitName)
+    local target = (unitName and unitName ~= "") and unitName or "?"
+    alerts:showAction(Lang.t("se_ansuul_enraged_flare", target))
+    CA.alert(nil, Lang.t("se_ansuul_flare_alert"), 0xFF6600FF, SOUNDS.NONE, 2500)
+end
+
+-- -- Handlers: combatEvent.other ---------------------------------------------------
+-- combatEvent sig: (boss, ctx, alerts, abilityId, sourceUnitName, unitTag, unitId, sourceUnitId, unitName)
+
+-- POISONED_MIND fires as EFFECT_GAINED_DURATION (combat path) → combatEvent.other
+local function handlePoisonedMind(boss, ctx, alerts, abilityId, sourceUnitName, unitTag, ...)
     if not IsUnitPlayer(unitTag) then return end
     alerts:showAction(Lang.t("se_ansuul_poisoned_mind"))
     CA.border(true, 8000, "green")
 end
 
-local function handleManicPhobia(self, context, alerts, abilityId,
-                                   unitTag, sourceUnitTag, sourceUnitId, unitId,
-                                   sourceUnitName, unitName)
+-- MANIC_PHOBIA fires as EFFECT_GAINED_DURATION (combat path) → combatEvent.other
+local function handleManicPhobia(boss, ctx, alerts, abilityId, sourceUnitName, unitTag, unitId, sourceUnitId, unitName)
     local name = IsUnitPlayer(unitTag) and Lang.t("common_you") or (unitName or "?")
     alerts:showAction(Lang.t("se_ansuul_manic_phobia", name))
     if IsUnitPlayer(unitTag) then
@@ -128,61 +132,76 @@ local function handleManicPhobia(self, context, alerts, abilityId,
     end
 end
 
-local function handleEnragedInferno(self, context, alerts, abilityId, ...)
-    alerts:showAction(Lang.t("se_ansuul_interrupt_inf"))
-    CA.alert(nil, Lang.t("se_ansuul_inferno_alert"), 0xFF0033FF, SOUNDS.NONE, 2500)
-end
-
-local function handleEnragedFlare(self, context, alerts, abilityId,
-                                   unitTag, sourceUnitTag, sourceUnitId, unitId,
-                                   sourceUnitName, unitName)
-    local target = (unitName and unitName ~= "") and unitName or "?"
-    alerts:showAction(Lang.t("se_ansuul_enraged_flare", target))
-    CA.alert(nil, Lang.t("se_ansuul_flare_alert"), 0xFF6600FF, SOUNDS.NONE, 2500)
-end
-
-local function handleTheRitual(self, context, alerts, result, abilityId, ...)
-    if result == ACTION_RESULT_EFFECT_GAINED_DURATION then
-        self.inMaze = true
+-- THE_RITUAL fires as both EFFECT_GAINED_DURATION and EFFECT_FADED via combat path.
+-- Both go to combatEvent.other; use boolean state to distinguish which fired.
+local function handleTheRitual(boss, ctx, alerts, abilityId, ...)
+    if not boss.inMaze then
+        -- EFFECT_GAINED_DURATION: entering maze
+        boss.inMaze = true
         alerts:showHeader(Lang.t("se_ansuul_maze_header"))
-    elseif result == ACTION_RESULT_EFFECT_FADED then
-        self.inMaze = false
-        self.firstCalamity = true
-        self.calamityTimer:reset(CALAMITY_FIRST_CD)
+    else
+        -- EFFECT_FADED: maze cleared
+        boss.inMaze = false
+        boss.firstCalamity = true
+        boss.calamityTimer:reset(CALAMITY_FIRST_CD)
         alerts:showAction(Lang.t("se_ansuul_maze_cleared"))
     end
 end
 
-AnsuulEncounter.combatRoutes = {
-    [CALAMITY]        = { result = ACTION_RESULT_BEGIN,                  fn = handleCalamity },
-    [WRACK]           = { result = ACTION_RESULT_BEGIN,                  fn = handleWrack },
-    [EXECUTE]         = { result = ACTION_RESULT_BEGIN,                  fn = handleExecute },
-    [SUNBURST]        = { result = ACTION_RESULT_BEGIN,                  fn = handleSunburst },
-    [WRATHSTORM]      = { result = ACTION_RESULT_BEGIN,                  fn = handleWrathstorm },
-    -- Enraged Atronach abilities
-    [ENRAGED_INFERNO] = { result = ACTION_RESULT_BEGIN,                  fn = handleEnragedInferno },
-    [ENRAGED_FLARE]   = { result = ACTION_RESULT_BEGIN,                  fn = handleEnragedFlare },
-    -- Poisoned Mind (5 variants, player-only green border)
-    [POISONED_MIND_1] = { result = ACTION_RESULT_EFFECT_GAINED_DURATION, fn = handlePoisonedMind },
-    [POISONED_MIND_2] = { result = ACTION_RESULT_EFFECT_GAINED_DURATION, fn = handlePoisonedMind },
-    [POISONED_MIND_3] = { result = ACTION_RESULT_EFFECT_GAINED_DURATION, fn = handlePoisonedMind },
-    [POISONED_MIND_4] = { result = ACTION_RESULT_EFFECT_GAINED_DURATION, fn = handlePoisonedMind },
-    [POISONED_MIND_5] = { result = ACTION_RESULT_EFFECT_GAINED_DURATION, fn = handlePoisonedMind },
-    -- Manic Phobia (4 variants, fear marker alert)
-    [MANIC_PHOBIA_1]  = { result = ACTION_RESULT_EFFECT_GAINED_DURATION, fn = handleManicPhobia },
-    [MANIC_PHOBIA_2]  = { result = ACTION_RESULT_EFFECT_GAINED_DURATION, fn = handleManicPhobia },
-    [MANIC_PHOBIA_3]  = { result = ACTION_RESULT_EFFECT_GAINED_DURATION, fn = handleManicPhobia },
-    [MANIC_PHOBIA_4]  = { result = ACTION_RESULT_EFFECT_GAINED_DURATION, fn = handleManicPhobia },
-    -- Phase transitions (multi-result routes)
-    [THE_RITUAL]       = handleTheRitual,
-    [BREAKDOWN_RED]    = handleBreakdown,
-    [BREAKDOWN_BLUE]   = handleBreakdown,
-    [BREAKDOWN_GREEN]  = handleBreakdown,
+-- BREAKDOWN fires as both EFFECT_GAINED and EFFECT_FADED via combat path.
+-- Both go to combatEvent.other; use boolean state to distinguish which fired.
+local function handleBreakdown(boss, ctx, alerts, abilityId, ...)
+    if not boss.inTriplet then
+        -- EFFECT_GAINED: entering triplet split phase
+        boss.inTriplet = true
+        boss.firstCalamity = true
+        boss.calamityTimer:reset(CALAMITY_FIRST_CD)
+        alerts:showHeader(Lang.t("se_ansuul_triplet_header"))
+    else
+        -- EFFECT_FADED: triplet split ended
+        boss.inTriplet = false
+        boss.firstCalamity = true
+        boss.calamityTimer:reset(CALAMITY_CD)
+        alerts:showAction(Lang.t("se_ansuul_triplet_ended"))
+    end
+end
+
+-- -- Event tables ------------------------------------------------------------------
+
+local _beginCastEntry = {
+    [CALAMITY]        = { type = AlertTypes.CUSTOM, fn = handleCalamity },
+    [WRACK]           = { type = AlertTypes.CUSTOM, fn = handleWrack },
+    [EXECUTE]         = { type = AlertTypes.CUSTOM, fn = handleExecute },
+    [SUNBURST]        = { type = AlertTypes.CUSTOM, fn = handleSunburst },
+    [WRATHSTORM]      = { type = AlertTypes.CUSTOM, fn = handleWrathstorm },
+    [ENRAGED_INFERNO] = { type = AlertTypes.CUSTOM, fn = handleEnragedInferno },
+    [ENRAGED_FLARE]   = { type = AlertTypes.CUSTOM, fn = handleEnragedFlare },
+}
+
+local _combatOtherEntry = {
+    [POISONED_MIND_1] = { type = AlertTypes.CUSTOM, fn = handlePoisonedMind },
+    [POISONED_MIND_2] = { type = AlertTypes.CUSTOM, fn = handlePoisonedMind },
+    [POISONED_MIND_3] = { type = AlertTypes.CUSTOM, fn = handlePoisonedMind },
+    [POISONED_MIND_4] = { type = AlertTypes.CUSTOM, fn = handlePoisonedMind },
+    [POISONED_MIND_5] = { type = AlertTypes.CUSTOM, fn = handlePoisonedMind },
+    [MANIC_PHOBIA_1]  = { type = AlertTypes.CUSTOM, fn = handleManicPhobia },
+    [MANIC_PHOBIA_2]  = { type = AlertTypes.CUSTOM, fn = handleManicPhobia },
+    [MANIC_PHOBIA_3]  = { type = AlertTypes.CUSTOM, fn = handleManicPhobia },
+    [MANIC_PHOBIA_4]  = { type = AlertTypes.CUSTOM, fn = handleManicPhobia },
+    [THE_RITUAL]      = { type = AlertTypes.CUSTOM, fn = handleTheRitual },
+    [BREAKDOWN_RED]   = { type = AlertTypes.CUSTOM, fn = handleBreakdown },
+    [BREAKDOWN_BLUE]  = { type = AlertTypes.CUSTOM, fn = handleBreakdown },
+    [BREAKDOWN_GREEN] = { type = AlertTypes.CUSTOM, fn = handleBreakdown },
+}
+
+AnsuulEncounter.events = {
+    beginCast     = { instant = _beginCastEntry, started = _beginCastEntry },
+    effectChanged = { gained = {}, faded = {}, updated = {} },
+    combatEvent   = { damage = {}, dodged = {}, blocked = {}, other = _combatOtherEntry },
 }
 
 -- -- Info-line renderers -----------------------------------------------------------
 
--- Line 1: Calamity countdown - context-aware: maze suppression, triplet urgency, or normal CD.
 local function showCalamityLine(self, alerts)
     if self.inMaze then
         alerts:setRow(1, Lang.t("se_ansuul_maze_no_cal"), nil)
@@ -205,7 +224,6 @@ local function showCalamityLine(self, alerts)
     end
 end
 
--- Line 2: Current phase label (triplet split or maze navigation).
 local function showPhaseLine(self, alerts)
     if self.inTriplet then
         alerts:setRow(2, Lang.t("se_ansuul_split_phase"), nil)
@@ -214,19 +232,6 @@ local function showPhaseLine(self, alerts)
     else
         alerts:clearRow(2)
     end
-end
-
-function AnsuulEncounter:onLeave(context)
-    self:cleanupAlertList()
-end
-
-function AnsuulEncounter:onWipe(context, alerts)
-    self:cleanupAlertList()
-    self.calamityTimer:clear()
-    self.firstCalamity = true
-    self.inMaze        = false
-    self.inTriplet     = false
-    CA.border(false, 0, "green")
 end
 
 function AnsuulEncounter:onUpdate(context, alerts)
@@ -242,6 +247,8 @@ end
 function AnsuulEncounter:onPowerUpdate(context, healthPercent, alerts)
     -- No HP milestone logic for Ansuul.
 end
+
+EventDispatcher.build(AnsuulEncounter)
 
 package.loaded["trial.se.boss.AnsuulEncounter"] = AnsuulEncounter
 return AnsuulEncounter
