@@ -14,18 +14,19 @@ local MapUtils       = require("lib.MapUtils")
 local Timer          = require("lib.Timer")
 local Lang           = require("core.Lang")
 local Fmt            = require("core.Fmt")
+local CA             = require("external-api.CombatAlerts")
+local CastDur        = require("lib.CastDur")
+local Colors         = require("core.Colors")
+local AlertTypes     = require("core.AlertTypes")
+local EventDispatcher = require("core.EventDispatcher")
 
 
 -- -- Ability IDs ------------------------------------------------------------
-local ATRO_SPAWN    = 119549   -- combatRoute: ACTION_RESULT_BEGIN -> Kill Atro alert
-local LAVA_GEYSER   = 124546   -- combatRoute: ACTION_RESULT_BEGIN -> Dodge alert (player/nearby)
-local NEXT_FLARE_A  = 121722   -- combatRoute: ACTION_RESULT_BEGIN -> nextFlareTime +32s
-local NEXT_FLARE_B  = 121459   -- combatRoute: ACTION_RESULT_EFFECT_FADED -> nextFlareTime +30s
-local CATACLYSM     = 122598   -- combatRoute: ACTION_RESULT_BEGIN -> caAlertCast + landing timer
-
-local CA = require("external-api.CombatAlerts")
-local CastDur = require("lib.CastDur")
-local Colors = require("core.Colors")
+local ATRO_SPAWN    = 119549   -- beginCast: Kill Atro alert
+local LAVA_GEYSER   = 124546   -- beginCast: Dodge alert (player/nearby)
+local NEXT_FLARE_A  = 121722   -- beginCast: nextFlareTime +32s
+local NEXT_FLARE_B  = 121459   -- combatEvent.other: ACTION_RESULT_EFFECT_FADED -> nextFlareTime +30s
+local CATACLYSM     = 122598   -- beginCast: caAlertCast + landing timer
 
 
 -- -- Fallback durations (empirical; replace if GetAbilityCastInfo becomes reliable) -
@@ -92,20 +93,15 @@ function Yolna:onCombatState(context, inCombat, alerts)
     end
 end
 
--- -- Routing tables (C3) --------------------------------------------------
--- Shared cross-trial mechanic handler.
-Yolna.common = SunspireCommon
+-- -- Handlers (new-style: boss as first arg, sourceUnitName before unit args) --
 
--- -- Handlers ------------------------------------------------------------
-
-local function handleAtroSpawn(self, context, alerts, abilityId, ...)
+local function handleAtroSpawn(boss, context, alerts, abilityId, ...)
     alerts:showAction(Lang.t("ss_yolna_kill_atro"))
     CA.alert(nil, "Kill Atro!", 0xFF8000FF, SOUNDS.NONE, 4500)
 end
 
-local function handleLavaGeyser(self, context, alerts, abilityId,
-                                 unitTag, sourceUnitTag, sourceUnitId, unitId,
-                                 sourceUnitName, unitName)
+local function handleLavaGeyser(boss, context, alerts, abilityId, sourceUnitName,
+                                 unitTag, unitId, sourceUnitId, unitName)
     local show = false
     if IsUnitPlayer(unitTag) then
         if AreUnitsEqual("player", unitTag) then
@@ -121,33 +117,55 @@ local function handleLavaGeyser(self, context, alerts, abilityId,
     end
 end
 
--- NextFlare: BEGIN -> +32 s; EFFECT_FADED -> +30 s.
-local function handleNextFlareA(self, context, alerts, abilityId, ...)
-    self.nextFlareTime = GetGameTimeMilliseconds() / 1000 + 32
+-- NextFlare: BEGIN -> +32 s
+local function handleNextFlareA(boss, context, alerts, abilityId, ...)
+    boss.nextFlareTime = GetGameTimeMilliseconds() / 1000 + 32
 end
 
-local function handleNextFlareB(self, context, alerts, abilityId, ...)
-    self.nextFlareTime = GetGameTimeMilliseconds() / 1000 + 30
+-- NextFlare: EFFECT_FADED (via COMBAT_EVENT, combatEvent.other) -> +30 s
+local function handleNextFlareB(boss, context, alerts, abilityId, ...)
+    boss.nextFlareTime = GetGameTimeMilliseconds() / 1000 + 30
 end
 
-local function handleCataclysm(self, context, alerts, abilityId, ...)
+local function handleCataclysm(boss, context, alerts, abilityId, ...)
     local dur = CastDur.get(CATACLYSM, FALLBACK_CATA_DUR)
-    self.cataTimer:reset(dur / 1000)
-    self.landingTimer:reset(dur / 1000 + 6.8)
-    CA.castAlertsStop(self.cataBarId)
-    self.cataBarId = CA.bar(
+    boss.cataTimer:reset(dur / 1000)
+    boss.landingTimer:reset(dur / 1000 + 6.8)
+    CA.castAlertsStop(boss.cataBarId)
+    boss.cataBarId = CA.bar(
         abilityId, "Cataclysm",
         dur, dur, Colors.FIRE, 0.5,
         { dur, "Cata Ends!", 0.9, 0.2, 0.1, 0.9, SOUNDS.NONE })
 end
 
-Yolna.combatRoutes = {
-    [ATRO_SPAWN]   = { result = ACTION_RESULT_BEGIN,          fn = handleAtroSpawn },
-    [LAVA_GEYSER]  = { result = ACTION_RESULT_BEGIN,          fn = handleLavaGeyser },
-    [NEXT_FLARE_A] = { result = ACTION_RESULT_BEGIN,          fn = handleNextFlareA },
-    [NEXT_FLARE_B] = { result = ACTION_RESULT_EFFECT_FADED,   fn = handleNextFlareB },
-    [CATACLYSM]    = { result = ACTION_RESULT_BEGIN,          fn = handleCataclysm },
+-- -- Events table (replaces combatRoutes) ----------------------------------
+-- NEXT_FLARE_B fires via ACTION_RESULT_EFFECT_FADED on COMBAT_EVENT;
+-- kept in combatEvent.other to preserve the same event path as the original.
+
+local _beginCastEntry = {
+    [ATRO_SPAWN]   = { type = AlertTypes.CUSTOM, fn = handleAtroSpawn },
+    [LAVA_GEYSER]  = { type = AlertTypes.CUSTOM, fn = handleLavaGeyser },
+    [NEXT_FLARE_A] = { type = AlertTypes.CUSTOM, fn = handleNextFlareA },
+    [CATACLYSM]    = { type = AlertTypes.CUSTOM, fn = handleCataclysm },
 }
+
+for k, v in pairs(SunspireCommon.beginCastEntries) do
+    _beginCastEntry[k] = v
+end
+
+Yolna.events = {
+    beginCast = {
+        instant = _beginCastEntry,
+        started = _beginCastEntry,
+    },
+    combatEvent = {
+        other = {
+            [NEXT_FLARE_B] = { type = AlertTypes.CUSTOM, fn = handleNextFlareB },
+        },
+    },
+}
+
+EventDispatcher.build(Yolna)
 
 -- -- Tracker-row renderers -------------------------------------------------
 
