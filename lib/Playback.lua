@@ -8,8 +8,8 @@
 ---   /ip 12345,EFFECT_CHANGED,GAINED,0,34218181,132473,48707525,...
 ---
 --- Supported entry types:
----   BEGIN_CAST    -> result=ACTION_RESULT_BEGIN  via CombatHandler.onCombatEvent
----   EFFECT_CHANGED (GAINED / FADED / UPDATED)   via CombatHandler.onEffectChanged
+---   BEGIN_CAST    -> result=ACTION_RESULT_BEGIN  via EventDispatcher.onCombatEventFiltered
+---   EFFECT_CHANGED (GAINED / FADED / UPDATED)   via EventDispatcher.onEffectChangedFiltered
 ---
 --- Field layout (ESO encounter-log reference):
 ---   BEGIN_CAST:    f[1]=ms  f[2]=BEGIN_CAST  f[3]=castDuration  f[4]=channeled
@@ -25,7 +25,7 @@
 --- unitTag / unitName / sourceUnitName are faked; routing tables key on
 --- abilityId + result/changeType so the correct handler still fires.
 
-local CombatHandler = require("core.CombatHandler")
+local EventDispatcher = require("core.EventDispatcher")
 local ZoneManager   = require("core.ZoneManager")
 
 local Playback = {}
@@ -75,8 +75,9 @@ local EFFECT_CHANGE = {
 --- table contains abilityId.  Returns nil when no boss claims the ability.
 local function findBossClass(trial, abilityId, isCombat)
     for _, bossClass in ipairs(trial.registry.bosses) do
-        local routes = isCombat and bossClass.combatRoutes or bossClass.effectRoutes
-        if routes and routes[abilityId] then
+        local combat, effect = EventDispatcher.abilityIdsFor(bossClass)
+        local ids = isCombat and combat or effect
+        if ids[abilityId] then
             return bossClass
         end
     end
@@ -146,7 +147,7 @@ function Playback.injectLine(line)
         if err then return err end
 
         local result = CAST_RESULT[kind]
-        CombatHandler.onCombatEvent(trial, 0,
+        EventDispatcher.onCombatEventFiltered(trial, 0,
             result, false, "", nil, nil,
             "player",  "Player",
             "boss1",   "Boss",
@@ -182,7 +183,7 @@ function Playback.injectLine(line)
         local _, restore, err = prepareBoss(trial, abilityId, false)
         if err then return err end
 
-        CombatHandler.onEffectChanged(trial, 0,
+        EventDispatcher.onEffectChangedFiltered(trial, 0,
             changeType, 0, "", "player",
             0, 0, stackCount, "", 0, 0,
             0, 0, "Player", unitId, abilityId)
@@ -215,7 +216,7 @@ function Playback.injectLine(line)
         local _, restore, err = prepareBoss(trial, abilityId, true)
         if err then return err end
 
-        CombatHandler.onCombatEvent(trial, 0,
+        EventDispatcher.onCombatEventFiltered(trial, 0,
             result, false, "", nil, nil,
             "player",  "Player",
             "boss1",   "Boss",

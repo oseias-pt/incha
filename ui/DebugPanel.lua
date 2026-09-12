@@ -11,7 +11,8 @@
 --- Press "Refresh" (or close + reopen) after entering a new arena to update
 --- the list.
 
-local ZoneManager = require("core.ZoneManager")
+local EventDispatcher = require("core.EventDispatcher")
+local ZoneManager     = require("core.ZoneManager")
 
 local DP = {}
 
@@ -26,66 +27,54 @@ local SCROLL_S = BTN_H + BTN_PAD   -- pixels per wheel tick
 local FAKE_SRC  = 34218181
 local FAKE_UNIT = 48707525
 
--- Lazy-init map from ACTION_RESULT_* constants to COMBAT_EVENT string tokens.
-local RNAME
-local function resultName(r)
-    if not RNAME then
-        RNAME = {
-            [ACTION_RESULT_BEGIN]                  = "BEGIN",
-            [ACTION_RESULT_EFFECT_GAINED]          = "EFFECT_GAINED",
-            [ACTION_RESULT_EFFECT_FADED]           = "EFFECT_FADED",
-            [ACTION_RESULT_EFFECT_GAINED_DURATION] = "EFFECT_GAINED_DURATION",
-            [ACTION_RESULT_INTERRUPT]              = "INTERRUPT",
-            [ACTION_RESULT_DIED]                   = "DIED",
-        }
-    end
-    return RNAME[r] or ("result:" .. tostring(r))
-end
-
--- ── Fake-line generators ───────────────────────────────────────────────────
-local function combatFakeLine(abilityId, entry)
-    local result = type(entry) == "table" and entry.result or ACTION_RESULT_BEGIN
-    if result == ACTION_RESULT_BEGIN then
-        return ("0,BEGIN_CAST,2000,F,%d,%d,0"):format(FAKE_SRC, abilityId)
-    end
-    return ("0,COMBAT_EVENT,%s,NONE,0,0,0,0,%d,%d"):format(
-        resultName(result), abilityId, FAKE_SRC)
-end
-
-local function effectFakeLine(abilityId, entry)
-    local ct     = type(entry) == "table" and entry.changeType or EFFECT_RESULT_GAINED
-    local ctName = ct == EFFECT_RESULT_FADED and "FADED" or "GAINED"
-    return ("0,EFFECT_CHANGED,%s,1,%d,%d,%d"):format(
-        ctName, FAKE_SRC, abilityId, FAKE_UNIT)
-end
-
 -- ── Ability row builder ────────────────────────────────────────────────────
 --- Returns a sorted list of { id, line, label } from one boss class.
+--- Reads boss.events buckets; generates a fake log line that Playback can inject.
+---   beginCast.instant  → BEGIN_CAST castDuration=0
+---   beginCast.started  → BEGIN_CAST castDuration=2000
+---   combatEvent.other  → COMBAT_EVENT EFFECT_GAINED  (routes to "other" bucket)
+---   effectChanged.gained/faded → EFFECT_CHANGED GAINED/FADED
 local function abilityRows(bossClass)
     local rows = {}
-    for id, entry in pairs(bossClass.combatRoutes or {}) do
-        local result = type(entry) == "table" and entry.result or ACTION_RESULT_BEGIN
+    if not bossClass.events then return rows end
+    local e = bossClass.events
+
+    for id in pairs(e.beginCast and e.beginCast.instant or {}) do
         rows[#rows + 1] = {
             id    = id,
-            line  = combatFakeLine(id, entry),
-            label = ("[%d] %s  (%s)"):format(
-                id,
-                GetAbilityName(id) or "",
-                resultName(result)),
+            line  = ("0,BEGIN_CAST,0,F,%d,%d,0"):format(FAKE_SRC, id),
+            label = ("[%d] %s  (instant)"):format(id, GetAbilityName(id) or ""),
         }
     end
-    for id, entry in pairs(bossClass.effectRoutes or {}) do
-        local ct     = type(entry) == "table" and entry.changeType or EFFECT_RESULT_GAINED
-        local ctName = ct == EFFECT_RESULT_FADED and "FADED" or "GAINED"
+    for id in pairs(e.beginCast and e.beginCast.started or {}) do
         rows[#rows + 1] = {
             id    = id,
-            line  = effectFakeLine(id, entry),
-            label = ("[%d] %s  (effect %s)"):format(
-                id,
-                GetAbilityName(id) or "",
-                ctName),
+            line  = ("0,BEGIN_CAST,2000,F,%d,%d,0"):format(FAKE_SRC, id),
+            label = ("[%d] %s  (cast)"):format(id, GetAbilityName(id) or ""),
         }
     end
+    for id in pairs(e.combatEvent and e.combatEvent.other or {}) do
+        rows[#rows + 1] = {
+            id    = id,
+            line  = ("0,COMBAT_EVENT,EFFECT_GAINED,NONE,0,0,0,0,%d,%d"):format(id, FAKE_SRC),
+            label = ("[%d] %s  (other)"):format(id, GetAbilityName(id) or ""),
+        }
+    end
+    for id in pairs(e.effectChanged and e.effectChanged.gained or {}) do
+        rows[#rows + 1] = {
+            id    = id,
+            line  = ("0,EFFECT_CHANGED,GAINED,1,%d,%d,%d"):format(FAKE_SRC, id, FAKE_UNIT),
+            label = ("[%d] %s  (effect GAINED)"):format(id, GetAbilityName(id) or ""),
+        }
+    end
+    for id in pairs(e.effectChanged and e.effectChanged.faded or {}) do
+        rows[#rows + 1] = {
+            id    = id,
+            line  = ("0,EFFECT_CHANGED,FADED,1,%d,%d,%d"):format(FAKE_SRC, id, FAKE_UNIT),
+            label = ("[%d] %s  (effect FADED)"):format(id, GetAbilityName(id) or ""),
+        }
+    end
+
     table.sort(rows, function(a, b) return a.id < b.id end)
     return rows
 end
