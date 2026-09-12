@@ -318,7 +318,17 @@ end
 -- ── Public API ─────────────────────────────────────────────────────────────
 
 function DP.toggle()
-    if not win then buildWindow() end
+    if not win then
+        local ok, err = pcall(buildWindow)
+        if not ok then
+            CHAT_SYSTEM:AddMessage("|cFF4444[Incha]|r DebugPanel build error: " .. tostring(err))
+            return
+        end
+    end
+    if not win then
+        CHAT_SYSTEM:AddMessage("|cFF4444[Incha]|r DebugPanel: failed to create window")
+        return
+    end
     if win:IsHidden() then
         rebuild()
         win:SetHidden(false)
