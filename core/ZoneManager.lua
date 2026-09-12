@@ -74,5 +74,10 @@ function ZoneManager.getActiveZoneId()
     return activeZoneId
 end
 
+--- Return the currently active Trial instance, or nil when not in a trial zone.
+function ZoneManager.getActiveTrial()
+    return activeTrial
+end
+
 package.loaded["core.ZoneManager"] = ZoneManager
 return ZoneManager
