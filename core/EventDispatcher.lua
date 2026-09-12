@@ -25,6 +25,15 @@
 ---   started entries may also carry: noExecute = true
 ---   (signals that this ability never fires a "cast completed" T event —
 ---    the dispatcher skips arming the interrupted timer for it)
+---
+--- Bucket-level type contracts (enforced by EventDispatcher.build):
+---   beginCast.instant  — CAST_BAR is FORBIDDEN; use DODGE/BLOCK/DEBUFF/CUSTOM.
+---                        Instant abilities fire with no window — there is no bar
+---                        to show; the handler emits an immediate avoid/react alert.
+---   beginCast.started  — DODGE/BLOCK/DEBUFF are FORBIDDEN; use CAST_BAR/CUSTOM.
+---                        Cast-started means a bar is showing; a dodge alert here
+---                        fires before the cast even lands.  State handlers
+---                        (TIMER_RESET, IGNORE) are allowed.
 
 local AlertTypes = require("core.AlertTypes")
 local CA         = require("external-api.CombatAlerts")
@@ -244,7 +253,10 @@ function EventDispatcher.build(boss)
     assert(boss.events,
         "EventDispatcher.build: boss.events is nil (" .. tostring(boss.key or boss) .. ")")
 
-    local function validateBucket(bucket, path)
+    -- opts.noCastBar  = true  — CAST_BAR is forbidden (instant abilities have no window)
+    -- opts.castBarOnly = true — only CAST_BAR or CUSTOM are meaningful (cast-started entries)
+    local function validateBucket(bucket, path, opts)
+        opts = opts or {}
         if not bucket then return end
         local empty = true
         for abilityId, entry in pairs(bucket) do
@@ -265,6 +277,22 @@ function EventDispatcher.build(boss)
                     "EventDispatcher.build: TIMER_RESET entry for ability " .. tostring(abilityId)
                     .. " in " .. path .. " missing .timer string key")
             end
+            if opts.noCastBar then
+                assert(entry.type ~= AlertTypes.CAST_BAR,
+                    "EventDispatcher.build: CAST_BAR is invalid in " .. path
+                    .. " — instant abilities fire with no window;"
+                    .. " use DODGE/BLOCK/DEBUFF/CUSTOM for ability "
+                    .. tostring(abilityId))
+            end
+            if opts.noDodgeAlert then
+                assert(entry.type ~= AlertTypes.DODGE
+                        and entry.type ~= AlertTypes.BLOCK
+                        and entry.type ~= AlertTypes.DEBUFF,
+                    "EventDispatcher.build: DODGE/BLOCK/DEBUFF are invalid in " .. path
+                    .. " — the cast is starting, not landing;"
+                    .. " use CAST_BAR or CUSTOM for ability "
+                    .. tostring(abilityId))
+            end
         end
         if empty then
             d("[Incha/Dispatcher] warning: empty bucket at " .. path)
@@ -276,8 +304,10 @@ function EventDispatcher.build(boss)
     local ec = e.effectChanged or {}
     local ce = e.combatEvent   or {}
 
-    validateBucket(bc.instant,     "beginCast.instant")
-    validateBucket(bc.started,     "beginCast.started")
+    -- instant: ability fires with no cast window → dodge/block/avoid alert only
+    validateBucket(bc.instant, "beginCast.instant", { noCastBar = true })
+    -- started: cast is in progress → DODGE/BLOCK/DEBUFF are wrong here
+    validateBucket(bc.started, "beginCast.started", { noDodgeAlert = true })
     validateBucket(bc.executed,    "beginCast.executed")
     validateBucket(bc.interrupted, "beginCast.interrupted")
     validateBucket(ec.gained,      "effectChanged.gained")
