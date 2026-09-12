@@ -133,8 +133,8 @@ end
 
 -- -- Build a trial instance with test handlers -----------------------------
 local function buildTrial(cfg)
-    local Trial         = require("core.Trial")
-    local CombatHandler = require("core.CombatHandler")
+    local Trial           = require("core.Trial")
+    local EventDispatcher = require("core.EventDispatcher")
 
     -- Single source of truth: require the shipping Factory and read the boss
     -- list (and its order) straight off the Trial it built.  The harness then
@@ -155,22 +155,24 @@ local function buildTrial(cfg)
     end
 
     local trial = Trial.create({
-        id              = cfg.id,
-        zoneId          = cfg.zoneId,
-        bosses          = bossClasses,
+        id                      = cfg.id,
+        zoneId                  = cfg.zoneId,
+        bosses                  = bossClasses,
         -- No bridge  -  falls back to BridgeBase (all no-ops).
-        alerts          = makeAlertHandlers(),
-        onCombatEvent   = CombatHandler.onCombatEvent,
-        onEffectChanged = CombatHandler.onEffectChanged,
+        alerts                  = makeAlertHandlers(),
+        abilityIdsFor           = EventDispatcher.abilityIdsFor,
+        onCombatEventFiltered   = EventDispatcher.onCombatEventFiltered,
+        onEffectChangedFiltered = EventDispatcher.onEffectChangedFiltered,
+        onDiedCombatEvent       = EventDispatcher.onDiedCombatEvent,
     })
     trial.registry.zoneId = cfg.zoneId   -- not set by BossRegistry; read from cfg
     trial.zoneId = cfg.zoneId
-    return trial, CombatHandler
+    return trial, EventDispatcher
 end
 
 -- -- Replay loop -----------------------------------------------------------
 local function replayTrial(cfg, entries, tracker)
-    local trial, CombatHandler = buildTrial(cfg)
+    local trial, EventDispatcher = buildTrial(cfg)
     local hints = cfg.hints or {}
 
     -- Stats
@@ -285,7 +287,7 @@ local function replayTrial(cfg, entries, tracker)
 
                 local alertsBefore = #capturedAlerts
                 local ok, err = pcall(
-                    CombatHandler.onCombatEvent,
+                    EventDispatcher.onCombatEventFiltered,
                     trial, EVENT_COMBAT_EVENT,
                     e.result, false, "", "", 0,
                     tgtTag, tgtName,        -- unitTag, unitName (target)
@@ -314,7 +316,7 @@ local function replayTrial(cfg, entries, tracker)
 
                 local alertsBefore = #capturedAlerts
                 local ok, err = pcall(
-                    CombatHandler.onEffectChanged,
+                    EventDispatcher.onEffectChangedFiltered,
                     trial, EVENT_EFFECT_CHANGED,
                     e.changeType, 0, "", unitTag,
                     0, 0, e.stackCount, "", 0, 0, 0, 0,
@@ -340,12 +342,13 @@ local function replayTrial(cfg, entries, tracker)
     trial.pipeline:disable()
 
     -- -- Per-ability coverage report -----------------------------------------
-    -- For each boss that appeared, compare every combatRoutes / effectRoutes
-    -- entry against the ability IDs that actually fired during that boss's
-    -- tenure.  NEVER SEEN entries are the candidates for the F2 / F4 mechanic
-    -- gaps review (abilities declared but never wired to a real event in the
-    -- log).  A NEVER SEEN result is not necessarily a bug in the boss code:
-    -- it may just mean the fixture log does not contain that mechanic.
+    -- For each boss that appeared, compare every ability ID declared in
+    -- boss.events against the IDs that actually fired during that boss's tenure.
+    -- NEVER SEEN entries are the candidates for mechanic-gap review (abilities
+    -- declared but never wired to a real event in the log).  A NEVER SEEN
+    -- result is not necessarily a bug: the fixture log may not contain that
+    -- mechanic.
+    local EventDispatcher = require("core.EventDispatcher")
     local neverSeen = 0
     if #bossOrder > 0 then
         print("\n-- Per-ability coverage -------------------------------------")
@@ -354,21 +357,17 @@ local function replayTrial(cfg, entries, tracker)
             local key  = bossClass.key or "?"
             local missC, missE = 0, 0
 
-            if bossClass.combatRoutes then
-                for id in pairs(bossClass.combatRoutes) do
-                    if not seen.combat[id] then missC = missC + 1 end
-                end
+            local combatIds, effectIds = EventDispatcher.abilityIdsFor(bossClass)
+
+            for id in pairs(combatIds) do
+                if not seen.combat[id] then missC = missC + 1 end
             end
-            if bossClass.effectRoutes then
-                for id in pairs(bossClass.effectRoutes) do
-                    if not seen.effect[id] then missE = missE + 1 end
-                end
+            for id in pairs(effectIds) do
+                if not seen.effect[id] then missE = missE + 1 end
             end
 
-            local totalC = bossClass.combatRoutes and
-                (function() local n=0; for _ in pairs(bossClass.combatRoutes) do n=n+1 end; return n end)() or 0
-            local totalE = bossClass.effectRoutes and
-                (function() local n=0; for _ in pairs(bossClass.effectRoutes) do n=n+1 end; return n end)() or 0
+            local totalC = (function() local n=0; for _ in pairs(combatIds) do n=n+1 end; return n end)()
+            local totalE = (function() local n=0; for _ in pairs(effectIds) do n=n+1 end; return n end)()
 
             print(string.format("  %-16s  combat %d/%d  effect %d/%d",
                 key,
@@ -376,18 +375,14 @@ local function replayTrial(cfg, entries, tracker)
                 totalE - missE, totalE))
 
             if missC + missE > 0 then
-                if bossClass.combatRoutes then
-                    for id in pairs(bossClass.combatRoutes) do
-                        if not seen.combat[id] then
-                            print(string.format("    NEVER SEEN  COMBAT  %d", id))
-                        end
+                for id in pairs(combatIds) do
+                    if not seen.combat[id] then
+                        print(string.format("    NEVER SEEN  COMBAT  %d", id))
                     end
                 end
-                if bossClass.effectRoutes then
-                    for id in pairs(bossClass.effectRoutes) do
-                        if not seen.effect[id] then
-                            print(string.format("    NEVER SEEN  EFFECT  %d", id))
-                        end
+                for id in pairs(effectIds) do
+                    if not seen.effect[id] then
+                        print(string.format("    NEVER SEEN  EFFECT  %d", id))
                     end
                 end
             end

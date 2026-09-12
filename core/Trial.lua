@@ -82,7 +82,7 @@ function Trial.create(options)
         -- Combat / effect events are registered per ability id and per combat
         -- result by EventPipeline:setActiveBoss, so these are the narrow
         -- entry points rather than one unfiltered dispatcher.  Each filtered
-        -- registration admits a disjoint slice; see core/CombatHandler.lua.
+        -- registration admits a disjoint slice; see core/EventDispatcher.lua.
         abilityIdsFor = options.abilityIdsFor,
         onCombatEventFiltered = options.onCombatEventFiltered
             and function(...) options.onCombatEventFiltered(self, ...) end or nil,
