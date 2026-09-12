@@ -157,6 +157,7 @@ end
 --- sourceUnitName: display name used as CA bar label
 function EventDispatcher.dispatchBeginCast(boss, context, alerts,
         castTime, didFire, sourceUnitId, abilityId, sourceUnitName, ...)
+    castTime = tonumber(castTime) or 0   -- guard: GetAbilityCastInfo may return non-number
     if not boss.events or not boss.events.beginCast then return end
     local bc  = boss.events.beginCast
     local key = pendingKey(sourceUnitId, abilityId)
