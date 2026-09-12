@@ -28,7 +28,7 @@ local HA_IDS = {
     [122124] = true,   -- Yolnahkriin HA
     [121833] = true,   -- Yolnahkriin Wing Thrash
     [121849] = true,   -- Yolnahkriin Wing Thrash (alt)
-    [115443] = true,   -- Nahviintaas HA
+    -- [115443] Nahviintaas "Bite" — basic melee, no alert needed
     [119796] = true,   -- Nahviintaas Wing Thrash
     [121422] = true,   -- Cone-portal HA
     [117071] = true,   -- 1H & Shield add HA
