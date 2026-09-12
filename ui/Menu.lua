@@ -6,12 +6,11 @@
 --- LAM panel ID: ADDON_LAM  (set in bootstrap.lua)
 --- Slash command: ADDON_SLASH  (debug | lock | scale <n> | reset)
 
-local Log           = require("lib.Log")
-local Panel         = require("ui.Panel")
-local Preview       = require("ui.Preview")
-local Settings      = require("core.Settings")
-local Fmt           = require("core.Fmt")
-local EventPipeline = require("core.EventPipeline")
+local Log      = require("lib.Log")
+local Panel    = require("ui.Panel")
+local Preview  = require("ui.Preview")
+local Settings = require("core.Settings")
+local Fmt      = require("core.Fmt")
 
 local Menu = {}
 
@@ -443,7 +442,6 @@ local function printHelp()
     d("  " .. ADDON_SLASH .. " lock           -  toggle overlay drag lock")
     d("  " .. ADDON_SLASH .. " scale <n>      -  set overlay scale (0.5 - 3.0)")
     d("  " .. ADDON_SLASH .. " reset          -  reset overlay to default position")
-    d("  " .. ADDON_SLASH .. " parallel       -  toggle parallel EventDispatcher (silenced; console only)")
     d("  /ip panel          -  show sample panel data (use /ip, not /incha)")
     d("  /ip inst           -  animate instability head icon")
     d("  /ip border         -  flash CA border")
@@ -481,12 +479,6 @@ local function handleSlash(text)
         sv.overlay.scale   = 1.0
         Panel.refresh()
         d(ADDON_TAG .. " Overlay position reset")
-
-    elseif cmd == "parallel" then
-        EventPipeline.parallelDispatch = not EventPipeline.parallelDispatch
-        local state = EventPipeline.parallelDispatch
-            and Fmt.c(Fmt.GREEN, "ON") or Fmt.c("FF4444", "OFF")
-        d(ADDON_TAG .. " Parallel dispatch " .. state .. "  (EventDispatcher silenced  -  console only)")
 
     elseif cmd == "preview" then
         local sub = arg:match("^%s*(%S*)")

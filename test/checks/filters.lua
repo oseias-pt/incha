@@ -4,11 +4,9 @@
 --- ability id rather than unfiltered, so an ability the engine was not told
 --- about never reaches Lua at all.  That makes two properties load-bearing:
 ---
----   1. DISJOINT SETS.  A boss's routing-table ids and its common module's
----      declared ids must not overlap.  The full dispatcher ran the common
----      handler first and let it short-circuit the routes; the filtered
----      handler relies on at most one of the two claiming any given id, so an
----      overlap would silently change which one wins.
+---   1. DISJOINT SETS.  A boss's events-table ids and its common module's
+---      declared ids must not overlap.  EventPipeline gives each id exactly one
+---      registration; an overlap would silently drop one of the two handlers.
 ---
 ---   2. A DECLARED SET EXISTS.  A common module that exposes handle() or
 ---      handleEffect() must declare the matching ability set, or nothing is
@@ -36,6 +34,8 @@
 package.path = "./?.lua;./test/?.lua;" .. package.path
 require("harness.eso_api")
 
+local EventDispatcher = require("core.EventDispatcher")
+
 local TRIALS = { "ka", "ss", "rg", "dsr", "as", "cr", "se", "lc", "oc" }
 
 local findings = 0
@@ -57,18 +57,20 @@ for _, id in ipairs(TRIALS) do
                 local cIds = common.combatAbilityIds or {}
                 local eIds = common.effectAbilityIds or {}
 
-                -- 1. Disjointness against this boss's routing tables.
-                for abilityId in pairs(boss.combatRoutes or {}) do
+                -- 1. Disjointness: boss.events ids must not overlap with
+                --    the common module's declared sets.
+                local bossCombat, bossEffect = EventDispatcher.abilityIdsFor(boss)
+                for abilityId in pairs(bossCombat) do
                     if cIds[abilityId] then
                         fail("OVERLAP  %s/%s  combat ability %d is in BOTH the "
-                             .. "routing table and the common module's set",
+                             .. "boss events table and the common module's set",
                              id, tostring(boss.key), abilityId)
                     end
                 end
-                for abilityId in pairs(boss.effectRoutes or {}) do
+                for abilityId in pairs(bossEffect) do
                     if eIds[abilityId] then
                         fail("OVERLAP  %s/%s  effect ability %d is in BOTH the "
-                             .. "routing table and the common module's set",
+                             .. "boss events table and the common module's set",
                              id, tostring(boss.key), abilityId)
                     end
                 end
@@ -98,11 +100,6 @@ for _, id in ipairs(TRIALS) do
                      .. "combatResults  -  the catch-all can never fire",
                      id, tostring(boss.key))
             end
-            if boss.onEffectChanged and next(boss.effectRoutes or {}) == nil then
-                fail("NO ROUTES  %s/%s  declares onEffectChanged but no "
-                     .. "effectRoutes  -  nothing registers it",
-                     id, tostring(boss.key))
-            end
         end
     end
 end
@@ -123,7 +120,7 @@ end
 -- registration would still work for both, and the routes check above covers
 -- whether an id is claimed twice across boss and common tables.
 
-local ROUTE_TABLES = { "combatRoutes", "effectRoutes", "stateSchema" }
+local ROUTE_TABLES = { "stateSchema" }
 
 local function bossSourceFiles()
     local files, p = {}, io.popen('find trial -path "*/boss/*.lua" 2>/dev/null')

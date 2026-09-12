@@ -1,12 +1,6 @@
 local EventPipeline = {}
 EventPipeline.__index = EventPipeline
 
---- When true, EventPipeline-aware handlers also call EventDispatcher after
---- the legacy CombatHandler path.  EventDispatcher.silenced defaults to true
---- so no CA output is produced  -  console warnings for unknown events still fire.
---- Toggle at runtime: /incha parallel
-EventPipeline.parallelDispatch = false
-
 function EventPipeline.new(eventPrefix, handlers)
     return setmetatable({
         eventPrefix = eventPrefix,
@@ -77,11 +71,11 @@ end
 --- volume  -  every damage, heal, miss, block and dodge event in a
 --- twelve-player raid  -  never crosses into Lua at all.
 ---
---- Four disjoint slices, matching the four CombatHandler entry points:
----   combat, per ability id   routes + the common module's declared set
+--- Four disjoint slices:
+---   combat, per ability id   boss.events + the common module's declared set
 ---   combat, ACTION_RESULT_DIED   boss.onDied
 ---   combat, per boss.combatResults   the legacy onCombatEvent catch-all
----   effect, per ability id   effectRoutes + the common module's effect set
+---   effect, per ability id   boss.events effectChanged + the common module's effect set
 ---
 --- Call with nil to tear the registrations down between bosses.
 function EventPipeline:setActiveBoss(boss)

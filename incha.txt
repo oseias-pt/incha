@@ -33,7 +33,6 @@ core/AlertTypes.lua
 core/EventDispatcher.lua
 core/EventPipeline.lua
 core/Settings.lua
-core/CombatHandler.lua
 core/Bridge.lua
 core/Colors.lua
 core/Fmt.lua

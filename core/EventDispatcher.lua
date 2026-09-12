@@ -2,8 +2,7 @@
 ---
 --- Ingests a boss's `events` table at load time (EventDispatcher.build),
 --- builds O(1) lookups, and exposes three entry points — one per ESO event
---- class — that EventPipeline calls in parallel to the old CombatHandler
---- (Phase 1.3 parallel mode) and exclusively once a trial is cut over.
+--- class — that EventPipeline calls for every registered event.
 ---
 --- Boss event table shape (see .plan/event-dispatch-migration.md for full spec):
 ---
@@ -51,11 +50,6 @@ local _combatResultSubtype = {
     [ACTION_RESULT_BLOCKED_DAMAGE]  = "blocked",
 }
 
---- Controlled by EventPipeline (Phase 1.3).
---- When true, all CA calls are suppressed; unknown-event warnings still fire.
---- Defaults to true so the dispatcher is safe to build before Phase 1.3 wires it in.
-EventDispatcher.silenced = true
-
 -- -- Pending-cast registry ---------------------------------------------------
 -- Tracks in-flight delayed casts to detect interrupts when no T event arrives.
 -- Key  : tostring(sourceUnitId) .. ":" .. tostring(abilityId)
@@ -84,7 +78,7 @@ local function warnUnknown(subPath, abilityId)
 end
 
 -- -- State handlers ----------------------------------------------------------
--- Types that mutate boss state or are no-ops.  Always run, even when silenced.
+-- Types that mutate boss state or are no-ops.
 -- Signature: (boss, context, alerts, entry, abilityId, sourceUnitName, ...)
 
 local function handleIgnore(boss, context, alerts, entry, abilityId, sourceUnitName, ...) end
@@ -105,7 +99,7 @@ local _bossStateHandler = {
 }
 
 -- -- CA output handlers ------------------------------------------------------
--- Types that emit a Combat Alerts bar or notification.  Skipped when silenced.
+-- Types that emit a Combat Alerts bar or notification.
 -- Signature: (abilityId, entry, sourceUnitName)
 
 local function caRanged(abilityId, entry, sourceUnitName)
@@ -131,7 +125,6 @@ local _combatAlertHandler = {
 
 -- -- runEntry ----------------------------------------------------------------
 -- Single dispatch point for all three entry functions.
--- Checks _bossStateHandler first (always runs), then _combatAlertHandler (silenced-gated).
 
 local function runEntry(entry, boss, context, alerts, abilityId, sourceUnitName, ...)
     local t = entry.type
@@ -141,7 +134,6 @@ local function runEntry(entry, boss, context, alerts, abilityId, sourceUnitName,
         return stateHandler(boss, context, alerts, entry, abilityId, sourceUnitName, ...)
     end
 
-    if EventDispatcher.silenced then return end
     local alertHandler = _combatAlertHandler[t]
     if alertHandler then return alertHandler(abilityId, entry, sourceUnitName) end
 end
@@ -296,9 +288,8 @@ function EventDispatcher.build(boss)
     validateBucket(ce.other,       "combatEvent.other")
 end
 
--- -- Pipeline entry points (Phase 2.5) --------------------------------------
--- These replace CombatHandler's pipeline functions when a trial is cut over
--- to the new events-table system.  Passed to Trial.create as options.*;
+-- -- Pipeline entry points ---------------------------------------------------
+-- Passed to Trial.create as options.*;
 -- Trial wraps each one so the first arg it receives at runtime is `trial`.
 --
 -- Handler signature for CUSTOM fns called from effectChanged buckets:
