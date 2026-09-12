@@ -368,7 +368,7 @@ function EventDispatcher.onCombatEventFiltered(trial, eventCode,
     if result == ACTION_RESULT_DIED then return end
     local context, alerts = trial.context, trial.alerts
     if result == ACTION_RESULT_BEGIN then
-        local castTime = GetAbilityCastInfo(abilityId) or 0
+        local castTime = tonumber(GetAbilityCastInfo(abilityId)) or 0
         EventDispatcher.dispatchBeginCast(boss, context, alerts,
             castTime, false, sourceUnitId, abilityId, sourceUnitName,
             unitTag, unitId, sourceUnitId, unitName)
