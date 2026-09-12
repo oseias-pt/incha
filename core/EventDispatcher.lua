@@ -204,7 +204,7 @@ function EventDispatcher.dispatchBeginCast(boss, context, alerts,
                 end
             end
         end
-        handle = zo_callLater(onInterruptTimerFired, castTime)
+        handle = zo_callLater(onInterruptTimerFired, castTime or 0)
         _pending[key] = { handle = handle }
     end
 end
