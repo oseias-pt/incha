@@ -166,7 +166,7 @@ end
 --- sourceUnitName: display name used as CA bar label
 function EventDispatcher.dispatchBeginCast(boss, context, alerts,
         castTime, didFire, sourceUnitId, abilityId, sourceUnitName, ...)
-    castTime = tonumber(castTime) or 0   -- guard: GetAbilityCastInfo may return non-number
+    castTime = type(castTime) == "number" and castTime or 0  -- guard: GetAbilityCastInfo may return boolean
     if not boss.events or not boss.events.beginCast then return end
     local bc  = boss.events.beginCast
     local key = pendingKey(sourceUnitId, abilityId)
@@ -368,7 +368,8 @@ function EventDispatcher.onCombatEventFiltered(trial, eventCode,
     if result == ACTION_RESULT_DIED then return end
     local context, alerts = trial.context, trial.alerts
     if result == ACTION_RESULT_BEGIN then
-        local castTime = tonumber(GetAbilityCastInfo(abilityId)) or 0
+        local raw = GetAbilityCastInfo(abilityId)
+        local castTime = type(raw) == "number" and raw or 0
         EventDispatcher.dispatchBeginCast(boss, context, alerts,
             castTime, false, sourceUnitId, abilityId, sourceUnitName,
             unitTag, unitId, sourceUnitId, unitName)

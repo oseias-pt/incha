@@ -13,7 +13,8 @@ local CastDur = {}
 --- Returns the cast duration for abilityId in milliseconds, or fallback if
 --- GetAbilityCastInfo returns 0 / nil (instant-cast or unknown ability).
 function CastDur.get(abilityId, fallback)
-    local dur = tonumber(select(1, GetAbilityCastInfo(abilityId))) or 0
+    local raw = select(1, GetAbilityCastInfo(abilityId))
+    local dur = type(raw) == "number" and raw or 0
     return dur > 0 and dur or (fallback or 2000)
 end
 
