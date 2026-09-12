@@ -128,14 +128,15 @@ function Playback.injectLine(line)
     local kind = f[2]
 
     -- ── BEGIN_CAST ──────────────────────────────────────────────────────────
-    if CAST_RESULT[kind] then
+    if kind == "BEGIN_CAST" then
         if #f < 6 then
-            return kind .. ": need >= 6 fields, got " .. #f
+            return "BEGIN_CAST: need >= 6 fields, got " .. #f
         end
+        local castDuration = tonumber(f[3]) or 0   -- use log-line value, not GetAbilityCastInfo
         local abilityId    = tonumber(f[6])
-        local sourceUnitId = tonumber(f[5])
+        local sourceUnitId = tonumber(f[5]) or 0
         if not abilityId then
-            return kind .. ": abilityId (f[6]) is not numeric: " .. tostring(f[6])
+            return "BEGIN_CAST: abilityId (f[6]) is not numeric: " .. tostring(f[6])
         end
 
         local trial = ZoneManager.getActiveTrial()
@@ -143,20 +144,17 @@ function Playback.injectLine(line)
             return "no active trial — enter a trial zone first"
         end
 
-        local _, restore, err = prepareBoss(trial, abilityId, true)
+        local boss, restore, err = prepareBoss(trial, abilityId, true)
         if err then return err end
 
-        local result = CAST_RESULT[kind]
-        EventDispatcher.onCombatEventFiltered(trial, 0,
-            result, false, "", nil, nil,
-            "player",  "Player",
-            "boss1",   "Boss",
-            sourceUnitId or 0, 0,
-            abilityId)
+        -- Call dispatchBeginCast directly so the cast duration from the log line
+        -- is used instead of GetAbilityCastInfo (which returns 0 for unloaded abilities).
+        EventDispatcher.dispatchBeginCast(boss, trial.context, trial.alerts,
+            castDuration, false, sourceUnitId, abilityId, "Boss")
 
         if restore then restore() end
 
-        return kind .. " | abilityId=" .. abilityId .. "  result=" .. result
+        return "BEGIN_CAST | abilityId=" .. abilityId .. "  castDuration=" .. castDuration
 
     -- ── EFFECT_CHANGED ──────────────────────────────────────────────────────
     elseif kind == "EFFECT_CHANGED" then
