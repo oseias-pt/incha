@@ -1,15 +1,10 @@
 --- ui/DebugPanel.lua  —  clickable replay panel for in-trial /ip testing.
 ---
---- Open/close with:  /incha dp
+--- Open/close with:  /incha dp   or   /idp
 ---
---- Shows one button per routed ability for the current active boss (when in
---- a boss arena) or all bosses in the trial registry (between arenas).
---- Clicking a button fires Playback.injectLine() with a generated fake log
---- line matching each route's expected trigger type, then prints the result
---- to chat so you can confirm the replay message.
----
---- Press "Refresh" (or close + reopen) after entering a new arena to update
---- the list.
+--- Boss tabs across the top let you pick which boss to inspect.
+--- Ability buttons below inject fake log lines via Playback and print the
+--- result to chat so you can confirm the alert fired.
 
 local EventDispatcher = require("core.EventDispatcher")
 local ZoneManager     = require("core.ZoneManager")
@@ -21,7 +16,10 @@ local WIN_W    = 340
 local WIN_H    = 460
 local BTN_H    = 26
 local BTN_PAD  = 3
-local SCROLL_S = BTN_H + BTN_PAD   -- pixels per wheel tick
+local TAB_H    = 24
+local TITLE_H  = 30     -- title bar + a little breathing room
+local TAB_ROW_H = TAB_H + 6
+local SCROLL_S = BTN_H + BTN_PAD
 
 -- ── Fake-line field stubs ──────────────────────────────────────────────────
 local FAKE_SRC  = 34218181
@@ -29,11 +27,6 @@ local FAKE_UNIT = 48707525
 
 -- ── Ability row builder ────────────────────────────────────────────────────
 --- Returns a sorted list of { id, line, label } from one boss class.
---- Reads boss.events buckets; generates a fake log line that Playback can inject.
----   beginCast.instant  → BEGIN_CAST castDuration=0
----   beginCast.started  → BEGIN_CAST castDuration=2000
----   combatEvent.other  → COMBAT_EVENT EFFECT_GAINED  (routes to "other" bucket)
----   effectChanged.gained/faded → EFFECT_CHANGED GAINED/FADED
 local function abilityRows(bossClass)
     local rows = {}
     if not bossClass.events then return rows end
@@ -80,20 +73,23 @@ local function abilityRows(bossClass)
 end
 
 -- ── Window state ───────────────────────────────────────────────────────────
-local win          -- top-level control (created once)
-local btnPool = {} -- reusable CT_BUTTON controls
-local items   = {} -- current { id, line, label } list
-local scrollY = 0  -- scroll offset in pixels
+local win
+local btnPool    = {}   -- ability buttons (reusable)
+local tabPool    = {}   -- boss tab buttons (reusable)
+local items      = {}   -- current ability rows for selected boss
+local bossList   = {}   -- { key, bossClass } for current trial
+local selectedIdx = 0
+local scrollY    = 0
 
 local function contH()
-    return WIN_H - 34
+    return WIN_H - TITLE_H - TAB_ROW_H - 6
 end
 
 local function maxScroll()
     return math.max(0, #items * (BTN_H + BTN_PAD) - contH())
 end
 
-local function layout()
+local function layoutAbilities()
     local h = contH()
     for i, item in ipairs(items) do
         local btn = btnPool[i]
@@ -109,16 +105,14 @@ local function layout()
     end
 end
 
-local function ensurePool(n)
+local function ensureAbilityPool(n)
     local wm = WINDOW_MANAGER
     for i = #btnPool + 1, n do
         local btn = wm:CreateControl("InchDebugBtn" .. i, win.cont, CT_BUTTON)
         btn:SetDimensions(WIN_W - 18, BTN_H)
         btn:SetFont("ZoFontGameSmall")
         local lbl = btn:GetLabelControl()
-        if lbl then
-            lbl:SetHorizontalAlignment(TEXT_ALIGN_LEFT)
-        end
+        if lbl then lbl:SetHorizontalAlignment(TEXT_ALIGN_LEFT) end
         btn:SetNormalFontColor(0.85, 0.92, 1, 1)
         btn:SetMouseOverFontColor(1, 0.95, 0.4, 1)
         local idx = i
@@ -135,33 +129,109 @@ local function ensurePool(n)
     end
 end
 
-local function rebuild()
-    items  = {}
+-- ── Boss tab selection ─────────────────────────────────────────────────────
+local function applyTabHighlight(activeIdx)
+    for i, tab in ipairs(tabPool) do
+        if i <= #bossList then
+            if i == activeIdx then
+                tab:SetNormalFontColor(1, 0.95, 0.35, 1)
+            else
+                tab:SetNormalFontColor(0.55, 0.65, 0.85, 1)
+            end
+        end
+    end
+end
+
+local function selectBoss(idx)
+    selectedIdx = idx
     scrollY = 0
+    applyTabHighlight(idx)
+
+    local entry = bossList[idx]
+    if entry then
+        win.titleLbl:SetText("Incha Debug — " .. (entry.key or "?"))
+        items = abilityRows(entry.bossClass)
+    else
+        win.titleLbl:SetText("Incha Debug")
+        items = {}
+    end
+
+    ensureAbilityPool(#items)
+    layoutAbilities()
+end
+
+-- ── Full rebuild (trial changed or panel opened) ───────────────────────────
+local function layoutTabs()
+    if #bossList == 0 then return end
+    local tabW = math.floor((WIN_W - 8) / #bossList)
+    local wm = WINDOW_MANAGER
+
+    for i, entry in ipairs(bossList) do
+        local tab = tabPool[i]
+        if not tab then
+            tab = wm:CreateControl("InchDebugTab" .. i, win.tabRow, CT_BUTTON)
+            tab:SetHeight(TAB_H)
+            tab:SetFont("ZoFontGameSmall")
+            local lbl = tab:GetLabelControl()
+            if lbl then lbl:SetHorizontalAlignment(TEXT_ALIGN_CENTER) end
+            tab:SetMouseOverFontColor(1, 0.95, 0.4, 1)
+            local capturedI = i
+            tab:SetHandler("OnClicked", function() selectBoss(capturedI) end)
+            tabPool[i] = tab
+        end
+        tab:SetWidth(tabW - 2)
+        tab:SetText(entry.key)
+        tab:ClearAnchors()
+        tab:SetAnchor(TOPLEFT, win.tabRow, TOPLEFT, 2 + (i - 1) * tabW, 1)
+        tab:SetHidden(false)
+    end
+    -- hide leftover tabs from a previous trial with more bosses
+    for i = #bossList + 1, #tabPool do
+        tabPool[i]:SetHidden(true)
+    end
+end
+
+local function rebuild()
+    items     = {}
+    bossList  = {}
+    scrollY   = 0
 
     local trial = ZoneManager.getActiveTrial()
     if not trial then
         win.titleLbl:SetText("Incha Debug — no trial")
-        layout()
+        for _, tab in ipairs(tabPool) do tab:SetHidden(true) end
+        layoutAbilities()
         return
     end
 
-    local boss = trial:getActiveBoss()
-    if boss then
-        win.titleLbl:SetText("Incha Debug — " .. (boss.key or "?"))
-        items = abilityRows(boss)
-    else
-        win.titleLbl:SetText("Incha Debug — " .. (trial.key or "trial") .. " (all bosses)")
-        for _, bc in ipairs(trial.registry.bosses or {}) do
-            for _, row in ipairs(abilityRows(bc)) do
-                row.label = "[" .. (bc.key or "?") .. "] " .. row.label
-                items[#items + 1] = row
+    for _, bossClass in ipairs(trial.registry.bosses or {}) do
+        bossList[#bossList + 1] = {
+            key       = bossClass.key or ("boss" .. #bossList + 1),
+            bossClass = bossClass,
+        }
+    end
+
+    if #bossList == 0 then
+        win.titleLbl:SetText("Incha Debug — no bosses registered")
+        layoutAbilities()
+        return
+    end
+
+    layoutTabs()
+
+    -- Auto-select the active boss by key match, fallback to first
+    local autoIdx = 1
+    local activeBoss = trial:getActiveBoss()
+    if activeBoss and activeBoss.key then
+        for i, entry in ipairs(bossList) do
+            if entry.key == activeBoss.key then
+                autoIdx = i
+                break
             end
         end
     end
 
-    ensurePool(#items)
-    layout()
+    selectBoss(autoIdx)
 end
 
 -- ── Window creation ────────────────────────────────────────────────────────
@@ -218,14 +288,29 @@ local function buildWindow()
     refBtn:SetNormalFontColor(0.5, 0.9, 0.5, 1)
     refBtn:SetHandler("OnClicked", rebuild)
 
-    -- Scrollable container (clips children)
+    -- Boss tab row
+    local tabBg = wm:CreateControl("InchDebugPanelTabBg", win, CT_BACKDROP)
+    tabBg:SetAnchor(TOPLEFT,     win, TOPLEFT,     0, TITLE_H)
+    tabBg:SetAnchor(TOPRIGHT,    win, TOPRIGHT,    0, TITLE_H)
+    tabBg:SetHeight(TAB_ROW_H)
+    tabBg:SetCenterColor(0.07, 0.07, 0.14, 0.85)
+    tabBg:SetEdgeColor(0.25, 0.30, 0.50, 0.8)
+    tabBg:SetInsets(1, 1, -1, -1)
+
+    local tabRow = wm:CreateControl("InchDebugPanelTabRow", win, CT_CONTROL)
+    tabRow:SetAnchor(TOPLEFT,  win, TOPLEFT,  4, TITLE_H + 3)
+    tabRow:SetAnchor(TOPRIGHT, win, TOPRIGHT, -4, TITLE_H + 3)
+    tabRow:SetHeight(TAB_H)
+    win.tabRow = tabRow
+
+    -- Scrollable ability container (clips children)
     local cont = wm:CreateControl("InchDebugPanelCont", win, CT_CONTROL)
-    cont:SetAnchor(TOPLEFT, win, TOPLEFT, 4, 30)
+    cont:SetAnchor(TOPLEFT,     win, TOPLEFT,     4, TITLE_H + TAB_ROW_H + 4)
     cont:SetAnchor(BOTTOMRIGHT, win, BOTTOMRIGHT, -4, -4)
     cont:SetMouseEnabled(true)
     cont:SetHandler("OnMouseWheel", function(_, delta)
         scrollY = math.max(0, math.min(maxScroll(), scrollY - delta * SCROLL_S))
-        layout()
+        layoutAbilities()
     end)
     win.cont = cont
 end
