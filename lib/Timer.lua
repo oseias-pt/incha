@@ -29,6 +29,18 @@ function Timer:remaining()
     return r > 0 and r or 0
 end
 
+--- Like remaining(), but uses a caller-supplied `now` (seconds) instead of
+--- calling GetGameTimeMilliseconds() itself.  Use this in display loops that
+--- read multiple timers per tick: compute `now` once and pass it through so
+--- the same timestamp is used for every timer on the same frame.
+---   local now = GetGameTimeMilliseconds() / 1000
+---   local t1  = timer1:remainingAt(now)
+---   local t2  = timer2:remainingAt(now)
+function Timer:remainingAt(now)
+    local r = self.expiresAt - now
+    return r > 0 and r or 0
+end
+
 --- True once the timer has fired (expiresAt has passed).
 --- Note: also returns true for unarmed timers (expiresAt == 0 is in the past).
 --- Use isActive() to distinguish "running" from "never started".

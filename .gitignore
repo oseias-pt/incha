@@ -1,6 +1,5 @@
 # VSCode local settings
-.vscode/settings.json
-.vscode/*.log
+.vscode/
 
 # Lua local interpreter artifacts (used for local testing outside the game)
 *.luac
@@ -17,6 +16,7 @@ test/live-data/
 
 # Local review reports — kept out of the repo to avoid accidental commits
 reviews/
+.reviews/
 .plan/
 C:*
 C*

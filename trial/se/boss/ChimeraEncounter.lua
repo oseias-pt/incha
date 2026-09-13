@@ -204,8 +204,14 @@ local _combatOtherEntry = {
     [MANTLE_GRYPHON] = { type = AlertTypes.CUSTOM, fn = handleMantleGryphon },
 }
 
+-- Split into two independent copies so EventDispatcher.build() validates each
+-- bucket separately and future per-bucket entries can't cross-contaminate.
+local _beginCastInstant = {}
+local _beginCastStarted = {}
+for k, v in pairs(_beginCastEntry) do _beginCastInstant[k] = v; _beginCastStarted[k] = v end
+
 ChimeraEncounter.events = {
-    beginCast     = { instant = _beginCastEntry, started = _beginCastEntry },
+    beginCast     = { instant = _beginCastInstant, started = _beginCastStarted },
     effectChanged = { gained = {}, faded = {}, updated = {} },
     combatEvent   = { damage = {}, dodged = {}, blocked = {}, other = _combatOtherEntry },
 }

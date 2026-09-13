@@ -122,11 +122,17 @@ end
 
 local ROUTE_TABLES = { "stateSchema" }
 
+-- Discover boss source files from the manifest (cross-platform; avoids
+-- Unix-only io.popen('find ...')).  Matches the approach in state-reset.lua.
 local function bossSourceFiles()
-    local files, p = {}, io.popen('find trial -path "*/boss/*.lua" 2>/dev/null')
-    if p then
-        for l in p:lines() do files[#files + 1] = (l:gsub("%s+$", "")) end
-        p:close()
+    local files = {}
+    local mf = io.open("incha.txt", "r")
+    if mf then
+        for line in mf:read("*a"):gmatch("[^\r\n]+") do
+            local entry = line:match("^%s*(trial/[%w_]+/boss/[%w_]+%.lua)%s*$")
+            if entry then files[#files + 1] = entry end
+        end
+        mf:close()
     end
     table.sort(files)
     return files

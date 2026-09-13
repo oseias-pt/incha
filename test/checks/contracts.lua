@@ -71,13 +71,23 @@ end
 -- -- 2. Boss lifecycle contract ---------------------------------------------
 print("")
 
+-- Discover boss modules from the manifest (cross-platform; avoids Unix-only
+-- io.popen('find ...')).  The same technique used by test/checks/state-reset.lua.
 local bossModules = {}
-local p = io.popen('find trial -path "*/boss/*.lua" 2>/dev/null')
-for line in p:lines() do
-    local m = line:gsub("%s+$", ""):gsub("^%./", ""):gsub("%.lua$", "")
-    bossModules[#bossModules + 1] = (m:gsub("[/\\]", "."))
+local mf = io.open("incha.txt", "r")
+if not mf then
+    fail("cannot read incha.txt  -  run this from the repository root")
+    os.exit(1)
 end
-p:close()
+for line in mf:read("*a"):gmatch("[^\r\n]+") do
+    local entry = line:match("^%s*(trial/[%w_]+/boss/[%w_]+%.lua)%s*$")
+    if entry then
+        -- Convert path separators and strip .lua extension to get a require path.
+        local m = entry:gsub("%.lua$", ""):gsub("[/\\]", ".")
+        bossModules[#bossModules + 1] = m
+    end
+end
+mf:close()
 table.sort(bossModules)
 
 if #bossModules == 0 then
