@@ -33,6 +33,18 @@ local FALLBACK_SALVO_DUR  = 2500
 local FALLBACK_SICKLE_DUR = 1500
 local FALLBACK_HAMMER_DUR = 2000
 
+-- P6: module-level string constants — avoid Lang.t calls in onUpdate (60 fps)
+local _STR_CURSE        = Fmt.c(Fmt.ARCANE, Lang.t("rg_bahsei_next_curse"))
+local _STR_CURSE_INC    = Fmt.c(Fmt.ARCANE, Lang.t("rg_bahsei_next_curse")) .. " " .. Fmt.c(Fmt.RED, "INC")
+local _STR_PORTAL_CW    = Fmt.c("00cc00", Lang.t("rg_bahsei_portal_cw"))
+local _STR_PORTAL_CCW   = Fmt.c("ff8040", Lang.t("rg_bahsei_portal_ccw"))
+local _STR_PORTAL_PROG  = Fmt.c(Fmt.SMOKE, Lang.t("rg_bahsei_portal_progress"))
+local _STR_TANK_EXPL    = Fmt.c(Fmt.RED,   Lang.t("rg_bahsei_tank_exploding"))
+local _STR_DEATH_TOUCH  = Fmt.c(Fmt.FROST,  Lang.t("rg_bahsei_death_touch"))
+local _STR_NO_PORTAL    = Fmt.c(Fmt.FIRE,   Lang.t("rg_bahsei_no_portal"))
+local _STR_SICKLE       = Fmt.c(Fmt.PURPLE, Lang.t("rg_bahsei_next_sickle"))
+local _STR_SICKLE_INC   = Fmt.c(Fmt.PURPLE, Lang.t("rg_bahsei_next_sickle")) .. " " .. Fmt.c(Fmt.RED, "INC")
+
 local Bahsei = {}
 Bahsei.__index = Bahsei
 
@@ -257,9 +269,9 @@ local function showCursedGroundLine(self, alerts, now)
     if self.lastCursedGround > 0 then
         local T = 28 - (now - self.lastCursedGround)
         if T > 0 then
-            alerts:setRow(1, Fmt.c(Fmt.ARCANE, Lang.t("rg_bahsei_next_curse")), T)
+            alerts:setRow(1, _STR_CURSE, T)
         else
-            alerts:setRow(1, Fmt.c(Fmt.ARCANE, Lang.t("rg_bahsei_next_curse")) .. " " .. Fmt.c(Fmt.RED, "INC"), nil)
+            alerts:setRow(1, _STR_CURSE_INC, nil)
         end
     else
         alerts:clearRow(1)
@@ -275,13 +287,11 @@ local function showPortalLine(self, alerts, now, isHM)
                 Fmt.c(Fmt.SMOKE, "(" .. self.portalNumber .. ")"),
                 delta)
         else
-            local dir = self.lastPortalCW
-                and Fmt.c("00cc00", Lang.t("rg_bahsei_portal_cw"))
-                or  Fmt.c("ff8040", Lang.t("rg_bahsei_portal_ccw"))
+            local dir = self.lastPortalCW and _STR_PORTAL_CW or _STR_PORTAL_CCW
             local cnt = self.numPlayersInPortal
             alerts:setRow(2,
                 Fmt.c(Fmt.SKY, "Portal") .. " " .. dir ..
-                " " .. Fmt.c(Fmt.SMOKE, Lang.t("rg_bahsei_portal_progress")) ..
+                " " .. _STR_PORTAL_PROG ..
                 (cnt > 0 and (" " .. Fmt.c(Fmt.GRAY, "(" .. cnt .. ")")) or ""),
                 nil)
         end
@@ -294,13 +304,13 @@ local function showDeathTouchLine(self, alerts, now, isHM)
     local explodeDelta = (self.nextMtExplosion > 0) and (self.nextMtExplosion - now) or -1
     local dtDelta      = (self.lastDeathTouch  > 0) and (9 - (now - self.lastDeathTouch)) or -1
     if explodeDelta >= 0 and explodeDelta <= 3 then
-        alerts:setRow(3, Fmt.c(Fmt.RED, Lang.t("rg_bahsei_tank_exploding")), explodeDelta)
+        alerts:setRow(3, _STR_TANK_EXPL, explodeDelta)
     elseif dtDelta > 0 then
-        alerts:setRow(3, Fmt.c(Fmt.FROST, Lang.t("rg_bahsei_death_touch")), dtDelta)
+        alerts:setRow(3, _STR_DEATH_TOUCH, dtDelta)
     elseif isHM and self.selfDoNotPortalTime > 0 then
         local noPortalDelta = self.selfDoNotPortalTime - now
         if noPortalDelta > 0 then
-            alerts:setRow(3, Fmt.c(Fmt.FIRE, Lang.t("rg_bahsei_no_portal")), noPortalDelta)
+            alerts:setRow(3, _STR_NO_PORTAL, noPortalDelta)
         else
             alerts:clearRow(3)
         end
@@ -313,9 +323,9 @@ local function showSickleLine(self, alerts, now, isHM)
     if isHM and self.nextSickle > 0 then
         local T = self.nextSickle - now
         if T > 0 and T <= 15 then
-            alerts:setRow(4, Fmt.c(Fmt.PURPLE, Lang.t("rg_bahsei_next_sickle")), T)
+            alerts:setRow(4, _STR_SICKLE, T)
         elseif T <= 0 then
-            alerts:setRow(4, Fmt.c(Fmt.PURPLE, Lang.t("rg_bahsei_next_sickle")) .. " " .. Fmt.c(Fmt.RED, "INC"), nil)
+            alerts:setRow(4, _STR_SICKLE_INC, nil)
         else
             alerts:clearRow(4)
         end

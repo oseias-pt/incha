@@ -17,6 +17,10 @@ local SUMMON_BLACKGUARD      = 218109
 
 local FALLBACK_DUR = 3000
 
+-- P6: module-level string constants — avoid Lang.t calls in onUpdate (60 fps)
+local _STR_SIDE_DARK  = Fmt.c(Fmt.AMBER, Lang.t("lc_ryelaz_side_dark"))
+local _STR_SIDE_LIGHT = Fmt.c(Fmt.FROST,  Lang.t("lc_ryelaz_side_light"))
+
 local RyelazEncounter = {}
 RyelazEncounter.__index = RyelazEncounter
 
@@ -115,9 +119,9 @@ end
 
 function RyelazEncounter:onUpdate(context, alerts)
     if self.playerSide == "ryelaz" then
-        alerts:setRow(1, Fmt.c(Fmt.AMBER, Lang.t("lc_ryelaz_side_dark")), nil)
+        alerts:setRow(1, _STR_SIDE_DARK, nil)
     elseif self.playerSide == "zilyesset" then
-        alerts:setRow(1, Fmt.c(Fmt.FROST, Lang.t("lc_ryelaz_side_light")), nil)
+        alerts:setRow(1, _STR_SIDE_LIGHT, nil)
     else
         alerts:clearRow(1)
     end

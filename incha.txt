@@ -21,6 +21,7 @@ lib/Timer.lua
 lib/CastDur.lua
 lib/MapUtils.lua
 lib/DebuffTracker.lua
+lib/SubBoss.lua
 lib/BossBase.lua
 
 core/Difficulty.lua

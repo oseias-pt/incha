@@ -42,6 +42,15 @@ local function fmtShield(v)
     end
 end
 
+-- P6: module-level string constants — avoid Lang.t calls in onUpdate (60 fps)
+local _STR_JUMP          = Fmt.c(Fmt.AMBER,  Lang.t("rg_xalvakka_next_jump"))
+local _STR_JUMP_INC      = Fmt.c(Fmt.AMBER,  Lang.t("rg_xalvakka_next_jump")) .. " " .. Fmt.c(Fmt.RED, "INC")
+local _STR_SOUL_RES      = Fmt.c(Fmt.ORANGE, Lang.t("rg_xalvakka_soul_res"))
+local _STR_MANIFOLD_PFX  = Lang.t("rg_xalvakka_manifold")
+local _STR_SHIELD_PFX    = Lang.t("rg_xalvakka_shield")
+local _STR_ON_BLOB       = Fmt.c(Fmt.GREEN,  Lang.t("rg_xalvakka_on_blob"))
+local _STR_RUN_IN_PFX    = Lang.t("rg_xalvakka_run_in")
+
 local Xalvakka = {}
 Xalvakka.__index = Xalvakka
 
@@ -227,9 +236,9 @@ local function showJumpLine(self, alerts, now, isHM)
     if isHM and self.nextJump > 0 and self.numJumps < 4 then
         local T = self.nextJump - now
         if T > 0 then
-            alerts:setRow(1, Fmt.c(Fmt.AMBER, Lang.t("rg_xalvakka_next_jump")), T)
+            alerts:setRow(1, _STR_JUMP, T)
         else
-            alerts:setRow(1, Fmt.c(Fmt.AMBER, Lang.t("rg_xalvakka_next_jump")) .. " " .. Fmt.c(Fmt.RED, "INC"), nil)
+            alerts:setRow(1, _STR_JUMP_INC, nil)
         end
     else
         alerts:clearRow(1)
@@ -240,7 +249,7 @@ local function showSoulLine(self, alerts, now)
     if self.soulStart > 0 then
         local T = SOUL_WINDOW - (now - self.soulStart)
         if T > 0 then
-            alerts:setRow(2, Fmt.c(Fmt.ORANGE, Lang.t("rg_xalvakka_soul_res")), T)
+            alerts:setRow(2, _STR_SOUL_RES, T)
         else
             self.soulStart = 0
             alerts:clearRow(2)
@@ -260,9 +269,9 @@ local function showManifoldLine(self, alerts)
         for _, name in pairs(self.manifoldOthers) do
             parts[#parts + 1] = Fmt.c(Fmt.ARCANE, name)
         end
-        alerts:setRow(3, Lang.t("rg_xalvakka_manifold") .. table.concat(parts, ", "), nil)
+        alerts:setRow(3, _STR_MANIFOLD_PFX .. table.concat(parts, ", "), nil)
     elseif self.shellShield > 0 then
-        alerts:setRow(3, Lang.t("rg_xalvakka_shield") .. fmtShield(self.shellShield), nil)
+        alerts:setRow(3, _STR_SHIELD_PFX .. fmtShield(self.shellShield), nil)
     else
         alerts:clearRow(3)
     end
@@ -271,11 +280,11 @@ end
 local function showRunLine(self, alerts, context)
     local hp = context.healthPercent
     if hp and hp > RUN1_BOT and hp <= RUN1_TOP then
-        alerts:setRow(4, Fmt.c(Fmt.YELLOW, Lang.t("rg_xalvakka_run_in") .. Fmt.pct(hp - RUN1_BOT, 1)), nil)
+        alerts:setRow(4, Fmt.c(Fmt.YELLOW, _STR_RUN_IN_PFX .. Fmt.pct(hp - RUN1_BOT, 1)), nil)
     elseif hp and hp > RUN2_BOT and hp <= RUN2_TOP then
-        alerts:setRow(4, Fmt.c(Fmt.YELLOW, Lang.t("rg_xalvakka_run_in") .. Fmt.pct(hp - RUN2_BOT, 1)), nil)
+        alerts:setRow(4, Fmt.c(Fmt.YELLOW, _STR_RUN_IN_PFX .. Fmt.pct(hp - RUN2_BOT, 1)), nil)
     elseif self.onBlob then
-        alerts:setRow(4, Fmt.c(Fmt.GREEN, Lang.t("rg_xalvakka_on_blob")), nil)
+        alerts:setRow(4, _STR_ON_BLOB, nil)
     else
         alerts:clearRow(4)
     end

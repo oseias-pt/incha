@@ -18,6 +18,14 @@ local VITRIFY_CD = 20.0
 local FALLBACK_BEAM_DUR    = 2500
 local FALLBACK_VITRIFY_DUR = 2000
 
+-- P6: module-level string constants — avoid Lang.t calls in onUpdate (60 fps)
+local _STR_BEAM_FIRST    = Lang.t("lc_xynizata_beam_first")
+local _STR_BEAM_LABEL    = Lang.t("lc_xynizata_beam_label")
+local _STR_BEAM_INC      = Lang.t("lc_xynizata_beam_label") .. " " .. Lang.t("common_interrupt")
+local _STR_VITR_FIRST    = Lang.t("lc_xynizata_vitr_first")
+local _STR_VITR_LABEL    = Lang.t("lc_xynizata_vitr_label")
+local _STR_VITR_INC      = Lang.t("lc_xynizata_vitr_label") .. " " .. Lang.t("common_interrupt")
+
 local XynizataEncounter = {}
 XynizataEncounter.__index = XynizataEncounter
 
@@ -80,24 +88,24 @@ end
 
 function XynizataEncounter:onUpdate(context, alerts)
     if self.firstBeam then
-        alerts:setRow(1, Lang.t("lc_xynizata_beam_first"), nil)
+        alerts:setRow(1, _STR_BEAM_FIRST, nil)
     else
         local r = self.piercingBeamTimer:remaining()
         if r > 0 then
-            alerts:setRow(1, Lang.t("lc_xynizata_beam_label"), r)
+            alerts:setRow(1, _STR_BEAM_LABEL, r)
         else
-            alerts:setRow(1, Lang.t("lc_xynizata_beam_label") .. " " .. Lang.t("common_interrupt"), nil)
+            alerts:setRow(1, _STR_BEAM_INC, nil)
         end
     end
 
     if self.firstVitrify then
-        alerts:setRow(2, Lang.t("lc_xynizata_vitr_first"), nil)
+        alerts:setRow(2, _STR_VITR_FIRST, nil)
     else
         local r = self.vitrifyTimer:remaining()
         if r > 0 then
-            alerts:setRow(2, Lang.t("lc_xynizata_vitr_label"), r)
+            alerts:setRow(2, _STR_VITR_LABEL, r)
         else
-            alerts:setRow(2, Lang.t("lc_xynizata_vitr_label") .. " " .. Lang.t("common_interrupt"), nil)
+            alerts:setRow(2, _STR_VITR_INC, nil)
         end
     end
 

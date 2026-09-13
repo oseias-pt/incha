@@ -22,6 +22,14 @@ local FLOOD_CD  = 21.5
 
 local FALLBACK_DUR = 2000
 
+-- P6: module-level string constants — avoid Lang.t calls in onUpdate (60 fps)
+local _STR_THRALL_FIRST = Lang.t("lc_orphic_thrall_first")
+local _STR_THRALL_LABEL = Lang.t("lc_orphic_thrall_label")
+local _STR_THRALL_NOW   = Lang.t("lc_orphic_thrall_label") .. " " .. Lang.t("common_now")
+local _STR_FLOOD_FIRST  = Lang.t("lc_orphic_flood_first")
+local _STR_FLOOD_LABEL  = Lang.t("lc_orphic_flood_label")
+local _STR_FLOOD_NOW    = Lang.t("lc_orphic_flood_label") .. " " .. Lang.t("common_now")
+
 local OrphicEncounter = {}
 OrphicEncounter.__index = OrphicEncounter
 
@@ -130,23 +138,23 @@ end
 function OrphicEncounter:onUpdate(context, alerts)
     if self.xorynActive then
         if self.firstThrall then
-            alerts:setRow(1, Lang.t("lc_orphic_thrall_first"), nil)
+            alerts:setRow(1, _STR_THRALL_FIRST, nil)
         else
             local r = self.thunderThrallTimer:remaining()
             if r > 0 then
-                alerts:setRow(1, Lang.t("lc_orphic_thrall_label"), r)
+                alerts:setRow(1, _STR_THRALL_LABEL, r)
             else
-                alerts:setRow(1, Lang.t("lc_orphic_thrall_label") .. " " .. Lang.t("common_now"), nil)
+                alerts:setRow(1, _STR_THRALL_NOW, nil)
             end
         end
         if self.firstFlood then
-            alerts:setRow(2, Lang.t("lc_orphic_flood_first"), nil)
+            alerts:setRow(2, _STR_FLOOD_FIRST, nil)
         else
             local r = self.lightningFloodTimer:remaining()
             if r > 0 then
-                alerts:setRow(2, Lang.t("lc_orphic_flood_label"), r)
+                alerts:setRow(2, _STR_FLOOD_LABEL, r)
             else
-                alerts:setRow(2, Lang.t("lc_orphic_flood_label") .. " " .. Lang.t("common_now"), nil)
+                alerts:setRow(2, _STR_FLOOD_NOW, nil)
             end
         end
     else

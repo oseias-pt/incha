@@ -154,6 +154,12 @@ for line in manifestText:gmatch("[^\r\n]+") do
                     -- self.alertList.
                     local cleansAlerts = scanText:match("cleanupAlertList") ~= nil
 
+                    -- BossBase.resetSchema(self, Class) re-creates every stateSchema
+                    -- field from scratch via the schema's factory functions, so any
+                    -- boss whose onWipe (or a helper it calls) invokes it counts as
+                    -- fully reset for all schema keys.
+                    local resetsAll = scanText:match("resetSchema") ~= nil
+
                     -- One key per line, and only at depth 0 inside the schema block: a
                     -- nested table (PRISONERS = function() return { Brekalda = 0 } end)
                     -- is mechanic data, not a field of its own.
@@ -177,7 +183,7 @@ for line in manifestText:gmatch("[^\r\n]+") do
                                     -- field at all: assigning it, calling a method on it, or
                                     -- clearing it in a loop.
                                     local touched = scanText:match("self%." .. key .. "%W")
-                                    if not touched and not grandfathered[key] then
+                                    if not touched and not grandfathered[key] and not resetsAll then
                                         fail("NOT RESET     %s  %s.%s is in stateSchema but %s:onWipe never touches it",
                                              entry, clsName, key, clsName)
                                     end

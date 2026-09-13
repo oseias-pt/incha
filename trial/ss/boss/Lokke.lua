@@ -30,6 +30,16 @@ local ICE_EFFECT_ARM  = 119638   -- effectChanged: gained/faded -> TombArmed / T
 local sA = Lang.t("ss_lokke_tomb_slot_a")
 local sB = Lang.t("ss_lokke_tomb_slot_b")
 
+-- -- P6: renderer-only string constants (avoid Lang.t in 60 fps onUpdate) --
+local _STR_TOMB_DONE    = Fmt.c(Fmt.GREEN,   Lang.t("ss_lokke_tomb_done"))
+local _STR_TOMB_HEAL    = Fmt.c(Fmt.CYAN,    Lang.t("ss_lokke_tomb_heal"))
+local _STR_TOMB_TAKE    = Fmt.c(Fmt.CRIMSON, Lang.t("ss_lokke_tomb_take"))
+local _STR_TOMB_INC     = Fmt.c(Fmt.CYAN,    Lang.t("ss_lokke_tomb_inc"))
+local _STR_TOMB_DOUBLE  = Fmt.c(Fmt.GREEN,   Lang.t("ss_lokke_tomb_double"))
+local _STR_LASER        = Fmt.c(Fmt.AQUA,    Lang.t("ss_lokke_laser"))
+local _STR_LANDING      = Fmt.c(Fmt.LANDING, Lang.t("ss_landing"))
+local _STR_CAN_FLY_PFX  = Lang.t("ss_can_fly_in")
+
 -- Full tomb names resolved once at load; no %s substitution at runtime.
 local TOMB_NAMES = {
     [1] = Lang.t("ss_lokke_tomb_name_1"),
@@ -51,17 +61,17 @@ end
 local function setTombSlotRow(alerts, n, prefix, slot, now)
     if not slot.cast then alerts:clearRow(n); return end
     if slot.clear then
-        alerts:setRow(n, prefix .. Fmt.c(Fmt.GREEN,  Lang.t("ss_lokke_tomb_done")), nil)
+        alerts:setRow(n, prefix .. _STR_TOMB_DONE, nil)
         return
     end
     local t = slot.time - now
     if t <= 0 then alerts:clearRow(n); return end
     if slot.taken then
-        alerts:setRow(n, prefix .. Fmt.c(Fmt.CYAN,  Lang.t("ss_lokke_tomb_heal")), t)
+        alerts:setRow(n, prefix .. _STR_TOMB_HEAL, t)
     elseif slot.armed then
-        alerts:setRow(n, prefix .. Fmt.c(Fmt.CRIMSON,  Lang.t("ss_lokke_tomb_take")), t)
+        alerts:setRow(n, prefix .. _STR_TOMB_TAKE, t)
     else
-        alerts:setRow(n, prefix .. Fmt.c(Fmt.CYAN,  Lang.t("ss_lokke_tomb_inc")), nil)
+        alerts:setRow(n, prefix .. _STR_TOMB_INC, nil)
     end
 end
 
@@ -355,9 +365,9 @@ local function showLaserLandingLine(self, alerts, now, context)
     local laser   = self.laserTime   - now
     local landing = self.landingTime - now
     if laser > 0 then
-        alerts:setRow(4, Fmt.c(Fmt.AQUA,   Lang.t("ss_lokke_laser")), laser)
+        alerts:setRow(4, _STR_LASER, laser)
     elseif landing > 0 then
-        alerts:setRow(4, Fmt.c(Fmt.LANDING, Lang.t("ss_landing")),     landing)
+        alerts:setRow(4, _STR_LANDING, landing)
     else
         local hp = context.healthPercent
         if hp and hp > 20 then
@@ -367,7 +377,7 @@ local function showLaserLandingLine(self, alerts, now, context)
             elseif hp >= 21 then flyAt = 21
             end
             if flyAt and (hp - flyAt) <= 5 then
-                alerts:setRow(4, Fmt.c(Fmt.FLYZONE, Lang.t("ss_can_fly_in") .. Fmt.pct(hp - flyAt, 1)), nil)
+                alerts:setRow(4, Fmt.c(Fmt.FLYZONE, _STR_CAN_FLY_PFX .. Fmt.pct(hp - flyAt, 1)), nil)
             else
                 alerts:clearRow(4)
             end
@@ -404,7 +414,7 @@ local function showIceTombLines(self, alerts, now)
         alerts:setRow(1, header, nil)
         setTombSlotRow(alerts, 2, sA, self.iceTomb[1], now)
         if self.iceDouble then
-            alerts:setRow(3, sB .. Fmt.c(Fmt.GREEN, Lang.t("ss_lokke_tomb_double")), nil)
+            alerts:setRow(3, sB .. _STR_TOMB_DOUBLE, nil)
         else
             setTombSlotRow(alerts, 3, sB, self.iceTomb[2], now)
         end
