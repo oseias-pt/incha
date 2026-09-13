@@ -6,11 +6,12 @@
 --- LAM panel ID: ADDON_LAM  (set in bootstrap.lua)
 --- Slash command: ADDON_SLASH  (debug | lock | scale <n> | reset)
 
-local Log      = require("lib.Log")
-local Panel    = require("ui.Panel")
-local Preview  = require("ui.Preview")
-local Settings = require("core.Settings")
-local Fmt      = require("core.Fmt")
+local Log         = require("lib.Log")
+local Panel       = require("ui.Panel")
+local Preview     = require("ui.Preview")
+local Settings    = require("core.Settings")
+local Fmt         = require("core.Fmt")
+local DebugPanel  = require("ui.DebugPanel")
 
 local Menu = {}
 
@@ -447,13 +448,17 @@ local function printHelp()
     d("  /ip border         -  flash CA border")
     d("  /ip alert          -  show CA text alert")
     d("  /ip clear          -  clear all preview effects")
+    d("  /ip <log line>     -  replay a raw encounter-log line (BEGIN_CAST / COMBAT_EVENT / EFFECT_CHANGED)")
 end
 
 local function handleSlash(text)
     local cmd, arg = (text or ""):lower():match("^%s*(%S*)%s*(.*)")
     local sv = Settings.get()
 
-    if cmd == "debug" then
+    if cmd == "dp" then
+        DebugPanel.toggle()
+
+    elseif cmd == "debug" then
         sv.debug = not sv.debug
         Log.setEnabled(sv.debug)
         d(ADDON_TAG .. " Debug " .. (sv.debug and Fmt.c(Fmt.GREEN, "ON") or Fmt.c("FF4444", "OFF")))
@@ -497,7 +502,24 @@ end
 -- -- Public API -------------------------------------------------------------
 
 local function handlePreviewSlash(text)
-    local sub = (text or ""):lower():match("^%s*(%S*)")
+    local trimmed = (text or ""):match("^%s*(.-)%s*$") or ""
+
+    -- Log-line replay: if the argument starts with a digit it looks like a raw
+    -- encounter-log line (e.g. "225534,BEGIN_CAST,...").  Dispatch to Playback
+    -- instead of the preview sub-commands.  Playback is loaded after Menu in
+    -- incha.txt, so grab it lazily from package.loaded at call time.
+    if trimmed:match("^%d") then
+        local Playback = package.loaded["lib.Playback"]
+        if not Playback then
+            d(ADDON_TAG .. " /ip replay: Playback module not loaded")
+            return
+        end
+        local status = Playback.injectLine(trimmed)
+        d(ADDON_TAG .. " /ip replay: " .. status)
+        return
+    end
+
+    local sub = trimmed:lower():match("^%s*(%S*)")
     -- Confirm the command was received immediately (visible in chat).
     -- The actual effect is deferred 200 ms so the HUD scene has time to
     -- return to "showing" after the chat input closes before we call
@@ -511,6 +533,7 @@ local function handlePreviewSlash(text)
         zo_callLater(fn, 200)
     else
         d(ADDON_TAG .. " /ip  panel | inst | border | alert | clear")
+        d(ADDON_TAG .. " /ip  <encounter-log line>  — replay event (BEGIN_CAST, EFFECT_CHANGED)")
     end
 end
 
@@ -520,6 +543,7 @@ function Menu.init()
     -- /ip can be used to fire preview effects while the game UI is visible.
     SLASH_COMMANDS[ADDON_SLASH] = handleSlash
     SLASH_COMMANDS["/ip"]       = handlePreviewSlash
+    SLASH_COMMANDS["/idp"]      = function() DebugPanel.toggle() end
 
     -- Wire to LibAddonMenu-2.0 when it is loaded.
     -- incha.txt declares ## OptionalDependsOn: LibAddonMenu-2.0 so ESO

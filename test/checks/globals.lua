@@ -53,7 +53,7 @@ local ALLOW_VERB = { "Get", "Is", "Does", "Are", "Set", "Play", "Create" }
 local ALLOW_EXACT = {}
 for _, name in ipairs({
     -- ESO singletons and constants
-    "EVENT_MANAGER", "SCENE_MANAGER", "WINDOW_MANAGER", "SLASH_COMMANDS",
+    "EVENT_MANAGER", "SCENE_MANAGER", "WINDOW_MANAGER", "SLASH_COMMANDS", "CHAT_SYSTEM",
     "GuiRoot", "SOUNDS", "TOPLEFT", "TOPRIGHT", "BOTTOM", "BOTTOMLEFT",
     "BOTTOMRIGHT", "TOP", "LEFT", "RIGHT", "CENTER", "d",
     -- Optional third-party addons  -  every call site must nil-guard these

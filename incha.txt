@@ -29,9 +29,10 @@ core/AlertSink.lua
 core/HealthRules.lua
 core/TrialContext.lua
 core/BossRegistry.lua
+core/AlertTypes.lua
+core/EventDispatcher.lua
 core/EventPipeline.lua
 core/Settings.lua
-core/CombatHandler.lua
 core/Bridge.lua
 core/Colors.lua
 core/Fmt.lua
@@ -39,9 +40,11 @@ core/Lang.lua
 
 ui/Panel.lua
 ui/Preview.lua
-ui/Menu.lua
 core/Trial.lua
 core/ZoneManager.lua
+lib/Playback.lua
+ui/DebugPanel.lua
+ui/Menu.lua
 
 trial/ka/boss/Yandir.lua
 trial/ka/boss/Vrol.lua

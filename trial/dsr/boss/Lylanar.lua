@@ -1,118 +1,68 @@
 --- Lylanar (& Turlassil)  -  Dreadsail Reef boss 1
----
---- Fire (Lylanar) and ice (Turlassil) boss pair fight simultaneously.
---- Both bosses' ability IDs are handled in this single module.
---- nameAliases = {"Turlassil"} ensures detection regardless of which unit
---- is reported as boss1 on any given pull.
----
---- Phase DSR-3: full mechanics
----   Fire side (Lylanar):
----     CinderSurge (166693): GAINED -> 500 ms delay -> "INTERRUPT! (Ice Dome)"
----     ImminentBlister (168525): GAINED_DURATION + tank/heal -> info countdown
----     BlisteringFragility (166525): GAINED_DURATION -> fragility timer
----     Firebrand (166472): GAINED_DURATION -> brand tracker; HM: MatchBrands
----     BroilingHew (167273): BEGIN + player -> AlertCast (heavy)
----     TorridCleave (167298): BEGIN + player -> AlertCast (cleave)
----     ScaldingSwell (169587): BEGIN -> Alert "Fire wave" 5.5 s
----     CharredConstriction (167466): BEGIN -> Alert "Fire jump (spike!)" 2.5 s
----     MagmaSpike (168646): BEGIN -> info countdown "Need Fire Dome"
----     IncendiaryAxe (168817): BEGIN -> HM weapon cooldown tracker
----     MultiLoc (166909): EFFECT_GAINED -> Alert "Lylanar teleports"
----     DestructiveEmber (166210): GAINED/UPDATED/FADED -> fire bubble stacks
----     SummonFlameHound (169317): GAINED_DURATION -> flameHounds++
----   Ice side (Turlassil):
----     NumbingShards (166735): GAINED -> 500 ms delay -> "INTERRUPT! (Fire Dome)"
----     ImminentChill (168526): GAINED_DURATION + tank/heal -> info countdown
----     ChillingFragility (166529): GAINED_DURATION -> fragility timer
----     Frostbrand (166482): GAINED_DURATION -> brand tracker; HM: MatchBrands
----     StingingShear (167280): BEGIN + player -> AlertCast (heavy)
----     BriskRip (167290): BEGIN + player -> AlertCast (cleave)
----     BitingBillow (169594): BEGIN -> Alert "Ice wave" 5.5 s
----     Frigidarium (167545): BEGIN -> Alert "Ice jump (spike!)" 2.5 s
----     GlacialSpike (168632): BEGIN -> info countdown "Need Ice Dome"
----     CalamitousSword (168912): BEGIN -> HM weapon cooldown tracker
----     MultiLoc (166745): EFFECT_GAINED -> Alert "Turlassil teleports"
----     PiercingHailstone (166192): GAINED/UPDATED/FADED -> ice bubble stacks
----     SummonFrostHound (169313): GAINED_DURATION -> frostHounds++
----   Shared:
----     Hindered (165972): GAINED_DURATION + player -> AlertBorder 12 s
----     Brand matching (HM): 2 fire + 2 ice brands -> "STACK ON: partner (far/close)"
----
---- HM detection: context.isHM (pre-computed by TrialContext from hmHealthThreshold)
----   TODO: verify exact HM health pool in-game.
 
-local DreadsailCommon  = require("trial.dsr.DreadsailCommon")
-local DebuffTracker    = require("lib.DebuffTracker")
-local Lang             = require("core.Lang")
-local Fmt              = require("core.Fmt")
+local AlertTypes      = require("core.AlertTypes")
+local EventDispatcher = require("core.EventDispatcher")
+local DreadsailCommon = require("trial.dsr.DreadsailCommon")
+local DebuffTracker   = require("lib.DebuffTracker")
+local Lang            = require("core.Lang")
+local Fmt             = require("core.Fmt")
+local CA              = require("external-api.CombatAlerts")
+local BossBase        = require("lib.BossBase")
+local CastDur         = require("lib.CastDur")
+local Colors          = require("core.Colors")
 
-
--- -- Ability IDs  -  Fire (Lylanar) -------------------------------------------
-local CINDER_SURGE         = 166693   -- effectRoute: EFFECT_RESULT_GAINED / FADED -> interrupt ice dome
-local IMMINENT_BLISTER     = 168525   -- effectRoute: EFFECT_RESULT_GAINED / FADED -> tank/heal 10s warning
-local BLISTERING_FRAGILITY = 166525   -- effectRoute: EFFECT_RESULT_GAINED / FADED -> fragility timer 20s
-local FIREBRAND            = 166472   -- effectRoute: EFFECT_RESULT_GAINED -> HM brand tracking
-local BROILING_HEW         = 167273   -- combatRoute: ACTION_RESULT_BEGIN -> caAlertCast (player, heavy fire)
-local TORRID_CLEAVE        = 167298   -- combatRoute: ACTION_RESULT_BEGIN -> caAlertCast (player, cleave fire)
-local SCALDING_SWELL       = 169587   -- combatRoute: ACTION_RESULT_BEGIN -> Fire wave alert 5.5s
-local CHARRED_CONSTRICTION = 167466   -- combatRoute: ACTION_RESULT_BEGIN -> Fire jump cage alert
-local MAGMA_SPIKE          = 168646   -- combatRoute: ACTION_RESULT_BEGIN -> lastMagmaSpike timer
-local INCENDIARY_AXE       = 168817   -- combatRoute: ACTION_RESULT_BEGIN -> HM weapon cooldown 40s
-local LYLANAR_MULTILOC     = 166909   -- effectRoute: EFFECT_RESULT_GAINED -> Lylanar teleport alert
-local DESTRUCTIVE_EMBER    = 166210   -- effectRoute: EFFECT_RESULT_GAINED / UPDATED / FADED -> fire bubble stacks
-local SUMMON_FLAME_HOUND   = 169317   -- effectRoute: EFFECT_RESULT_GAINED / FADED -> flameHounds counter
--- 166355 (PRE_FIREBRAND)  -- reference: cast before brand placement; potential early alert
+-- -- Ability IDs  -  Fire (Lylanar) ------------------------------------------
+local CINDER_SURGE         = 166693
+local IMMINENT_BLISTER     = 168525
+local BLISTERING_FRAGILITY = 166525
+local FIREBRAND            = 166472
+local BROILING_HEW         = 167273
+local TORRID_CLEAVE        = 167298
+local SCALDING_SWELL       = 169587
+local CHARRED_CONSTRICTION = 167466
+local MAGMA_SPIKE          = 168646
+local INCENDIARY_AXE       = 168817
+local LYLANAR_MULTILOC     = 166909
+local DESTRUCTIVE_EMBER    = 166210
+local SUMMON_FLAME_HOUND   = 169317
 
 -- -- Ability IDs  -  Ice (Turlassil) -----------------------------------------
-local NUMBING_SHARDS       = 166735   -- effectRoute: EFFECT_RESULT_GAINED / FADED -> interrupt fire dome
-local IMMINENT_CHILL       = 168526   -- effectRoute: EFFECT_RESULT_GAINED / FADED -> tank/heal 10s warning
-local CHILLING_FRAGILITY   = 166529   -- effectRoute: EFFECT_RESULT_GAINED / FADED -> fragility timer 20s
-local FROSTBRAND           = 166482   -- effectRoute: EFFECT_RESULT_GAINED -> HM brand tracking
-local STINGING_SHEAR       = 167280   -- combatRoute: ACTION_RESULT_BEGIN -> caAlertCast (player, heavy ice)
-local BRISK_RIP            = 167290   -- combatRoute: ACTION_RESULT_BEGIN -> caAlertCast (player, cleave ice)
-local BITING_BILLOW        = 169594   -- combatRoute: ACTION_RESULT_BEGIN -> Ice wave alert 5.5s
-local FRIGIDARIUM          = 167545   -- combatRoute: ACTION_RESULT_BEGIN -> Ice jump cage alert
-local GLACIAL_SPIKE        = 168632   -- combatRoute: ACTION_RESULT_BEGIN -> lastGlacialSpike timer
-local CALAMITOUS_SWORD     = 168912   -- combatRoute: ACTION_RESULT_BEGIN -> HM weapon cooldown 40s
-local TURLASSIL_MULTILOC   = 166745   -- effectRoute: EFFECT_RESULT_GAINED -> Turlassil teleport alert
-local PIERCING_HAILSTONE   = 166192   -- effectRoute: EFFECT_RESULT_GAINED / UPDATED / FADED -> ice bubble stacks
-local SUMMON_FROST_HOUND   = 169313   -- effectRoute: EFFECT_RESULT_GAINED / FADED -> frostHounds counter
--- 166364 (PRE_FROSTBRAND) -- reference: cast before brand placement; potential early alert
+local NUMBING_SHARDS       = 166735
+local IMMINENT_CHILL       = 168526
+local CHILLING_FRAGILITY   = 166529
+local FROSTBRAND           = 166482
+local STINGING_SHEAR       = 167280
+local BRISK_RIP            = 167290
+local BITING_BILLOW        = 169594
+local FRIGIDARIUM          = 167545
+local GLACIAL_SPIKE        = 168632
+local CALAMITOUS_SWORD     = 168912
+local TURLASSIL_MULTILOC   = 166745
+local PIERCING_HAILSTONE   = 166192
+local SUMMON_FROST_HOUND   = 169313
 
 -- -- Ability IDs  -  Shared --------------------------------------------------
-local HINDERED             = 165972   -- effectRoute: EFFECT_RESULT_GAINED + player -> AlertBorder 12s
+local HINDERED             = 165972
 
--- -- Timing constants -----------------------------------------------------
-local FRAGILITY_DUR  = 20    -- s: fragility debuff visible window
-local SPIKE_DUR      = 6.5   -- s: spike cage must be solved
-local WEAPON_CD      = 40    -- s: HM weapon cooldown
-local BRAND_DEDUP    = 1.0   -- s: MatchBrands dedup gate
-local BUBBLE_CD_NORM = 15    -- s: bubble drop cooldown (normal)
-local BUBBLE_CD_HM   = 20    -- s: bubble drop cooldown (HM)
+-- -- Timing constants --------------------------------------------------------
+local FRAGILITY_DUR  = 20
+local SPIKE_DUR      = 6.5
+local WEAPON_CD      = 40
+local BRAND_DEDUP    = 1.0
+local BUBBLE_CD_NORM = 15
+local BUBBLE_CD_HM   = 20
 
-local CA = require("external-api.CombatAlerts")
-local BossBase = require("lib.BossBase")
-local CastDur = require("lib.CastDur")
-local Colors = require("core.Colors")
+local FALLBACK_HEAVY_DUR = 1500
 
--- -- CA colour palettes ----------------------------------------------------
-
--- -- Fallback durations (empirical; replace if GetAbilityCastInfo becomes reliable) -
-local FALLBACK_HEAVY_DUR = 1500   -- BroilingHew / TorridCleave / StingingShear / BriskRip: empirical
-
--- -- Boss definition -------------------------------------------------------
 local Lylanar = {}
 Lylanar.__index = Lylanar
 
 Lylanar.key          = "lylanar"
-Lylanar.name         = "Lylanar"     -- TODO: verify via GetUnitName("boss1") in-game
-Lylanar.nameAliases  = { "Turlassil" }  -- both bosses active simultaneously; TODO: verify via GetUnitName in-game
--- location: name-based detection intentional  -  dual-boss pair; arenas share the
--- same room so a single AABB would be ambiguous.  nameAliases covers both names.
-Lylanar.hmHealthThreshold = 100000001   -- TODO: verify exact HM health pool
+Lylanar.name         = "Lylanar"
+Lylanar.nameAliases  = { "Turlassil" }
+Lylanar.hmHealthThreshold = 100000001
 
 Lylanar.stateSchema = {
-    -- State  -  Fire
     cinderSurgeActive      = false,
     fireImminent           = function() return DebuffTracker.new(10) end,
     fireFragility          = function() return DebuffTracker.new(FRAGILITY_DUR) end,
@@ -124,7 +74,6 @@ Lylanar.stateSchema = {
     firebrandTracker       = function() return {} end,
     lastBrandMatchFire     = 0,
     flameHounds            = 0,
-    -- State  -  Ice
     numbingShardsActive    = false,
     iceImminent            = function() return DebuffTracker.new(10) end,
     iceFragility           = function() return DebuffTracker.new(FRAGILITY_DUR) end,
@@ -136,7 +85,6 @@ Lylanar.stateSchema = {
     frostbrandTracker      = function() return {} end,
     lastBrandMatchIce      = 0,
     frostHounds            = 0,
-    -- State  -  Shared
     lastBrandMatch         = 0,
 }
 
@@ -145,19 +93,16 @@ function Lylanar.new()
 end
 
 -- -- Brand matching (HM) ---------------------------------------------------
--- Called after both firebrand and frostbrand trackers each hold 2 entries.
--- Finds the local player in either list and names their required partner.
 local function matchBrands(self)
     local now = GetGameTimeMilliseconds() / 1000
     if now - self.lastBrandMatch < BRAND_DEDUP then return end
     self.lastBrandMatch = now
 
-    local fire  = self.firebrandTracker   -- [{unitId, name}, ...]
+    local fire  = self.firebrandTracker
     local frost = self.frostbrandTracker
 
     if #fire < 2 or #frost < 2 then return end
 
-    -- Find local player's slot index in fire or frost list.
     local myFire, myFrost = nil, nil
     for i, entry in ipairs(fire) do
         if AreUnitsEqual("player", entry.tag or "") then myFire = i end
@@ -166,8 +111,6 @@ local function matchBrands(self)
         if AreUnitsEqual("player", entry.tag or "") then myFrost = i end
     end
 
-    -- Player must be in exactly one list; their partner is the matching index
-    -- in the other list (index 1 -> index 1, index 2 -> index 2).
     local partner, distance
     if myFire then
         partner  = frost[myFire] and frost[myFire].name or "?"
@@ -176,7 +119,7 @@ local function matchBrands(self)
         partner  = fire[myFrost] and fire[myFrost].name or "?"
         distance = (myFrost == 1) and "far" or "close"
     else
-        return  -- player not branded this round
+        return
     end
 
     CA.alert(nil,
@@ -185,317 +128,322 @@ local function matchBrands(self)
     PlaySound(SOUNDS.DUEL_START)
 end
 
--- -- Routing tables (C3) --------------------------------------------------
--- Shared trash mechanic handler.
-Lylanar.common = DreadsailCommon
+-- -- Handlers: beginCast ----------------------------------------------------
 
--- -- Handlers -------------------------------------------------------------
-
-local function handleBroilingHew(self, context, alerts, abilityId,
-                                  unitTag, sourceUnitTag, sourceUnitId, unitId,
-                                  sourceUnitName, unitName)
+local function handleBroilingHew(boss, ctx, alerts, abilityId, sourceUnitName, unitTag, ...)
     if not IsUnitPlayer(unitTag) then return end
     local dur = CastDur.get(abilityId, FALLBACK_HEAVY_DUR)
     CA.melee(abilityId, sourceUnitName, dur, Colors.FIRE)
 end
 
-local function handleTorridCleave(self, context, alerts, abilityId,
-                                   unitTag, sourceUnitTag, sourceUnitId, unitId,
-                                   sourceUnitName, unitName)
+local function handleTorridCleave(boss, ctx, alerts, abilityId, sourceUnitName, unitTag, ...)
     if not IsUnitPlayer(unitTag) then return end
     local dur = CastDur.get(abilityId, FALLBACK_HEAVY_DUR)
     alerts:showAction(Lang.t("dsr_lylanar_dodge_cleave"))
     CA.melee(abilityId, sourceUnitName, dur, Colors.FIRE)
 end
 
-local function handleScaldingSwell(self, context, alerts, abilityId, ...)
+local function handleScaldingSwell(boss, ctx, alerts, abilityId, ...)
     CA.alert(nil, Fmt.c(Fmt.FIRE, "Fire wave") .. "  -  move!", 0xFF5733D9,
         SOUNDS.CHAMPION_POINTS_COMMITTED, 5500)
 end
 
-local function handleCharredConstriction(self, context, alerts, abilityId, ...)
+local function handleCharredConstriction(boss, ctx, alerts, abilityId, ...)
     CA.alert(nil, Fmt.c(Fmt.FIRE, "Fire jump!") .. " (spike  -  block)", 0xFF5733D9,
         SOUNDS.CHAMPION_POINTS_COMMITTED, 2500)
 end
 
-local function handleMagmaSpike(self, context, alerts, abilityId, ...)
-    self.lastMagmaSpike = GetGameTimeMilliseconds() / 1000
+local function handleMagmaSpike(boss, ctx, alerts, abilityId, ...)
+    boss.lastMagmaSpike = GetGameTimeMilliseconds() / 1000
 end
 
-local function handleIncendiaryAxe(self, context, alerts, abilityId, ...)
-    if context.isHM then
-        self.lastIncendiaryAxe = GetGameTimeMilliseconds() / 1000
+local function handleIncendiaryAxe(boss, ctx, alerts, abilityId, ...)
+    if ctx.isHM then
+        boss.lastIncendiaryAxe = GetGameTimeMilliseconds() / 1000
     end
 end
 
-local function handleStingingShear(self, context, alerts, abilityId,
-                                    unitTag, sourceUnitTag, sourceUnitId, unitId,
-                                    sourceUnitName, unitName)
+local function handleStingingShear(boss, ctx, alerts, abilityId, sourceUnitName, unitTag, ...)
     if not IsUnitPlayer(unitTag) then return end
     local dur = CastDur.get(abilityId, FALLBACK_HEAVY_DUR)
     CA.melee(abilityId, sourceUnitName, dur, Colors.FROST)
 end
 
-local function handleBriskRip(self, context, alerts, abilityId,
-                               unitTag, sourceUnitTag, sourceUnitId, unitId,
-                               sourceUnitName, unitName)
+local function handleBriskRip(boss, ctx, alerts, abilityId, sourceUnitName, unitTag, ...)
     if not IsUnitPlayer(unitTag) then return end
     local dur = CastDur.get(abilityId, FALLBACK_HEAVY_DUR)
     alerts:showAction(Lang.t("dsr_lylanar_dodge_cleave"))
     CA.melee(abilityId, sourceUnitName, dur, Colors.FROST)
 end
 
-local function handleBitingBillow(self, context, alerts, abilityId, ...)
+local function handleBitingBillow(boss, ctx, alerts, abilityId, ...)
     CA.alert(nil, Fmt.c(Fmt.FROST, "Ice wave") .. "  -  move!", 0x99CCffD9,
         SOUNDS.CHAMPION_POINTS_COMMITTED, 5500)
 end
 
-local function handleFrigidarium(self, context, alerts, abilityId, ...)
+local function handleFrigidarium(boss, ctx, alerts, abilityId, ...)
     CA.alert(nil, Fmt.c(Fmt.FROST, "Ice jump!") .. " (spike  -  block)", 0x99CCffD9,
         SOUNDS.CHAMPION_POINTS_COMMITTED, 2500)
 end
 
-local function handleGlacialSpike(self, context, alerts, abilityId, ...)
-    self.lastGlacialSpike = GetGameTimeMilliseconds() / 1000
+local function handleGlacialSpike(boss, ctx, alerts, abilityId, ...)
+    boss.lastGlacialSpike = GetGameTimeMilliseconds() / 1000
 end
 
-local function handleCalamitousSword(self, context, alerts, abilityId, ...)
-    if context.isHM then
-        self.lastCalamitousSword = GetGameTimeMilliseconds() / 1000
+local function handleCalamitousSword(boss, ctx, alerts, abilityId, ...)
+    if ctx.isHM then
+        boss.lastCalamitousSword = GetGameTimeMilliseconds() / 1000
     end
 end
 
--- -- Routing tables (C3) --------------------------------------------------
-Lylanar.combatRoutes = {
-    -- -- Fire ---------------------------------------------------------------
-    [BROILING_HEW]        = { result = ACTION_RESULT_BEGIN, fn = handleBroilingHew },
-    [TORRID_CLEAVE]       = { result = ACTION_RESULT_BEGIN, fn = handleTorridCleave },
-    [SCALDING_SWELL]      = { result = ACTION_RESULT_BEGIN, fn = handleScaldingSwell },
-    [CHARRED_CONSTRICTION]= { result = ACTION_RESULT_BEGIN, fn = handleCharredConstriction },
-    [MAGMA_SPIKE]         = { result = ACTION_RESULT_BEGIN, fn = handleMagmaSpike },
-    [INCENDIARY_AXE]      = { result = ACTION_RESULT_BEGIN, fn = handleIncendiaryAxe },
-    -- -- Ice ----------------------------------------------------------------
-    [STINGING_SHEAR]      = { result = ACTION_RESULT_BEGIN, fn = handleStingingShear },
-    [BRISK_RIP]           = { result = ACTION_RESULT_BEGIN, fn = handleBriskRip },
-    [BITING_BILLOW]       = { result = ACTION_RESULT_BEGIN, fn = handleBitingBillow },
-    [FRIGIDARIUM]         = { result = ACTION_RESULT_BEGIN, fn = handleFrigidarium },
-    [GLACIAL_SPIKE]       = { result = ACTION_RESULT_BEGIN, fn = handleGlacialSpike },
-    [CALAMITOUS_SWORD]    = { result = ACTION_RESULT_BEGIN, fn = handleCalamitousSword },
-}
+-- -- Handlers: effectChanged ------------------------------------------------
+-- effectChanged sig: (boss, ctx, alerts, abilityId, unitName, unitTag, unitId, stackCount)
 
--- -- Fire: CinderSurge -> interrupt ice dome -----------------------------
-local function handleCinderSurge(self, context, alerts, changeType, abilityId,
-                                  unitTag, unitId, unitName, stackCount)
-    if changeType == EFFECT_RESULT_GAINED then
-        self.cinderSurgeActive = true
-        self:after(500, function()
-            if self.cinderSurgeActive then
-                CA.alert(nil, Fmt.c(Fmt.FIRE, "INTERRUPT!") .. " (Ice Dome)",
-                    0xFF2020D9, SOUNDS.DUEL_START, 15000)
-                PlaySound(SOUNDS.DUEL_START)
-            end
-        end)
-    elseif changeType == EFFECT_RESULT_FADED then
-        self.cinderSurgeActive = false
+local function handleCinderSurgeGained(boss, ctx, alerts, abilityId, ...)
+    boss.cinderSurgeActive = true
+    boss:after(500, function()
+        if boss.cinderSurgeActive then
+            CA.alert(nil, Fmt.c(Fmt.FIRE, "INTERRUPT!") .. " (Ice Dome)",
+                0xFF2020D9, SOUNDS.DUEL_START, 15000)
+            PlaySound(SOUNDS.DUEL_START)
+        end
+    end)
+end
+
+local function handleCinderSurgeFaded(boss, ctx, alerts, abilityId, ...)
+    boss.cinderSurgeActive = false
+end
+
+local function handleNumbingShardsGained(boss, ctx, alerts, abilityId, ...)
+    boss.numbingShardsActive = true
+    boss:after(500, function()
+        if boss.numbingShardsActive then
+            CA.alert(nil, Fmt.c(Fmt.FROST, "INTERRUPT!") .. " (Fire Dome)",
+                0x2020FFD9, SOUNDS.DUEL_START, 15000)
+            PlaySound(SOUNDS.DUEL_START)
+        end
+    end)
+end
+
+local function handleNumbingShardsFaded(boss, ctx, alerts, abilityId, ...)
+    boss.numbingShardsActive = false
+end
+
+local function handleImminentBlisterGained(boss, ctx, alerts, abilityId, unitName, unitTag, ...)
+    local _, isHeal, isTank = GetPlayerRoles()
+    if isTank or isHeal then
+        boss.fireImminent:start(GetUnitDisplayName(unitTag) or unitName)
     end
 end
 
--- -- Ice: NumbingShards -> interrupt fire dome ---------------------------
-local function handleNumbingShards(self, context, alerts, changeType, abilityId,
-                                    unitTag, unitId, unitName, stackCount)
-    if changeType == EFFECT_RESULT_GAINED then
-        self.numbingShardsActive = true
-        self:after(500, function()
-            if self.numbingShardsActive then
-                CA.alert(nil, Fmt.c(Fmt.FROST, "INTERRUPT!") .. " (Fire Dome)",
-                    0x2020FFD9, SOUNDS.DUEL_START, 15000)
-                PlaySound(SOUNDS.DUEL_START)
-            end
-        end)
-    elseif changeType == EFFECT_RESULT_FADED then
-        self.numbingShardsActive = false
+local function handleImminentBlisterFaded(boss, ctx, alerts, abilityId, ...)
+    boss.fireImminent:clear()
+end
+
+local function handleImminentChillGained(boss, ctx, alerts, abilityId, unitName, unitTag, ...)
+    local _, isHeal, isTank = GetPlayerRoles()
+    if isTank or isHeal then
+        boss.iceImminent:start(GetUnitDisplayName(unitTag) or unitName)
     end
 end
 
--- -- Fire: ImminentBlister (tank/heal warning, 10 s) --------------------
-local function handleImminentBlister(self, context, alerts, changeType, abilityId,
-                                      unitTag, unitId, unitName, stackCount)
-    if changeType == EFFECT_RESULT_GAINED then
-        local _, isHeal, isTank = GetPlayerRoles()
-        if isTank or isHeal then
-            self.fireImminent:start(GetUnitDisplayName(unitTag) or unitName)
-        end
-    elseif changeType == EFFECT_RESULT_FADED then
-        self.fireImminent:clear()
+local function handleImminentChillFaded(boss, ctx, alerts, abilityId, ...)
+    boss.iceImminent:clear()
+end
+
+local function handleBlisteringFragilityGained(boss, ctx, alerts, abilityId, unitName, unitTag, ...)
+    if AreUnitsEqual("player", unitTag) then
+        boss.fireFragility:start(GetUnitDisplayName(unitTag) or unitName)
     end
 end
 
--- -- Ice: ImminentChill (tank/heal warning, 10 s) -----------------------
-local function handleImminentChill(self, context, alerts, changeType, abilityId,
-                                    unitTag, unitId, unitName, stackCount)
-    if changeType == EFFECT_RESULT_GAINED then
-        local _, isHeal, isTank = GetPlayerRoles()
-        if isTank or isHeal then
-            self.iceImminent:start(GetUnitDisplayName(unitTag) or unitName)
-        end
-    elseif changeType == EFFECT_RESULT_FADED then
-        self.iceImminent:clear()
+local function handleBlisteringFragilityFaded(boss, ctx, alerts, abilityId, unitName, unitTag, ...)
+    if AreUnitsEqual("player", unitTag) then
+        boss.fireFragility:clear()
     end
 end
 
--- -- Fire: BlisteringFragility (20 s debuff on local player) -----------
-local function handleBlisteringFragility(self, context, alerts, changeType, abilityId,
-                                          unitTag, unitId, unitName, stackCount)
-    if changeType == EFFECT_RESULT_GAINED then
-        if AreUnitsEqual("player", unitTag) then
-            self.fireFragility:start(GetUnitDisplayName(unitTag) or unitName)
-        end
-    elseif changeType == EFFECT_RESULT_FADED then
-        if AreUnitsEqual("player", unitTag) then
-            self.fireFragility:clear()
-        end
+local function handleChillingFragilityGained(boss, ctx, alerts, abilityId, unitName, unitTag, ...)
+    if AreUnitsEqual("player", unitTag) then
+        boss.iceFragility:start(GetUnitDisplayName(unitTag) or unitName)
     end
 end
 
--- -- Ice: ChillingFragility (20 s debuff on local player) --------------
-local function handleChillingFragility(self, context, alerts, changeType, abilityId,
-                                        unitTag, unitId, unitName, stackCount)
-    if changeType == EFFECT_RESULT_GAINED then
-        if AreUnitsEqual("player", unitTag) then
-            self.iceFragility:start(GetUnitDisplayName(unitTag) or unitName)
-        end
-    elseif changeType == EFFECT_RESULT_FADED then
-        if AreUnitsEqual("player", unitTag) then
-            self.iceFragility:clear()
-        end
+local function handleChillingFragilityFaded(boss, ctx, alerts, abilityId, unitName, unitTag, ...)
+    if AreUnitsEqual("player", unitTag) then
+        boss.iceFragility:clear()
     end
 end
 
--- -- Fire: DestructiveEmber (fire bubble stacks, stackCount used!) -------
-local function handleDestructiveEmber(self, context, alerts, changeType, abilityId,
-                                       unitTag, unitId, unitName, stackCount)
-    if changeType == EFFECT_RESULT_GAINED or changeType == EFFECT_RESULT_UPDATED then
-        if AreUnitsEqual("player", unitTag) then
-            self.destructiveEmberStacks = stackCount or 1
-            self.destructiveEmberName   = GetUnitDisplayName(unitTag) or unitName
-            self.lastDestructiveEmber   = GetGameTimeMilliseconds() / 1000
-        end
-    elseif changeType == EFFECT_RESULT_FADED then
-        if AreUnitsEqual("player", unitTag) then
-            self.destructiveEmberStacks = 0
-            self.destructiveEmberName   = false
-            self.lastDestructiveEmber   = 0
-        end
+-- DestructiveEmber: GAINED and UPDATED share the same body
+local function handleDestructiveEmberGained(boss, ctx, alerts, abilityId, unitName, unitTag, unitId, stackCount)
+    if AreUnitsEqual("player", unitTag) then
+        boss.destructiveEmberStacks = stackCount or 1
+        boss.destructiveEmberName   = GetUnitDisplayName(unitTag) or unitName
+        boss.lastDestructiveEmber   = GetGameTimeMilliseconds() / 1000
     end
 end
 
--- -- Ice: PiercingHailstone (ice bubble stacks, stackCount used!) --------
-local function handlePiercingHailstone(self, context, alerts, changeType, abilityId,
-                                        unitTag, unitId, unitName, stackCount)
-    if changeType == EFFECT_RESULT_GAINED or changeType == EFFECT_RESULT_UPDATED then
-        if AreUnitsEqual("player", unitTag) then
-            self.piercingHailstacks = stackCount or 1
-            self.piercingHailName   = GetUnitDisplayName(unitTag) or unitName
-            self.lastPiercingHail   = GetGameTimeMilliseconds() / 1000
-        end
-    elseif changeType == EFFECT_RESULT_FADED then
-        if AreUnitsEqual("player", unitTag) then
-            self.piercingHailstacks = 0
-            self.piercingHailName   = false
-            self.lastPiercingHail   = 0
-        end
+local function handleDestructiveEmberUpdated(boss, ctx, alerts, abilityId, unitName, unitTag, unitId, stackCount)
+    if AreUnitsEqual("player", unitTag) then
+        boss.destructiveEmberStacks = stackCount or 1
+        boss.destructiveEmberName   = GetUnitDisplayName(unitTag) or unitName
+        boss.lastDestructiveEmber   = GetGameTimeMilliseconds() / 1000
     end
 end
 
--- -- Fire: Firebrand (HM brand tracking) ------------------------------
-local function handleFirebrand(self, context, alerts, changeType, abilityId,
-                                unitTag, unitId, unitName, stackCount)
-    if not context.isHM then return end
-    if changeType ~= EFFECT_RESULT_GAINED then return end
+local function handleDestructiveEmberFaded(boss, ctx, alerts, abilityId, unitName, unitTag, ...)
+    if AreUnitsEqual("player", unitTag) then
+        boss.destructiveEmberStacks = 0
+        boss.destructiveEmberName   = false
+        boss.lastDestructiveEmber   = 0
+    end
+end
+
+-- PiercingHailstone: same 3-way split
+local function handlePiercingHailstoneGained(boss, ctx, alerts, abilityId, unitName, unitTag, unitId, stackCount)
+    if AreUnitsEqual("player", unitTag) then
+        boss.piercingHailstacks = stackCount or 1
+        boss.piercingHailName   = GetUnitDisplayName(unitTag) or unitName
+        boss.lastPiercingHail   = GetGameTimeMilliseconds() / 1000
+    end
+end
+
+local function handlePiercingHailstoneUpdated(boss, ctx, alerts, abilityId, unitName, unitTag, unitId, stackCount)
+    if AreUnitsEqual("player", unitTag) then
+        boss.piercingHailstacks = stackCount or 1
+        boss.piercingHailName   = GetUnitDisplayName(unitTag) or unitName
+        boss.lastPiercingHail   = GetGameTimeMilliseconds() / 1000
+    end
+end
+
+local function handlePiercingHailstoneFaded(boss, ctx, alerts, abilityId, unitName, unitTag, ...)
+    if AreUnitsEqual("player", unitTag) then
+        boss.piercingHailstacks = 0
+        boss.piercingHailName   = false
+        boss.lastPiercingHail   = 0
+    end
+end
+
+-- Firebrand: GAINED only (already guards in old code)
+local function handleFirebrandGained(boss, ctx, alerts, abilityId, unitName, unitTag, ...)
+    if not ctx.isHM then return end
     local entry = { tag = unitTag, name = GetUnitDisplayName(unitTag) or unitName }
-    table.insert(self.firebrandTracker, entry)
-    if #self.firebrandTracker >= 2 and #self.frostbrandTracker >= 2 then
-        matchBrands(self)
-        self.firebrandTracker  = {}
-        self.frostbrandTracker = {}
+    table.insert(boss.firebrandTracker, entry)
+    if #boss.firebrandTracker >= 2 and #boss.frostbrandTracker >= 2 then
+        matchBrands(boss)
+        boss.firebrandTracker  = {}
+        boss.frostbrandTracker = {}
     end
 end
 
--- -- Ice: Frostbrand (HM brand tracking) ------------------------------
-local function handleFrostbrand(self, context, alerts, changeType, abilityId,
-                                 unitTag, unitId, unitName, stackCount)
-    if not context.isHM then return end
-    if changeType ~= EFFECT_RESULT_GAINED then return end
+-- Frostbrand: GAINED only
+local function handleFrostbrandGained(boss, ctx, alerts, abilityId, unitName, unitTag, ...)
+    if not ctx.isHM then return end
     local entry = { tag = unitTag, name = GetUnitDisplayName(unitTag) or unitName }
-    table.insert(self.frostbrandTracker, entry)
-    if #self.firebrandTracker >= 2 and #self.frostbrandTracker >= 2 then
-        matchBrands(self)
-        self.firebrandTracker  = {}
-        self.frostbrandTracker = {}
+    table.insert(boss.frostbrandTracker, entry)
+    if #boss.firebrandTracker >= 2 and #boss.frostbrandTracker >= 2 then
+        matchBrands(boss)
+        boss.firebrandTracker  = {}
+        boss.frostbrandTracker = {}
     end
 end
 
-local function handleLylanarMultiloc(self, context, alerts, changeType, abilityId, ...)
-    if changeType == EFFECT_RESULT_GAINED then
-        CA.alert(nil, Fmt.c(Fmt.FIRE, "Lylanar teleports") .. "  -  reposition!",
-            0xFF5733D9, SOUNDS.CHAMPION_POINTS_COMMITTED, 4000)
-    end
+-- MultiLoc: GAINED only
+local function handleLylanarMultilocGained(boss, ctx, alerts, abilityId, ...)
+    CA.alert(nil, Fmt.c(Fmt.FIRE, "Lylanar teleports") .. "  -  reposition!",
+        0xFF5733D9, SOUNDS.CHAMPION_POINTS_COMMITTED, 4000)
 end
 
-local function handleTurlassilMultiloc(self, context, alerts, changeType, abilityId, ...)
-    if changeType == EFFECT_RESULT_GAINED then
-        CA.alert(nil, Fmt.c(Fmt.FROST, "Turlassil teleports") .. "  -  reposition!",
-            0x99CCffD9, SOUNDS.CHAMPION_POINTS_COMMITTED, 4000)
-    end
+local function handleTurlassilMultilocGained(boss, ctx, alerts, abilityId, ...)
+    CA.alert(nil, Fmt.c(Fmt.FROST, "Turlassil teleports") .. "  -  reposition!",
+        0x99CCffD9, SOUNDS.CHAMPION_POINTS_COMMITTED, 4000)
 end
 
-local function handleSummonFlameHound(self, context, alerts, changeType, abilityId, ...)
-    if changeType == EFFECT_RESULT_GAINED then
-        self.flameHounds = self.flameHounds + 1
-    elseif changeType == EFFECT_RESULT_FADED then
-        if self.flameHounds > 0 then self.flameHounds = self.flameHounds - 1 end
-    end
+local function handleSummonFlameHoundGained(boss, ctx, alerts, abilityId, ...)
+    boss.flameHounds = boss.flameHounds + 1
 end
 
-local function handleSummonFrostHound(self, context, alerts, changeType, abilityId, ...)
-    if changeType == EFFECT_RESULT_GAINED then
-        self.frostHounds = self.frostHounds + 1
-    elseif changeType == EFFECT_RESULT_FADED then
-        if self.frostHounds > 0 then self.frostHounds = self.frostHounds - 1 end
-    end
+local function handleSummonFlameHoundFaded(boss, ctx, alerts, abilityId, ...)
+    if boss.flameHounds > 0 then boss.flameHounds = boss.flameHounds - 1 end
 end
 
--- -- Shared: Hindered (slow on player -> yellow border 12 s) ----------
-local function handleHindered(self, context, alerts, changeType, abilityId,
-                               unitTag, unitId, unitName, stackCount)
-    if changeType == EFFECT_RESULT_GAINED and AreUnitsEqual("player", unitTag) then
+local function handleSummonFrostHoundGained(boss, ctx, alerts, abilityId, ...)
+    boss.frostHounds = boss.frostHounds + 1
+end
+
+local function handleSummonFrostHoundFaded(boss, ctx, alerts, abilityId, ...)
+    if boss.frostHounds > 0 then boss.frostHounds = boss.frostHounds - 1 end
+end
+
+-- Hindered (local: GAINED + player → yellow border 12 s)
+local function handleHinderedGained(boss, ctx, alerts, abilityId, unitName, unitTag, ...)
+    if AreUnitsEqual("player", unitTag) then
         CA.border(true, 12000, "yellow")
     end
 end
 
-Lylanar.effectRoutes = {
-    -- -- Fire ---------------------------------------------------------------
-    [CINDER_SURGE]         = handleCinderSurge,
-    [NUMBING_SHARDS]       = handleNumbingShards,
-    [IMMINENT_BLISTER]     = handleImminentBlister,
-    [IMMINENT_CHILL]       = handleImminentChill,
-    [BLISTERING_FRAGILITY] = handleBlisteringFragility,
-    [CHILLING_FRAGILITY]   = handleChillingFragility,
-    [DESTRUCTIVE_EMBER]    = handleDestructiveEmber,
-    [PIERCING_HAILSTONE]   = handlePiercingHailstone,
-    [FIREBRAND]            = handleFirebrand,
-    [FROSTBRAND]           = handleFrostbrand,
-    [LYLANAR_MULTILOC]     = handleLylanarMultiloc,
-    [TURLASSIL_MULTILOC]   = handleTurlassilMultiloc,
-    [SUMMON_FLAME_HOUND]   = handleSummonFlameHound,
-    [SUMMON_FROST_HOUND]   = handleSummonFrostHound,
-    -- -- Shared -------------------------------------------------------------
-    [HINDERED]             = handleHindered,
+-- -- Event tables ------------------------------------------------------------
+
+local _beginCastEntry = {}
+for k, v in pairs(DreadsailCommon.beginCastEntries) do _beginCastEntry[k] = v end
+_beginCastEntry[BROILING_HEW]        = { type = AlertTypes.CUSTOM, fn = handleBroilingHew }
+_beginCastEntry[TORRID_CLEAVE]       = { type = AlertTypes.CUSTOM, fn = handleTorridCleave }
+_beginCastEntry[SCALDING_SWELL]      = { type = AlertTypes.CUSTOM, fn = handleScaldingSwell }
+_beginCastEntry[CHARRED_CONSTRICTION]= { type = AlertTypes.CUSTOM, fn = handleCharredConstriction }
+_beginCastEntry[MAGMA_SPIKE]         = { type = AlertTypes.CUSTOM, fn = handleMagmaSpike }
+_beginCastEntry[INCENDIARY_AXE]      = { type = AlertTypes.CUSTOM, fn = handleIncendiaryAxe }
+_beginCastEntry[STINGING_SHEAR]      = { type = AlertTypes.CUSTOM, fn = handleStingingShear }
+_beginCastEntry[BRISK_RIP]           = { type = AlertTypes.CUSTOM, fn = handleBriskRip }
+_beginCastEntry[BITING_BILLOW]       = { type = AlertTypes.CUSTOM, fn = handleBitingBillow }
+_beginCastEntry[FRIGIDARIUM]         = { type = AlertTypes.CUSTOM, fn = handleFrigidarium }
+_beginCastEntry[GLACIAL_SPIKE]       = { type = AlertTypes.CUSTOM, fn = handleGlacialSpike }
+_beginCastEntry[CALAMITOUS_SWORD]    = { type = AlertTypes.CUSTOM, fn = handleCalamitousSword }
+
+local _effectGainedEntry = {}
+for k, v in pairs(DreadsailCommon.effectChangedEntries.gained) do _effectGainedEntry[k] = v end
+_effectGainedEntry[CINDER_SURGE]         = { type = AlertTypes.CUSTOM, fn = handleCinderSurgeGained }
+_effectGainedEntry[NUMBING_SHARDS]       = { type = AlertTypes.CUSTOM, fn = handleNumbingShardsGained }
+_effectGainedEntry[IMMINENT_BLISTER]     = { type = AlertTypes.CUSTOM, fn = handleImminentBlisterGained }
+_effectGainedEntry[IMMINENT_CHILL]       = { type = AlertTypes.CUSTOM, fn = handleImminentChillGained }
+_effectGainedEntry[BLISTERING_FRAGILITY] = { type = AlertTypes.CUSTOM, fn = handleBlisteringFragilityGained }
+_effectGainedEntry[CHILLING_FRAGILITY]   = { type = AlertTypes.CUSTOM, fn = handleChillingFragilityGained }
+_effectGainedEntry[DESTRUCTIVE_EMBER]    = { type = AlertTypes.CUSTOM, fn = handleDestructiveEmberGained }
+_effectGainedEntry[PIERCING_HAILSTONE]   = { type = AlertTypes.CUSTOM, fn = handlePiercingHailstoneGained }
+_effectGainedEntry[FIREBRAND]            = { type = AlertTypes.CUSTOM, fn = handleFirebrandGained }
+_effectGainedEntry[FROSTBRAND]           = { type = AlertTypes.CUSTOM, fn = handleFrostbrandGained }
+_effectGainedEntry[LYLANAR_MULTILOC]     = { type = AlertTypes.CUSTOM, fn = handleLylanarMultilocGained }
+_effectGainedEntry[TURLASSIL_MULTILOC]   = { type = AlertTypes.CUSTOM, fn = handleTurlassilMultilocGained }
+_effectGainedEntry[SUMMON_FLAME_HOUND]   = { type = AlertTypes.CUSTOM, fn = handleSummonFlameHoundGained }
+_effectGainedEntry[SUMMON_FROST_HOUND]   = { type = AlertTypes.CUSTOM, fn = handleSummonFrostHoundGained }
+_effectGainedEntry[HINDERED]             = { type = AlertTypes.CUSTOM, fn = handleHinderedGained }
+
+local _effectFadedEntry = {}
+for k, v in pairs(DreadsailCommon.effectChangedEntries.faded) do _effectFadedEntry[k] = v end
+_effectFadedEntry[CINDER_SURGE]         = { type = AlertTypes.CUSTOM, fn = handleCinderSurgeFaded }
+_effectFadedEntry[NUMBING_SHARDS]       = { type = AlertTypes.CUSTOM, fn = handleNumbingShardsFaded }
+_effectFadedEntry[IMMINENT_BLISTER]     = { type = AlertTypes.CUSTOM, fn = handleImminentBlisterFaded }
+_effectFadedEntry[IMMINENT_CHILL]       = { type = AlertTypes.CUSTOM, fn = handleImminentChillFaded }
+_effectFadedEntry[BLISTERING_FRAGILITY] = { type = AlertTypes.CUSTOM, fn = handleBlisteringFragilityFaded }
+_effectFadedEntry[CHILLING_FRAGILITY]   = { type = AlertTypes.CUSTOM, fn = handleChillingFragilityFaded }
+_effectFadedEntry[DESTRUCTIVE_EMBER]    = { type = AlertTypes.CUSTOM, fn = handleDestructiveEmberFaded }
+_effectFadedEntry[PIERCING_HAILSTONE]   = { type = AlertTypes.CUSTOM, fn = handlePiercingHailstoneFaded }
+_effectFadedEntry[SUMMON_FLAME_HOUND]   = { type = AlertTypes.CUSTOM, fn = handleSummonFlameHoundFaded }
+_effectFadedEntry[SUMMON_FROST_HOUND]   = { type = AlertTypes.CUSTOM, fn = handleSummonFrostHoundFaded }
+
+local _effectUpdatedEntry = {
+    [DESTRUCTIVE_EMBER]  = { type = AlertTypes.CUSTOM, fn = handleDestructiveEmberUpdated },
+    [PIERCING_HAILSTONE] = { type = AlertTypes.CUSTOM, fn = handlePiercingHailstoneUpdated },
+}
+
+Lylanar.events = {
+    beginCast     = { instant = _beginCastEntry, started = _beginCastEntry },
+    effectChanged = { gained = _effectGainedEntry, faded = _effectFadedEntry, updated = _effectUpdatedEntry },
+    combatEvent   = { damage = {}, dodged = {}, blocked = {}, other = {} },
 }
 
 -- -- Info-line renderers ---------------------------------------------------
 
--- Row 1: Fire bubble (Destructive Ember)  -  stack count in name column, drop countdown as ETA.
 local function showFireBubbleLine(self, alerts, now, isHM)
     if self.lastDestructiveEmber > 0 then
         local cd     = isHM and BUBBLE_CD_HM or BUBBLE_CD_NORM
@@ -516,7 +464,6 @@ local function showFireBubbleLine(self, alerts, now, isHM)
     end
 end
 
--- Row 2: Ice bubble (Piercing Hailstone)  -  stack count in name column, drop countdown as ETA.
 local function showIceBubbleLine(self, alerts, now, isHM)
     if self.lastPiercingHail > 0 then
         local cd     = isHM and BUBBLE_CD_HM or BUBBLE_CD_NORM
@@ -537,7 +484,6 @@ local function showIceBubbleLine(self, alerts, now, isHM)
     end
 end
 
--- Row 3: Fragility debuff countdown  -  fire takes priority over ice.
 local function showFragilityLine(self, alerts)
     local fireT = self.fireFragility:remaining()
     local iceT  = self.iceFragility:remaining()
@@ -550,8 +496,6 @@ local function showFragilityLine(self, alerts)
     end
 end
 
--- Row 4: Spike cage (priority) > HM weapon cooldowns > Imminent tank/heal warning.
--- Axe/spike ETA goes in the tracker column; sword (secondary) is appended to name.
 local function showSpikeLine(self, alerts, now, isHM)
     local fireSpikeT = (self.lastMagmaSpike   > 0) and (SPIKE_DUR - (now - self.lastMagmaSpike))   or -1
     local iceSpikeT  = (self.lastGlacialSpike > 0) and (SPIKE_DUR - (now - self.lastGlacialSpike)) or -1
@@ -562,7 +506,6 @@ local function showSpikeLine(self, alerts, now, isHM)
         alerts:setRow(4, Fmt.c(Fmt.FROST, Lang.t("dsr_lylanar_need_ice_dome")), iceSpikeT)
     elseif isHM and self.lastIncendiaryAxe > 0 then
         local T = WEAPON_CD - (now - self.lastIncendiaryAxe)
-        -- Sword info (secondary timer) appended to name column if active.
         local swordPart = ""
         if self.lastCalamitousSword > 0 then
             swordPart = Fmt.c(Fmt.FROST, Lang.t("dsr_lylanar_sword")
@@ -607,10 +550,9 @@ function Lylanar:onWipe(context, alerts)
     self.frostbrandTracker      = {};   self.lastBrandMatchIce    = 0
     self.frostHounds            = 0
     self.lastBrandMatch         = 0
-    CA.border(false, 0, "yellow")   -- Hindered border: clear if wipe mid-debuff
+    CA.border(false, 0, "yellow")
 end
 
--- -- 200 ms display loop ---------------------------------------------------
 function Lylanar:onUpdate(context, alerts)
     local now  = GetGameTimeMilliseconds() / 1000
     local isHM = context.isHM
@@ -619,6 +561,8 @@ function Lylanar:onUpdate(context, alerts)
     showFragilityLine(self, alerts)
     showSpikeLine(self, alerts, now, isHM)
 end
+
+EventDispatcher.build(Lylanar)
 
 package.loaded["trial.dsr.boss.Lylanar"] = Lylanar
 return Lylanar

@@ -97,7 +97,7 @@ function BossBase:cancelPending()
 end
 
 --- Stop tracked cast bars for both the dead unit and its killer, then
---- remove both from alertList.  Called automatically by CombatHandler when
+--- remove both from alertList.  Called automatically by EventDispatcher when
 --- ACTION_RESULT_DIED fires.  Boss overrides that need extra cleanup should
 --- call this via BossBase.onDied(self, ...) or replicate the two-key pattern.
 function BossBase:onDied(context, alerts,

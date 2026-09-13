@@ -26,6 +26,13 @@ local COMBAT_RESULT = {
     EFFECT_GAINED          = 6,
     EFFECT_GAINED_DURATION = 7,
     INTERRUPT              = 65,
+    -- Added for EventDispatcher.dispatchCombatEvent (Phase 1.2).
+    -- Must stay in sync with eso_api.lua ACTION_RESULT_* values.
+    DAMAGE                 = 2,
+    CRITICAL_DAMAGE        = 3,
+    DODGED                 = 35,
+    BLOCKED_DAMAGE         = 37,
+    ABILITY_ON_COOLDOWN    = 17,
 }
 
 local EFFECT_CHANGE = {

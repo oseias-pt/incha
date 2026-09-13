@@ -1,90 +1,106 @@
-
-local CA = require("external-api.CombatAlerts")
-local BossBase = require("lib.BossBase")
-local CastDur = require("lib.CastDur")
-local Lang = require("core.Lang")
-local Fmt  = require("core.Fmt")
-local Colors = require("core.Colors")
-
+local AlertTypes      = require("core.AlertTypes")
+local EventDispatcher = require("core.EventDispatcher")
+local CA              = require("external-api.CombatAlerts")
+local BossBase        = require("lib.BossBase")
+local CastDur         = require("lib.CastDur")
+local Lang            = require("core.Lang")
+local Fmt             = require("core.Fmt")
+local Colors          = require("core.Colors")
 
 -- ── Ability IDs ───────────────────────────────────────────────────────────
-local BRILLIANT_ANNIHILATION = 214187   -- combatRoute: ACTION_RESULT_BEGIN → light side room wipe; STACK
-local BLEAK_ANNIHILATION     = 214203   -- combatRoute: ACTION_RESULT_BEGIN → dark side room wipe; STACK
-local PORCIN_LIGHT           = 219329   -- combatRoute: ACTION_RESULT_EFFECT_GAINED_DURATION / FADED → player on Ryelaz (dark) side
-local PORCIN_DARK            = 219330   -- combatRoute: ACTION_RESULT_EFFECT_GAINED_DURATION / FADED → player on Zilyesset (light) side
-local SUMMON_LIGHTWEAVER     = 218113   -- combatRoute: ACTION_RESULT_BEGIN → big add spawned on light side
-local SUMMON_BLACKGUARD      = 218109   -- combatRoute: ACTION_RESULT_BEGIN → big add spawned on dark side
+local BRILLIANT_ANNIHILATION = 214187
+local BLEAK_ANNIHILATION     = 214203
+local PORCIN_LIGHT           = 219329
+local PORCIN_DARK            = 219330
+local SUMMON_LIGHTWEAVER     = 218113
+local SUMMON_BLACKGUARD      = 218109
 
--- ── CA colour palettes ────────────────────────────────────────────────────
-
--- ── Fallback durations (empirical; replace if GetAbilityCastInfo becomes reliable) ─
-local FALLBACK_DUR = 3000   -- Annihilation channel: empirical
+local FALLBACK_DUR = 3000
 
 local RyelazEncounter = {}
 RyelazEncounter.__index = RyelazEncounter
 
 RyelazEncounter.key               = "ryelaz"
-RyelazEncounter.nameAliases       = { "Count Ryelaz", "Zilyesset" }   -- TODO: verify via GetUnitName in-game
-RyelazEncounter.hmHealthThreshold = 40000000   -- TODO: verify — round estimate, no measured evidence
--- location: placeholder — Lucent Citadel arena AABB not yet captured.
--- Detection falls back to nameAliases (name-based, may fail on non-EN clients).
--- To calibrate: stand in arena, run /script d(GetUnitWorldPosition("boss1"))
+RyelazEncounter.nameAliases       = { "Count Ryelaz", "Zilyesset" }
+RyelazEncounter.hmHealthThreshold = 40000000
 
--- ── State ─────────────────────────────────────────────────────────────────
--- "ryelaz"    = player on Ryelaz dark side
--- "zilyesset" = player on Zilyesset light side
--- nil         = assignment unknown (split hasn't happened or effect not yet seen)
+-- playerSide: "ryelaz" | "zilyesset" | nil
 RyelazEncounter.stateSchema = {}
 
 function RyelazEncounter.new()
     return BossBase.fromSchema(RyelazEncounter)
 end
 
--- ── Routing tables (C3) ──────────────────────────────────────────────────
+-- ── Handlers: beginCast ──────────────────────────────────────────────────
+-- (Replacing makeAnnihilHandler factory with 2 individually named functions)
 
--- Annihilation: shared alertCast, different showAction label.
-local function makeAnnihilHandler(label)
-    return { result = ACTION_RESULT_BEGIN,
-        fn = function(self, context, alerts, abilityId, ...)
-        local dur = CastDur.get(abilityId, FALLBACK_DUR)
-        CA.ranged(abilityId, Lang.t("lc_ryelaz_annihil_action"), dur, Colors.FLYZONE)
-        alerts:showAction(label)
-    end }
+local function handleBrilliantAnnihilation(boss, ctx, alerts, abilityId, ...)
+    local dur = CastDur.get(abilityId, FALLBACK_DUR)
+    CA.ranged(abilityId, Lang.t("lc_ryelaz_annihil_action"), dur, Colors.FLYZONE)
+    alerts:showAction(Lang.t("lc_ryelaz_brilliant"))
 end
 
-local function handlePorcinLight(self, context, alerts, result, abilityId, unitTag, ...)
-    if result == ACTION_RESULT_EFFECT_GAINED_DURATION and IsUnitPlayer(unitTag) then
-        self.playerSide = "ryelaz"
-    elseif result == ACTION_RESULT_EFFECT_FADED and IsUnitPlayer(unitTag) then
-        self.playerSide = nil
-    end
+local function handleBleakAnnihilation(boss, ctx, alerts, abilityId, ...)
+    local dur = CastDur.get(abilityId, FALLBACK_DUR)
+    CA.ranged(abilityId, Lang.t("lc_ryelaz_annihil_action"), dur, Colors.FLYZONE)
+    alerts:showAction(Lang.t("lc_ryelaz_bleak"))
 end
 
-local function handlePorcinDark(self, context, alerts, result, abilityId, unitTag, ...)
-    if result == ACTION_RESULT_EFFECT_GAINED_DURATION and IsUnitPlayer(unitTag) then
-        self.playerSide = "zilyesset"
-    elseif result == ACTION_RESULT_EFFECT_FADED and IsUnitPlayer(unitTag) then
-        self.playerSide = nil
-    end
-end
-
-local function handleSummonLightweaver(self, context, alerts, abilityId, ...)
+local function handleSummonLightweaver(boss, ctx, alerts, abilityId, ...)
     CA.alert(nil, Lang.t("lc_ryelaz_add_light"), 0xFFDD44D9, SOUNDS.DUEL_START, 5000)
     PlaySound(SOUNDS.DUEL_START)
 end
 
-local function handleSummonBlackguard(self, context, alerts, abilityId, ...)
+local function handleSummonBlackguard(boss, ctx, alerts, abilityId, ...)
     CA.alert(nil, Lang.t("lc_ryelaz_add_dark"), 0x8844FFD9, SOUNDS.DUEL_START, 5000)
     PlaySound(SOUNDS.DUEL_START)
 end
 
-RyelazEncounter.combatRoutes = {
-    [BRILLIANT_ANNIHILATION] = makeAnnihilHandler(Lang.t("lc_ryelaz_brilliant")),
-    [BLEAK_ANNIHILATION]     = makeAnnihilHandler(Lang.t("lc_ryelaz_bleak")),
-    [PORCIN_LIGHT]           = handlePorcinLight,
-    [PORCIN_DARK]            = handlePorcinDark,
-    [SUMMON_LIGHTWEAVER]     = { result = ACTION_RESULT_BEGIN, fn = handleSummonLightweaver },
-    [SUMMON_BLACKGUARD]      = { result = ACTION_RESULT_BEGIN, fn = handleSummonBlackguard },
+-- ── Handlers: combatEvent.other ──────────────────────────────────────────
+-- PORCIN_LIGHT fires EFFECT_GAINED_DURATION (entering) and EFFECT_FADED (leaving).
+-- Both results reach combatEvent.other; use boolean state toggle to distinguish.
+-- combatEvent sig: (boss, ctx, alerts, abilityId, sourceUnitName, unitTag, ...)
+
+local function handlePorcinLight(boss, ctx, alerts, abilityId, sourceUnitName, unitTag, ...)
+    if not IsUnitPlayer(unitTag) then return end
+    if boss.playerSide ~= "ryelaz" then
+        -- EFFECT_GAINED_DURATION: player entering Ryelaz (dark) side
+        boss.playerSide = "ryelaz"
+    else
+        -- EFFECT_FADED: player leaving Ryelaz (dark) side
+        boss.playerSide = nil
+    end
+end
+
+local function handlePorcinDark(boss, ctx, alerts, abilityId, sourceUnitName, unitTag, ...)
+    if not IsUnitPlayer(unitTag) then return end
+    if boss.playerSide ~= "zilyesset" then
+        -- EFFECT_GAINED_DURATION: player entering Zilyesset (light) side
+        boss.playerSide = "zilyesset"
+    else
+        -- EFFECT_FADED: player leaving Zilyesset (light) side
+        boss.playerSide = nil
+    end
+end
+
+-- ── Event tables ─────────────────────────────────────────────────────────
+
+local _beginCastEntry = {
+    [BRILLIANT_ANNIHILATION] = { type = AlertTypes.CUSTOM, fn = handleBrilliantAnnihilation },
+    [BLEAK_ANNIHILATION]     = { type = AlertTypes.CUSTOM, fn = handleBleakAnnihilation },
+    [SUMMON_LIGHTWEAVER]     = { type = AlertTypes.CUSTOM, fn = handleSummonLightweaver },
+    [SUMMON_BLACKGUARD]      = { type = AlertTypes.CUSTOM, fn = handleSummonBlackguard },
+}
+
+local _combatOtherEntry = {
+    [PORCIN_LIGHT] = { type = AlertTypes.CUSTOM, fn = handlePorcinLight },
+    [PORCIN_DARK]  = { type = AlertTypes.CUSTOM, fn = handlePorcinDark },
+}
+
+RyelazEncounter.events = {
+    beginCast     = { instant = _beginCastEntry, started = _beginCastEntry },
+    effectChanged = { gained = {}, faded = {}, updated = {} },
+    combatEvent   = { damage = {}, dodged = {}, blocked = {}, other = _combatOtherEntry },
 }
 
 function RyelazEncounter:onWipe(context, alerts)
@@ -93,16 +109,15 @@ end
 
 function RyelazEncounter:onUpdate(context, alerts)
     if self.playerSide == "ryelaz" then
-        alerts:setRow(1, Fmt.c(Fmt.AMBER,  Lang.t("lc_ryelaz_side_dark")), nil)
+        alerts:setRow(1, Fmt.c(Fmt.AMBER, Lang.t("lc_ryelaz_side_dark")), nil)
     elseif self.playerSide == "zilyesset" then
         alerts:setRow(1, Fmt.c(Fmt.FROST, Lang.t("lc_ryelaz_side_light")), nil)
     else
         alerts:clearRow(1)
     end
-    -- Slots 2-7 are not written by this encounter.  Trial:onBossesChanged
-    -- clears the panel on every boss transition, so they do not need to be
-    -- blanked on each tick.
 end
+
+EventDispatcher.build(RyelazEncounter)
 
 package.loaded["trial.lc.boss.RyelazEncounter"] = RyelazEncounter
 return RyelazEncounter

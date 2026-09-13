@@ -11,18 +11,20 @@ local Fmt            = require("core.Fmt")
 local MapUtils       = require("lib.MapUtils")
 local CA             = require("external-api.CombatAlerts")
 local CastDur        = require("lib.CastDur")
-local Colors = require("core.Colors")
+local Colors         = require("core.Colors")
+local AlertTypes     = require("core.AlertTypes")
+local EventDispatcher = require("core.EventDispatcher")
 
 
 -- -- Ability IDs ------------------------------------------------------------
-local GLACIAL_FIST    = 120838   -- combatRoute: ACTION_RESULT_BEGIN -> Block alert (player/nearby 4.5m)
-local ICE_TOMB        = 119632   -- combatRoute: ACTION_RESULT_BEGIN -> start tomb cycle
-local IN_ICE          = 116044   -- combatRoute: ACTION_RESULT_EFFECT_GAINED / FADED -> player in/out tomb
-local LASER_1         = 122820   -- combatRoute: ACTION_RESULT_BEGIN -> laser 40s + landing 12.8s
-local LASER_2         = 122821   -- combatRoute: ACTION_RESULT_BEGIN -> laser 10s + landing 54.6s
-local LASER_3         = 122822   -- combatRoute: ACTION_RESULT_BEGIN -> laser 32s + landing 32.1s
-local ICE_EFFECT_CAST = 124687   -- effectRoute: EFFECT_RESULT_GAINED -> TombCast signal
-local ICE_EFFECT_ARM  = 119638   -- effectRoute: EFFECT_RESULT_GAINED / FADED -> TombArmed / TombFaded
+local GLACIAL_FIST    = 120838   -- beginCast: Block alert (player/nearby 4.5m)
+local ICE_TOMB        = 119632   -- beginCast: start tomb cycle
+local IN_ICE          = 116044   -- effectChanged: gained/faded -> player in/out tomb
+local LASER_1         = 122820   -- beginCast: laser 40s + landing 12.8s
+local LASER_2         = 122821   -- beginCast: laser 10s + landing 54.6s
+local LASER_3         = 122822   -- beginCast: laser 32s + landing 32.1s
+local ICE_EFFECT_CAST = 124687   -- effectChanged: gained -> TombCast signal
+local ICE_EFFECT_ARM  = 119638   -- effectChanged: gained/faded -> TombArmed / TombFaded
 
 -- -- IceTomb row prefixes (coloured at module load; structural) --
 local sA = Lang.t("ss_lokke_tomb_slot_a")
@@ -205,35 +207,10 @@ function Lokke:onWipe(context, alerts)
     clearTombs(self)
 end
 
--- -- Routing tables (C3) --------------------------------------------------
--- Shared cross-trial mechanic handler.
-Lokke.common = SunspireCommon
+-- -- Handlers (new-style: boss as first arg, sourceUnitName before unit args) --
 
--- Laser flight: closes over the per-flight timing constants.
-local function makeLaserHandler(laserDelay, landingAfterLaser)
-    return { result = ACTION_RESULT_BEGIN,
-        fn = function(self, context, alerts, abilityId, ...)
-        local now = GetGameTimeMilliseconds() / 1000
-        CA.castAlertsStop(self.laserBarId)
-        self.laserTime   = now + laserDelay
-        self.landingTime = self.laserTime + landingAfterLaser
-        self.laserBarId  = CA.bar(
-            abilityId, "Laser",
-            laserDelay * 1000, laserDelay * 1000, Colors.FLYZONE, 0.5,
-            { laserDelay * 1000, "LASER!", 1, 0.5, 0, 0.9, SOUNDS.NONE })
-        -- Reset iceNumber once boss is airborne (~10 s in).
-        -- Store the handle so onLeave can cancel it on zone exit.
-        self:cancelAfter(self.laserResetTimer)
-        self.laserResetTimer = self:after(10000, function()
-            self.laserResetTimer = false
-            self.iceNumber = 0
-        end)
-    end }
-end
-
-local function handleGlacialFist(self, context, alerts, abilityId,
-                                  unitTag, sourceUnitTag, sourceUnitId, unitId,
-                                  sourceUnitName, unitName)
+local function handleGlacialFist(boss, context, alerts, abilityId, sourceUnitName,
+                                  unitTag, unitId, sourceUnitId, unitName)
     local show = false
     if IsUnitPlayer(unitTag) then
         if AreUnitsEqual("player", unitTag) then
@@ -246,58 +223,124 @@ local function handleGlacialFist(self, context, alerts, abilityId,
         alerts:showAction(Lang.t("ss_lokke_block_glacial"))
         local dur = CastDur.get(GLACIAL_FIST, FALLBACK_FIST_DUR)
         local cid = CA.melee(abilityId, sourceUnitName, dur, Colors.ICE)
-        if cid and sourceUnitId then self.alertList[sourceUnitId] = cid end
+        if cid and sourceUnitId then boss.alertList[sourceUnitId] = cid end
     end
 end
 
-local function handleIceTomb(self, context, alerts, abilityId, ...)
+local function handleIceTomb(boss, context, alerts, abilityId, ...)
     -- Reset any unresolved state from the previous cycle before starting
     -- this one.  Normally iceFaded calls clearTombs() to clean up, but if
     -- the tomb resolved abnormally (player died inside, no IN_ICE FADED)
     -- the counters would otherwise carry over and corrupt the new cycle.
-    clearTombs(self)
-    self.iceNext    = GetGameTimeMilliseconds() / 1000 + 23
-    self.iceNumber  = self.iceNumber % 3 + 1
-    self.tombsClear = false
+    clearTombs(boss)
+    boss.iceNext    = GetGameTimeMilliseconds() / 1000 + 23
+    boss.iceNumber  = boss.iceNumber % 3 + 1
+    boss.tombsClear = false
 end
 
--- InIce: player enters (EFFECT_GAINED) / exits (EFFECT_FADED) a tomb.
-local function handleInIce(self, context, alerts, result, abilityId,
-                            unitTag, sourceUnitTag, sourceUnitId, unitId, ...)
-    if result == ACTION_RESULT_EFFECT_GAINED then
-        iceGained(self, unitId)
-    elseif result == ACTION_RESULT_EFFECT_FADED then
-        iceFaded(self, unitId)
-    end
+-- IN_ICE: player enters / exits a tomb.
+-- Migrated from combatRoute (ACTION_RESULT_EFFECT_GAINED/FADED via COMBAT_EVENT)
+-- to effectChanged (EFFECT_RESULT_GAINED/FADED via EFFECT_CHANGED).
+-- TODO: validate in-game that EFFECT_CHANGED fires for IN_ICE on tomb enter/exit.
+local function handleInIceGained(boss, context, alerts, abilityId, unitName,
+                                  unitTag, unitId, stackCount)
+    iceGained(boss, unitId)
 end
 
--- 124687: cast signal (GAINED = tomb is being cast)
-local function handleIceEffectCast(self, context, alerts, changeType, abilityId, ...)
-    if changeType == EFFECT_RESULT_GAINED then
-        tombCast(self, GetGameTimeMilliseconds() / 1000)
-    end
+local function handleInIceFaded(boss, context, alerts, abilityId, unitName,
+                                 unitTag, unitId, stackCount)
+    iceFaded(boss, unitId)
 end
 
--- 119638: arm/disarm signal (GAINED = tomb ready to enter, FADED = window closed)
-local function handleIceEffectArm(self, context, alerts, changeType, abilityId, ...)
-    if     changeType == EFFECT_RESULT_GAINED then tombArmed(self)
-    elseif changeType == EFFECT_RESULT_FADED  then tombFaded(self)
-    end
+-- ICE_EFFECT_CAST (124687): tomb being cast signal.
+-- Old effectRoute guarded on changeType == EFFECT_RESULT_GAINED;
+-- now in effectChanged.gained so the guard is implicit.
+local function handleIceEffectCastGained(boss, context, alerts, abilityId, unitName,
+                                          unitTag, unitId, stackCount)
+    tombCast(boss, GetGameTimeMilliseconds() / 1000)
 end
 
-Lokke.combatRoutes = {
-    [GLACIAL_FIST] = { result = ACTION_RESULT_BEGIN, fn = handleGlacialFist },
-    [ICE_TOMB]     = { result = ACTION_RESULT_BEGIN, fn = handleIceTomb },
-    [IN_ICE]       = handleInIce,
-    [LASER_1]      = makeLaserHandler(40,   12.8),
-    [LASER_2]      = makeLaserHandler(10,   54.6),
-    [LASER_3]      = makeLaserHandler(32,   32.1),
+-- ICE_EFFECT_ARM (119638): tomb ready to enter (gained) / window closed (faded).
+local function handleIceEffectArmGained(boss, context, alerts, abilityId, unitName,
+                                         unitTag, unitId, stackCount)
+    tombArmed(boss)
+end
+
+local function handleIceEffectArmFaded(boss, context, alerts, abilityId, unitName,
+                                        unitTag, unitId, stackCount)
+    tombFaded(boss)
+end
+
+-- -- Laser handlers -----------------------------------------------------------
+-- makeLaserHandler was replaced by three named functions, one per laser,
+-- to avoid inline fn lambdas in the events table.
+-- applyLaserTiming holds the shared implementation.
+
+local function applyLaserTiming(boss, abilityId, laserDelay, landingAfterLaser)
+    local now = GetGameTimeMilliseconds() / 1000
+    CA.castAlertsStop(boss.laserBarId)
+    boss.laserTime   = now + laserDelay
+    boss.landingTime = boss.laserTime + landingAfterLaser
+    boss.laserBarId  = CA.bar(
+        abilityId, "Laser",
+        laserDelay * 1000, laserDelay * 1000, Colors.FLYZONE, 0.5,
+        { laserDelay * 1000, "LASER!", 1, 0.5, 0, 0.9, SOUNDS.NONE })
+    -- Reset iceNumber once boss is airborne (~10 s in).
+    -- Store the handle so onLeave can cancel it on zone exit.
+    boss:cancelAfter(boss.laserResetTimer)
+    boss.laserResetTimer = boss:after(10000, function()
+        boss.laserResetTimer = false
+        boss.iceNumber = 0
+    end)
+end
+
+local function handleLaser1(boss, context, alerts, abilityId, ...)
+    applyLaserTiming(boss, abilityId, 40, 12.8)
+end
+
+local function handleLaser2(boss, context, alerts, abilityId, ...)
+    applyLaserTiming(boss, abilityId, 10, 54.6)
+end
+
+local function handleLaser3(boss, context, alerts, abilityId, ...)
+    applyLaserTiming(boss, abilityId, 32, 32.1)
+end
+
+-- -- Events table (replaces combatRoutes / effectRoutes) --------------------
+-- Boss-specific begin-cast entries.  Common entries from SunspireCommon are
+-- merged in below so that abilityIdsFor includes all registered ability IDs.
+
+local _beginCastEntry = {
+    [GLACIAL_FIST] = { type = AlertTypes.CUSTOM, fn = handleGlacialFist },
+    [ICE_TOMB]     = { type = AlertTypes.CUSTOM, fn = handleIceTomb },
+    [LASER_1]      = { type = AlertTypes.CUSTOM, fn = handleLaser1 },
+    [LASER_2]      = { type = AlertTypes.CUSTOM, fn = handleLaser2 },
+    [LASER_3]      = { type = AlertTypes.CUSTOM, fn = handleLaser3 },
 }
 
-Lokke.effectRoutes = {
-    [ICE_EFFECT_CAST] = handleIceEffectCast,
-    [ICE_EFFECT_ARM]  = handleIceEffectArm,
+for k, v in pairs(SunspireCommon.beginCastEntries) do
+    _beginCastEntry[k] = v
+end
+
+Lokke.events = {
+    beginCast = {
+        instant = _beginCastEntry,
+        started = _beginCastEntry,
+    },
+    effectChanged = {
+        gained = {
+            [IN_ICE]          = { type = AlertTypes.CUSTOM, fn = handleInIceGained },
+            [ICE_EFFECT_CAST] = { type = AlertTypes.CUSTOM, fn = handleIceEffectCastGained },
+            [ICE_EFFECT_ARM]  = { type = AlertTypes.CUSTOM, fn = handleIceEffectArmGained },
+        },
+        faded = {
+            [IN_ICE]         = { type = AlertTypes.CUSTOM, fn = handleInIceFaded },
+            [ICE_EFFECT_ARM] = { type = AlertTypes.CUSTOM, fn = handleIceEffectArmFaded },
+        },
+    },
 }
+
+EventDispatcher.build(Lokke)
 
 -- -- Info-line renderers ---------------------------------------------------
 
