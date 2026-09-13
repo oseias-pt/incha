@@ -103,11 +103,16 @@ luajit test/run_log.lua <encounter.log> [zone_id]
 luajit test/checks/filters.lua
 luajit test/checks/contracts.lua
 luajit test/checks/manifest.lua
+luajit test/checks/health_rules.lua
 ```
 
 `test/run_log.lua` replays a live ESO encounter log through all boss modules and
 reports every alert that would have fired.  Use it to validate a migration or
 spot dead mechanic coverage.
+
+`test/checks/health_rules.lua` unit-tests `core/HealthRules` in isolation:
+priority sort, `_staticText` pre-compilation, boundary inclusivity, `when()`
+predicates, `{hp}` substitution, and zero-allocation static-text returns.
 
 ---
 
@@ -120,3 +125,67 @@ spot dead mechanic coverage.
 - `setmetatable(Boss, {__index = BossBase})` for bosses that extend BossBase
 - Ability IDs are raw integers declared as `local NAME = <id>` at the top of
   each boss file with a comment naming the mechanic
+
+---
+
+## Boss Detection
+
+### English-only name aliases
+
+`boss.name` and `boss.nameAliases` **must be plain English string literals** —
+never `Lang.t(...)` calls.
+
+ESO's combat events (`EVENT_COMBAT_EVENT`, `EVENT_BOSSES_CHANGED`) report unit
+names in the client's locale on some events but always in English on others;
+`BossRegistry.findByName` is written against English names.  A `Lang.t` call
+in an alias would break detection on every non-English client.
+
+```lua
+-- CORRECT
+BossClass.nameAliases = { "Z'Maja", "Saint Olms the Just" }
+
+-- WRONG — breaks non-English detection
+BossClass.nameAliases = { Lang.t("boss_name_zmaja") }
+```
+
+`test/checks/contracts.lua` will warn if any alias is not a plain string.
+
+### Detection priority
+
+`BossRegistry` prefers position (`boss.location` AABB) over name when both are
+present.  Bosses reachable only by name need a valid English alias; bosses with
+an AABB work on all locales without a name entry.  Prefer AABB when in-game
+coordinates are available.
+
+---
+
+## Compound Encounters (SubBoss pattern)
+
+Encounters that track multiple independent named units (e.g. OlmsEncounter,
+ZmajaEncounter) should use `lib/SubBoss.lua` rather than flat per-sub-boss
+field names.
+
+```lua
+local SubBoss = require("lib.SubBoss")
+
+Boss.stateSchema = {
+    -- one SubBoss per named unit; timers are grouped inside
+    siro = function() return SubBoss.new({ jump = Timer.new(23), banner = Timer.new(45) }) end,
+    rele = function() return SubBoss.new({ jump = Timer.new(19), bash = Timer.new(20) }) end,
+    -- shared top-level fields as usual
+    alertList = function() return {} end,
+}
+
+-- Access:
+--   boss.siro.active           -- boolean
+--   boss.siro.jump:remaining() -- timer
+--   boss.siro:reset()          -- clears all timers, sets active = false
+
+-- onWipe is simply:
+function Boss:onWipe()
+    self:cleanupAlertList()
+    BossBase.resetSchema(self, Boss)   -- re-creates each SubBoss (clears timers + active)
+end
+```
+
+See `lib/SubBoss.lua` for the full API.

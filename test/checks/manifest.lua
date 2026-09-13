@@ -121,6 +121,59 @@ elseif bootstrapVersion then
     end
 end
 
+-- -- P9: Common modules must appear before the boss files that require them ----
+--
+-- Scans each boss file listed in the manifest for require("trial.X.YCommon")
+-- calls and verifies that the common module's line in the manifest is earlier
+-- than every boss file that needs it.  Purely textual: not a full parser, but
+-- accurate enough for the require("…") pattern used in this codebase.
+--
+-- Cross-platform: uses io.open to read each boss file rather than io.popen/find.
+
+-- Build a position map:  manifest path → 1-based index in the load order.
+local lineIndex = {}
+for i, entry in ipairs(order) do
+    lineIndex[entry] = i
+end
+
+-- Scan every trial boss file for require("trial.X.CommonModule") patterns.
+local function readFile(path)
+    local f = io.open(path, "r")
+    if not f then return nil end
+    local s = f:read("*a")
+    f:close()
+    return s
+end
+
+local commonDeps = {}   -- { bosspath → { commonpath, … } }
+for _, entry in ipairs(order) do
+    -- Only check trial/.../boss/*.lua files.
+    if entry:match("^trial/[%w_]+/boss/[%w_]+%.lua$") then
+        local src = readFile(entry)
+        if src then
+            for mod in src:gmatch('require%("(trial%.[%w_]+%.[%w_]+Common)"%)') do
+                -- Convert module path ("trial.rg.RockgroveCommon") to file path
+                local fp = mod:gsub("%.", "/") .. ".lua"
+                if lineIndex[fp] then
+                    commonDeps[entry] = commonDeps[entry] or {}
+                    table.insert(commonDeps[entry], fp)
+                end
+            end
+        end
+    end
+end
+
+for bossPath, deps in pairs(commonDeps) do
+    local bossPos = lineIndex[bossPath]
+    for _, commonPath in ipairs(deps) do
+        local commonPos = lineIndex[commonPath]
+        if commonPos and bossPos and commonPos > bossPos then
+            fail("LOAD ORDER    %s (line %d) appears before its dependency %s (line %d) in %s",
+                 bossPath, bossPos, commonPath, commonPos, MANIFEST)
+        end
+    end
+end
+
 -- -- Report ------------------------------------------------------------------
 if findings == 0 then
     print(string.format("manifest: clean (%d files listed, version %s)",

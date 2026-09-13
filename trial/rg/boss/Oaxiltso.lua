@@ -29,6 +29,15 @@ local function distSq(x1, y1, z1, x2, y2, z2)
     return dx*dx + dy*dy + dz*dz
 end
 
+-- P6: module-level string constants — avoid Lang.t calls in onUpdate (60 fps)
+local _STR_BLITZ            = Fmt.c(Fmt.FIRE,   Lang.t("rg_oaxiltso_next_blitz"))
+local _STR_BLITZ_INC        = Fmt.c(Fmt.FIRE,   Lang.t("rg_oaxiltso_next_blitz")) .. " " .. Fmt.c(Fmt.RED, "INC")
+local _STR_SLUDGE           = Fmt.c(Fmt.POISON, Lang.t("rg_oaxiltso_next_sludge"))
+local _STR_SLUDGE_INC       = Fmt.c(Fmt.POISON, Lang.t("rg_oaxiltso_next_sludge")) .. " " .. Fmt.c(Fmt.RED, "INC")
+local _STR_BOSS_ADD_ENRAGE  = Fmt.c(Fmt.RED,    Lang.t("rg_oaxiltso_boss_add_enrage"))
+local _STR_BOSS_ENRAGED     = Fmt.c(Fmt.RED,    Lang.t("rg_oaxiltso_boss_enraged"))
+local _STR_ADD_ENRAGED      = Fmt.c(Fmt.ORANGE, Lang.t("rg_oaxiltso_add_enraged"))
+
 local Oaxiltso = {}
 Oaxiltso.__index = Oaxiltso
 
@@ -208,9 +217,9 @@ local function showBlitzLine(self, alerts, now)
     if self.lastBlitz > 0 then
         local T = 36 - (now - self.lastBlitz)
         if T > 0 then
-            alerts:setRow(1, Fmt.c(Fmt.FIRE, Lang.t("rg_oaxiltso_next_blitz")), T)
+            alerts:setRow(1, _STR_BLITZ, T)
         else
-            alerts:setRow(1, Fmt.c(Fmt.FIRE, Lang.t("rg_oaxiltso_next_blitz")) .. " " .. Fmt.c(Fmt.RED, "INC"), nil)
+            alerts:setRow(1, _STR_BLITZ_INC, nil)
         end
     else
         alerts:clearRow(1)
@@ -221,9 +230,9 @@ local function showSludgeLine(self, alerts, now)
     if self.lastSludge > 0 then
         local T = 28 - (now - self.lastSludge)
         if T > 0 then
-            alerts:setRow(2, Fmt.c(Fmt.POISON, Lang.t("rg_oaxiltso_next_sludge")), T)
+            alerts:setRow(2, _STR_SLUDGE, T)
         else
-            alerts:setRow(2, Fmt.c(Fmt.POISON, Lang.t("rg_oaxiltso_next_sludge")) .. " " .. Fmt.c(Fmt.RED, "INC"), nil)
+            alerts:setRow(2, _STR_SLUDGE_INC, nil)
         end
     else
         alerts:clearRow(2)
@@ -232,11 +241,11 @@ end
 
 local function showEnrageLine(self, alerts)
     if self.bossEnraged and self.miniEnraged then
-        alerts:setRow(3, Fmt.c(Fmt.RED, Lang.t("rg_oaxiltso_boss_add_enrage")), nil)
+        alerts:setRow(3, _STR_BOSS_ADD_ENRAGE, nil)
     elseif self.bossEnraged then
-        alerts:setRow(3, Fmt.c(Fmt.RED, Lang.t("rg_oaxiltso_boss_enraged")), nil)
+        alerts:setRow(3, _STR_BOSS_ENRAGED, nil)
     elseif self.miniEnraged then
-        alerts:setRow(3, Fmt.c(Fmt.ORANGE, Lang.t("rg_oaxiltso_add_enraged")), nil)
+        alerts:setRow(3, _STR_ADD_ENRAGED, nil)
     else
         alerts:clearRow(3)
     end

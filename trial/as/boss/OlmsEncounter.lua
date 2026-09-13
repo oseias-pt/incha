@@ -1,6 +1,7 @@
 local AlertTypes      = require("core.AlertTypes")
 local EventDispatcher = require("core.EventDispatcher")
 local Timer           = require("lib.Timer")
+local SubBoss         = require("lib.SubBoss")
 local Lang            = require("core.Lang")
 local Fmt             = require("core.Fmt")
 local CA              = require("external-api.CombatAlerts")
@@ -37,27 +38,50 @@ local FALLBACK_ROAR_DUR   = 2000
 local FALLBACK_BLAST_DUR  = 1500
 local FALLBACK_STRIKE_DUR = 1000
 
+-- ── Module-level string constants (P6: avoid per-tick Lang.t allocations) ─────
+local _STR_PROTECTOR_ACTIVE = Fmt.c(Fmt.YELLOW, Lang.t("as_olms_protector_active"))
+local _STR_STORM            = Lang.t("as_olms_storm_label")
+local _STR_STORM_READY      = Lang.t("as_olms_storm_label") .. " " .. Lang.t("common_ready")
+local _STR_STEAM            = Lang.t("as_olms_steam_label")
+local _STR_STEAM_READY      = Lang.t("as_olms_steam_label") .. " " .. Lang.t("common_ready")
+local _STR_CHARGES          = Lang.t("as_olms_charges_label")
+local _STR_CHARGES_READY    = Lang.t("as_olms_charges_label") .. " " .. Lang.t("common_ready")
+local _STR_FIRE             = Lang.t("as_olms_fire_label")
+local _STR_LLOTHIS_DORMANT  = Lang.t("as_olms_llothis_dormant")
+local _STR_BLAST            = Lang.t("as_olms_blast_label")
+local _STR_BLAST_READY      = Lang.t("as_olms_blast_label") .. " " .. Lang.t("common_ready")
+local _STR_BOLTS            = Lang.t("as_olms_bolts_label")
+local _STR_BOLTS_DUE        = Lang.t("as_olms_bolts_label") .. " " .. Lang.t("common_interrupt")
+local _STR_FELMS_DORMANT    = Lang.t("as_olms_felms_dormant")
+local _STR_STRIKE           = Lang.t("as_olms_strike_label")
+local _STR_STRIKE_READY     = Lang.t("as_olms_strike_label") .. " " .. Lang.t("common_ready")
+
 local OlmsEncounter = {}
 OlmsEncounter.__index = OlmsEncounter
+setmetatable(OlmsEncounter, {__index = BossBase})
 
 OlmsEncounter.key               = "olms"
 OlmsEncounter.nameAliases       = { "Saint Olms the Just" }
 OlmsEncounter.hmHealthThreshold = math.huge
 
+-- P2 (SubBoss): Llothis and Felms are sub-bosses with their own timers and
+-- active/spawnGs state.  BossBase.resetSchema re-creates them fresh on wipe,
+-- making onWipe a two-liner.
 OlmsEncounter.stateSchema = {
-    stormTimer         = function() return Timer.new(STORM_CD) end,
-    steamTimer         = function() return Timer.new(STEAM_CD) end,
-    chargesTimer       = function() return Timer.new(CHARGES_CD) end,
-    fireTimer          = function() return Timer.new(FIRE_CD) end,
-    blastTimer         = function() return Timer.new(BLAST_CD) end,
-    boltsTimer         = function() return Timer.new(BOLTS_CD) end,
-    jumpTimer          = function() return Timer.new(JUMP_CD) end,
-    llothisActive      = false,
-    felmsActive        = false,
-    protectorUp        = false,
-    nextJumpThreshold  = 1,
-    stormPreWarned     = false,
-    alertList          = function() return {} end,
+    stormTimer        = function() return Timer.new(STORM_CD) end,
+    steamTimer        = function() return Timer.new(STEAM_CD) end,
+    chargesTimer      = function() return Timer.new(CHARGES_CD) end,
+    fireTimer         = function() return Timer.new(FIRE_CD) end,
+    protectorUp       = false,
+    nextJumpThreshold = 1,
+    stormPreWarned    = false,
+    alertList         = function() return {} end,
+    llothis           = function()
+        return SubBoss.new({ blast = Timer.new(BLAST_CD), bolts = Timer.new(BOLTS_CD) })
+    end,
+    felms             = function()
+        return SubBoss.new({ jump = Timer.new(JUMP_CD) })
+    end,
 }
 
 function OlmsEncounter.new()
@@ -70,20 +94,7 @@ end
 
 function OlmsEncounter:onWipe(context, alerts)
     self:cleanupAlertList()
-    self.stormTimer:clear()
-    self.steamTimer:clear()
-    self.chargesTimer:clear()
-    self.fireTimer:clear()
-    self.blastTimer:clear()
-    self.boltsTimer:clear()
-    self.jumpTimer:clear()
-    self.llothisActive     = false
-    self.felmsActive       = false
-    self.protectorUp       = false
-    self.nextJumpThreshold = 1
-    self.stormPreWarned    = false
-    self.llothisSpawnGs    = nil
-    self.felmsSpawnGs      = nil
+    BossBase.resetSchema(self, OlmsEncounter)
 end
 
 -- ── Timer seeding helper ─────────────────────────────────────────────────────
@@ -135,13 +146,13 @@ local function handleDefilingBlast(boss, ctx, alerts, abilityId, sourceUnitName,
     local dur = CastDur.get(LLOTHIS_DEFILING_BLAST, FALLBACK_BLAST_DUR)
     local cid = CA.ranged(abilityId, Lang.t("as_olms_blast_bar", target), dur, Colors.VOID)
     if cid and unitId then boss.alertList[unitId] = cid end
-    boss.blastTimer:reset()
+    boss.llothis.blast:reset()
 end
 
 local function handleOppressiveBolts(boss, ctx, alerts, abilityId, ...)
     alerts:showAction(Lang.t("as_olms_interrupt_llothis"))
     CA.alert(nil, Lang.t("common_interrupt"), 0xFF0000FF, SOUNDS.NONE, 2000)
-    boss.boltsTimer:reset()
+    boss.llothis.bolts:reset()
 end
 
 local function handleTeleportStrike(boss, ctx, alerts, abilityId, sourceUnitName, unitTag, unitId, sourceUnitId, unitName)
@@ -150,21 +161,21 @@ local function handleTeleportStrike(boss, ctx, alerts, abilityId, sourceUnitName
     local dur = CastDur.get(FELMS_TELEPORT_STRIKE, FALLBACK_STRIKE_DUR)
     local cid = CA.ranged(abilityId, Lang.t("as_olms_strike_bar", target), dur, Colors.TEAL)
     if cid and unitId then boss.alertList[unitId] = cid end
-    boss.jumpTimer:reset()
+    boss.felms.jump:reset()
 end
 
 -- ── Handlers: combatEvent.other ─────────────────────────────────────────────
 -- BOSS_EVENT sig: (boss, ctx, alerts, abilityId, sourceUnitName, unitTag, unitId, sourceUnitId, unitName)
 local function handleBossEvent(boss, ctx, alerts, abilityId, sourceUnitName, unitTag, unitId, sourceUnitId, unitName)
     if unitName and unitName:find("Llothis") then
-        boss.llothisSpawnGs = GetGameTimeMilliseconds() / 1000
-        boss.llothisActive  = true
-        seedTimer(boss.blastTimer, boss.llothisSpawnGs)
-        seedTimer(boss.boltsTimer, boss.llothisSpawnGs)
+        local spawnGs = GetGameTimeMilliseconds() / 1000
+        boss.llothis:activate(spawnGs)
+        seedTimer(boss.llothis.blast, spawnGs)
+        seedTimer(boss.llothis.bolts, spawnGs)
     elseif unitName and unitName:find("Felms") then
-        boss.felmsSpawnGs = GetGameTimeMilliseconds() / 1000
-        boss.felmsActive  = true
-        seedTimer(boss.jumpTimer, boss.felmsSpawnGs)
+        local spawnGs = GetGameTimeMilliseconds() / 1000
+        boss.felms:activate(spawnGs)
+        seedTimer(boss.felms.jump, spawnGs)
     end
 end
 
@@ -173,25 +184,25 @@ end
 
 local function handleDormantGained(boss, ctx, alerts, abilityId, unitName, ...)
     if unitName and unitName:find("Llothis") then
-        boss.llothisActive = false
-        boss.blastTimer:clear()
-        boss.boltsTimer:clear()
+        boss.llothis:deactivate()
+        boss.llothis.blast:clear()
+        boss.llothis.bolts:clear()
     elseif unitName and unitName:find("Felms") then
-        boss.felmsActive = false
-        boss.jumpTimer:clear()
+        boss.felms:deactivate()
+        boss.felms.jump:clear()
     end
 end
 
 local function handleDormantFaded(boss, ctx, alerts, abilityId, unitName, ...)
     if unitName and unitName:find("Llothis") then
-        boss.llothisActive = true
         local wakeGs = GetGameTimeMilliseconds() / 1000
-        seedTimer(boss.blastTimer, wakeGs)
-        seedTimer(boss.boltsTimer, wakeGs)
+        boss.llothis:activate(wakeGs)
+        seedTimer(boss.llothis.blast, wakeGs)
+        seedTimer(boss.llothis.bolts, wakeGs)
     elseif unitName and unitName:find("Felms") then
-        boss.felmsActive = true
         local wakeGs = GetGameTimeMilliseconds() / 1000
-        seedTimer(boss.jumpTimer, wakeGs)
+        boss.felms:activate(wakeGs)
+        seedTimer(boss.felms.jump, wakeGs)
     end
 end
 
@@ -249,7 +260,7 @@ OlmsEncounter.events = {
 
 local function showStormLine(self, alerts)
     if self.protectorUp then
-        alerts:setRow(1, Fmt.c(Fmt.YELLOW, Lang.t("as_olms_protector_active")), nil)
+        alerts:setRow(1, _STR_PROTECTOR_ACTIVE, nil)
         return
     end
     local t = self.stormTimer:remaining()
@@ -260,9 +271,9 @@ local function showStormLine(self, alerts)
         self.stormPreWarned = false
     end
     if t > 0 then
-        alerts:setRow(1, Lang.t("as_olms_storm_label"), t)
+        alerts:setRow(1, _STR_STORM, t)
     else
-        alerts:setRow(1, Lang.t("as_olms_storm_label") .. " " .. Lang.t("common_ready"), nil)
+        alerts:setRow(1, _STR_STORM_READY, nil)
     end
 end
 
@@ -270,63 +281,43 @@ local function showOlmsLines(self, alerts)
     local t2 = self.steamTimer:remaining()
     local t3 = self.chargesTimer:remaining()
     local t4 = self.fireTimer:remaining()
-    if t2 > 0 then
-        alerts:setRow(2, Lang.t("as_olms_steam_label"), t2)
-    else
-        alerts:setRow(2, Lang.t("as_olms_steam_label") .. " " .. Lang.t("common_ready"), nil)
-    end
-    if t3 > 0 then
-        alerts:setRow(3, Lang.t("as_olms_charges_label"), t3)
-    else
-        alerts:setRow(3, Lang.t("as_olms_charges_label") .. " " .. Lang.t("common_ready"), nil)
-    end
+    alerts:setRow(2, t2 > 0 and _STR_STEAM or _STR_STEAM_READY, t2 > 0 and t2 or nil)
+    alerts:setRow(3, t3 > 0 and _STR_CHARGES or _STR_CHARGES_READY, t3 > 0 and t3 or nil)
     if t4 > 0 then
-        alerts:setRow(4, Lang.t("as_olms_fire_label"), t4)
+        alerts:setRow(4, _STR_FIRE, t4)
     else
         alerts:clearRow(4)
     end
 end
 
 local function showLlothisLine(self, alerts)
-    if self.llothisSpawnGs == nil then
+    if self.llothis.spawnGs == nil then
         alerts:clearRow(5)
-    elseif not self.llothisActive then
-        alerts:setRow(5, Lang.t("as_olms_llothis_dormant"), nil)
+    elseif not self.llothis.active then
+        alerts:setRow(5, _STR_LLOTHIS_DORMANT, nil)
     else
-        local t = self.blastTimer:remaining()
-        if t > 0 then
-            alerts:setRow(5, Lang.t("as_olms_blast_label"), t)
-        else
-            alerts:setRow(5, Lang.t("as_olms_blast_label") .. " " .. Lang.t("common_ready"), nil)
-        end
+        local t = self.llothis.blast:remaining()
+        alerts:setRow(5, t > 0 and _STR_BLAST or _STR_BLAST_READY, t > 0 and t or nil)
     end
 end
 
 local function showBoltsLine(self, alerts)
-    if self.llothisActive then
-        local t = self.boltsTimer:remaining()
-        if t > 0 then
-            alerts:setRow(6, Lang.t("as_olms_bolts_label"), t)
-        else
-            alerts:setRow(6, Lang.t("as_olms_bolts_label") .. " " .. Lang.t("common_interrupt"), nil)
-        end
+    if self.llothis.active then
+        local t = self.llothis.bolts:remaining()
+        alerts:setRow(6, t > 0 and _STR_BOLTS or _STR_BOLTS_DUE, t > 0 and t or nil)
     else
         alerts:clearRow(6)
     end
 end
 
 local function showFelmsLine(self, alerts)
-    if self.felmsSpawnGs == nil then
+    if self.felms.spawnGs == nil then
         alerts:clearRow(7)
-    elseif not self.felmsActive then
-        alerts:setRow(7, Lang.t("as_olms_felms_dormant"), nil)
+    elseif not self.felms.active then
+        alerts:setRow(7, _STR_FELMS_DORMANT, nil)
     else
-        local t = self.jumpTimer:remaining()
-        if t > 0 then
-            alerts:setRow(7, Lang.t("as_olms_strike_label"), t)
-        else
-            alerts:setRow(7, Lang.t("as_olms_strike_label") .. " " .. Lang.t("common_ready"), nil)
-        end
+        local t = self.felms.jump:remaining()
+        alerts:setRow(7, t > 0 and _STR_STRIKE or _STR_STRIKE_READY, t > 0 and t or nil)
     end
 end
 

@@ -53,7 +53,10 @@ local function OnAddOnLoaded(event, addonName)
 
     ZoneManager.onZoneChanged()
 
-    d(ADDON_TAG .. " v" .. ADDON_VERSION .. " loaded  -  " .. ADDON_SLASH .. " for commands")
+    -- Gate the version banner behind the debug flag so player chat stays clean
+    -- by default.  Enable via Settings → debug or ADDON_PREFIX .. ".debug = true".
+    local Log = require("lib.Log")
+    Log.debug("%s v%s loaded  -  %s for commands", ADDON_TAG, ADDON_VERSION, ADDON_SLASH)
 end
 
 EVENT_MANAGER:RegisterForEvent(ADDON_NAME, EVENT_ADD_ON_LOADED, OnAddOnLoaded)

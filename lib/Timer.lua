@@ -71,6 +71,15 @@ function Timer:clear()
     self.expiresAt = 0
 end
 
+--- Alias for isExpired() with a name that more clearly signals intent for the
+--- "armed and ran to completion" case (as opposed to the unarmed/idle case,
+--- which isExpired() also returns true for).  Use in display loops where the
+--- distinction matters:
+---   if timer:hasFired() then ... end   -- clearer than :isExpired() there
+--- isIdle() / isActive() remain the recommended predicates for the full
+--- three-state (idle / active / expired) distinction.
+Timer.hasFired = Timer.isExpired
+
 --- Raw game-time second at which this timer fires (fractional).
 --- Exposed for legacy syncing where callers need the raw timestamp
 --- (e.g. BSCHTKA.GRYPHON_TIME).  Prefer :remaining()/:isExpired() in

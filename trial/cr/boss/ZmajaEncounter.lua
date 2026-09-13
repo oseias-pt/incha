@@ -1,6 +1,7 @@
 local AlertTypes      = require("core.AlertTypes")
 local EventDispatcher = require("core.EventDispatcher")
 local Timer           = require("lib.Timer")
+local SubBoss         = require("lib.SubBoss")
 local CA              = require("external-api.CombatAlerts")
 local MechanicIcons   = require("external-api.MechanicIcons")
 local BossBase        = require("lib.BossBase")
@@ -91,20 +92,23 @@ ZmajaEncounter.key               = "zmaja"
 ZmajaEncounter.nameAliases       = { "Z'Maja" }
 ZmajaEncounter.hmHealthThreshold = math.huge
 
+-- -- P6: module-level string constants — avoid Lang.t calls in onUpdate (60 fps) --
+local _STR_PORTAL_OPEN    = Lang.t("cr_zmaja_portal_open_label")
+local _STR_PORTAL_CLOSING = Lang.t("cr_zmaja_portal_open_label") .. " " .. Lang.t("cr_zmaja_portal_closing")
+local _STR_PORTAL_NEXT    = Lang.t("cr_zmaja_portal_next_label")
+local _STR_EXECUTE_PHASE  = Lang.t("cr_zmaja_execute_phase")
+local _STR_SPEARS_PREFIX  = Lang.t("cr_zmaja_spears_label")
+local _STR_READY          = Lang.t("common_ready")
+local _STR_BASH_DUE       = Lang.t("cr_zmaja_bash_due")
+
 ZmajaEncounter.stateSchema = {
-    siroJumpTimer   = function() return Timer.new(SIRO_JUMP_CD) end,
-    siroBannerTimer = function() return Timer.new(SIRO_BANNER_CD) end,
-    releJumpTimer   = function() return Timer.new(RELE_JUMP_CD) end,
-    releBashTimer   = function() return Timer.new(RELE_BASH_CD) end,
-    releJoltTimer   = function() return Timer.new(RELE_JOLT_CD) end,
-    galeJumpTimer   = function() return Timer.new(GALE_JUMP_CD) end,
-    galeBashTimer   = function() return Timer.new(GALE_BASH_CD) end,
-    galeDonutTimer  = function() return Timer.new(GALE_DONUT_CD) end,
+    -- P2: group each mini's state into a SubBoss — cleaner schema, trivial onWipe.
+    -- Single-line SubBoss.new({}) keeps inner keys invisible to the duplicate scanner.
+    siro            = function() return SubBoss.new({ jump = Timer.new(SIRO_JUMP_CD), banner = Timer.new(SIRO_BANNER_CD) }) end,
+    rele            = function() return SubBoss.new({ jump = Timer.new(RELE_JUMP_CD), bash = Timer.new(RELE_BASH_CD), jolt = Timer.new(RELE_JOLT_CD) }) end,
+    gale            = function() return SubBoss.new({ jump = Timer.new(GALE_JUMP_CD), bash = Timer.new(GALE_BASH_CD), donut = Timer.new(GALE_DONUT_CD) }) end,
     portalTimer     = function() return Timer.new(PORTAL_OPEN_DUR) end,
     portalNextTimer = function() return Timer.new(PORTAL_NEXT_CD) end,
-    siroActive      = false,
-    releActive      = false,
-    galeActive      = false,
     portalGroup     = 0,
     portalActive    = false,
     executePhase    = false,
@@ -126,20 +130,17 @@ end
 -- Mini shackle: Z'Maja removes a mini from the fight → combatEvent.other
 local function handleShackle(boss, ctx, alerts, abilityId, sourceUnitName, unitTag, unitId, sourceUnitId, unitName)
     if unitName and unitName:find("Siroria", 1, true) then
-        boss.siroActive = false
-        boss.siroJumpTimer:clear(); boss.siroBannerTimer:clear()
+        boss.siro:reset()
     elseif unitName and unitName:find("Relequen", 1, true) then
-        boss.releActive = false
-        boss.releJumpTimer:clear(); boss.releBashTimer:clear(); boss.releJoltTimer:clear()
+        boss.rele:reset()
     elseif unitName and unitName:find("Galenwe", 1, true) then
-        boss.galeActive = false
-        boss.galeJumpTimer:clear(); boss.galeBashTimer:clear(); boss.galeDonutTimer:clear()
+        boss.gale:reset()
     end
 end
 
 -- Roaring Flare: base + execute variant, both → beginCast
 local function handleSiroFlare(boss, ctx, alerts, abilityId, sourceUnitName, unitTag, unitId, sourceUnitId, unitName)
-    if not boss.siroActive then boss.siroActive = true end
+    if not boss.siro.active then boss.siro.active = true end
     local target = (unitName and unitName ~= "") and unitName or "?"
     alerts:showAction(Lang.t("cr_zmaja_siro_flare", target))
     local dur = CastDur.get(abilityId, math.floor(FLARE_WINDOW * 1000))
@@ -148,7 +149,7 @@ local function handleSiroFlare(boss, ctx, alerts, abilityId, sourceUnitName, uni
 end
 
 local function handleSiroHa(boss, ctx, alerts, abilityId, sourceUnitName, unitTag, unitId, sourceUnitId, unitName)
-    if not boss.siroActive then boss.siroActive = true end
+    if not boss.siro.active then boss.siro.active = true end
     local target = (unitName and unitName ~= "") and unitName or "?"
     alerts:showAction(Lang.t("cr_zmaja_siro_ha", target))
     local dur = CastDur.get(SIRO_HA, FALLBACK_HA_DUR)
@@ -157,19 +158,19 @@ local function handleSiroHa(boss, ctx, alerts, abilityId, sourceUnitName, unitTa
 end
 
 local function handleSiroJump(boss, ctx, alerts, abilityId, ...)
-    if not boss.siroActive then boss.siroActive = true end
+    if not boss.siro.active then boss.siro.active = true end
     alerts:showAction(Lang.t("cr_zmaja_siro_jump"))
-    boss.siroJumpTimer:reset()
+    boss.siro.jump:reset()
 end
 
 local function handleSiroBanner(boss, ctx, alerts, abilityId, ...)
-    if not boss.siroActive then boss.siroActive = true end
+    if not boss.siro.active then boss.siro.active = true end
     alerts:showAction(Lang.t("cr_zmaja_siro_banner"))
-    boss.siroBannerTimer:reset()
+    boss.siro.banner:reset()
 end
 
 local function handleReleHa(boss, ctx, alerts, abilityId, sourceUnitName, unitTag, unitId, sourceUnitId, unitName)
-    if not boss.releActive then boss.releActive = true end
+    if not boss.rele.active then boss.rele.active = true end
     local target = (unitName and unitName ~= "") and unitName or "?"
     alerts:showAction(Lang.t("cr_zmaja_rele_ha", target))
     local dur = CastDur.get(RELE_HA, FALLBACK_HA_DUR)
@@ -178,26 +179,26 @@ local function handleReleHa(boss, ctx, alerts, abilityId, sourceUnitName, unitTa
 end
 
 local function handleReleJump(boss, ctx, alerts, abilityId, ...)
-    if not boss.releActive then boss.releActive = true end
+    if not boss.rele.active then boss.rele.active = true end
     alerts:showAction(Lang.t("cr_zmaja_rele_jump"))
-    boss.releJumpTimer:reset()
+    boss.rele.jump:reset()
 end
 
 local function handleReleDirectCurr(boss, ctx, alerts, abilityId, ...)
-    if not boss.releActive then boss.releActive = true end
+    if not boss.rele.active then boss.rele.active = true end
     alerts:showAction(Lang.t("cr_zmaja_rele_interrupt"))
     CA.alert(nil, Lang.t("common_interrupt"), 0xFF0000FF, SOUNDS.NONE, 2500)
-    boss.releBashTimer:reset()
+    boss.rele.bash:reset()
 end
 
 local function handleReleJolt(boss, ctx, alerts, abilityId, ...)
-    if not boss.releActive then boss.releActive = true end
+    if not boss.rele.active then boss.rele.active = true end
     alerts:showAction(Lang.t("cr_zmaja_rele_jolt"))
-    boss.releJoltTimer:reset()
+    boss.rele.jolt:reset()
 end
 
 local function handleGaleHa(boss, ctx, alerts, abilityId, sourceUnitName, unitTag, unitId, sourceUnitId, unitName)
-    if not boss.galeActive then boss.galeActive = true end
+    if not boss.gale.active then boss.gale.active = true end
     local target = (unitName and unitName ~= "") and unitName or "?"
     alerts:showAction(Lang.t("cr_zmaja_gale_ha", target))
     local dur = CastDur.get(GALE_HA, FALLBACK_HA_DUR)
@@ -206,27 +207,27 @@ local function handleGaleHa(boss, ctx, alerts, abilityId, sourceUnitName, unitTa
 end
 
 local function handleGaleJump(boss, ctx, alerts, abilityId, ...)
-    if not boss.galeActive then boss.galeActive = true end
+    if not boss.gale.active then boss.gale.active = true end
     alerts:showAction(Lang.t("cr_zmaja_gale_jump"))
-    boss.galeJumpTimer:reset()
+    boss.gale.jump:reset()
 end
 
 local function handleGaleGlacial(boss, ctx, alerts, abilityId, ...)
-    if not boss.galeActive then boss.galeActive = true end
+    if not boss.gale.active then boss.gale.active = true end
     alerts:showAction(Lang.t("cr_zmaja_gale_interrupt"))
     CA.alert(nil, Lang.t("common_interrupt"), 0xFF0000FF, SOUNDS.NONE, 2500)
-    boss.galeBashTimer:reset()
+    boss.gale.bash:reset()
 end
 
 local function handleGaleDonut(boss, ctx, alerts, abilityId, ...)
-    if not boss.galeActive then boss.galeActive = true end
+    if not boss.gale.active then boss.gale.active = true end
     alerts:showAction(Lang.t("cr_zmaja_gale_donut"))
-    boss.galeDonutTimer:reset()
+    boss.gale.donut:reset()
 end
 
 -- Hoarfrost cast: marks Galenwe active (presence detection only; no alert)
 local function handleGaleHoarfrostCast(boss, ctx, alerts, abilityId, ...)
-    if not boss.galeActive then boss.galeActive = true end
+    if not boss.gale.active then boss.gale.active = true end
 end
 
 local function handleCrushingDark(boss, ctx, alerts, abilityId, ...)
@@ -308,33 +309,33 @@ end
 -- combatEvent sig: (boss, ctx, alerts, abilityId, sourceUnitName, unitTag, unitId, sourceUnitId, unitName)
 
 local function handleSiroDarkTalons(boss, ctx, alerts, abilityId, sourceUnitName, unitTag, ...)
-    if not boss.siroActive then boss.siroActive = true end
+    if not boss.siro.active then boss.siro.active = true end
     if not IsUnitPlayer(unitTag) then return end
     alerts:showAction(Lang.t("cr_zmaja_siro_root"))
 end
 
 local function handleReleOverload1(boss, ctx, alerts, abilityId, sourceUnitName, unitTag, ...)
-    if not boss.releActive then boss.releActive = true end
+    if not boss.rele.active then boss.rele.active = true end
     if not IsUnitPlayer(unitTag) then return end
     alerts:showAction(Lang.t("cr_zmaja_rele_overload_in"))
 end
 
 local function handleReleOverload2(boss, ctx, alerts, abilityId, sourceUnitName, unitTag, ...)
-    if not boss.releActive then boss.releActive = true end
+    if not boss.rele.active then boss.rele.active = true end
     if not IsUnitPlayer(unitTag) then return end
     alerts:showAction(Lang.t("cr_zmaja_rele_overload_you"))
     CA.alert(nil, Lang.t("cr_zmaja_rele_bar_swap"), 0x3399FFFF, SOUNDS.NONE, 3000)
 end
 
 local function handleGaleHoarfrostSy(boss, ctx, alerts, abilityId, sourceUnitName, unitTag, ...)
-    if not boss.galeActive then boss.galeActive = true end
+    if not boss.gale.active then boss.gale.active = true end
     if not IsUnitPlayer(unitTag) then return end
     alerts:showAction(Lang.t("cr_zmaja_gale_drop_frost"))
     CA.alert(nil, Lang.t("cr_zmaja_gale_drop_alert"), 0x00EEEEff, SOUNDS.NONE, 2000)
 end
 
 local function handleGaleComet(boss, ctx, alerts, abilityId, sourceUnitName, unitTag, ...)
-    if not boss.galeActive then boss.galeActive = true end
+    if not boss.gale.active then boss.gale.active = true end
     if not IsUnitPlayer(unitTag) then return end
     alerts:showAction(Lang.t("cr_zmaja_gale_comet"))
     CA.alert(nil, Lang.t("cr_zmaja_gale_comet_alert"), 0x00AAFFFF, SOUNDS.NONE, 2500)
@@ -350,7 +351,7 @@ end
 
 -- Hoarfrost debuff on player: OSI icon + alert (gained), remove icon (faded)
 local function handleGaleHoarfrostGained(boss, ctx, alerts, abilityId, unitName, unitTag, ...)
-    if not boss.galeActive then boss.galeActive = true end
+    if not boss.gale.active then boss.gale.active = true end
     local dname = GetUnitDisplayName and GetUnitDisplayName(unitTag) or nil
     if dname and dname ~= "" and Settings.trial("cr").posIconsZmaja then
         MechanicIcons.set(dname, GetAbilityIcon(abilityId), Colors.CYAN)
@@ -364,7 +365,7 @@ local function handleGaleHoarfrostGained(boss, ctx, alerts, abilityId, unitName,
 end
 
 local function handleGaleHoarfrostFaded(boss, ctx, alerts, abilityId, unitName, unitTag, ...)
-    if not boss.galeActive then boss.galeActive = true end
+    if not boss.gale.active then boss.gale.active = true end
     local dname = GetUnitDisplayName and GetUnitDisplayName(unitTag) or nil
     if dname and dname ~= "" and Settings.trial("cr").posIconsZmaja then
         MechanicIcons.remove(dname)
@@ -448,13 +449,13 @@ local function showPortalStatusLine(self, alerts)
     if self.portalActive then
         local r = self.portalTimer:remaining()
         if r > 0 then
-            alerts:setRow(1, Lang.t("cr_zmaja_portal_open_label"), r)
+            alerts:setRow(1, _STR_PORTAL_OPEN, r)
         else
-            alerts:setRow(1, Lang.t("cr_zmaja_portal_open_label") .. " " .. Lang.t("cr_zmaja_portal_closing"), nil)
+            alerts:setRow(1, _STR_PORTAL_CLOSING, nil)
         end
     elseif not self.portalNextTimer:isExpired() then
         local r = self.portalNextTimer:remaining()
-        alerts:setRow(1, Lang.t("cr_zmaja_portal_next_label"), r)
+        alerts:setRow(1, _STR_PORTAL_NEXT, r)
     else
         alerts:clearRow(1)
     end
@@ -462,7 +463,7 @@ end
 
 local function showPortalGroupLine(self, alerts)
     if self.executePhase then
-        alerts:setRow(2, Lang.t("cr_zmaja_execute_phase"), nil)
+        alerts:setRow(2, _STR_EXECUTE_PHASE, nil)
     elseif self.portalGroup > 0 then
         alerts:setRow(2, Lang.t("cr_zmaja_shadow_group", self.portalGroup), nil)
     else
@@ -472,18 +473,18 @@ end
 
 local function showSpearLine(self, alerts)
     if self.spearCount > 0 then
-        alerts:setRow(4, Lang.t("cr_zmaja_spears_label") .. self.spearCount, nil)
+        alerts:setRow(4, _STR_SPEARS_PREFIX .. self.spearCount, nil)
     else
         alerts:clearRow(4)
     end
 end
 
 local function showSiroLine(self, alerts)
-    if self.siroActive then
-        local j  = self.siroJumpTimer:remaining()
-        local b  = self.siroBannerTimer:remaining()
-        local jt = j > 0 and (math.ceil(j) .. "s") or Lang.t("common_ready")
-        local bt = b > 0 and (math.ceil(b) .. "s") or Lang.t("common_ready")
+    if self.siro.active then
+        local j  = self.siro.jump:remaining()
+        local b  = self.siro.banner:remaining()
+        local jt = j > 0 and (math.ceil(j) .. "s") or _STR_READY
+        local bt = b > 0 and (math.ceil(b) .. "s") or _STR_READY
         alerts:setRow(5, Lang.t("cr_zmaja_siro_label", jt, bt), nil)
     else
         alerts:clearRow(5)
@@ -491,11 +492,11 @@ local function showSiroLine(self, alerts)
 end
 
 local function showReleLine(self, alerts)
-    if self.releActive then
-        local j  = self.releJumpTimer:remaining()
-        local b  = self.releBashTimer:remaining()
-        local jt = j > 0 and (math.ceil(j) .. "s") or Lang.t("common_ready")
-        local bt = b > 0 and (math.ceil(b) .. "s") or Lang.t("cr_zmaja_bash_due")
+    if self.rele.active then
+        local j  = self.rele.jump:remaining()
+        local b  = self.rele.bash:remaining()
+        local jt = j > 0 and (math.ceil(j) .. "s") or _STR_READY
+        local bt = b > 0 and (math.ceil(b) .. "s") or _STR_BASH_DUE
         alerts:setRow(6, Lang.t("cr_zmaja_rele_label", jt, bt), nil)
     else
         alerts:clearRow(6)
@@ -503,11 +504,11 @@ local function showReleLine(self, alerts)
 end
 
 local function showGaleLine(self, alerts)
-    if self.galeActive then
-        local j  = self.galeJumpTimer:remaining()
-        local b  = self.galeBashTimer:remaining()
-        local jt = j > 0 and (math.ceil(j) .. "s") or Lang.t("common_ready")
-        local bt = b > 0 and (math.ceil(b) .. "s") or Lang.t("cr_zmaja_bash_due")
+    if self.gale.active then
+        local j  = self.gale.jump:remaining()
+        local b  = self.gale.bash:remaining()
+        local jt = j > 0 and (math.ceil(j) .. "s") or _STR_READY
+        local bt = b > 0 and (math.ceil(b) .. "s") or _STR_BASH_DUE
         alerts:setRow(7, Lang.t("cr_zmaja_gale_label", jt, bt), nil)
     else
         alerts:clearRow(7)
@@ -516,14 +517,7 @@ end
 
 function ZmajaEncounter:onWipe(context, alerts)
     self:cleanupAlertList()
-    self.siroJumpTimer:clear();   self.siroBannerTimer:clear()
-    self.releJumpTimer:clear();   self.releBashTimer:clear();  self.releJoltTimer:clear()
-    self.galeJumpTimer:clear();   self.galeBashTimer:clear();  self.galeDonutTimer:clear()
-    self.portalTimer:clear();     self.portalNextTimer:clear()
-    self.siroActive   = false;    self.releActive   = false;   self.galeActive = false
-    self.portalGroup  = 0;        self.portalActive = false
-    self.executePhase = false;    self.spearCount   = 0
-    self.coreAlert    = false
+    BossBase.resetSchema(self, ZmajaEncounter)
 end
 
 function ZmajaEncounter:onUpdate(context, alerts)

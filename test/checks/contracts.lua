@@ -106,6 +106,25 @@ for _, path in ipairs(bossModules) do
             fail("new() THREW   %-40s %s", path, tostring(inst))
         else
             local tracksBars = (class.stateSchema or {}).alertList ~= nil
+            local bc = (class.events or {}).beginCast or {}
+
+            -- P1: instant/started symmetry.
+            -- Every key in instant must also be in started and vice versa;
+            -- an asymmetry almost certainly means a copy-paste omission.
+            local instant = bc.instant or {}
+            local started = bc.started or {}
+            for id in pairs(instant) do
+                if not started[id] then
+                    fail("BC ASYMMETRY  %-40s id %s in instant but not started",
+                         path, tostring(id))
+                end
+            end
+            for id in pairs(started) do
+                if not instant[id] then
+                    fail("BC ASYMMETRY  %-40s id %s in started but not instant",
+                         path, tostring(id))
+                end
+            end
 
             if inst.cleanupAlertList == nil then
                 fail("NO cleanup    %-40s cleanupAlertList unresolved "
@@ -114,6 +133,29 @@ for _, path in ipairs(bossModules) do
             if tracksBars and inst.onDied == nil then
                 fail("NO onDied     %-40s declares alertList but cannot stop "
                      .. "its bars on death", path)
+            end
+
+            -- P3: onWipe cleanup contract.
+            -- Any boss that tracks CA bars (alertList in schema) should declare
+            -- onWipe; without it, a wipe leaves bars running into the next pull.
+            -- BossBase.cancelPending() handles zo_callLater handles but not CA bars.
+            if tracksBars and class.onWipe == nil then
+                fail("NO onWipe     %-40s declares alertList but has no onWipe "
+                     .. "(bars may survive a wipe)", path)
+            end
+
+            -- P8: nameAliases must be plain strings, not Lang.t calls.
+            -- (Lang.t returns the key itself when missing, which is also a string,
+            -- so the check here is structural: catch non-string values.)
+            for _, alias in ipairs(class.nameAliases or {}) do
+                if type(alias) ~= "string" then
+                    fail("BAD ALIAS     %-40s nameAliases entry is %s, expected string",
+                         path, type(alias))
+                end
+            end
+            if type(class.name) ~= "string" and class.name ~= nil then
+                fail("BAD NAME      %-40s .name is %s, expected string or nil",
+                     path, type(class.name))
             end
 
             if inst.cleanupAlertList and (not tracksBars or inst.onDied) then

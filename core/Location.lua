@@ -10,9 +10,9 @@ function Location.new(x1, x2, y1, y2, z1, z2)
 end
 
 function Location:contains(x, y, z)
-    return self.x1 < x and x < self.x2
-        and self.y1 < y and y < self.y2
-        and self.z1 < z and z < self.z2
+    return self.x1 <= x and x <= self.x2
+        and self.y1 <= y and y <= self.y2
+        and self.z1 <= z and z <= self.z2
 end
 
 package.loaded["core.Location"] = Location

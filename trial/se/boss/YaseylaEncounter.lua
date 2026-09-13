@@ -55,6 +55,18 @@ local FROST_CD            = 25
 
 local FALLBACK_DUR = 2000
 
+-- P6: module-level string constants — avoid Lang.t calls in onUpdate (60 fps)
+local _STR_BOMBS_FIRST    = Lang.t("se_yaseyla_fire_bombs_first")
+local _STR_BOMBS_EXEC     = Lang.t("se_yaseyla_bombs_exec_name")
+local _STR_BOMBS_NAME     = Lang.t("se_yaseyla_fire_bombs_name")
+local _STR_BOMBS_EXEC_RDY = Lang.t("se_yaseyla_bombs_exec_name")  .. " " .. Lang.t("common_ready")
+local _STR_BOMBS_RDY      = Lang.t("se_yaseyla_fire_bombs_name")  .. " " .. Lang.t("common_ready")
+local _STR_FROST_FIRST    = Lang.t("se_yaseyla_frost_first")
+local _STR_FROST_LABEL    = Lang.t("se_yaseyla_frost_bomb_label")
+local _STR_FROST_RDY      = Lang.t("se_yaseyla_frost_bomb_label") .. " " .. Lang.t("common_ready")
+local _STR_CHAINS_LABEL   = Lang.t("se_yaseyla_chains_label")
+local _STR_CHAINS_RDY     = Lang.t("se_yaseyla_chains_label")     .. " " .. Lang.t("common_ready")
+
 local YaseylaEncounter = {}
 YaseylaEncounter.__index = YaseylaEncounter
 
@@ -236,29 +248,34 @@ YaseylaEncounter.events = {
 
 local function showFireBombLine(self, alerts)
     if self.firstFirebomb then
-        alerts:setRow(1, Lang.t("se_yaseyla_fire_bombs_first"), nil)
+        alerts:setRow(1, _STR_BOMBS_FIRST, nil)
     else
-        local r     = self.firebombTimer:remaining()
-        local label = self.executePhase
-            and Lang.t("se_yaseyla_bombs_exec_name")
-            or  Lang.t("se_yaseyla_fire_bombs_name")
-        if r > 0 then
-            alerts:setRow(1, label, r)
+        local r = self.firebombTimer:remaining()
+        if self.executePhase then
+            if r > 0 then
+                alerts:setRow(1, _STR_BOMBS_EXEC, r)
+            else
+                alerts:setRow(1, _STR_BOMBS_EXEC_RDY, nil)
+            end
         else
-            alerts:setRow(1, label .. " " .. Lang.t("common_ready"), nil)
+            if r > 0 then
+                alerts:setRow(1, _STR_BOMBS_NAME, r)
+            else
+                alerts:setRow(1, _STR_BOMBS_RDY, nil)
+            end
         end
     end
 end
 
 local function showFrostBombLine(self, alerts)
     if self.firstFrost then
-        alerts:setRow(3, Lang.t("se_yaseyla_frost_first"), nil)
+        alerts:setRow(3, _STR_FROST_FIRST, nil)
     else
         local r = self.frostTimer:remaining()
         if r > 0 then
-            alerts:setRow(3, Lang.t("se_yaseyla_frost_bomb_label"), r)
+            alerts:setRow(3, _STR_FROST_LABEL, r)
         else
-            alerts:setRow(3, Lang.t("se_yaseyla_frost_bomb_label") .. " " .. Lang.t("common_ready"), nil)
+            alerts:setRow(3, _STR_FROST_RDY, nil)
         end
     end
 end
@@ -267,9 +284,9 @@ function YaseylaEncounter:onUpdate(context, alerts)
     showFireBombLine(self, alerts)
     local rc = self.chainTimer:remaining()
     if rc > 0 then
-        alerts:setRow(2, Lang.t("se_yaseyla_chains_label"), rc)
+        alerts:setRow(2, _STR_CHAINS_LABEL, rc)
     else
-        alerts:setRow(2, Lang.t("se_yaseyla_chains_label") .. " " .. Lang.t("common_ready"), nil)
+        alerts:setRow(2, _STR_CHAINS_RDY, nil)
     end
     showFrostBombLine(self, alerts)
     alerts:clearRow(4)
