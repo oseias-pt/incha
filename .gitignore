@@ -1,5 +1,6 @@
-# VSCode local settings
+# IDE project files
 .vscode/
+.idea/
 
 # Lua local interpreter artifacts (used for local testing outside the game)
 *.luac
