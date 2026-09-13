@@ -17,6 +17,7 @@ test/live-data/
 
 # Local review reports — kept out of the repo to avoid accidental commits
 reviews/
+.reviews/
 .plan/
 C:*
 C*
