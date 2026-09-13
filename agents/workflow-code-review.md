@@ -100,7 +100,13 @@ so one play session settles many of them at once.
 git fetch origin && git log --oneline -20
 gh pr list --limit 30          # do not duplicate in-flight work
 gh issue list --milestone "v0.2 — Critical fixes" --limit 50
+# if the milestone query returns nothing, fall back to the full open list:
+gh issue list --state open --limit 30
 ```
+
+> The "v0.2 — Critical fixes" milestone may be empty once its issues are resolved.
+> When it is, use the open-issues fallback and look for the next active milestone
+> (`gh milestone list --repo oseias-pt/incha`) rather than stopping with Priority 4.
 
 Read the issue for the area you are considering, the relevant `docs/decisions/` entry, the boss
 module, and its existing tests. Then pick **one small, coherent task** that can be completed and
@@ -249,6 +255,16 @@ usually right.
 
 Branch names must match `feature/<short-description>` or `fix/<short-description>`; a
 pre-push hook rejects anything else and `master` is PR-only.
+
+> **One-time setup** — the pre-push hook is in `.githooks/` but git does not
+> set the path on clone.  Run this once in your local checkout before your
+> first push:
+>
+> ```bash
+> git config core.hooksPath .githooks
+> ```
+>
+> Without it the branch-name gate is advisory only.
 
 ```bash
 git checkout -b fix/<description> master

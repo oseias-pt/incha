@@ -131,10 +131,142 @@ for _, key in ipairs(keys) do
     end
 end
 
+-- -- Per-boss toggle check ----------------------------------------------------
+-- The 25 per-boss toggles live at depth 3 in DEFAULTS (trials.<id>.bosses.<key>)
+-- and are read dynamically in Trial.lua via bosses[bossClass.key].  The
+-- static scan above can't see them; this section closes that gap.
+--
+-- Ground truth for boss keys is the Factory registry, not the Settings file
+-- (a typo'd key in DEFAULTS that doesn't match any registered boss is dead).
+-- We assert both directions:
+--   (a) every DEFAULTS.bosses.<key> for trial <id> matches a registered boss key
+--   (b) every registered boss key has a DEFAULTS.bosses.<key> entry
+
+package.path = "./?.lua;./test/?.lua;" .. package.path
+require("harness.eso_api")
+
+local TRIALS = { "ka", "ss", "rg", "dsr", "as", "cr", "se", "lc", "oc" }
+
+-- Collect boss keys from DEFAULTS by parsing Settings.lua at depth 3.
+-- State machine: inTrials(1) → trialId row(2) → bosses block(3) → key names.
+local defaultBosses = {}   -- defaultBosses[trialId][bossKey] = true
+do
+    local depth = 0
+    local inTrials = false
+    local inTrial  = false
+    local inBosses = false
+    local currentId = nil
+
+    for line in settingsText:gmatch("[^\n]+") do
+        if line:match("^%s*%-%-") then goto next_line end
+
+        local opens  = select(2, line:gsub("{", ""))
+        local closes = select(2, line:gsub("}", ""))
+
+        if not inTrials then
+            if line:match("^%s*trials%s*=%s*{") then
+                inTrials = true
+                depth = depth + opens - closes
+            end
+        elseif not inTrial then
+            -- depth 1 inside trials: look for `<id> = {`
+            local tid = line:match("^%s*([%w_]+)%s*=%s*{")
+            if tid then
+                currentId = tid
+                inTrial = true
+                defaultBosses[tid] = defaultBosses[tid] or {}
+            end
+            depth = depth + opens - closes
+            if depth <= 0 then inTrials = false end
+        elseif not inBosses then
+            -- depth 2 inside a trial: look for `bosses = {`
+            if line:match("^%s*bosses%s*=%s*{") then
+                inBosses = true
+            end
+            depth = depth + opens - closes
+            if depth <= 1 then inTrial = false end
+            if depth <= 0 then inTrials = false end
+        else
+            -- depth 3 inside bosses: collect key names
+            depth = depth + opens - closes
+            if depth <= 2 then
+                inBosses = false
+                if depth <= 1 then inTrial = false end
+                if depth <= 0 then inTrials = false end
+            else
+                for key in line:gmatch("([%w_]+)%s*=") do
+                    if key ~= "bosses" then
+                        defaultBosses[currentId][key] = true
+                    end
+                end
+            end
+        end
+        ::next_line::
+    end
+end
+
+-- Collect registered boss keys from each Factory via the harness.
+local registeredBosses = {}   -- registeredBosses[trialId][bossKey] = true
+for _, id in ipairs(TRIALS) do
+    local ok, trial = pcall(require, "trial." .. id .. ".Factory")
+    if ok and trial and trial.registry then
+        registeredBosses[id] = {}
+        for _, boss in ipairs(trial.registry.bosses) do
+            if boss.key then
+                registeredBosses[id][boss.key] = true
+            end
+        end
+    else
+        fail("BOSS CHECK    cannot load trial.%s.Factory to verify boss keys", id)
+    end
+end
+
+-- Direction A: every DEFAULTS.bosses.<key> must match a registered boss.
+for id, bossKeys in pairs(defaultBosses) do
+    local reg = registeredBosses[id] or {}
+    for key in pairs(bossKeys) do
+        if not reg[key] then
+            fail("DEAD BOSS KEY trials.%s.bosses.%s is in DEFAULTS but no boss "
+                 .. "with that key is registered in trial.%s.Factory", id, key, id)
+        end
+    end
+end
+
+-- Direction B: every registered boss key must have a DEFAULTS entry.
+for id, bossKeys in pairs(registeredBosses) do
+    local def = defaultBosses[id] or {}
+    for key in pairs(bossKeys) do
+        if not def[key] then
+            fail("MISSING DEFAULT  boss %q in trial.%s.Factory has no "
+                 .. "trials.%s.bosses.%s entry in DEFAULTS (absent == nil == "
+                 .. "enabled, not disabled — the guard is `== false`)", key, id, id, key)
+        end
+    end
+end
+
+-- Verify the dynamic reader pattern exists somewhere in source (Trial.lua).
+-- A missing reader means all 25 checkboxes control nothing.
+local readerFound = false
+for _, body in ipairs(sources) do
+    if body:find("bosses[", 1, true) then
+        readerFound = true
+        break
+    end
+end
+if not readerFound then
+    fail("DEAD READER  no source file reads bosses[...] — per-boss toggles "
+         .. "are drawn and saved but never consulted")
+end
+
 -- -- Report ------------------------------------------------------------------
 if findings == 0 then
-    print(string.format("settings-usage: clean (%d keys checked against %d source files)",
-          #keys, fileCount))
+    local bossCount = 0
+    for _, bk in pairs(defaultBosses) do
+        for _ in pairs(bk) do bossCount = bossCount + 1 end
+    end
+    print(string.format(
+        "settings-usage: clean (%d trial keys + %d boss keys checked against %d source files)",
+        #keys, bossCount, fileCount))
 else
     print(string.format("settings-usage: %d finding(s)", findings))
 end
