@@ -438,17 +438,17 @@ local OPTIONS = {
 -- -- Slash command fallback ------------------------------------------------
 
 local function printHelp()
-    d(ADDON_TAG .. " Commands:")
-    d("  " .. ADDON_SLASH .. " debug          -  toggle debug logging")
-    d("  " .. ADDON_SLASH .. " lock           -  toggle overlay drag lock")
-    d("  " .. ADDON_SLASH .. " scale <n>      -  set overlay scale (0.5 - 3.0)")
-    d("  " .. ADDON_SLASH .. " reset          -  reset overlay to default position")
-    d("  /ip panel          -  show sample panel data (use /ip, not /incha)")
-    d("  /ip inst           -  animate instability head icon")
-    d("  /ip border         -  flash CA border")
-    d("  /ip alert          -  show CA text alert")
-    d("  /ip clear          -  clear all preview effects")
-    d("  /ip <log line>     -  replay a raw encounter-log line (BEGIN_CAST / COMBAT_EVENT / EFFECT_CHANGED)")
+    Log.print("Commands:")
+    Log.print("  %s debug          -  toggle debug logging",    ADDON_SLASH)
+    Log.print("  %s lock           -  toggle overlay drag lock", ADDON_SLASH)
+    Log.print("  %s scale <n>      -  set overlay scale (0.5 - 3.0)", ADDON_SLASH)
+    Log.print("  %s reset          -  reset overlay to default position", ADDON_SLASH)
+    Log.print("  /ip panel          -  show sample panel data (use /ip, not /incha)")
+    Log.print("  /ip inst           -  animate instability head icon")
+    Log.print("  /ip border         -  flash CA border")
+    Log.print("  /ip alert          -  show CA text alert")
+    Log.print("  /ip clear          -  clear all preview effects")
+    Log.print("  /ip <log line>     -  replay a raw encounter-log line (BEGIN_CAST / COMBAT_EVENT / EFFECT_CHANGED)")
 end
 
 local function handleSlash(text)
@@ -461,21 +461,21 @@ local function handleSlash(text)
     elseif cmd == "debug" then
         sv.debug = not sv.debug
         Log.setEnabled(sv.debug)
-        d(ADDON_TAG .. " Debug " .. (sv.debug and Fmt.c(Fmt.GREEN, "ON") or Fmt.c("FF4444", "OFF")))
+        Log.print("Debug %s", sv.debug and Fmt.c(Fmt.GREEN, "ON") or Fmt.c("FF4444", "OFF"))
 
     elseif cmd == "lock" then
         sv.overlay.locked = not sv.overlay.locked
         Panel.refresh()
-        d(ADDON_TAG .. " Overlay " .. (sv.overlay.locked and "locked" or "unlocked"))
+        Log.print("Overlay %s", sv.overlay.locked and "locked" or "unlocked")
 
     elseif cmd == "scale" then
         local n = tonumber(arg)
         if n and n >= 0.5 and n <= 3.0 then
             sv.overlay.scale = n
             Panel.refresh()
-            d(ADDON_TAG .. " Scale -> " .. n)
+            Log.print("Scale -> %s", n)
         else
-            d(ADDON_TAG .. " Usage: " .. ADDON_SLASH .. " scale <0.5 - 3.0>")
+            Log.print("Usage: %s scale <0.5 - 3.0>", ADDON_SLASH)
         end
 
     elseif cmd == "reset" then
@@ -483,7 +483,7 @@ local function handleSlash(text)
         sv.overlay.offsetY = -1
         sv.overlay.scale   = 1.0
         Panel.refresh()
-        d(ADDON_TAG .. " Overlay position reset")
+        Log.print("Overlay position reset")
 
     elseif cmd == "preview" then
         local sub = arg:match("^%s*(%S*)")
@@ -491,7 +491,7 @@ local function handleSlash(text)
         if fn then
             zo_callLater(fn, 200)
         else
-            d(ADDON_TAG .. " preview: panel | inst | border | alert | clear")
+            Log.print("preview: panel | inst | border | alert | clear")
         end
 
     else
@@ -511,11 +511,11 @@ local function handlePreviewSlash(text)
     if trimmed:match("^%d") then
         local Playback = package.loaded["lib.Playback"]
         if not Playback then
-            d(ADDON_TAG .. " /ip replay: Playback module not loaded")
+            Log.print("/ip replay: Playback module not loaded")
             return
         end
         local status = Playback.injectLine(trimmed)
-        d(ADDON_TAG .. " /ip replay: " .. status)
+        Log.print("/ip replay: %s", status)
         return
     end
 
@@ -529,11 +529,11 @@ local function handlePreviewSlash(text)
     -- panel immediately after showing it.
     local fn = PREVIEW_CMDS[sub]
     if fn then
-        d(ADDON_TAG .. " /ip " .. sub)
+        Log.print("/ip %s", sub)
         zo_callLater(fn, 200)
     else
-        d(ADDON_TAG .. " /ip  panel | inst | border | alert | clear")
-        d(ADDON_TAG .. " /ip  <encounter-log line>  — replay event (BEGIN_CAST, EFFECT_CHANGED)")
+        Log.print("/ip  panel | inst | border | alert | clear")
+        Log.print("/ip  <encounter-log line>  — replay event (BEGIN_CAST, EFFECT_CHANGED)")
     end
 end
 

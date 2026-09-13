@@ -62,30 +62,31 @@ local _combatResultSubtype = {
 
 -- -- Pending-cast registry ---------------------------------------------------
 -- Tracks in-flight delayed casts to detect interrupts when no T event arrives.
--- Key  : tostring(sourceUnitId) .. ":" .. tostring(abilityId)
--- Value: { handle = zo_callLater handle }
+-- Two-level table: _pending[sourceUnitId][abilityId] = { handle }
+-- Using a two-level table avoids one string allocation per BEGIN_CAST event
+-- (the previous tostring(uid)..":"..tostring(id) key pattern) at the cost of
+-- one extra table lookup.
 --
--- The key includes sourceUnitId so that two enemies casting the same ability
+-- The outer key (sourceUnitId) lets two enemies casting the same ability
 -- simultaneously (e.g. Infuser trash in Falgravn) each get their own slot.
 --
 -- Lifecycle:
---   dispatchBeginCast (F + castTime>0): inserts key, arms zo_callLater
---   dispatchBeginCast (T event):        cancelPending removes key + cancels timer
---   onInterruptTimerFired:              always removes key before running handler
+--   dispatchBeginCast (F + castTime>0): inserts [uid][id], arms zo_callLater
+--   dispatchBeginCast (T event):        cancelPending removes slot + cancels timer
+--   onInterruptTimerFired:              removes slot before running handler
 --   EventDispatcher.clearPending():     called by EventPipeline.clearBossFilters()
 --                                       to cancel all in-flight timers on boss exit
 --                                       or zone change, preventing phantom alerts.
-local _pending = {}
+local _pending = {}   -- _pending[sourceUnitId][abilityId] = { handle }
 
-local function pendingKey(sourceUnitId, abilityId)
-    return tostring(sourceUnitId) .. ":" .. tostring(abilityId)
-end
-
-local function cancelPending(key)
-    local p = _pending[key]
+local function cancelPending(sourceUnitId, abilityId)
+    local byUnit = _pending[sourceUnitId]
+    if not byUnit then return end
+    local p = byUnit[abilityId]
     if p then
         if p.handle then zo_removeCallLater(p.handle) end
-        _pending[key] = nil
+        byUnit[abilityId] = nil
+        if not next(byUnit) then _pending[sourceUnitId] = nil end
     end
 end
 
@@ -94,8 +95,10 @@ end
 --- zo_callLater callbacks from the previous encounter cannot fire phantom alerts
 --- against the new boss or a nil context.
 function EventDispatcher.clearPending()
-    for _, p in pairs(_pending) do
-        if p.handle then zo_removeCallLater(p.handle) end
+    for _, byUnit in pairs(_pending) do
+        for _, p in pairs(byUnit) do
+            if p.handle then zo_removeCallLater(p.handle) end
+        end
     end
     _pending = {}
 end
@@ -188,12 +191,11 @@ function EventDispatcher.dispatchBeginCast(boss, context, alerts,
         castTime, didFire, sourceUnitId, abilityId, sourceUnitName, ...)
     castTime = type(castTime) == "number" and castTime or 0  -- guard: GetAbilityCastInfo may return boolean
     if not boss.events or not boss.events.beginCast then return end
-    local bc  = boss.events.beginCast
-    local key = pendingKey(sourceUnitId, abilityId)
+    local bc = boss.events.beginCast
 
     if didFire then
         -- T event: cast completed — cancel the interrupted timer, run executed.
-        cancelPending(key)
+        cancelPending(sourceUnitId, abilityId)
         lookupAndRun(bc.executed, "beginCast.executed",
             boss, context, alerts, abilityId, sourceUnitName, ...)
 
@@ -225,9 +227,11 @@ function EventDispatcher.dispatchBeginCast(boss, context, alerts,
         local function onInterruptTimerFired()
             -- Guard against a T event that arrived and cancelled us between
             -- the timer firing and the callback running.
-            local p = _pending[key]
+            local byUnit = _pending[sourceUnitId]
+            local p = byUnit and byUnit[abilityId]
             if p and p.handle == handle then
-                _pending[key] = nil
+                byUnit[abilityId] = nil
+                if not next(byUnit) then _pending[sourceUnitId] = nil end
                 if interruptedEntry then
                     runEntry(interruptedEntry, capturedBoss, capturedContext, capturedAlerts,
                         abilityId, sourceUnitName)
@@ -235,7 +239,8 @@ function EventDispatcher.dispatchBeginCast(boss, context, alerts,
             end
         end
         handle = zo_callLater(onInterruptTimerFired, castTime or 0)
-        _pending[key] = { handle = handle }
+        _pending[sourceUnitId] = _pending[sourceUnitId] or {}
+        _pending[sourceUnitId][abilityId] = { handle = handle }
     end
 end
 

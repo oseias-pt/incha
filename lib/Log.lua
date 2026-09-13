@@ -63,5 +63,12 @@ function Log.always(template, ...)
     d(PREFIX .. "[warn] " .. string.format(template, ...))
 end
 
+--- Always emitted to chat, no tag suffix.  Use for user-facing confirmations
+--- from slash commands (toggle state, help text, position saves) where the
+--- "[warn]" suffix of Log.always would be misleading.
+function Log.print(template, ...)
+    d(PREFIX .. string.format(template, ...))
+end
+
 package.loaded["lib.Log"] = Log
 return Log

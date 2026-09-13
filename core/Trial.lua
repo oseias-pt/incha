@@ -84,13 +84,16 @@ function Trial.create(options)
         -- result by EventPipeline:setActiveBoss, so these are the narrow
         -- entry points rather than one unfiltered dispatcher.  Each filtered
         -- registration admits a disjoint slice; see core/EventDispatcher.lua.
-        abilityIdsFor = options.abilityIdsFor,
-        onCombatEventFiltered = options.onCombatEventFiltered
-            and function(...) options.onCombatEventFiltered(self, ...) end or nil,
-        onEffectChangedFiltered = options.onEffectChangedFiltered
-            and function(...) options.onEffectChangedFiltered(self, ...) end or nil,
-        onDiedCombatEvent = options.onDiedCombatEvent
-            and function(...) options.onDiedCombatEvent(self, ...) end or nil,
+        -- The four EventDispatcher callbacks default to the standard dispatcher
+        -- functions so individual factories only need to pass them when they
+        -- override the default behaviour.
+        abilityIdsFor = options.abilityIdsFor or EventDispatcher.abilityIdsFor,
+        onCombatEventFiltered = (options.onCombatEventFiltered or EventDispatcher.onCombatEventFiltered)
+            and function(...) (options.onCombatEventFiltered or EventDispatcher.onCombatEventFiltered)(self, ...) end,
+        onEffectChangedFiltered = (options.onEffectChangedFiltered or EventDispatcher.onEffectChangedFiltered)
+            and function(...) (options.onEffectChangedFiltered or EventDispatcher.onEffectChangedFiltered)(self, ...) end,
+        onDiedCombatEvent = (options.onDiedCombatEvent or EventDispatcher.onDiedCombatEvent)
+            and function(...) (options.onDiedCombatEvent or EventDispatcher.onDiedCombatEvent)(self, ...) end,
         onLegacyCombatEvent = options.onLegacyCombatEvent
             and function(...) options.onLegacyCombatEvent(self, ...) end or nil,
         -- 200ms timer-display loop.  Calls boss:onUpdate(context, alerts) when
@@ -266,6 +269,8 @@ function Trial:onPowerUpdate(powerValue, powerMax, unitTag, powerEffectiveMax)
     --
     -- context.isHM gates real mechanics (Xalvakka's jump timer, Taleria's
     -- behemoth line), so getting this right matters beyond the header text.
+    -- Only re-resolve while the difficulty is genuinely unknown (NONE = transient,
+    -- NO_HM = permanent sentinel meaning this boss has no hard mode).
     if self.context.difficulty == Difficulty.NONE
     and (unitTag == nil or unitTag == self.bossSlot) then
         local sample = powerEffectiveMax
