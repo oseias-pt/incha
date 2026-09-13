@@ -113,6 +113,14 @@ for id in pairs(ASSAULT_IDS) do
     _beginCastEntries[id] = { type = AlertTypes.CUSTOM, fn = handleAssault }
 end
 
+-- NOTE: Each boss builds its _beginCastEntry by iterating this table and
+-- copying the key→value pairs into a fresh table.  The values (entry tables
+-- such as {type=…, fn=…}) are shared by reference between the copy and this
+-- source table.  Mutating an entry after the copy — e.g.
+--   _beginCastEntry[EARTHQUAKE].fn = myOverride
+-- — would silently modify the source entry and therefore all three bosses.
+-- New boss-specific entries added after the copy are NOT shared.  This is the
+-- intended semantics; don't change entry tables in-place.
 RockgroveCommon.beginCastEntries = _beginCastEntries
 
 package.loaded["trial.rg.RockgroveCommon"] = RockgroveCommon

@@ -208,7 +208,11 @@ local FALGRAVN_PRISON       = 132473  -- Prison debuff on player
 local FALGRAVN_INSTABILITY2 = 140941  -- Instability (non-HM variant)
 local FALGRAVN_PRISONER_F   = 137315  -- Prisoner feeding stacks
 local FALGRAVN_BLOPSYNERGIE = 129936  -- Execration synergy on player
-local FALGRAVN_LINK_EFFECT  = 133433  -- Effect placed ON the Lightning Conduit OBJECT by Falgravn
+-- local FALGRAVN_LINK_EFFECT  = 133433  -- Effect placed ON Lightning Conduit OBJECTS by Falgravn
+--   Retained as a comment for reference: this ability fires on the conduit
+--   objects when Lightning is active.  handleLinkEffect (debug-only handler)
+--   was removed from the events table; uncomment and re-add if conduit-side
+--   position tracking is revisited.
 
 -- -- Timer durations -------------------------------------------------------
 local INSTABILITY_INITIAL_DELAY  = 10
@@ -454,41 +458,55 @@ end
 --   Stage 2 -> info1=Instability, info2=Blood Ball
 --   Stage 3 -> info1=Open Gates, info2=Torturer TP countdown
 
+-- Pre-built composite strings cached once at load time so onUpdate (200 ms
+-- tick) never allocates strings.  Lang.t() is called once here; the results
+-- are plain strings that the JIT can constant-fold across ticks.
+local _STR_INSTABILITY      = Lang.t("ka_falgravn_instability")
+local _STR_INSTABILITY_UP   = Lang.t("ka_falgravn_instability") .. " " .. Lang.t("common_up")
+local _STR_BLOOD_BALL        = Lang.t("ka_falgravn_blood_ball")
+local _STR_BLOOD_BALL_SOON   = Lang.t("ka_falgravn_blood_ball") .. " " .. Lang.t("common_soon")
+local _STR_OPEN_GATES        = Lang.t("ka_falgravn_open_gates")
+local _STR_OPEN_GATES_SOON   = Lang.t("ka_falgravn_open_gates") .. " " .. Lang.t("common_soon")
+local _STR_TORTURER_TP       = Lang.t("ka_falgravn_torturer_tp")
+
 function Falgravn:onUpdate(context, alerts)
+    -- Single GetGameTimeMilliseconds() call shared by all remainingAt() reads
+    -- this tick.  Avoids 4+ redundant syscalls per 200 ms update.
+    local now   = GetGameTimeMilliseconds() / 1000
     local stage = self.CURRENT_STAGE
 
     if stage == 1 then
-        local ti = self.instabilityTimer:remaining()
+        local ti = self.instabilityTimer:remainingAt(now)
         if ti > 0 then
-            alerts:setRow(1, Lang.t("ka_falgravn_instability"), ti)
+            alerts:setRow(1, _STR_INSTABILITY, ti)
         else
-            alerts:setRow(1, Lang.t("ka_falgravn_instability") .. " " .. Lang.t("common_up"), nil)
+            alerts:setRow(1, _STR_INSTABILITY_UP, nil)
         end
 
     elseif stage == 2 then
-        local ti  = self.instabilityTimer:remaining()
-        local tbb = self.bloodBallTimer:remaining()
+        local ti  = self.instabilityTimer:remainingAt(now)
+        local tbb = self.bloodBallTimer:remainingAt(now)
         if ti > 0 then
-            alerts:setRow(1, Lang.t("ka_falgravn_instability"), ti)
+            alerts:setRow(1, _STR_INSTABILITY, ti)
         else
-            alerts:setRow(1, Lang.t("ka_falgravn_instability") .. " " .. Lang.t("common_up"), nil)
+            alerts:setRow(1, _STR_INSTABILITY_UP, nil)
         end
         if tbb > 0 then
-            alerts:setRow(2, Lang.t("ka_falgravn_blood_ball"), tbb)
+            alerts:setRow(2, _STR_BLOOD_BALL, tbb)
         else
-            alerts:setRow(2, Lang.t("ka_falgravn_blood_ball") .. " " .. Lang.t("common_soon"), nil)
+            alerts:setRow(2, _STR_BLOOD_BALL_SOON, nil)
         end
 
     elseif stage == 3 then
-        local tog = self.openGatesTimer:remaining()
-        local ttp = self.torturerTimer:remaining()
+        local tog = self.openGatesTimer:remainingAt(now)
+        local ttp = self.torturerTimer:remainingAt(now)
         if tog > 0 then
-            alerts:setRow(1, Lang.t("ka_falgravn_open_gates"), tog)
+            alerts:setRow(1, _STR_OPEN_GATES, tog)
         else
-            alerts:setRow(1, Lang.t("ka_falgravn_open_gates") .. " " .. Lang.t("common_soon"), nil)
+            alerts:setRow(1, _STR_OPEN_GATES_SOON, nil)
         end
         if ttp > 0 then
-            alerts:setRow(2, Lang.t("ka_falgravn_torturer_tp"), ttp)
+            alerts:setRow(2, _STR_TORTURER_TP, ttp)
         else
             alerts:clearRow(2)
         end
@@ -499,17 +517,22 @@ end
 -- (Falgravn has no shared common module.)
 
 -- DIED: stop CA bars for the dead unit and its killer.
+-- Also cleans up the prisonBars entry keyed by unitTag (the dead unit's tag),
+-- since handlePrisonEffectFaded may not fire when the debuffed player dies.
 function Falgravn:onDied(context, alerts,
                           unitTag, sourceUnitTag, sourceUnitId, unitId,
                           sourceUnitName, unitName)
-    if unitId then
-        CA.castAlertsStop(self.alertList[unitId])
-        self.alertList[unitId] = nil
+    -- Prison bar is keyed by unitTag; clear it on death so the slot is freed
+    -- even when the EFFECT_FADED event doesn't arrive for a dead player.
+    if unitTag and self.prisonBars[unitTag] then
+        CA.castAlertsStop(self.prisonBars[unitTag])
+        self.prisonBars[unitTag] = nil
     end
-    if sourceUnitId then
-        CA.castAlertsStop(self.alertList[sourceUnitId])
-        self.alertList[sourceUnitId] = nil
-    end
+    -- alertList bars are keyed by unitId; delegate to BossBase for the
+    -- standard dead-unit and killer-unit cleanup.
+    BossBase.onDied(self, context, alerts,
+                    unitTag, sourceUnitTag, sourceUnitId, unitId,
+                    sourceUnitName, unitName)
 end
 
 -- -- Combat event handlers --------------------------------------------------
@@ -801,17 +824,6 @@ local function handleBlopSynergieFaded(boss, context, alerts, abilityId, unitNam
     boss.osiSynergy[unitTag] = nil
 end
 
--- DEBUG: Lightning Conduit position probe.  Remove after LN/LS/RN/RS identification.
-local function handleLinkEffect(boss, context, alerts, abilityId, unitName,
-                                 unitTag, unitId, stackCount)
-    local valid = IsUnitValid(unitTag)
-    local name  = GetUnitName(unitTag) or "?"
-    local _, cx, cy, cz = GetUnitWorldPosition(unitTag)
-    Log.debug("[LN-DEBUG] Conduit LINK_EFFECT gained | unitTag=%s unitId=%s valid=%s name=%s world=(%.0f,%.0f,%.0f)",
-        tostring(unitTag), tostring(unitId), tostring(valid), tostring(name),
-        cx or -1, cy or -1, cz or -1)
-end
-
 -- -- Events table (replaces combatRoutes / effectRoutes) --------------------
 -- Handlers that previously guarded on ACTION_RESULT_BEGIN are in both instant
 -- and started beginCast buckets.  Handlers that guarded on EFFECT_GAINED /
@@ -820,7 +832,34 @@ end
 -- that guard on EFFECT_FADED via COMBAT_EVENT remain in combatEvent.other
 -- (M_MOVE, M_BLOCK, LIGHTNING, PULSE, INSTABILITY timer reset, UNW_POWER).
 
-local _beginCastEntry = {
+-- instant and started are separate tables even though their contents are
+-- identical today.  EventDispatcher.build() validates that CAST_BAR entries
+-- are never placed in `instant`, and DODGE/BLOCK/DEBUFF entries are never
+-- placed in `started`.  A shared table reference would silently allow a future
+-- edit to add such an entry to one slot and have it appear in both — defeating
+-- the validator.  Keep them as independent copies.
+local _beginCastInstant = {
+    -- Infuser trash
+    [INFUSER_CASTS]         = { type = AlertTypes.CUSTOM, fn = handleInfuserCasts },
+    -- Njordal
+    [FALGRAVN_M_MOVE]       = { type = AlertTypes.CUSTOM, fn = handleNjordalMoveBegin },
+    [FALGRAVN_M_BLOCK]      = { type = AlertTypes.CUSTOM, fn = handleNjordalBlockBegin },
+    [FALGRAVN_M_CLEAVE]     = { type = AlertTypes.CUSTOM, fn = handleBloodCleave },
+    [FALGRAVN_BLOOD_FOUNT]  = { type = AlertTypes.CUSTOM, fn = handleBloodFountain },
+    -- Lightning / connection
+    [FALGRAVN_LIGHTNING]    = { type = AlertTypes.CUSTOM, fn = handleLightningBegin },
+    -- Stage 2
+    [FALGRAVN_START_STAGE2] = { type = AlertTypes.CUSTOM, fn = handleStartStage2 },
+    -- Stage 3
+    [FALGRAVN_SHATTER_MID]  = { type = AlertTypes.CUSTOM, fn = handleShatterMid },
+    [FALGRAVN_OPEN_DOOR]    = { type = AlertTypes.CUSTOM, fn = handleOpenDoor },
+    -- Torturer
+    [FALGRAVN_SACRIFICE]    = { type = AlertTypes.CUSTOM, fn = handleSacrifice },
+    [FALGRAVN_TORTURER_ESC] = { type = AlertTypes.CUSTOM, fn = handleTorturerEsc },
+    [FALGRAVN_TORTURER_LA]  = { type = AlertTypes.CUSTOM, fn = handleTorturerLa },
+}
+
+local _beginCastStarted = {
     -- Infuser trash
     [INFUSER_CASTS]         = { type = AlertTypes.CUSTOM, fn = handleInfuserCasts },
     -- Njordal
@@ -843,8 +882,8 @@ local _beginCastEntry = {
 
 Falgravn.events = {
     beginCast = {
-        instant = _beginCastEntry,
-        started = _beginCastEntry,
+        instant = _beginCastInstant,
+        started = _beginCastStarted,
     },
     combatEvent = {
         -- EFFECT_FADED results via COMBAT_EVENT path (ACTION_RESULT_EFFECT_FADED).
@@ -874,7 +913,6 @@ Falgravn.events = {
             [FALGRAVN_PRISON]       = { type = AlertTypes.CUSTOM, fn = handlePrisonEffectGained },
             [FALGRAVN_PRISONER_F]   = { type = AlertTypes.CUSTOM, fn = handlePrisonerFeeding },
             [FALGRAVN_BLOPSYNERGIE] = { type = AlertTypes.CUSTOM, fn = handleBlopSynergieGained },
-            [FALGRAVN_LINK_EFFECT]  = { type = AlertTypes.CUSTOM, fn = handleLinkEffect },
         },
         faded = {
             -- HM confirmation

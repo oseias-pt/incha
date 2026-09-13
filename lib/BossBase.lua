@@ -45,6 +45,31 @@ function BossBase.fromSchema(class)
     return setmetatable(inst, class)
 end
 
+--- Reset an existing boss instance's per-pull state in-place from the schema.
+--- Use in onWipe as an alternative to manually listing every stateSchema field:
+---
+---   function Boss:onWipe(context, alerts)
+---       BossBase.resetSchema(self, Boss)
+---       -- then stop any CA bars or cancel any :after handles not covered by
+---       -- BossBase.cancelPending() (which Trial already calls before onWipe).
+---   end
+---
+--- Mirrors fromSchema's value logic: function values in the schema are called
+--- to produce a fresh object (so tables, Timers, DebuffTrackers reinitialise);
+--- static values are assigned directly.  Fields absent from the schema are left
+--- untouched (so fields that must survive a wipe — grandfathered timers, etc. —
+--- simply stay out of the schema).
+---
+--- CAVEAT: This resets to the schema's initial values, not to any previous
+--- customised baseline.  For fields whose post-pull default differs from their
+--- first-run default, manage them manually in onWipe as before.
+function BossBase.resetSchema(inst, class)
+    class = class or getmetatable(inst)
+    for k, v in pairs((class and class.stateSchema) or {}) do
+        inst[k] = type(v) == "function" and v() or v
+    end
+end
+
 --- Schedule `fn` to run in `ms` milliseconds, tied to this boss instance.
 ---
 --- Prefer this over a bare zo_callLater in boss code.  Trial replaces the
