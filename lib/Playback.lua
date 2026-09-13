@@ -48,10 +48,6 @@ local function split(line)
 end
 
 -- ── ESO-constant maps (resolved at module-load time) ─────────────────────
-local CAST_RESULT = {
-    BEGIN_CAST = ACTION_RESULT_BEGIN,
-}
-
 -- COMBAT_EVENT log field layout (from log_reader.lua):
 --   f[3]=result  f[4]=dmgType  f[5]=value  f[6]=overflow
 --   f[7]=castTrackId  f[8]=eventId  f[9]=abilityId  f[10]=sourceUnitId

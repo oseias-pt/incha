@@ -6,8 +6,7 @@
 --- Ability buttons below inject fake log lines via Playback and print the
 --- result to chat so you can confirm the alert fired.
 
-local EventDispatcher = require("core.EventDispatcher")
-local ZoneManager     = require("core.ZoneManager")
+local ZoneManager = require("core.ZoneManager")
 
 local DP = {}
 
@@ -76,10 +75,9 @@ end
 local win
 local btnPool    = {}   -- ability buttons (reusable)
 local tabPool    = {}   -- boss tab buttons (reusable)
-local items      = {}   -- current ability rows for selected boss
-local bossList   = {}   -- { key, bossClass } for current trial
-local selectedIdx = 0
-local scrollY    = 0
+local items    = {}   -- current ability rows for selected boss
+local bossList = {}   -- { key, bossClass } for current trial
+local scrollY  = 0
 
 local function contH()
     return WIN_H - TITLE_H - TAB_ROW_H - 6
@@ -143,7 +141,6 @@ local function applyTabHighlight(activeIdx)
 end
 
 local function selectBoss(idx)
-    selectedIdx = idx
     scrollY = 0
     applyTabHighlight(idx)
 
