@@ -25,10 +25,10 @@ end
 -- name:     display label string (may contain |c colour codes).
 -- eta:      remaining seconds as a number, or nil for a static / no-timer row.
 -- priority: optional sort weight (default 0); higher = shown first.
-function AlertSink:setRow(key, name, eta, priority)
+function AlertSink:setRow(key, name, eta, priority, iconTexture)
     local handler = self.handlers.setRow
     if handler then
-        handler(key, name, eta, priority)
+        handler(key, name, eta, priority, iconTexture)
     end
 end
 

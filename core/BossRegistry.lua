@@ -103,7 +103,9 @@ end
 --- later tick once a real value arrives.
 function BossRegistry:detectDifficulty(boss, effectiveMaxHealth)
     if not boss or not boss.hmHealthThreshold then
-        return Difficulty.NONE
+        -- This encounter has no hard mode; return a permanent sentinel so
+        -- Trial.onPowerUpdate does not keep re-resolving on every tick.
+        return Difficulty.NO_HM
     end
 
     -- No usable sample yet  -  stay unknown rather than guessing NORMAL.

@@ -1,22 +1,17 @@
-local Trial          = require("core.Trial")
-local Panel          = require("ui.Panel")
+local Trial = require("core.Trial")
+local Panel = require("ui.Panel")
 
-local EventDispatcher  = require("core.EventDispatcher")
 local YaseylaEncounter = require("trial.se.boss.YaseylaEncounter")
 local ChimeraEncounter = require("trial.se.boss.ChimeraEncounter")
 local AnsuulEncounter  = require("trial.se.boss.AnsuulEncounter")
 
 local seTrial = Trial.create({
-    id              = "se",
-    zoneId          = 1427,
-    eventPrefix     = ADDON_PREFIX .. "SE",
-    bosses          = { YaseylaEncounter, ChimeraEncounter, AnsuulEncounter },
-    bridge          = Panel.bridge,
-    alerts          = Panel.alerts,
-    abilityIdsFor           = EventDispatcher.abilityIdsFor,
-    onCombatEventFiltered   = EventDispatcher.onCombatEventFiltered,
-    onEffectChangedFiltered = EventDispatcher.onEffectChangedFiltered,
-    onDiedCombatEvent       = EventDispatcher.onDiedCombatEvent,
+    id          = "se",
+    zoneId      = 1427,
+    eventPrefix = ADDON_PREFIX .. "SE",
+    bosses      = { YaseylaEncounter, ChimeraEncounter, AnsuulEncounter },
+    bridge      = Panel.bridge,
+    alerts      = Panel.alerts,
 })
 
 package.loaded["trial.se.Factory"] = seTrial

@@ -88,9 +88,9 @@ end
 Timer.hasFired = Timer.isExpired
 
 --- Raw game-time second at which this timer fires (fractional).
---- Exposed for legacy syncing where callers need the raw timestamp
---- (e.g. BSCHTKA.GRYPHON_TIME).  Prefer :remaining()/:isExpired() in
---- new code  -  they're clearer and don't need caller-side arithmetic.
+--- Exposed for callers that need the raw timestamp for external
+--- synchronisation.  Prefer :remaining()/:isExpired() in new code —
+--- they're clearer and don't require caller-side arithmetic.
 function Timer:getExpiresAt()
     return self.expiresAt
 end
