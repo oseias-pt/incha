@@ -1,7 +1,8 @@
-local AlertSink    = require("core.AlertSink")
-local BossRegistry = require("core.BossRegistry")
-local Difficulty   = require("core.Difficulty")
-local EventPipeline = require("core.EventPipeline")
+local AlertSink       = require("core.AlertSink")
+local BossRegistry    = require("core.BossRegistry")
+local Difficulty      = require("core.Difficulty")
+local EventDispatcher = require("core.EventDispatcher")
+local EventPipeline   = require("core.EventPipeline")
 local HealthRules  = require("core.HealthRules")
 local Log          = require("lib.Log")
 local Settings     = require("core.Settings")
@@ -99,6 +100,11 @@ function Trial.create(options)
             self:onUpdate()
         end,
         updateInterval = 200,
+        -- Cancel all in-flight EventDispatcher interrupt-detection timers
+        -- whenever boss filters are cleared (boss change or zone exit), so
+        -- zo_callLater callbacks from the outgoing boss cannot fire phantom
+        -- alerts against the new boss or a nil context.
+        onClearPending = EventDispatcher.clearPending,
     })
 
     return self

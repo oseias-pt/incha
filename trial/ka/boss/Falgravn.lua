@@ -432,7 +432,7 @@ local function checkNodeCoordSpace()
     local inY = py > 6000   and py < 22500
     local inZ = pz > 50200  and pz < 61900
     if not (inX and inY and inZ) then
-        Log.warn("falgravn: player is OUTSIDE the detection AABB "
+        Log.always("falgravn: player is OUTSIDE the detection AABB "
             .. "(x=%s y=%s z=%s)  -  the box itself needs re-measuring",
             tostring(inX), tostring(inY), tostring(inZ))
     end

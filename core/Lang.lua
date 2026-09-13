@@ -15,6 +15,7 @@
 ---   2. Add it to incha.txt BEFORE core/Lang.lua.
 ---   3. Translate boss .name / .nameAliases and all alert strings.
 
+local Log  = require("lib.Log")
 local Lang = {}
 
 local _code = (GetCVar and GetCVar("Language.2")) or "en"
@@ -24,7 +25,7 @@ local _t    = package.loaded["lang." .. _code]
 
 if _code ~= "en" and not package.loaded["lang." .. _code] then
     -- Non-fatal: warn once in chat log and fall back to English.
-    d("[Incha] Lang: no strings for locale '" .. _code .. "' — using English fallback.")
+    Log.warn("Lang: no strings for locale '%s' — using English fallback.", _code)
 end
 
 --- Return the localised string for `key`.

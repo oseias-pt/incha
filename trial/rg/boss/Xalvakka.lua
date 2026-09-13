@@ -65,6 +65,7 @@ Xalvakka.stateSchema = {
     nextJump       = 0,
     numJumps       = 0,
     shellShield    = 0,
+    _shieldStr     = false,   -- cached formatted shield string; rebuilt on VISUAL_* events
     onBlob         = false,
     soulStart      = 0,
     selfManifold   = false,
@@ -91,10 +92,14 @@ function Xalvakka:onEnter(context, alerts)
         return function(eventCode, unitTag, attributeType, powerType, value, max, poolIndex)
             local ok, err = pcall(function()
                 if attributeType == ATTRIBUTE_VISUAL_POWER_SHIELDING then
-                    self.shellShield = setter(value)
+                    local v = setter(value)
+                    self.shellShield = v
+                    -- Cache the formatted string here so showManifoldLine reads a
+                    -- pre-built value rather than calling string.format every 200ms.
+                    self._shieldStr = v > 0 and (_STR_SHIELD_PFX .. fmtShield(v)) or false
                 end
             end)
-            if not ok then Log.warn("Xalvakka shield event: %s", tostring(err)) end
+            if not ok then Log.always("Xalvakka shield event: %s", tostring(err)) end
         end
     end
 
@@ -282,8 +287,10 @@ local function showManifoldLine(self, alerts)
         -- Use the string cached by rebuildManifoldStr on gained/faded events
         -- to avoid table.concat + Fmt.c allocations on every 200 ms tick.
         alerts:setRow(3, self._manifoldStr, nil)
-    elseif self.shellShield > 0 then
-        alerts:setRow(3, _STR_SHIELD_PFX .. fmtShield(self.shellShield), nil)
+    elseif self._shieldStr then
+        -- Use the string cached by the onShield VISUAL_* handler to avoid
+        -- string.format on every 200 ms tick while the shield is active.
+        alerts:setRow(3, self._shieldStr, nil)
     else
         alerts:clearRow(3)
     end
