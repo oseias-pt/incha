@@ -19,15 +19,33 @@ local Menu  = require("ui.Menu")
 -- file at load time and each Factory builds its Trial at file scope, so the
 -- boss classes and routing tables are already reachable before this runs;
 -- ZoneManager just decides which Trial is enabled for the current zone.
-ZoneManager.registerTrial(1196, require("trial.ka.Factory"),  "ka")
-ZoneManager.registerTrial(1121, require("trial.ss.Factory"),  "ss")
-ZoneManager.registerTrial(1263, require("trial.rg.Factory"),  "rg")
-ZoneManager.registerTrial(1344, require("trial.dsr.Factory"), "dsr")
-ZoneManager.registerTrial(1000, require("trial.as.Factory"),  "as")
-ZoneManager.registerTrial(1051, require("trial.cr.Factory"),  "cr")
-ZoneManager.registerTrial(1427, require("trial.se.Factory"),  "se")
-ZoneManager.registerTrial(1478, require("trial.lc.Factory"),  "lc")
-ZoneManager.registerTrial(1548, require("trial.oc.Factory"),  "oc")
+--
+-- Each registration is wrapped in pcall so a single broken Factory (missing
+-- file in incha.txt, load-time error, typo'd module path) only loses that
+-- trial; the remaining trials still register and function normally.  Without
+-- pcall, our custom require() raises at file scope and every trial listed
+-- after the failing line is silently never registered (issue #259).
+local _trials = {
+    { 1196, "trial.ka.Factory",  "ka"  },
+    { 1121, "trial.ss.Factory",  "ss"  },
+    { 1263, "trial.rg.Factory",  "rg"  },
+    { 1344, "trial.dsr.Factory", "dsr" },
+    { 1000, "trial.as.Factory",  "as"  },
+    { 1051, "trial.cr.Factory",  "cr"  },
+    { 1427, "trial.se.Factory",  "se"  },
+    { 1478, "trial.lc.Factory",  "lc"  },
+    { 1548, "trial.oc.Factory",  "oc"  },
+}
+local Log = require("lib.Log")
+for _, t in ipairs(_trials) do
+    local zoneId, mod, id = t[1], t[2], t[3]
+    local ok, factory = pcall(require, mod)
+    if ok then
+        ZoneManager.registerTrial(zoneId, factory, id)
+    else
+        Log.always("trial %s failed to load: %s", id, tostring(factory))
+    end
+end
 
 local function OnAddOnLoaded(event, addonName)
     if addonName ~= ADDON_NAME then
@@ -55,7 +73,6 @@ local function OnAddOnLoaded(event, addonName)
 
     -- Gate the version banner behind the debug flag so player chat stays clean
     -- by default.  Enable via Settings → debug or ADDON_PREFIX .. ".debug = true".
-    local Log = require("lib.Log")
     Log.debug("%s v%s loaded  -  %s for commands", ADDON_TAG, ADDON_VERSION, ADDON_SLASH)
 end
 
