@@ -109,10 +109,6 @@ local DEFAULTS = {
         },
     },
 
-    -- Set true once we've attempted a one-time import from BSCHTKA.SV_ACC.
-    -- Stays false across sessions until BSCHTKA is actually present so we
-    -- retry automatically if load-order prevented it the first time.
-    migratedFromBSCHTKA = false,
 }
 
 -- Private live reference; populated by init().
@@ -121,20 +117,6 @@ local _sv = nil
 --- Must be called once during EVENT_ADD_ON_LOADED.
 function Settings.init()
     _sv = ZO_SavedVars:NewAccountWide(ADDON_SV, SCHEMA_VERSION, nil, DEFAULTS)
-
-    -- One-time import from the legacy BSCHTKA addon so existing users keep
-    -- their preferences when they first run Incha without BSCHTKA.
-    -- We only attempt this when BSCHTKA is loaded AND has its SV table,
-    -- and retry on the next session if it wasn't available this time.
-    if not _sv.migratedFromBSCHTKA and BSCHTKA and BSCHTKA.SV_ACC then
-        local acc = BSCHTKA.SV_ACC
-
-        if acc.SHOW_UI_BOSS    ~= nil then _sv.trials.ka.showBossUI     = acc.SHOW_UI_BOSS    end
-        if acc.SHOW_UI_PERCENT ~= nil then _sv.trials.ka.showPercent    = acc.SHOW_UI_PERCENT end
-        if acc.PORTAL_ICON_VROL ~= nil then _sv.trials.ka.portalIconVrol = acc.PORTAL_ICON_VROL end
-
-        _sv.migratedFromBSCHTKA = true
-    end
 
     -- Wire the debug logger to our saved flag so it survives reloads.
     local Log = require("lib.Log")

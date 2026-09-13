@@ -21,3 +21,6 @@ reviews/
 .plan/
 C:*
 C*
+
+# Working notes (not part of the codebase)
+abilities.md

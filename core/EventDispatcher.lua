@@ -103,7 +103,7 @@ end
 -- -- Logging -----------------------------------------------------------------
 
 local function warnUnknown(subPath, abilityId)
-    Log.warn("Dispatcher: unknown ability %d in %s", abilityId, subPath)
+    Log.always("Dispatcher: unknown ability %d in %s", abilityId, subPath)
 end
 
 -- -- State handlers ----------------------------------------------------------
@@ -315,7 +315,7 @@ function EventDispatcher.build(boss)
             end
         end
         if empty then
-            Log.warn("Dispatcher.build: empty bucket at %s", path)
+            Log.debug("Dispatcher.build: empty bucket at %s", path)
         end
     end
 

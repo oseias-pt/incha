@@ -1,5 +1,4 @@
-local EventDispatcher = require("core.EventDispatcher")
-local Log             = require("lib.Log")
+local Log = require("lib.Log")
 
 local EventPipeline = {}
 EventPipeline.__index = EventPipeline
@@ -30,7 +29,7 @@ function EventPipeline:enable()
         return function(...)
             local ok, err = pcall(fn, ...)
             if not ok then
-                Log.warn("event callback: %s", tostring(err))
+                Log.always("event callback: %s", tostring(err))
             end
         end
     end
@@ -127,14 +126,17 @@ function EventPipeline:setActiveBoss(boss)
 end
 
 --- Drop every per-boss registration made by setActiveBoss.
---- Also cancels any in-flight interrupt-detection timers in EventDispatcher so
---- zo_callLater callbacks from the outgoing boss cannot fire phantom alerts.
+--- Calls handlers.onClearPending (if set) so the caller can cancel any
+--- in-flight timers (e.g. EventDispatcher interrupt-detection callbacks)
+--- before the new boss's filters are armed.
 function EventPipeline:clearBossFilters()
     for _, entry in ipairs(self.bossNamespaces) do
         EVENT_MANAGER:UnregisterForEvent(entry.ns, entry.event)
     end
     self.bossNamespaces = {}
-    EventDispatcher.clearPending()
+    if self.handlers.onClearPending then
+        self.handlers.onClearPending()
+    end
 end
 
 function EventPipeline:disable()
