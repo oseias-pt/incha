@@ -55,11 +55,11 @@ function Trial.create(options)
         context = TrialContext.new(options.id),
         alerts = AlertSink.new(options.alerts),
         enabled = false,
-        -- Live boss instances for the current encounter.  Empty between bosses.
-        -- Each entry is a fresh object from the boss class's new() factory  -
-        -- never the class prototype itself.  Length 1 for all current trials;
-        -- length > 1 when compound bosses are split in future work (#129/#130).
-        activeBosses = {},
+        -- The active boss instance, or nil between encounters.
+        -- Always a fresh object from the boss class's new() factory, never the
+        -- class prototype.  Compound-boss encounters (future work, #129/#130)
+        -- will require extending this to multiple instances.
+        _activeBoss = nil,
         -- Only gates the cosmetic health-rule text (and the AlertSink calls
         -- it triggers), not boss:onPowerUpdate itself, so mechanic timing
         -- logic still sees every real tick. 1% granularity is safe since
@@ -104,11 +104,9 @@ function Trial.create(options)
     return self
 end
 
--- Returns the primary active boss instance, or nil between encounters.
--- Length of activeBosses is 1 for all current trials; getActiveBoss() keeps
--- working unchanged for every caller while compound-boss support is added.
+-- Returns the active boss instance, or nil between encounters.
 function Trial:getActiveBoss()
-    return self.activeBosses[1]
+    return self._activeBoss
 end
 
 function Trial:onBossesChanged(forceReset)
@@ -117,7 +115,7 @@ function Trial:onBossesChanged(forceReset)
     end
 
     -- Give the outgoing boss a chance to clean up (stop CA bars, unregister events).
-    local outgoing = self.activeBosses[1]
+    local outgoing = self._activeBoss
     if outgoing then
         if outgoing.onLeave then
             outgoing:onLeave(self.context)
@@ -128,7 +126,7 @@ function Trial:onBossesChanged(forceReset)
         if outgoing.cancelPending then
             outgoing:cancelPending()
         end
-        self.activeBosses = {}
+        self._activeBoss = nil
     end
 
     self.healthThrottle:reset()
@@ -209,7 +207,7 @@ function Trial:onBossesChanged(forceReset)
     if bossClass then
         -- Create a fresh instance  -  no state carried over from previous pulls.
         local instance = bossClass.new()
-        self.activeBosses = { instance }
+        self._activeBoss = instance
         self.context:setBoss(instance)
 
         -- First sample.  This can legitimately read 0 on the frame the boss
@@ -357,7 +355,7 @@ function Trial:disable()
 
     self.pipeline:disable()
 
-    local boss = self.activeBosses[1]
+    local boss = self._activeBoss
     if boss then
         if boss.onLeave then
             boss:onLeave(self.context)
@@ -366,7 +364,7 @@ function Trial:disable()
             boss:cancelPending()
         end
     end
-    self.activeBosses = {}
+    self._activeBoss = nil
 
     self.context:setBoss(nil)
     self.context:setDifficulty(Difficulty.NONE)

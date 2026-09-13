@@ -230,6 +230,7 @@ Falgravn.__index = Falgravn
 setmetatable(Falgravn, {__index = BossBase})   -- inherit cleanupAlertList, default onDied
 
 Falgravn.key                  = "falgravn"
+-- Health-pool threshold between NM and HM; re-verify after major patches.
 Falgravn.hmHealthThreshold    = 248386060
 
 -- UNVERIFIED COORDINATE SPACE  -  see checkNodeCoordSpace() below.

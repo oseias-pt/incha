@@ -30,6 +30,7 @@ XorynEncounter.__index = XorynEncounter
 
 XorynEncounter.key               = "xoryn"
 XorynEncounter.nameAliases       = { "Xoryn" }
+-- Health-pool threshold between NM and HM; re-verify after major patches.
 XorynEncounter.hmHealthThreshold = 100000000
 
 XorynEncounter.stateSchema = {

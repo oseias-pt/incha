@@ -62,6 +62,7 @@ setmetatable(OlmsEncounter, {__index = BossBase})
 
 OlmsEncounter.key               = "olms"
 OlmsEncounter.nameAliases       = { "Saint Olms the Just" }
+-- math.huge = always NORMAL difficulty; HM pool not yet measured in-game.
 OlmsEncounter.hmHealthThreshold = math.huge
 
 -- P2 (SubBoss): Llothis and Felms are sub-bosses with their own timers and

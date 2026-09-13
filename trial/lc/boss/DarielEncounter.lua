@@ -16,6 +16,7 @@ DarielEncounter.__index = DarielEncounter
 
 DarielEncounter.key               = "dariel"
 DarielEncounter.nameAliases       = { "Dariel", "Dariel Lemonds" }
+-- math.huge = always NORMAL difficulty; HM pool not yet measured in-game.
 DarielEncounter.hmHealthThreshold = math.huge
 
 DarielEncounter.stateSchema = {}

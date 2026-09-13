@@ -59,6 +59,7 @@ Taleria.__index = Taleria
 
 Taleria.key               = "taleria"
 Taleria.name              = "Tideborn Taleria"
+-- Health-pool threshold between NM and HM; re-verify after major patches.
 Taleria.hmHealthThreshold = 100000001
 
 Taleria.stateSchema = {

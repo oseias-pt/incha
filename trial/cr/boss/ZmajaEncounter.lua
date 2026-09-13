@@ -90,6 +90,7 @@ setmetatable(ZmajaEncounter, {__index = BossBase})
 
 ZmajaEncounter.key               = "zmaja"
 ZmajaEncounter.nameAliases       = { "Z'Maja" }
+-- math.huge = always NORMAL difficulty; HM pool not yet measured in-game.
 ZmajaEncounter.hmHealthThreshold = math.huge
 
 -- -- P6: module-level string constants — avoid Lang.t calls in onUpdate (60 fps) --

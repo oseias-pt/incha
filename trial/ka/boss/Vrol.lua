@@ -44,6 +44,7 @@ Vrol.__index = Vrol
 setmetatable(Vrol, {__index = BossBase})   -- inherit cleanupAlertList, default onDied
 
 Vrol.key               = "vrol"
+-- Health-pool threshold between NM and HM; re-verify after major patches.
 Vrol.hmHealthThreshold = 72769370
 Vrol.location          = Location.new(110200, 118500, 24500, 29000, 65000, 78800)
 

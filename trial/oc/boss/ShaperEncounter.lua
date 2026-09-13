@@ -22,6 +22,7 @@ ShaperEncounter.__index = ShaperEncounter
 
 ShaperEncounter.key               = "shaper"
 ShaperEncounter.nameAliases       = { "Shaper of Flesh" }
+-- math.huge = always NORMAL difficulty; HM pool not yet measured in-game.
 ShaperEncounter.hmHealthThreshold = math.huge
 
 ShaperEncounter.stateSchema = {

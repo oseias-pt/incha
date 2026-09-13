@@ -31,6 +31,7 @@ XynizataEncounter.__index = XynizataEncounter
 
 XynizataEncounter.key               = "xynizata"
 XynizataEncounter.nameAliases       = { "Xynizata", "Jresazzel" }
+-- math.huge = always NORMAL difficulty; HM pool not yet measured in-game.
 XynizataEncounter.hmHealthThreshold = math.huge
 
 XynizataEncounter.stateSchema = {

@@ -42,8 +42,15 @@ function Timer:remainingAt(now)
 end
 
 --- True once the timer has fired (expiresAt has passed).
---- Note: also returns true for unarmed timers (expiresAt == 0 is in the past).
---- Use isActive() to distinguish "running" from "never started".
+---
+--- CAVEAT: also returns true for unarmed timers (expiresAt == 0 is in the past).
+--- A caller that only checks isExpired() cannot distinguish "ran to completion"
+--- from "never started".  Use the three-state predicate pattern when it matters:
+---   isIdle()    -> unarmed, expiresAt == 0 (never started or explicitly cleared)
+---   isActive()  -> armed and counting down
+---   isExpired() -> time has passed, but also true when idle — see CAVEAT above
+--- The alias hasFired() shares this behaviour.  Prefer the three-state pattern
+--- in display loops where the idle/expired distinction is meaningful.
 function Timer:isExpired()
     return GetGameTimeMilliseconds() / 1000 >= self.expiresAt
 end

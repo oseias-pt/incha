@@ -35,6 +35,7 @@ OrphicEncounter.__index = OrphicEncounter
 
 OrphicEncounter.key               = "orphic"
 OrphicEncounter.nameAliases       = { "Orphic Shattered Shard" }
+-- Health-pool threshold between NM and HM; re-verify after major patches.
 OrphicEncounter.hmHealthThreshold = 80000000
 
 OrphicEncounter.stateSchema = {

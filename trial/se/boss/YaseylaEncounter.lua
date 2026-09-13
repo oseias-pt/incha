@@ -72,6 +72,7 @@ YaseylaEncounter.__index = YaseylaEncounter
 
 YaseylaEncounter.key               = "yaseyla"
 YaseylaEncounter.nameAliases       = { "Exarchanic Yaseyla" }
+-- Health-pool threshold between NM and HM; re-verify after major patches.
 YaseylaEncounter.hmHealthThreshold = 80000000
 
 YaseylaEncounter.stateSchema = {

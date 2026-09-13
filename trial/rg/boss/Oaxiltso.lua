@@ -22,6 +22,9 @@ local BOSS_ENRAGE     = 152502
 local MINI_ENRAGE     = 152503
 
 -- Pool reference position (world coords)
+-- World-coordinate reference for the left acid pool in the Oaxiltso arena.
+-- Used to determine left/right sludge assignments.  Re-measure if encounter
+-- geometry shifts after a major patch.
 local POOL_EX_LEFT = { 91973, 35751, 81764 }
 
 local function distSq(x1, y1, z1, x2, y2, z2)
@@ -43,6 +46,7 @@ Oaxiltso.__index = Oaxiltso
 
 Oaxiltso.key               = "oaxiltso"
 Oaxiltso.name              = "Oaxiltso"
+-- math.huge = always NORMAL difficulty; HM pool not yet measured in-game.
 Oaxiltso.hmHealthThreshold = math.huge
 
 Oaxiltso.stateSchema = {
@@ -67,16 +71,8 @@ function Oaxiltso:onLeave(context)
 end
 
 function Oaxiltso:onWipe(context, alerts)
-    self:cancelAfter(self.sunburstTimer)
-    self.sunburstTimer      = false
-    self.lastBlitz          = 0
-    self.lastSludge         = 0
-    self.lastPoisonTracker  = 0
-    self.sludgeTracker1     = 0
-    self.sludgeTracker1Tag  = false
-    self.sludgeTracker1Name = false
-    self.bossEnraged        = false
-    self.miniEnraged        = false
+    -- Trial calls cancelPending() before onWipe; sunburstTimer is already cancelled.
+    BossBase.resetSchema(self, Oaxiltso)
 end
 
 -- -- Handlers ---------------------------------------------------------------

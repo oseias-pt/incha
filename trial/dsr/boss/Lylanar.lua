@@ -60,6 +60,7 @@ Lylanar.__index = Lylanar
 Lylanar.key          = "lylanar"
 Lylanar.name         = "Lylanar"
 Lylanar.nameAliases  = { "Turlassil" }
+-- Health-pool threshold between NM and HM; re-verify after major patches.
 Lylanar.hmHealthThreshold = 100000001
 
 Lylanar.stateSchema = {

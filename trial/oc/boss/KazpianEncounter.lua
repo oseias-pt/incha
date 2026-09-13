@@ -48,6 +48,7 @@ KazpianEncounter.__index = KazpianEncounter
 
 KazpianEncounter.key               = "kazpian"
 KazpianEncounter.nameAliases       = { "Overfiend Kazpian" }
+-- math.huge = always NORMAL difficulty; HM pool not yet measured in-game.
 KazpianEncounter.hmHealthThreshold = math.huge
 
 KazpianEncounter.stateSchema = {

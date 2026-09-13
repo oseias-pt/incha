@@ -43,6 +43,7 @@ ReefGuardian.__index = ReefGuardian
 
 ReefGuardian.key               = "reef_guardian"
 ReefGuardian.name              = "Reef Guardian"
+-- Health-pool threshold between NM and HM; re-verify after major patches.
 ReefGuardian.hmHealthThreshold = 100000001
 
 ReefGuardian.stateSchema = {

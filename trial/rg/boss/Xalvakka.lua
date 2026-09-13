@@ -5,6 +5,7 @@ local EventDispatcher = require("core.EventDispatcher")
 local RockgroveCommon = require("trial.rg.RockgroveCommon")
 local Lang            = require("core.Lang")
 local Fmt             = require("core.Fmt")
+local Log             = require("lib.Log")
 local CA              = require("external-api.CombatAlerts")
 local BossBase        = require("lib.BossBase")
 local CastDur         = require("lib.CastDur")
@@ -47,6 +48,7 @@ local _STR_JUMP          = Fmt.c(Fmt.AMBER,  Lang.t("rg_xalvakka_next_jump"))
 local _STR_JUMP_INC      = Fmt.c(Fmt.AMBER,  Lang.t("rg_xalvakka_next_jump")) .. " " .. Fmt.c(Fmt.RED, "INC")
 local _STR_SOUL_RES      = Fmt.c(Fmt.ORANGE, Lang.t("rg_xalvakka_soul_res"))
 local _STR_MANIFOLD_PFX  = Lang.t("rg_xalvakka_manifold")
+local _STR_MANIFOLD_YOU  = Fmt.c(Fmt.ARCANE, "YOU")   -- cached; used in rebuildManifoldStr
 local _STR_SHIELD_PFX    = Lang.t("rg_xalvakka_shield")
 local _STR_ON_BLOB       = Fmt.c(Fmt.GREEN,  Lang.t("rg_xalvakka_on_blob"))
 local _STR_RUN_IN_PFX    = Lang.t("rg_xalvakka_run_in")
@@ -56,6 +58,7 @@ Xalvakka.__index = Xalvakka
 
 Xalvakka.key               = "xalvakka"
 Xalvakka.name              = "Xalvakka"
+-- Health-pool threshold between NM and HM; re-verify after major patches.
 Xalvakka.hmHealthThreshold = 100000001
 
 Xalvakka.stateSchema = {
@@ -66,6 +69,7 @@ Xalvakka.stateSchema = {
     soulStart      = 0,
     selfManifold   = false,
     manifoldOthers = function() return {} end,
+    _manifoldStr   = false,   -- cached display string; rebuilt on gained/faded events
 }
 
 function Xalvakka.new()
@@ -90,7 +94,7 @@ function Xalvakka:onEnter(context, alerts)
                     self.shellShield = setter(value)
                 end
             end)
-            if not ok then d(ADDON_TAG .. " " .. tostring(err)) end
+            if not ok then Log.warn("Xalvakka shield event: %s", tostring(err)) end
         end
     end
 
@@ -105,15 +109,27 @@ function Xalvakka:onEnter(context, alerts)
     register(EVENT_UNIT_ATTRIBUTE_VISUAL_REMOVED, onShield(function() return 0 end))
 end
 
+-- Rebuild the manifold display string from current selfManifold + manifoldOthers.
+-- Called by gained/faded handlers so onUpdate reads a pre-built string instead
+-- of running table.concat + Fmt.c on every 200 ms tick.
+local function rebuildManifoldStr(boss)
+    if not boss.selfManifold and not next(boss.manifoldOthers) then
+        boss._manifoldStr = false
+        return
+    end
+    local parts = {}
+    if boss.selfManifold then
+        parts[#parts + 1] = _STR_MANIFOLD_YOU
+    end
+    for _, name in pairs(boss.manifoldOthers) do
+        parts[#parts + 1] = Fmt.c(Fmt.ARCANE, name)
+    end
+    boss._manifoldStr = _STR_MANIFOLD_PFX .. table.concat(parts, ", ")
+end
+
 function Xalvakka:onWipe(context, alerts)
     CA.border(false, 0, nil)
-    self.nextJump       = 0
-    self.numJumps       = 0
-    self.shellShield    = 0
-    self.onBlob         = false
-    self.soulStart      = 0
-    self.selfManifold   = false
-    self.manifoldOthers = {}
+    BossBase.resetSchema(self, Xalvakka)
 end
 
 function Xalvakka:onCombatState(context, inCombat, alerts)
@@ -183,6 +199,7 @@ local function handleManifoldDebuffGained(boss, ctx, alerts, abilityId, unitName
         boss.manifoldOthers[unitTag] =
             GetUnitDisplayName(unitTag) or unitName or "?"
     end
+    rebuildManifoldStr(boss)
 end
 
 -- effectChanged.faded
@@ -193,6 +210,7 @@ local function handleManifoldDebuffFaded(boss, ctx, alerts, abilityId, unitName,
     else
         boss.manifoldOthers[unitTag] = nil
     end
+    rebuildManifoldStr(boss)
 end
 
 -- -- Event tables ------------------------------------------------------------
@@ -260,16 +278,10 @@ local function showSoulLine(self, alerts, now)
 end
 
 local function showManifoldLine(self, alerts)
-    local hasManifold = self.selfManifold or (next(self.manifoldOthers) ~= nil)
-    if hasManifold then
-        local parts = {}
-        if self.selfManifold then
-            parts[#parts + 1] = Fmt.c(Fmt.ARCANE, "YOU")
-        end
-        for _, name in pairs(self.manifoldOthers) do
-            parts[#parts + 1] = Fmt.c(Fmt.ARCANE, name)
-        end
-        alerts:setRow(3, _STR_MANIFOLD_PFX .. table.concat(parts, ", "), nil)
+    if self._manifoldStr then
+        -- Use the string cached by rebuildManifoldStr on gained/faded events
+        -- to avoid table.concat + Fmt.c allocations on every 200 ms tick.
+        alerts:setRow(3, self._manifoldStr, nil)
     elseif self.shellShield > 0 then
         alerts:setRow(3, _STR_SHIELD_PFX .. fmtShield(self.shellShield), nil)
     else

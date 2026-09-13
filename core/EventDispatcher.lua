@@ -37,6 +37,7 @@
 
 local AlertTypes = require("core.AlertTypes")
 local CA         = require("external-api.CombatAlerts")
+local Log        = require("lib.Log")
 
 local EventDispatcher = {}
 
@@ -66,6 +67,14 @@ local _combatResultSubtype = {
 --
 -- The key includes sourceUnitId so that two enemies casting the same ability
 -- simultaneously (e.g. Infuser trash in Falgravn) each get their own slot.
+--
+-- Lifecycle:
+--   dispatchBeginCast (F + castTime>0): inserts key, arms zo_callLater
+--   dispatchBeginCast (T event):        cancelPending removes key + cancels timer
+--   onInterruptTimerFired:              always removes key before running handler
+--   EventDispatcher.clearPending():     called by EventPipeline.clearBossFilters()
+--                                       to cancel all in-flight timers on boss exit
+--                                       or zone change, preventing phantom alerts.
 local _pending = {}
 
 local function pendingKey(sourceUnitId, abilityId)
@@ -80,10 +89,21 @@ local function cancelPending(key)
     end
 end
 
+--- Cancel all in-flight interrupt-detection timers.
+--- Must be called whenever boss filters are cleared (boss change or zone exit) so
+--- zo_callLater callbacks from the previous encounter cannot fire phantom alerts
+--- against the new boss or a nil context.
+function EventDispatcher.clearPending()
+    for _, p in pairs(_pending) do
+        if p.handle then zo_removeCallLater(p.handle) end
+    end
+    _pending = {}
+end
+
 -- -- Logging -----------------------------------------------------------------
 
 local function warnUnknown(subPath, abilityId)
-    d("[Incha/Dispatcher] unknown ability " .. tostring(abilityId) .. " in " .. subPath)
+    Log.warn("Dispatcher: unknown ability %d in %s", abilityId, subPath)
 end
 
 -- -- State handlers ----------------------------------------------------------
@@ -295,7 +315,7 @@ function EventDispatcher.build(boss)
             end
         end
         if empty then
-            d("[Incha/Dispatcher] warning: empty bucket at " .. path)
+            Log.warn("Dispatcher.build: empty bucket at %s", path)
         end
     end
 

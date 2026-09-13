@@ -45,6 +45,7 @@ AnsuulEncounter.__index = AnsuulEncounter
 
 AnsuulEncounter.key               = "ansuul"
 AnsuulEncounter.nameAliases       = { "Ansuul the Tormentor" }
+-- Health-pool threshold between NM and HM; re-verify after major patches.
 AnsuulEncounter.hmHealthThreshold = 100000000
 
 AnsuulEncounter.stateSchema = {

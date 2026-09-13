@@ -33,6 +33,7 @@ Yandir.__index = Yandir
 setmetatable(Yandir, {__index = BossBase})   -- inherit cleanupAlertList, default onDied
 
 Yandir.key               = "yandir"
+-- Health-pool threshold between NM and HM; re-verify after major patches.
 Yandir.hmHealthThreshold = 72769370
 Yandir.location          = Location.new(63200, 68900, 24300, 26300, 90500, 99600)
 

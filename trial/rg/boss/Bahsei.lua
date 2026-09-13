@@ -50,6 +50,7 @@ Bahsei.__index = Bahsei
 
 Bahsei.key               = "bahsei"
 Bahsei.name              = "Bahsei"
+-- Health-pool threshold between NM and HM; re-verify after major patches.
 Bahsei.hmHealthThreshold = 100000001
 
 Bahsei.stateSchema = {
@@ -77,19 +78,8 @@ function Bahsei:onLeave(context)
 end
 
 function Bahsei:onWipe(context, alerts)
-    CA.castAlertsStop(self.sunBarId)
-    self.sunBarId           = false
-    self.lastCursedGround   = 0
-    self.nextPortal         = 0
-    self.portalNumber       = 1
-    self.selfDoNotPortalTime = 0
-    self.numPlayersInPortal = 0
-    self.portalTracker      = {}
-    self.lastDeathTouch     = 0
-    self.nextMtExplosion    = 0
-    self.nextSickle         = 0
-    self.mtUnitId           = false
-    self.lastPortalCW       = true
+    CA.castAlertsStop(self.sunBarId)  -- stop bar before schema reset overwrites sunBarId
+    BossBase.resetSchema(self, Bahsei)
 end
 
 function Bahsei:onCombatState(context, inCombat, alerts)

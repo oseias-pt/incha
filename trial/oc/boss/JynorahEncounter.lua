@@ -57,6 +57,7 @@ JynorahEncounter.__index = JynorahEncounter
 
 JynorahEncounter.key               = "jynorah"
 JynorahEncounter.nameAliases       = { "Jynorah", "Skorkhif" }
+-- math.huge = always NORMAL difficulty; HM pool not yet measured in-game.
 JynorahEncounter.hmHealthThreshold = math.huge
 
 JynorahEncounter.stateSchema = {

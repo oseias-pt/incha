@@ -54,6 +54,7 @@ ChimeraEncounter.__index = ChimeraEncounter
 
 ChimeraEncounter.key               = "chimera"
 ChimeraEncounter.nameAliases       = { "Chimera" }
+-- Health-pool threshold between NM and HM; re-verify after major patches.
 ChimeraEncounter.hmHealthThreshold = 70000000
 
 ChimeraEncounter.stateSchema = {

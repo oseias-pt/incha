@@ -26,6 +26,7 @@ RyelazEncounter.__index = RyelazEncounter
 
 RyelazEncounter.key               = "ryelaz"
 RyelazEncounter.nameAliases       = { "Count Ryelaz", "Zilyesset" }
+-- Health-pool threshold between NM and HM; re-verify after major patches.
 RyelazEncounter.hmHealthThreshold = 40000000
 
 -- playerSide: "ryelaz" | "zilyesset" | nil
