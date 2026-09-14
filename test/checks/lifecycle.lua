@@ -103,7 +103,6 @@ do
     pass("dispatcher: interrupted handler receives the started event's unit args")
 
     -- T event cancels the pending timer.
-    interruptedArgs = nil
     EventDispatcher.dispatchBeginCast(WithInterrupt, {}, {}, 2000, false, 8, 100, "Src")
     local before = scheduledCount()
     EventDispatcher.dispatchBeginCast(WithInterrupt, {}, {}, 2000, true, 8, 100, "Src")

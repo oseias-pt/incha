@@ -316,7 +316,7 @@ end
 local function showReefWipeLines(self, alerts, now)
     -- At most two wipe timers are displayed; pick them without allocating a
     -- scratch table on every tick.
-    local idx1, t1, idx2, t2
+    local idx1, t1, idx2, t2 = nil, nil, nil, nil
     for i = 1, self.reefNum do
         local reef = self.reefPortals[i]
         if reef and reef.wipeActive then
