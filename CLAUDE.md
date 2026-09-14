@@ -47,14 +47,18 @@ ESO event → EventPipeline → EventDispatcher → boss.events → CA / alerts
 
 ## Boss event entry shapes
 
-| `type` field        | Extra fields              | Notes |
-|---------------------|---------------------------|-------|
-| `AlertTypes.CUSTOM` | `fn = namedFunction`      | Named local functions only — **no inline lambdas** |
-| `AlertTypes.CAST_BAR` | `text`, `dur`, `durMax?`, `color` | — |
-| `AlertTypes.DODGE` / `BLOCK` / `DEBUFF` | `text`, `dur`, `color` | — |
-| `AlertTypes.INTERRUPT` | `text`, `dur`, `color` | — |
-| `AlertTypes.TIMER_RESET` | `timer` (string key on boss) | — |
-| `AlertTypes.IGNORE` | — | Silently consume the event |
+| `type` field                            | Extra fields                      | Notes                                              |
+|-----------------------------------------|-----------------------------------|----------------------------------------------------|
+| `AlertTypes.CUSTOM`                     | `fn = namedFunction`              | Named local functions only — **no inline lambdas** |
+| `AlertTypes.CAST_BAR`                   | `text`, `dur`, `durMax?`, `color` | —                                                  |
+| `AlertTypes.DODGE` / `BLOCK` / `DEBUFF` | `text`, `dur`, `color`            | —                                                  |
+| `AlertTypes.INTERRUPT`                  | `text`, `dur`, `color`            | —                                                  |
+| `AlertTypes.TIMER_RESET`                | `timer` (string key on boss)      | —                                                  |
+| `AlertTypes.IGNORE`                     | —                                 | Silently consume the event                         |
+
+Optional field (all types): `targetOnly = true` — suppress the alert unless the local player is
+the target.  Use for single-target abilities (e.g. tank-only melee hits).  Omit for AoE abilities
+where everyone must react.
 
 Call `EventDispatcher.build(BossClass)` at the bottom of every boss file.
 It validates the `events` table at load time and asserts on structural errors.

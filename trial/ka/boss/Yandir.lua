@@ -1,28 +1,31 @@
-local Location    = require("core.Location")
-local Timer       = require("lib.Timer")
-local Lang        = require("core.Lang")
-local Fmt         = require("core.Fmt")
+local Location          = require("core.Location")
+local Timer             = require("lib.Timer")
+local Lang              = require("core.Lang")
+local Fmt               = require("core.Fmt")
 
-local AlertTypes      = require("core.AlertTypes")
-local CA              = require("external-api.CombatAlerts")
-local BossBase        = require("lib.BossBase")
-local CastDur         = require("lib.CastDur")
-local Colors          = require("core.Colors")
-local EventDispatcher = require("core.EventDispatcher")
+local AlertTypes        = require("core.AlertTypes")
+local CA                = require("external-api.CombatAlerts")
+local BossBase          = require("lib.BossBase")
+local CastDur           = require("lib.CastDur")
+local Colors            = require("core.Colors")
+local EventDispatcher   = require("core.EventDispatcher")
 
--- -- Ability IDs (from BSCHTKA_Yandir.lua) ---------------------------------
-local TOTEM_POISON       = 133515  -- combatRoute: ACTION_RESULT_BEGIN -> resets timer + Dodge alert
-local TOTEM_POISON_CP    = 133559  -- combatRoute: ACTION_RESULT_EFFECT_GAINED -> delayed 26.8s CA bar
-local TOTEM_HARPY_SPWN   = 133510  -- combatRoute: ACTION_RESULT_BEGIN -> resets totem timer
-local TOTEM_DRAGON_SPWN  = 133045  -- combatRoute: ACTION_RESULT_BEGIN -> resets totem timer
-local TOTEM_GARGYL_SPWN  = 133513  -- combatRoute: ACTION_RESULT_BEGIN -> resets totem timer
-local TOTEM_GARGYL       = 133546  -- combatRoute: ACTION_RESULT_BEGIN -> Block alert + caAlertCast
-local YANDIR_HEALING     = 133242  -- combatRoute: ACTION_RESULT_BEGIN -> Healing alert
-local YANDIR_JUMP        = 132571  -- combatRoute: ACTION_RESULT_BEGIN -> Block alert + caAlertCast
-local SEA_ADDER_BILE_SPRAY = 136591  -- combatRoute: ACTION_RESULT_BEGIN -> Dodge alert (player-targeted)
+-- -- Ability IDs -------------------------------------------------------------
+local TOTEM_POISON          = 133515  -- Chaurus Totem: resets timer + Dodge alert
+local TOTEM_POISON_CP       = 133559  -- Chaurus Totem: delayed 26.8s second-poison bar
+local TOTEM_HARPY_SPWN      = 133510  -- Harpy Totem spawn: resets totem timer
+local TOTEM_DRAGON_SPWN     = 133045  -- Dragon Totem spawn: resets totem timer
+local TOTEM_GARGYL_SPWN     = 133513  -- Gargoyle Totem spawn: resets totem timer
+local TOTEM_GARGYL          = 133546  -- Gargoyle Totem attack: Block alert
+local YANDIR_HEALING        = 133242  -- Heal Pet: Healing alert
+local YANDIR_JUMP           = 132571  -- Hailstone Burst: Block alert
+local SEA_ADDER_BILE_SPRAY  = 136591  -- Sea Adder Bile Spray: Dodge alert (player-targeted)
+local TOXIC_TIDE            = 132511  -- Cleave: 2500ms AoE frontal swing + poison DoT
+local BUTCHERS_BLADE        = 135324  -- Uppercut: 1600ms single-target blockable physical
+local SUNDERING_STRIKE      = 135369  -- Shatter: 400ms AoE ground slam, post-50%, knockdown
 
 -- -- Spawn/cast durations --------------------------------------------------
-local TOTEM_SPAWN_TIME  = 20
+local TOTEM_SPAWN_TIME   = 20
 local GRYPHON_SPAWN_TIME = 60
 
 -- -- Fallback durations (empirical; replace if GetAbilityCastInfo becomes reliable) -
@@ -37,9 +40,14 @@ Yandir.key               = "yandir"
 Yandir.hmHealthThreshold = 72769370
 Yandir.location          = Location.new(63200, 68900, 24300, 26300, 90500, 99600)
 
+-- -- stateSchema factories --------------------------------------------------
+local function newTotemTimer()   return Timer.new(TOTEM_SPAWN_TIME) end
+local function newGryphonTimer() return Timer.new(GRYPHON_SPAWN_TIME) end
+local function newAlertList()    return {} end
+
 Yandir.stateSchema = {
-    totemTimer           = function() return Timer.new(TOTEM_SPAWN_TIME) end,
-    gryphonTimer         = function() return Timer.new(GRYPHON_SPAWN_TIME) end,
+    totemTimer           = newTotemTimer,
+    gryphonTimer         = newGryphonTimer,
     bGRYPHON_SKIP        = false,
     -- Seconds remaining on the gryphon timer at the moment the skip was
     -- detected  -  displayed as "(Xs early)" so raiders see the margin.
@@ -51,7 +59,7 @@ Yandir.stateSchema = {
     -- Stored so it can be cancelled on wipe or zone exit.
     poisonTotemTimer     = false,
     -- [unitId] -> CA cast bar ID; cleared and stopped on leave/death.
-    alertList            = function() return {} end,
+    alertList            = newAlertList,
 }
 
 function Yandir.new()
@@ -138,10 +146,7 @@ function Yandir:onDied(context, alerts,
     end
 end
 
--- -- Handlers (new-style: boss as first arg, sourceUnitName before unit args) --
-
--- Any totem spawn (Harpy/Dragon/Gargoyle spawn IDs) resets the recurring timer.
--- Declared as TIMER_RESET in events.beginCast; no explicit handler function needed.
+-- -- Handlers ---------------------------------------------------------------
 
 local function handlePoisonTotem(boss, context, alerts, abilityId, sourceUnitName,
                                   unitTag, unitId, sourceUnitId, unitName)
@@ -150,6 +155,17 @@ local function handlePoisonTotem(boss, context, alerts, abilityId, sourceUnitNam
     local cid = CA.ranged(abilityId, sourceUnitName, 4300, Colors.POISON)
     if cid and unitId then boss.alertList[unitId] = cid end
     boss.poisonTotemId = unitId  -- track for delayed second-poison bar
+end
+
+-- Fires ~26.8 s after the Chaurus Totem's first cast to show the second
+-- poison bar.  Captured in a named local so the readability of the parent
+-- handler is not harmed by an inline closure.
+local function onDelayedPoisonFired(boss, capturedSrc)
+    boss.poisonTotemTimer = false
+    if boss.poisonTotemId ~= -1 and IsUnitInCombat("player") then
+        boss.BTotemCall = false
+        CA.ranged(TOTEM_POISON_CP, capturedSrc, 4300, Colors.POISON)
+    end
 end
 
 local function handlePoisonTotemCp(boss, context, alerts, abilityId, sourceUnitName, ...)
@@ -162,11 +178,7 @@ local function handlePoisonTotemCp(boss, context, alerts, abilityId, sourceUnitN
     -- or the group wipes before the 26.8 s fires.  Trial:cancelPending is a
     -- second net on both paths.
     boss.poisonTotemTimer = boss:after(26800, function()
-        boss.poisonTotemTimer = false
-        if boss.poisonTotemId ~= -1 and IsUnitInCombat("player") then
-            boss.BTotemCall = false
-            CA.ranged(TOTEM_POISON_CP, capturedSrc, 4300, Colors.POISON)
-        end
+        onDelayedPoisonFired(boss, capturedSrc)
     end)
 end
 
@@ -198,22 +210,45 @@ local function handleSeaAdderSpray(boss, context, alerts, abilityId, sourceUnitN
     if cid and unitId then boss.alertList[unitId] = cid end
 end
 
--- -- Events table (replaces combatRoutes / effectRoutes) --------------------
--- All former combatRoutes used ACTION_RESULT_BEGIN, so they live in both the
--- instant and started beginCast buckets (cast time is not known at migration
--- time; covering both ensures the alert fires regardless).
--- TOTEM_POISON_CP was ACTION_RESULT_EFFECT_GAINED via combat; migrated to
--- effectChanged.gained for the weekend validation run.
+local function handleToxicTide(boss, context, alerts, abilityId, sourceUnitName,
+                                unitTag, unitId, sourceUnitId, unitName)
+    alerts:showAction(Lang.t("ka_yandir_block_cleave"))
+    local cid = CA.ranged(abilityId, Lang.t("ka_yandir_block_cleave"), 2500, Colors.SILVER)
+    if cid and unitId then boss.alertList[unitId] = cid end
+end
+
+local function handleButchersBlade(boss, context, alerts, abilityId, sourceUnitName,
+                                    unitTag, unitId, sourceUnitId, unitName)
+    alerts:showAction(Lang.t("ka_yandir_block_uppercut"))
+    local cid = CA.ranged(abilityId, Lang.t("ka_yandir_block_uppercut"), 1600, Colors.SILVER)
+    if cid and unitId then boss.alertList[unitId] = cid end
+end
+
+local function handleSunderingStrike(boss, context, alerts, abilityId, sourceUnitName,
+                                      unitTag, unitId, sourceUnitId, unitName)
+    alerts:showAction(Lang.t("ka_yandir_block_shatter"))
+    local cid = CA.ranged(abilityId, Lang.t("ka_yandir_block_shatter"), 1600, Colors.SILVER)
+    if cid and unitId then boss.alertList[unitId] = cid end
+end
+
+-- -- Events table -----------------------------------------------------------
+-- All entries live in both instant and started beginCast buckets: cast time
+-- is sourced from GetAbilityCastInfo at runtime; covering both ensures the
+-- alert fires regardless of when the T event arrives.
+-- TOTEM_POISON_CP fires via effectChanged.gained (EFFECT_RESULT_GAINED).
 
 local _beginCastEntry = {
-    [TOTEM_POISON]         = { type = AlertTypes.CUSTOM, fn = handlePoisonTotem },
-    [TOTEM_HARPY_SPWN]     = { type = AlertTypes.TIMER_RESET, timer = "totemTimer" },
-    [TOTEM_DRAGON_SPWN]    = { type = AlertTypes.TIMER_RESET, timer = "totemTimer" },
-    [TOTEM_GARGYL_SPWN]    = { type = AlertTypes.TIMER_RESET, timer = "totemTimer" },
-    [TOTEM_GARGYL]         = { type = AlertTypes.CUSTOM, fn = handleGargoyleTotem },
-    [YANDIR_HEALING]       = { type = AlertTypes.CUSTOM, fn = handleYandirHealing },
-    [YANDIR_JUMP]          = { type = AlertTypes.CUSTOM, fn = handleYandirJump },
-    [SEA_ADDER_BILE_SPRAY] = { type = AlertTypes.CUSTOM, fn = handleSeaAdderSpray },
+    [TOTEM_POISON]         = { type = AlertTypes.CUSTOM,      fn = handlePoisonTotem                          },
+    [TOTEM_HARPY_SPWN]     = { type = AlertTypes.TIMER_RESET,                         timer = "totemTimer"    },
+    [TOTEM_DRAGON_SPWN]    = { type = AlertTypes.TIMER_RESET,                         timer = "totemTimer"    },
+    [TOTEM_GARGYL_SPWN]    = { type = AlertTypes.TIMER_RESET,                         timer = "totemTimer"    },
+    [TOTEM_GARGYL]         = { type = AlertTypes.CUSTOM,      fn = handleGargoyleTotem                        },
+    [YANDIR_HEALING]       = { type = AlertTypes.CUSTOM,      fn = handleYandirHealing                        },
+    [YANDIR_JUMP]          = { type = AlertTypes.CUSTOM,      fn = handleYandirJump                           },
+    [SEA_ADDER_BILE_SPRAY] = { type = AlertTypes.CUSTOM,      fn = handleSeaAdderSpray                        },
+    [TOXIC_TIDE]           = { type = AlertTypes.CUSTOM,      fn = handleToxicTide                            },
+    [BUTCHERS_BLADE]       = { type = AlertTypes.CUSTOM,      fn = handleButchersBlade, targetOnly = true     },
+    [SUNDERING_STRIKE]     = { type = AlertTypes.CUSTOM,      fn = handleSunderingStrike                      },
 }
 
 -- Split into two independent copies so EventDispatcher.build() validates each
