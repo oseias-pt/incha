@@ -88,13 +88,24 @@ trial/<id>/
   *Common.lua          — optional shared add mechanics
 ```
 
-Each common module exposes:
-- `.combatAbilityIds` / `.effectAbilityIds` — sets for EventPipeline registration
-- `.handle(alerts, result, abilityId, unitTag, sourceUnitName) → bool`
-- `.handleEffect(alerts, changeType, abilityId, unitTag) → bool`  *(optional)*
+Each common module exposes ready-made **event entries**, not handlers:
+- `.beginCastEntries` — `{ [abilityId] = { type = AlertTypes.X, ... } }`
+- `.effectChangedEntries` — `{ gained = {...}, faded = {...}, updated = {...} }`  *(optional)*
 
-Common module ability-id sets must be **disjoint** from `boss.events` ability IDs
-(verified by `test/checks/filters.lua`).
+Every boss in the trial must **merge** those tables into its own buckets before
+calling `EventDispatcher.build`:
+
+```lua
+local _beginCastEntry = {}
+for k, v in pairs(XCommon.beginCastEntries) do _beginCastEntry[k] = v end
+_beginCastEntry[MY_ABILITY] = { type = AlertTypes.CUSTOM, fn = handleMine }
+-- same for effectChangedEntries.gained / .faded / .updated
+```
+
+A common module that is loaded but not merged is silent for the whole trial —
+`test/checks/filters.lua` fails when any boss lacks a common entry (or shadows
+it with a boss-local one).  Add the trial's common module to `COMMON_MODULES`
+in that check when creating one.
 
 ---
 
@@ -103,11 +114,13 @@ Common module ability-id sets must be **disjoint** from `boss.events` ability ID
 Run from the repository root with LuaJIT:
 
 ```
+sh test/checks/all.sh                       # every static check, same as CI
 luajit test/run_log.lua <encounter.log> [zone_id]
 luajit test/checks/filters.lua
 luajit test/checks/contracts.lua
 luajit test/checks/manifest.lua
 luajit test/checks/health_rules.lua
+luajit test/checks/lifecycle.lua
 ```
 
 `test/run_log.lua` replays a live ESO encounter log through all boss modules and
@@ -117,6 +130,11 @@ spot dead mechanic coverage.
 `test/checks/health_rules.lua` unit-tests `core/HealthRules` in isolation:
 priority sort, `_staticText` pre-compilation, boundary inclusivity, `when()`
 predicates, `{hp}` substitution, and zero-allocation static-text returns.
+
+`test/checks/lifecycle.lua` unit-tests the core lifecycle and hot paths the
+replay cannot observe: interrupt-timer gating in `EventDispatcher`,
+`BossRegistry` name lookup, `Trial:injectBoss` / `ejectBoss`,
+`ZoneManager.refresh`, and `Panel.setRow` in-place row updates.
 
 ---
 

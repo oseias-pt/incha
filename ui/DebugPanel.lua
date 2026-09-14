@@ -5,8 +5,14 @@
 --- Boss tabs across the top let you pick which boss to inspect.
 --- Ability buttons below inject fake log lines via Playback and print the
 --- result to chat so you can confirm the alert fired.
+---
+--- Selecting a tab injects a temp instance through Trial:injectBoss, which
+--- displaces any boss the trial had detected; closing the panel (or switching
+--- tabs) ejects it through Trial:ejectBoss, which re-runs detection so the
+--- real boss comes back on its own.
 
 local ZoneManager = require("core.ZoneManager")
+local Log         = require("lib.Log")
 
 local DP = {}
 
@@ -80,12 +86,14 @@ end
 local _debugBoss  = nil   -- active temp instance, or nil
 local _debugTrial = nil   -- trial that owns _debugBoss
 
+-- Both paths go through Trial:injectBoss / Trial:ejectBoss so the temp
+-- instance gets the full lifecycle (context, event filters, onEnter /
+-- onLeave, cancelPending) — the same as a detected boss.  Poking
+-- trial._activeBoss directly used to leave :after() callbacks and CA bars
+-- from the temp instance alive after the tab was closed.
 local function teardownDebugBoss()
     if not _debugBoss or not _debugTrial then return end
-    if _debugTrial:getActiveBoss() == _debugBoss then
-        _debugTrial._activeBoss = nil
-        _debugTrial.bridge.onBossExit()
-    end
+    _debugTrial:ejectBoss(_debugBoss)   -- no-op if a real boss replaced it
     _debugBoss  = nil
     _debugTrial = nil
 end
@@ -94,13 +102,9 @@ local function setupDebugBoss(trial, bossClass)
     teardownDebugBoss()
     if not trial or not bossClass then return end
     local instance = bossClass.new()
-    trial._activeBoss = instance
+    trial:injectBoss(instance)
     _debugBoss  = instance
     _debugTrial = trial
-    trial.bridge.onBossEnter(instance, trial.context)
-    if instance.onCombatState then
-        instance:onCombatState(trial.context, true, trial.alerts)
-    end
 end
 
 -- ── Window state ───────────────────────────────────────────────────────────
@@ -152,7 +156,7 @@ local function ensureAbilityPool(n)
             local pb = package.loaded["lib.Playback"]
             if pb then
                 local res = pb.injectLine(item.line)
-                CHAT_SYSTEM:AddMessage("|cAABBFF[Incha]|r " .. tostring(res))
+                Log.print("%s", tostring(res))
             end
         end)
         btnPool[#btnPool + 1] = btn
@@ -358,12 +362,12 @@ function DP.toggle()
     if not win then
         local ok, err = pcall(buildWindow)
         if not ok then
-            CHAT_SYSTEM:AddMessage("|cFF4444[Incha]|r DebugPanel build error: " .. tostring(err))
+            Log.always("DebugPanel build error: %s", tostring(err))
             return
         end
     end
     if not win then
-        CHAT_SYSTEM:AddMessage("|cFF4444[Incha]|r DebugPanel: failed to create window")
+        Log.always("DebugPanel: failed to create window")
         return
     end
     if win:IsHidden() then

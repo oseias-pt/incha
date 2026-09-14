@@ -17,6 +17,9 @@ local CHANNELER_SHIELD = 232510   -- combatEvent.other: ACTION_RESULT_EFFECT_GAI
 -- ── Fallback durations ────────────────────────────────────────────────────────────────────────────
 local FALLBACK_DUR = 2000
 
+-- Tracker-row string built once at load; the 200 ms loop never calls Fmt.c.
+local _STR_SHIELDED_INFO = Fmt.c("AA44FF", Lang.t("oc_shaper_shielded_info"))
+
 local ShaperEncounter = {}
 ShaperEncounter.__index = ShaperEncounter
 
@@ -31,6 +34,10 @@ ShaperEncounter.stateSchema = {
 
 function ShaperEncounter.new()
     return BossBase.fromSchema(ShaperEncounter)
+end
+
+function ShaperEncounter:onLeave(context)
+    OsseinCageCommon.reset()   -- module-level carrion / debounce state must not survive a zone exit
 end
 
 -- ── Handlers ─────────────────────────────────────────────────────────────────────────────────────
@@ -100,7 +107,7 @@ end
 
 function ShaperEncounter:onUpdate(context, alerts)
     if self.shaperShielded then
-        alerts:setRow(1, Fmt.c("AA44FF", Lang.t("oc_shaper_shielded_info")), nil)
+        alerts:setRow(1, _STR_SHIELDED_INFO, nil)
     else
         alerts:clearRow(1)
     end

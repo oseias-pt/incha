@@ -110,9 +110,9 @@ local function prepareBoss(trial, abilityId, isCombat)
 
     local existing = trial:getActiveBoss()
     if existing then
-        -- If a real boss was detected while our temp instance was alive (rare
-        -- but possible), discard the temp instance first so the real boss wins.
-        -- The pending teardown was already cancelled above.
+        -- A boss is already live (a detected one, or the DebugPanel's temp
+        -- instance, or a previous injection whose teardown we just cancelled):
+        -- dispatch into it and leave its lifecycle alone.
         return existing, nil, nil
     end
 
@@ -123,25 +123,17 @@ local function prepareBoss(trial, abilityId, isCombat)
             .. " for this trial"
     end
 
+    -- Trial:injectBoss runs the full lifecycle (context, event filters,
+    -- onEnter, panel, onCombatState) so timers arm and tracker rows populate
+    -- exactly as in a live pull; ejectBoss is the matching teardown and is a
+    -- no-op if a real boss has since replaced the temp instance.
     local tempInstance = bossClass.new()
-    trial._activeBoss = tempInstance
+    trial:injectBoss(tempInstance)
 
-    -- Activate the panel and arm timers so tracker rows are populated by the
-    -- 200 ms onUpdate loop while the temp boss is alive.
-    trial.bridge.onBossEnter(tempInstance, trial.context)
-    if tempInstance.onCombatState then
-        tempInstance:onCombatState(trial.context, true, trial.alerts)
-    end
-
-    -- Guard the restore against the (unlikely) case where a real boss is
-    -- detected while the deferred teardown is in flight.
     local capturedTrial = trial
     local function restore()
         _pendingRestoreHandle = nil
-        if capturedTrial:getActiveBoss() == tempInstance then
-            capturedTrial._activeBoss = nil
-            capturedTrial.bridge.onBossExit()
-        end
+        capturedTrial:ejectBoss(tempInstance)
     end
 
     return tempInstance, restore, nil

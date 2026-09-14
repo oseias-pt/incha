@@ -54,6 +54,29 @@ local BUBBLE_CD_HM   = 20
 
 local FALLBACK_HEAVY_DUR = 1500
 
+-- Tracker-row strings built once at load.  The 200 ms display loop reads
+-- these (and the per-instance caches below) and never calls Fmt.c / Lang.t.
+local _STR_FIRE_FRAGILITY = Fmt.c(Fmt.FIRE,  Lang.t("dsr_lylanar_fire_fragility"))
+local _STR_ICE_FRAGILITY  = Fmt.c(Fmt.FROST, Lang.t("dsr_lylanar_ice_fragility"))
+local _STR_NEED_FIRE_DOME = Fmt.c(Fmt.FIRE,  Lang.t("dsr_lylanar_need_fire_dome"))
+local _STR_NEED_ICE_DOME  = Fmt.c(Fmt.FROST, Lang.t("dsr_lylanar_need_ice_dome"))
+local _STR_AXE            = Fmt.c(Fmt.FIRE,  Lang.t("dsr_lylanar_axe"))
+local _STR_AXE_INC        = _STR_AXE .. " " .. Fmt.c(Fmt.RED, Lang.t("common_inc"))
+local _STR_DROP           = " " .. Fmt.c(Fmt.RED, Lang.t("dsr_lylanar_drop"))
+local _STR_SWORD_PFX      = Lang.t("dsr_lylanar_sword")
+local _STR_IMM_BLISTER    = Lang.t("dsr_lylanar_imm_blister")
+local _STR_IMM_CHILL      = Lang.t("dsr_lylanar_imm_chill")
+local FIRE_EMOJI          = "\xf0\x9f\x94\xa5 "
+local ICE_EMOJI           = "\xe2\x9d\x84 "
+
+-- Bubble row text ("🔥 Name  -  N stacks") is rebuilt by the stack handlers,
+-- not per tick.  `drop` is the same text with the DROP! tag appended.
+local function buildBubbleText(color, emoji, name, stacks)
+    local suffix = Lang.t(stacks ~= 1 and "dsr_lylanar_ember_suffix_p" or "dsr_lylanar_ember_suffix", stacks)
+    local base   = Fmt.c(color, emoji .. (name or "?")) .. suffix
+    return base, base .. _STR_DROP
+end
+
 local Lylanar = {}
 Lylanar.__index = Lylanar
 
@@ -72,6 +95,9 @@ Lylanar.stateSchema = {
     destructiveEmberStacks = 0,
     lastDestructiveEmber   = 0,
     destructiveEmberName   = false,
+    _fireBubbleStr         = false,   -- cached row-1 text (see buildBubbleText)
+    _fireBubbleDropStr     = false,
+    _fireImminentStr       = false,   -- cached "Imminent Blister (name)"
     firebrandTracker       = function() return {} end,
     lastBrandMatchFire     = 0,
     flameHounds            = 0,
@@ -83,6 +109,12 @@ Lylanar.stateSchema = {
     piercingHailstacks     = 0,
     lastPiercingHail       = 0,
     piercingHailName       = false,
+    _iceBubbleStr          = false,   -- cached row-2 text (see buildBubbleText)
+    _iceBubbleDropStr      = false,
+    _iceImminentStr        = false,   -- cached "Imminent Chill (name)"
+    _swordSec              = -1,      -- whole second the cached sword strings were built for
+    _axeRowStr             = false,   -- "Axe  Sword: Ns" for the current second
+    _axeRowIncStr          = false,
     frostbrandTracker      = function() return {} end,
     lastBrandMatchIce      = 0,
     frostHounds            = 0,
@@ -233,7 +265,9 @@ end
 local function handleImminentBlisterGained(boss, ctx, alerts, abilityId, unitName, unitTag, ...)
     local _, isHeal, isTank = GetPlayerRoles()
     if isTank or isHeal then
-        boss.fireImminent:start(GetUnitDisplayName(unitTag) or unitName)
+        local name = GetUnitDisplayName(unitTag) or unitName
+        boss.fireImminent:start(name)
+        boss._fireImminentStr = Fmt.c(Fmt.FIRE, _STR_IMM_BLISTER .. " (" .. (name or "?") .. ")")
     end
 end
 
@@ -244,7 +278,9 @@ end
 local function handleImminentChillGained(boss, ctx, alerts, abilityId, unitName, unitTag, ...)
     local _, isHeal, isTank = GetPlayerRoles()
     if isTank or isHeal then
-        boss.iceImminent:start(GetUnitDisplayName(unitTag) or unitName)
+        local name = GetUnitDisplayName(unitTag) or unitName
+        boss.iceImminent:start(name)
+        boss._iceImminentStr = Fmt.c(Fmt.FROST, _STR_IMM_CHILL .. " (" .. (name or "?") .. ")")
     end
 end
 
@@ -276,20 +312,25 @@ local function handleChillingFragilityFaded(boss, ctx, alerts, abilityId, unitNa
     end
 end
 
--- DestructiveEmber: GAINED and UPDATED share the same body
+-- DestructiveEmber: GAINED and UPDATED share the same body (stack count
+-- changed → rebuild the cached row text once, here, not per tick).
+local function applyDestructiveEmber(boss, unitName, unitTag, stackCount)
+    boss.destructiveEmberStacks = stackCount or 1
+    boss.destructiveEmberName   = GetUnitDisplayName(unitTag) or unitName
+    boss.lastDestructiveEmber   = GetGameTimeMilliseconds() / 1000
+    boss._fireBubbleStr, boss._fireBubbleDropStr =
+        buildBubbleText(Fmt.FIRE, FIRE_EMOJI, boss.destructiveEmberName, boss.destructiveEmberStacks)
+end
+
 local function handleDestructiveEmberGained(boss, ctx, alerts, abilityId, unitName, unitTag, unitId, stackCount)
     if AreUnitsEqual("player", unitTag) then
-        boss.destructiveEmberStacks = stackCount or 1
-        boss.destructiveEmberName   = GetUnitDisplayName(unitTag) or unitName
-        boss.lastDestructiveEmber   = GetGameTimeMilliseconds() / 1000
+        applyDestructiveEmber(boss, unitName, unitTag, stackCount)
     end
 end
 
 local function handleDestructiveEmberUpdated(boss, ctx, alerts, abilityId, unitName, unitTag, unitId, stackCount)
     if AreUnitsEqual("player", unitTag) then
-        boss.destructiveEmberStacks = stackCount or 1
-        boss.destructiveEmberName   = GetUnitDisplayName(unitTag) or unitName
-        boss.lastDestructiveEmber   = GetGameTimeMilliseconds() / 1000
+        applyDestructiveEmber(boss, unitName, unitTag, stackCount)
     end
 end
 
@@ -298,23 +339,29 @@ local function handleDestructiveEmberFaded(boss, ctx, alerts, abilityId, unitNam
         boss.destructiveEmberStacks = 0
         boss.destructiveEmberName   = false
         boss.lastDestructiveEmber   = 0
+        boss._fireBubbleStr         = false
+        boss._fireBubbleDropStr     = false
     end
 end
 
 -- PiercingHailstone: same 3-way split
+local function applyPiercingHail(boss, unitName, unitTag, stackCount)
+    boss.piercingHailstacks = stackCount or 1
+    boss.piercingHailName   = GetUnitDisplayName(unitTag) or unitName
+    boss.lastPiercingHail   = GetGameTimeMilliseconds() / 1000
+    boss._iceBubbleStr, boss._iceBubbleDropStr =
+        buildBubbleText(Fmt.FROST, ICE_EMOJI, boss.piercingHailName, boss.piercingHailstacks)
+end
+
 local function handlePiercingHailstoneGained(boss, ctx, alerts, abilityId, unitName, unitTag, unitId, stackCount)
     if AreUnitsEqual("player", unitTag) then
-        boss.piercingHailstacks = stackCount or 1
-        boss.piercingHailName   = GetUnitDisplayName(unitTag) or unitName
-        boss.lastPiercingHail   = GetGameTimeMilliseconds() / 1000
+        applyPiercingHail(boss, unitName, unitTag, stackCount)
     end
 end
 
 local function handlePiercingHailstoneUpdated(boss, ctx, alerts, abilityId, unitName, unitTag, unitId, stackCount)
     if AreUnitsEqual("player", unitTag) then
-        boss.piercingHailstacks = stackCount or 1
-        boss.piercingHailName   = GetUnitDisplayName(unitTag) or unitName
-        boss.lastPiercingHail   = GetGameTimeMilliseconds() / 1000
+        applyPiercingHail(boss, unitName, unitTag, stackCount)
     end
 end
 
@@ -323,6 +370,8 @@ local function handlePiercingHailstoneFaded(boss, ctx, alerts, abilityId, unitNa
         boss.piercingHailstacks = 0
         boss.piercingHailName   = false
         boss.lastPiercingHail   = 0
+        boss._iceBubbleStr      = false
+        boss._iceBubbleDropStr  = false
     end
 end
 
@@ -452,19 +501,13 @@ Lylanar.events = {
 -- -- Info-line renderers ---------------------------------------------------
 
 local function showFireBubbleLine(self, alerts, now, isHM)
-    if self.lastDestructiveEmber > 0 then
-        local cd     = isHM and BUBBLE_CD_HM or BUBBLE_CD_NORM
-        local T      = cd - (now - self.lastDestructiveEmber)
-        local stks   = self.destructiveEmberStacks
-        local name   = self.destructiveEmberName or "?"
-        local suffix = stks ~= 1 and Lang.t("dsr_lylanar_ember_suffix_p", stks)
-                                   or  Lang.t("dsr_lylanar_ember_suffix",   stks)
+    if self.lastDestructiveEmber > 0 and self._fireBubbleStr then
+        local cd = isHM and BUBBLE_CD_HM or BUBBLE_CD_NORM
+        local T  = cd - (now - self.lastDestructiveEmber)
         if T > 0 then
-            alerts:setRow(1, Fmt.c(Fmt.FIRE, "\xf0\x9f\x94\xa5 " .. name) .. suffix, T)
+            alerts:setRow(1, self._fireBubbleStr, T)
         else
-            alerts:setRow(1,
-                Fmt.c(Fmt.FIRE, "\xf0\x9f\x94\xa5 " .. name) .. suffix
-                .. " " .. Fmt.c(Fmt.RED, Lang.t("dsr_lylanar_drop")), nil)
+            alerts:setRow(1, self._fireBubbleDropStr, nil)
         end
     else
         alerts:clearRow(1)
@@ -472,35 +515,50 @@ local function showFireBubbleLine(self, alerts, now, isHM)
 end
 
 local function showIceBubbleLine(self, alerts, now, isHM)
-    if self.lastPiercingHail > 0 then
-        local cd     = isHM and BUBBLE_CD_HM or BUBBLE_CD_NORM
-        local T      = cd - (now - self.lastPiercingHail)
-        local stks   = self.piercingHailstacks
-        local name   = self.piercingHailName or "?"
-        local suffix = stks ~= 1 and Lang.t("dsr_lylanar_ember_suffix_p", stks)
-                                   or  Lang.t("dsr_lylanar_ember_suffix",   stks)
+    if self.lastPiercingHail > 0 and self._iceBubbleStr then
+        local cd = isHM and BUBBLE_CD_HM or BUBBLE_CD_NORM
+        local T  = cd - (now - self.lastPiercingHail)
         if T > 0 then
-            alerts:setRow(2, Fmt.c(Fmt.FROST, "\xe2\x9d\x84 " .. name) .. suffix, T)
+            alerts:setRow(2, self._iceBubbleStr, T)
         else
-            alerts:setRow(2,
-                Fmt.c(Fmt.FROST, "\xe2\x9d\x84 " .. name) .. suffix
-                .. " " .. Fmt.c(Fmt.RED, Lang.t("dsr_lylanar_drop")), nil)
+            alerts:setRow(2, self._iceBubbleDropStr, nil)
         end
     else
         alerts:clearRow(2)
     end
 end
 
-local function showFragilityLine(self, alerts)
-    local fireT = self.fireFragility:remaining()
-    local iceT  = self.iceFragility:remaining()
+local function showFragilityLine(self, alerts, now)
+    local fireT = self.fireFragility:remainingAt(now)
+    local iceT  = self.iceFragility:remainingAt(now)
     if fireT > 0 then
-        alerts:setRow(3, Fmt.c(Fmt.FIRE, Lang.t("dsr_lylanar_fire_fragility")), fireT)
+        alerts:setRow(3, _STR_FIRE_FRAGILITY, fireT)
     elseif iceT > 0 then
-        alerts:setRow(3, Fmt.c(Fmt.FROST, Lang.t("dsr_lylanar_ice_fragility")), iceT)
+        alerts:setRow(3, _STR_ICE_FRAGILITY, iceT)
     else
         alerts:clearRow(3)
     end
+end
+
+-- "Axe  Sword: Ns" changes once per second; rebuild the two row variants
+-- only when the displayed sword second changes.
+local function axeRowStrings(self, now)
+    local sec = 0
+    if self.lastCalamitousSword > 0 then
+        sec = math.ceil(math.max(0, WEAPON_CD - (now - self.lastCalamitousSword)))
+    end
+    if sec ~= self._swordSec then
+        self._swordSec = sec
+        if sec > 0 then
+            local swordPart = Fmt.c(Fmt.FROST, _STR_SWORD_PFX .. sec .. "s")
+            self._axeRowStr    = _STR_AXE .. swordPart
+            self._axeRowIncStr = _STR_AXE_INC .. swordPart
+        else
+            self._axeRowStr    = _STR_AXE
+            self._axeRowIncStr = _STR_AXE_INC
+        end
+    end
+    return self._axeRowStr, self._axeRowIncStr
 end
 
 local function showSpikeLine(self, alerts, now, isHM)
@@ -508,33 +566,24 @@ local function showSpikeLine(self, alerts, now, isHM)
     local iceSpikeT  = (self.lastGlacialSpike > 0) and (SPIKE_DUR - (now - self.lastGlacialSpike)) or -1
 
     if fireSpikeT > 0 then
-        alerts:setRow(4, Fmt.c(Fmt.FIRE, Lang.t("dsr_lylanar_need_fire_dome")), fireSpikeT)
+        alerts:setRow(4, _STR_NEED_FIRE_DOME, fireSpikeT)
     elseif iceSpikeT > 0 then
-        alerts:setRow(4, Fmt.c(Fmt.FROST, Lang.t("dsr_lylanar_need_ice_dome")), iceSpikeT)
+        alerts:setRow(4, _STR_NEED_ICE_DOME, iceSpikeT)
     elseif isHM and self.lastIncendiaryAxe > 0 then
         local T = WEAPON_CD - (now - self.lastIncendiaryAxe)
-        local swordPart = ""
-        if self.lastCalamitousSword > 0 then
-            swordPart = Fmt.c(Fmt.FROST, Lang.t("dsr_lylanar_sword")
-                .. Fmt.timer(math.max(0, WEAPON_CD - (now - self.lastCalamitousSword))))
-        end
+        local axeStr, axeIncStr = axeRowStrings(self, now)
         if T > 0 then
-            alerts:setRow(4, Fmt.c(Fmt.FIRE, Lang.t("dsr_lylanar_axe")) .. swordPart, T)
+            alerts:setRow(4, axeStr, T)
         else
-            alerts:setRow(4,
-                Fmt.c(Fmt.FIRE, Lang.t("dsr_lylanar_axe")) .. " " .. Fmt.c(Fmt.RED, "INC") .. swordPart, nil)
+            alerts:setRow(4, axeIncStr, nil)
         end
     else
-        local fireImminT = self.fireImminent:remaining()
-        local iceImminT  = self.iceImminent:remaining()
-        if fireImminT > 0 then
-            alerts:setRow(4,
-                Fmt.c(Fmt.FIRE, Lang.t("dsr_lylanar_imm_blister")
-                    .. " (" .. (self.fireImminent:playerName() or "?") .. ")"), fireImminT)
-        elseif iceImminT > 0 then
-            alerts:setRow(4,
-                Fmt.c(Fmt.FROST, Lang.t("dsr_lylanar_imm_chill")
-                    .. " (" .. (self.iceImminent:playerName() or "?") .. ")"), iceImminT)
+        local fireImminT = self.fireImminent:remainingAt(now)
+        local iceImminT  = self.iceImminent:remainingAt(now)
+        if fireImminT > 0 and self._fireImminentStr then
+            alerts:setRow(4, self._fireImminentStr, fireImminT)
+        elseif iceImminT > 0 and self._iceImminentStr then
+            alerts:setRow(4, self._iceImminentStr, iceImminT)
         else
             alerts:clearRow(4)
         end
@@ -542,21 +591,9 @@ local function showSpikeLine(self, alerts, now, isHM)
 end
 
 function Lylanar:onWipe(context, alerts)
-    self.fireImminent:clear();  self.fireFragility:clear()
-    self.iceImminent:clear();   self.iceFragility:clear()
-    self.cinderSurgeActive      = false
-    self.lastMagmaSpike         = 0;    self.lastIncendiaryAxe    = 0
-    self.destructiveEmberStacks = 0;    self.lastDestructiveEmber = 0
-    self.destructiveEmberName   = false
-    self.firebrandTracker       = {};   self.lastBrandMatchFire   = 0
-    self.flameHounds            = 0
-    self.numbingShardsActive    = false
-    self.lastGlacialSpike       = 0;    self.lastCalamitousSword  = 0
-    self.piercingHailstacks     = 0;    self.lastPiercingHail     = 0
-    self.piercingHailName       = false
-    self.frostbrandTracker      = {};   self.lastBrandMatchIce    = 0
-    self.frostHounds            = 0
-    self.lastBrandMatch         = 0
+    -- Every per-pull field lives in stateSchema (timers, trackers, caches),
+    -- so the schema reset is the whole soft reset.
+    BossBase.resetSchema(self, Lylanar)
     CA.border(false, 0, "yellow")
 end
 
@@ -565,7 +602,7 @@ function Lylanar:onUpdate(context, alerts)
     local isHM = context.isHM
     showFireBubbleLine(self, alerts, now, isHM)
     showIceBubbleLine(self, alerts, now, isHM)
-    showFragilityLine(self, alerts)
+    showFragilityLine(self, alerts, now)
     showSpikeLine(self, alerts, now, isHM)
 end
 

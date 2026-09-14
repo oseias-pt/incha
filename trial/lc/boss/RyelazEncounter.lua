@@ -6,6 +6,7 @@ local CastDur         = require("lib.CastDur")
 local Lang            = require("core.Lang")
 local Fmt             = require("core.Fmt")
 local Colors          = require("core.Colors")
+local LCCommon        = require("trial.lc.LCCommon")
 
 -- ── Ability IDs ───────────────────────────────────────────────────────────
 local BRILLIANT_ANNIHILATION = 214187
@@ -29,8 +30,11 @@ RyelazEncounter.nameAliases       = { "Count Ryelaz", "Zilyesset" }
 -- Health-pool threshold between NM and HM; re-verify after major patches.
 RyelazEncounter.hmHealthThreshold = 40000000
 
--- playerSide: "ryelaz" | "zilyesset" | nil
-RyelazEncounter.stateSchema = {}
+RyelazEncounter.stateSchema = {
+    -- "ryelaz" | "zilyesset" | false (not on either side).  Declared here so
+    -- the schema is the single source of truth for per-pull state.
+    playerSide = false,
+}
 
 function RyelazEncounter.new()
     return BossBase.fromSchema(RyelazEncounter)
@@ -73,7 +77,7 @@ local function handlePorcinLight(boss, ctx, alerts, abilityId, sourceUnitName, u
         boss.playerSide = "ryelaz"
     else
         -- EFFECT_FADED: player leaving Ryelaz (dark) side
-        boss.playerSide = nil
+        boss.playerSide = false
     end
 end
 
@@ -84,18 +88,25 @@ local function handlePorcinDark(boss, ctx, alerts, abilityId, sourceUnitName, un
         boss.playerSide = "zilyesset"
     else
         -- EFFECT_FADED: player leaving Zilyesset (light) side
-        boss.playerSide = nil
+        boss.playerSide = false
     end
 end
 
 -- ── Event tables ─────────────────────────────────────────────────────────
 
-local _beginCastEntry = {
-    [BRILLIANT_ANNIHILATION] = { type = AlertTypes.CUSTOM, fn = handleBrilliantAnnihilation },
-    [BLEAK_ANNIHILATION]     = { type = AlertTypes.CUSTOM, fn = handleBleakAnnihilation },
-    [SUMMON_LIGHTWEAVER]     = { type = AlertTypes.CUSTOM, fn = handleSummonLightweaver },
-    [SUMMON_BLACKGUARD]      = { type = AlertTypes.CUSTOM, fn = handleSummonBlackguard },
-}
+-- Shared LC mechanics (Solar Flare cast bar, Hindered tank swap, Radiance
+-- border) come from LCCommon and are merged into this boss's buckets.
+local _beginCastEntry = {}
+for k, v in pairs(LCCommon.beginCastEntries) do _beginCastEntry[k] = v end
+_beginCastEntry[BRILLIANT_ANNIHILATION] = { type = AlertTypes.CUSTOM, fn = handleBrilliantAnnihilation }
+_beginCastEntry[BLEAK_ANNIHILATION]     = { type = AlertTypes.CUSTOM, fn = handleBleakAnnihilation }
+_beginCastEntry[SUMMON_LIGHTWEAVER]     = { type = AlertTypes.CUSTOM, fn = handleSummonLightweaver }
+_beginCastEntry[SUMMON_BLACKGUARD]      = { type = AlertTypes.CUSTOM, fn = handleSummonBlackguard }
+
+local _effectGainedEntry = {}
+for k, v in pairs(LCCommon.effectChangedEntries.gained) do _effectGainedEntry[k] = v end
+local _effectFadedEntry = {}
+for k, v in pairs(LCCommon.effectChangedEntries.faded) do _effectFadedEntry[k] = v end
 
 local _combatOtherEntry = {
     [PORCIN_LIGHT] = { type = AlertTypes.CUSTOM, fn = handlePorcinLight },
@@ -110,12 +121,12 @@ for k, v in pairs(_beginCastEntry) do _beginCastInstant[k] = v; _beginCastStarte
 
 RyelazEncounter.events = {
     beginCast     = { instant = _beginCastInstant, started = _beginCastStarted },
-    effectChanged = { gained = {}, faded = {}, updated = {} },
+    effectChanged = { gained = _effectGainedEntry, faded = _effectFadedEntry, updated = {} },
     combatEvent   = { damage = {}, dodged = {}, blocked = {}, other = _combatOtherEntry },
 }
 
 function RyelazEncounter:onWipe(context, alerts)
-    self.playerSide = nil
+    self.playerSide = false
 end
 
 function RyelazEncounter:onUpdate(context, alerts)

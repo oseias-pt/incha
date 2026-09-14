@@ -43,6 +43,9 @@ run contracts      luajit test/checks/contracts.lua
 run filters        luajit test/checks/filters.lua
 run settings-usage luajit test/checks/settings-usage.lua
 run state-reset    luajit test/checks/state-reset.lua
+run registrations  luajit test/checks/registrations.lua
+run health-rules   luajit test/checks/health_rules.lua
+run lifecycle      luajit test/checks/lifecycle.lua
 
 echo
 if [ -z "$failed" ]; then

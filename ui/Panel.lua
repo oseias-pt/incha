@@ -196,7 +196,8 @@ local function build()
             nameLbl   = nameLbl,
             etaLbl    = etaLbl,
             nameText  = "",
-            etaText   = "",
+            etaCeil   = 0,     -- last displayed whole second; 0 = blank
+            etaBucket = 0,     -- last colour bucket applied (1 red, 2 orange, 3 grey)
             iconPath  = nil,   -- last texture applied; nil = icon hidden
         }
     end
@@ -296,8 +297,8 @@ local function tracker_clear()
             row.iconPath = nil
             row.icon:SetHidden(true)
         end
-        if row.etaText ~= "" then
-            row.etaText = ""
+        if row.etaCeil ~= 0 then
+            row.etaCeil = 0
             row.etaLbl:SetText("")
         end
     end
@@ -360,28 +361,30 @@ local function renderTrackerRows(c)
         end
 
         -- ETA column ─────────────────────────────────────────────────────────
-        local eta    = d and d.eta
-        local etaStr
+        -- Compare the integer ceiling and the colour bucket as numbers first;
+        -- the "Ns" string is only built when the displayed second changes, so
+        -- a steady countdown allocates one string per second, not per tick.
+        local eta = d and d.eta
+        local etaCeil, bucket
         if eta and eta > 0 then
-            etaStr = math.ceil(eta) .. "s"
-            local r, g, b
-            if     eta < 3  then r, g, b = 1.00, 0.27, 0.27   -- red    (< 3 s)
-            elseif eta < 10 then r, g, b = 1.00, 0.52, 0.00   -- orange (3–10 s)
-            else                 r, g, b = 0.67, 0.67, 0.67   -- grey   (> 10 s)
-            end
-            -- SetColor is cheap but still skip it when value hasn't changed.
-            -- We use etaText as the colour proxy: a colour only changes when the
-            -- ceiling bucket changes, which is rare, so this under-fires slightly.
-            -- Accept the minor inaccuracy to keep the hot path allocation-free.
-            if row.etaText ~= etaStr then
-                row.etaLbl:SetColor(r, g, b, 1)
+            etaCeil = math.ceil(eta)
+            if     eta < 3  then bucket = 1   -- red    (< 3 s)
+            elseif eta < 10 then bucket = 2   -- orange (3–10 s)
+            else                 bucket = 3   -- grey   (> 10 s)
             end
         else
-            etaStr = ""
+            etaCeil, bucket = 0, 0
         end
-        if row.etaText ~= etaStr then
-            row.etaText = etaStr
-            row.etaLbl:SetText(etaStr)
+        if row.etaCeil ~= etaCeil then
+            row.etaCeil = etaCeil
+            row.etaLbl:SetText(etaCeil > 0 and (etaCeil .. "s") or "")
+        end
+        if row.etaBucket ~= bucket and bucket > 0 then
+            row.etaBucket = bucket
+            if     bucket == 1 then row.etaLbl:SetColor(1.00, 0.27, 0.27, 1)
+            elseif bucket == 2 then row.etaLbl:SetColor(1.00, 0.52, 0.00, 1)
+            else                    row.etaLbl:SetColor(0.67, 0.67, 0.67, 1)
+            end
         end
     end
 end
@@ -442,11 +445,22 @@ Panel.alerts = {
     setRow = function(key, name, eta, priority, iconTexture)
         if not ctrl then return end
         priority = priority or 0
-        local existing   = ctrl.rowData[key]
-        local isNew      = existing == nil
-        local prioChange = existing and existing.priority ~= priority
-        ctrl.rowData[key] = { name = name or "", eta = eta, priority = priority, icon = iconTexture }
-        if isNew or prioChange then ctrl.rowDirty = true end
+        local d = ctrl.rowData[key]
+        if d then
+            -- Update in place.  Boss onUpdate loops call setRow for every
+            -- timer row on every 200 ms tick, so a fresh record per call
+            -- would be the single largest GC source in the addon.
+            if d.priority ~= priority then
+                d.priority = priority
+                ctrl.rowDirty = true
+            end
+            d.name = name or ""
+            d.eta  = eta
+            d.icon = iconTexture
+        else
+            ctrl.rowData[key] = { name = name or "", eta = eta, priority = priority, icon = iconTexture }
+            ctrl.rowDirty = true
+        end
         renderTrackerRows(ctrl)
         if not ctrl.active then
             ctrl.active = true
@@ -515,6 +529,13 @@ function Panel.refresh()
         alertCtrl.panel:SetScale(sv.scale)
         applyAlertPosition(alertCtrl.panel)
     end
+end
+
+-- Test hook (test/checks/lifecycle.lua): read-only access to the tracker
+-- state so the offline check can assert on row records and control calls.
+-- Not used by production code.
+function Panel._inspect()
+    return ctrl
 end
 
 package.loaded["ui.Panel"] = Panel

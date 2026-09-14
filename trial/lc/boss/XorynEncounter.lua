@@ -7,6 +7,7 @@ local CastDur         = require("lib.CastDur")
 local Lang            = require("core.Lang")
 local Fmt             = require("core.Fmt")
 local Colors          = require("core.Colors")
+local LCCommon        = require("trial.lc.LCCommon")
 
 -- ── Ability IDs ───────────────────────────────────────────────────────────
 local ARCANE_KNOT         = 213477
@@ -25,6 +26,12 @@ local CURRENT_MAX_DUR = 15.0
 local FALLBACK_BARRAGE_DUR = 3000
 local FALLBACK_DUR         = 2000
 
+-- Tracker-row strings built once at load; the 200 ms loop never calls
+-- Fmt.c / Lang.t.  The knot-carrier row is cached per carrier (see
+-- handleArcaneKnot) since it embeds a player name.
+local _STR_CURRENT  = Fmt.c(Fmt.ICE, Lang.t("lc_xoryn_current"))
+local _STR_DROP_NOW = Fmt.c(Fmt.RED, Lang.t("lc_xoryn_drop_now"))
+
 local XorynEncounter = {}
 XorynEncounter.__index = XorynEncounter
 
@@ -36,6 +43,7 @@ XorynEncounter.hmHealthThreshold = 100000000
 XorynEncounter.stateSchema = {
     currentTimer    = function() return Timer.new(CURRENT_MAX_DUR) end,
     knotCarrierName = false,
+    _knotRowStr     = false,   -- cached "Knot: <name>" row for the current carrier
     holdingCurrent  = false,
 }
 
@@ -96,6 +104,7 @@ local function handleArcaneKnot(boss, ctx, alerts, abilityId, sourceUnitName, un
     if not boss.knotCarrierName then
         -- EFFECT_GAINED_DURATION: player/unit gained knot
         boss.knotCarrierName = GetUnitDisplayName(unitTag) or "?"
+        boss._knotRowStr     = Fmt.c(Fmt.AMBER, Lang.t("lc_xoryn_knot_carrier", boss.knotCarrierName))
         if IsUnitPlayer(unitTag) then
             CA.alert(nil, Lang.t("lc_xoryn_knot_alert"), 0xFFAA44FF, SOUNDS.NONE, 4000)
             alerts:showAction(Lang.t("lc_xoryn_arcane_knot"))
@@ -103,6 +112,7 @@ local function handleArcaneKnot(boss, ctx, alerts, abilityId, sourceUnitName, un
     else
         -- EFFECT_FADED: knot released or transferred
         boss.knotCarrierName = false
+        boss._knotRowStr     = false
     end
 end
 
@@ -132,14 +142,21 @@ end
 
 -- ── Event tables ─────────────────────────────────────────────────────────
 
-local _beginCastEntry = {
-    [NECROTIC_BARRAGE]    = { type = AlertTypes.CUSTOM, fn = handleNecroticBarrage },
-    [ACCELERATING_CHARGE] = { type = AlertTypes.CUSTOM, fn = handleAcceleratingCharge },
-    [TEMPEST]             = { type = AlertTypes.CUSTOM, fn = handleTempest },
-    [GLASS_STOMP_CAST]    = { type = AlertTypes.CUSTOM, fn = handleGlassStomp },
-    [LUSTROUS_JAVELIN]    = { type = AlertTypes.CUSTOM, fn = handleLustrousJavelin },
-    [ARCANE_CONVEYANCE]   = { type = AlertTypes.CUSTOM, fn = handleArcaneConveyance },
-}
+-- Shared LC mechanics (Solar Flare cast bar, Hindered tank swap, Radiance
+-- border) come from LCCommon and are merged into this boss's buckets.
+local _beginCastEntry = {}
+for k, v in pairs(LCCommon.beginCastEntries) do _beginCastEntry[k] = v end
+_beginCastEntry[NECROTIC_BARRAGE]    = { type = AlertTypes.CUSTOM, fn = handleNecroticBarrage }
+_beginCastEntry[ACCELERATING_CHARGE] = { type = AlertTypes.CUSTOM, fn = handleAcceleratingCharge }
+_beginCastEntry[TEMPEST]             = { type = AlertTypes.CUSTOM, fn = handleTempest }
+_beginCastEntry[GLASS_STOMP_CAST]    = { type = AlertTypes.CUSTOM, fn = handleGlassStomp }
+_beginCastEntry[LUSTROUS_JAVELIN]    = { type = AlertTypes.CUSTOM, fn = handleLustrousJavelin }
+_beginCastEntry[ARCANE_CONVEYANCE]   = { type = AlertTypes.CUSTOM, fn = handleArcaneConveyance }
+
+local _effectGainedEntry = {}
+for k, v in pairs(LCCommon.effectChangedEntries.gained) do _effectGainedEntry[k] = v end
+local _effectFadedEntry = {}
+for k, v in pairs(LCCommon.effectChangedEntries.faded) do _effectFadedEntry[k] = v end
 
 local _combatOtherEntry = {
     [ARCANE_CONV_DEBUFF]  = { type = AlertTypes.CUSTOM, fn = handleArcaneConvDebuff },
@@ -156,7 +173,7 @@ for k, v in pairs(_beginCastEntry) do _beginCastInstant[k] = v; _beginCastStarte
 
 XorynEncounter.events = {
     beginCast     = { instant = _beginCastInstant, started = _beginCastStarted },
-    effectChanged = { gained = {}, faded = {}, updated = {} },
+    effectChanged = { gained = _effectGainedEntry, faded = _effectFadedEntry, updated = {} },
     combatEvent   = { damage = {}, dodged = {}, blocked = {}, other = _combatOtherEntry },
 }
 
@@ -166,9 +183,9 @@ local function showCurrentLine(self, alerts)
     if self.holdingCurrent then
         local r = self.currentTimer:remaining()
         if r > 0 then
-            alerts:setRow(1, Fmt.c(Fmt.ICE, Lang.t("lc_xoryn_current")), r)
+            alerts:setRow(1, _STR_CURRENT, r)
         else
-            alerts:setRow(1, Fmt.c(Fmt.RED, Lang.t("lc_xoryn_drop_now")), nil)
+            alerts:setRow(1, _STR_DROP_NOW, nil)
         end
     else
         alerts:clearRow(1)
@@ -176,8 +193,8 @@ local function showCurrentLine(self, alerts)
 end
 
 local function showKnotLine(self, alerts)
-    if self.knotCarrierName then
-        alerts:setRow(2, Fmt.c(Fmt.AMBER, Lang.t("lc_xoryn_knot_carrier", self.knotCarrierName)), nil)
+    if self.knotCarrierName and self._knotRowStr then
+        alerts:setRow(2, self._knotRowStr, nil)
     else
         alerts:clearRow(2)
     end
@@ -186,6 +203,7 @@ end
 function XorynEncounter:onWipe(context, alerts)
     self.currentTimer:clear()
     self.knotCarrierName = false
+    self._knotRowStr     = false
     self.holdingCurrent  = false
 end
 

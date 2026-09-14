@@ -2,29 +2,28 @@
 ---
 --- EventPipeline registers EVENT_COMBAT_EVENT and EVENT_EFFECT_CHANGED per
 --- ability id rather than unfiltered, so an ability the engine was not told
---- about never reaches Lua at all.  That makes two properties load-bearing:
+--- about never reaches Lua at all.  That makes these properties load-bearing:
 ---
----   1. DISJOINT SETS.  A boss's events-table ids and its common module's
----      declared ids must not overlap.  EventPipeline gives each id exactly one
----      registration; an overlap would silently drop one of the two handlers.
+---   1. SHARED MECHANICS ARE MERGED.  A trial's <X>Common module exposes
+---      `beginCastEntries` and/or `effectChangedEntries`; every boss in that
+---      trial must copy those entries into its own events buckets (see
+---      trial/rg/boss/*.lua for the pattern).  A common module that is loaded
+---      but never merged is silent for the whole trial — no registration, no
+---      dispatch, no warning in game.  That is exactly what happened to
+---      LCCommon before this check existed.
 ---
----   2. A DECLARED SET EXISTS.  A common module that exposes handle() or
----      handleEffect() must declare the matching ability set, or nothing is
----      registered for it and the whole shared-mechanic path goes dark.
----
----   3. A CATCH-ALL IS REACHABLE.  A boss with an onCombatEvent fallback
+---   2. A CATCH-ALL IS REACHABLE.  A boss with an onCombatEvent fallback
 ---      guards on a combat result rather than an ability id, so it needs
 ---      boss.combatResults for EventPipeline to give it a registration.
+---
+---   3. NO DUPLICATE KEYS in one routing / schema table (source scan below).
 ---
 --- What this check deliberately does NOT do: probe the handlers to discover
 --- which abilities they can claim.  Branches gated on IsUnitPlayer,
 --- GetPlayerRoles and similar are unreachable under the offline stubs, so a
 --- probe reports far fewer ids than the module really handles and would give
---- false confidence.  The gate at the top of each handler is what ties the
---- declared set to dispatch: an id missing from the set is neither registered
---- NOR dispatched, so the failure mode is a dead branch rather than a
---- silently-dropped event.  Dead branches are what the log-replay coverage
---- pass in test/run_log.lua is for.
+--- false confidence.  Dead branches are what the log-replay coverage pass in
+--- test/run_log.lua is for.
 ---
 --- Usage (from the repository root):
 ---   luajit test/checks/filters.lua
@@ -34,9 +33,16 @@
 package.path = "./?.lua;./test/?.lua;" .. package.path
 require("harness.eso_api")
 
-local EventDispatcher = require("core.EventDispatcher")
-
 local TRIALS = { "ka", "ss", "rg", "dsr", "as", "cr", "se", "lc", "oc" }
+
+-- trial id -> module path of its shared-mechanics module (nil = none).
+local COMMON_MODULES = {
+    ss  = "trial.ss.SunspireCommon",
+    rg  = "trial.rg.RockgroveCommon",
+    dsr = "trial.dsr.DreadsailCommon",
+    lc  = "trial.lc.LCCommon",
+    oc  = "trial.oc.OsseinCageCommon",
+}
 
 local findings = 0
 local function fail(fmt, ...)
@@ -44,56 +50,53 @@ local function fail(fmt, ...)
     findings = findings + 1
 end
 
-local checkedCommons = {}
+-- Every (abilityId, entry) pair in `expected` must be present, by identity,
+-- in `bucket` (the boss's merged table).  Identity rather than equality:
+-- the boss must reference the shared entry table, so a later fix to the
+-- common handler reaches every boss.
+local function assertMerged(trialId, bossKey, bucketPath, bucket, expected)
+    for abilityId, entry in pairs(expected or {}) do
+        local got = bucket and bucket[abilityId]
+        if got == nil then
+            fail("NOT MERGED  %s/%s  %s lacks common ability %d  -  the shared "
+                 .. "handler is never registered for this boss",
+                 trialId, bossKey, bucketPath, abilityId)
+        elseif got ~= entry then
+            fail("SHADOWED  %s/%s  %s[%d] is a boss-local entry that hides the "
+                 .. "common module's handler", trialId, bossKey, bucketPath, abilityId)
+        end
+    end
+end
 
 for _, id in ipairs(TRIALS) do
     local ok, trial = pcall(require, "trial." .. id .. ".Factory")
     if not ok or not trial then
         fail("LOAD  trial.%s.Factory  %s", id, tostring(trial))
     else
+        local common = COMMON_MODULES[id] and package.loaded[COMMON_MODULES[id]]
+        if COMMON_MODULES[id] and not common then
+            fail("LOAD  %s  common module %s is not loaded by the Factory",
+                 id, COMMON_MODULES[id])
+        end
+
         for _, boss in ipairs(trial.registry.bosses) do
-            local common = boss.common
+            local e = boss.events or {}
+
+            -- 1. Shared mechanics must be merged into every boss of the trial.
             if common then
-                local cIds = common.combatAbilityIds or {}
-                local eIds = common.effectAbilityIds or {}
-
-                -- 1. Disjointness: boss.events ids must not overlap with
-                --    the common module's declared sets.
-                local bossCombat, bossEffect = EventDispatcher.abilityIdsFor(boss)
-                for abilityId in pairs(bossCombat) do
-                    if cIds[abilityId] then
-                        fail("OVERLAP  %s/%s  combat ability %d is in BOTH the "
-                             .. "boss events table and the common module's set",
-                             id, tostring(boss.key), abilityId)
-                    end
-                end
-                for abilityId in pairs(bossEffect) do
-                    if eIds[abilityId] then
-                        fail("OVERLAP  %s/%s  effect ability %d is in BOTH the "
-                             .. "boss events table and the common module's set",
-                             id, tostring(boss.key), abilityId)
-                    end
-                end
-
-                -- 2. The declared set must actually gate the handler, checked
-                --    once per common module rather than once per boss.
-                if not checkedCommons[common] then
-                    checkedCommons[common] = true
-
-                    if common.handle and next(cIds) == nil then
-                        fail("NO SET  %s/%s  common declares handle() but no "
-                             .. "combatAbilityIds  -  nothing will be registered",
-                             id, tostring(boss.key))
-                    end
-                    if common.handleEffect and next(eIds) == nil then
-                        fail("NO SET  %s/%s  common declares handleEffect() but "
-                             .. "no effectAbilityIds", id, tostring(boss.key))
-                    end
-
+                local bc = e.beginCast or {}
+                assertMerged(id, boss.key, "beginCast.instant", bc.instant, common.beginCastEntries)
+                assertMerged(id, boss.key, "beginCast.started", bc.started, common.beginCastEntries)
+                local ece = common.effectChangedEntries
+                if ece then
+                    local ec = e.effectChanged or {}
+                    assertMerged(id, boss.key, "effectChanged.gained",  ec.gained,  ece.gained)
+                    assertMerged(id, boss.key, "effectChanged.faded",   ec.faded,   ece.faded)
+                    assertMerged(id, boss.key, "effectChanged.updated", ec.updated, ece.updated)
                 end
             end
 
-            -- 3. A boss with a catch-all handler must declare the combat
+            -- 2. A boss with a catch-all handler must declare the combat
             --    results it guards on, or it gets no registration at all.
             if boss.onCombatEvent and not boss.combatResults then
                 fail("NO RESULTS  %s/%s  declares onCombatEvent but no "
@@ -104,7 +107,7 @@ for _, id in ipairs(TRIALS) do
     end
 end
 
--- -- 4. No duplicate ability ids inside one routing table --------------------
+-- -- 3. No duplicate ability ids inside one routing table --------------------
 --
 -- This has to be a SOURCE scan, not a runtime one.  A Lua table constructor
 -- with the same key twice keeps the last entry and discards the first with no

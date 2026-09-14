@@ -49,6 +49,7 @@ Colors.FLYZONE   = "FLYZONE"    -- orange (fly-in / enter threshold)
 Colors.BLUE      = "BLUE"       -- pure blue (fog / magical barrier)
 Colors.SILVER    = "SILVER"     -- neutral gray (untyped block/dodge bar)
 Colors.MAGENTA   = "MAGENTA"    -- hot pink (urgent dodge signal)
+Colors.WHITE     = "WHITE"      -- plain white (neutral position-icon tint)
 
 package.loaded["core.Colors"] = Colors
 return Colors

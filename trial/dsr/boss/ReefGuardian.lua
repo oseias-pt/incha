@@ -38,6 +38,34 @@ local SHELTERED_WINDOW = 3
 local ACT_ACID     = { 8000, "MOVE OUT!", 0.3, 0.9, 0.1, 0.9, nil }
 local FALLBACK_DUR = 1500
 
+-- Tracker-row strings built once at load; the 200 ms loop reads these and
+-- the per-instance stack caches below, and never calls Fmt.c / Lang.t.
+local _STR_ELEC_CLEANSED   = Fmt.c(Fmt.GOLD,   Lang.t("dsr_reef_elec_cleansed"))
+local _STR_POISON_CLEANSED = Fmt.c(Fmt.POISON, Lang.t("dsr_reef_poison_cleansed"))
+local _STR_ACIDIC_VULN     = Fmt.c(Fmt.ORANGE, Lang.t("dsr_reef_acidic_vuln"))
+local _STR_WARN            = " " .. Fmt.c(Fmt.RED, "!")
+local _STR_ELEC_PFX        = Lang.t("dsr_reef_elec_label")
+local _STR_POISON_PFX      = Lang.t("dsr_reef_poison_label")
+
+-- "Reef N" labels, gold and red variants, filled lazily per reef index
+-- (bounded by the number of portals opened in one pull).
+local _REEF_LABEL_GOLD, _REEF_LABEL_RED = {}, {}
+local function reefLabel(idx, urgent)
+    local cache = urgent and _REEF_LABEL_RED or _REEF_LABEL_GOLD
+    local s = cache[idx]
+    if not s then
+        s = Fmt.c(urgent and Fmt.RED or Fmt.GOLD, Lang.t("dsr_reef_reef_timer", idx))
+        cache[idx] = s
+    end
+    return s
+end
+
+-- "⚡ N stacks !" row text, rebuilt by the stack handlers rather than per tick.
+local function stackText(prefix, stacks)
+    local s = prefix .. Lang.t(stacks ~= 1 and "dsr_reef_stack_p" or "dsr_reef_stack", stacks)
+    return (stacks >= 7) and (s .. _STR_WARN) or s
+end
+
 local ReefGuardian = {}
 ReefGuardian.__index = ReefGuardian
 
@@ -49,8 +77,10 @@ ReefGuardian.hmHealthThreshold = 100000001
 ReefGuardian.stateSchema = {
     buildingStaticStacks   = 0,
     buildingStaticEndTime  = 0,
+    _elecStr               = false,   -- cached row-1 stack text (see stackText)
     volatileResidueStacks  = 0,
     volatileResidueEndTime = 0,
+    _poisonStr             = false,   -- cached row-2 stack text
     playerSheltered        = false,
     lastShelteredTime      = 0,
     reefPortals   = function() return {} end,
@@ -65,6 +95,7 @@ end
 
 function ReefGuardian:onLeave(context)
     CA.castAlertsStop(self.acidRefluxBarId)
+    self.acidRefluxBarId = false
 end
 
 -- -- Handlers: beginCast -------------------------------------------------------
@@ -106,47 +137,50 @@ end
 -- -- Handlers: effectChanged --------------------------------------------------
 -- effectChanged sig: (boss, ctx, alerts, abilityId, unitName, unitTag, unitId, stackCount)
 
--- Building Static: GAINED and UPDATED share body; FADED clears
+-- Building Static: GAINED and UPDATED share body; FADED clears.  The row
+-- text is rebuilt here, on the (rare) stack change, not on every tick.
+local function applyBuildingStatic(boss, stackCount)
+    boss.buildingStaticStacks  = stackCount or 1
+    boss.buildingStaticEndTime = GetGameTimeMilliseconds() / 1000 + 10
+    boss._elecStr              = stackText(_STR_ELEC_PFX, boss.buildingStaticStacks)
+end
+
 local function handleBuildingStaticGained(boss, ctx, alerts, abilityId, unitName, unitTag, unitId, stackCount)
-    if AreUnitsEqual("player", unitTag) then
-        boss.buildingStaticStacks  = stackCount or 1
-        boss.buildingStaticEndTime = GetGameTimeMilliseconds() / 1000 + 10
-    end
+    if AreUnitsEqual("player", unitTag) then applyBuildingStatic(boss, stackCount) end
 end
 
 local function handleBuildingStaticUpdated(boss, ctx, alerts, abilityId, unitName, unitTag, unitId, stackCount)
-    if AreUnitsEqual("player", unitTag) then
-        boss.buildingStaticStacks  = stackCount or 1
-        boss.buildingStaticEndTime = GetGameTimeMilliseconds() / 1000 + 10
-    end
+    if AreUnitsEqual("player", unitTag) then applyBuildingStatic(boss, stackCount) end
 end
 
 local function handleBuildingStaticFaded(boss, ctx, alerts, abilityId, unitName, unitTag, ...)
     if AreUnitsEqual("player", unitTag) then
         boss.buildingStaticStacks  = 0
         boss.buildingStaticEndTime = 0
+        boss._elecStr              = false
     end
 end
 
 -- Volatile Residue: same pattern
+local function applyVolatileResidue(boss, stackCount)
+    boss.volatileResidueStacks  = stackCount or 1
+    boss.volatileResidueEndTime = GetGameTimeMilliseconds() / 1000 + 10
+    boss._poisonStr             = stackText(_STR_POISON_PFX, boss.volatileResidueStacks)
+end
+
 local function handleVolatileResidueGained(boss, ctx, alerts, abilityId, unitName, unitTag, unitId, stackCount)
-    if AreUnitsEqual("player", unitTag) then
-        boss.volatileResidueStacks  = stackCount or 1
-        boss.volatileResidueEndTime = GetGameTimeMilliseconds() / 1000 + 10
-    end
+    if AreUnitsEqual("player", unitTag) then applyVolatileResidue(boss, stackCount) end
 end
 
 local function handleVolatileResidueUpdated(boss, ctx, alerts, abilityId, unitName, unitTag, unitId, stackCount)
-    if AreUnitsEqual("player", unitTag) then
-        boss.volatileResidueStacks  = stackCount or 1
-        boss.volatileResidueEndTime = GetGameTimeMilliseconds() / 1000 + 10
-    end
+    if AreUnitsEqual("player", unitTag) then applyVolatileResidue(boss, stackCount) end
 end
 
 local function handleVolatileResidueFaded(boss, ctx, alerts, abilityId, unitName, unitTag, ...)
     if AreUnitsEqual("player", unitTag) then
         boss.volatileResidueStacks  = 0
         boss.volatileResidueEndTime = 0
+        boss._poisonStr             = false
     end
 end
 
@@ -156,6 +190,8 @@ local function handleShelteredGained(boss, ctx, alerts, abilityId, unitName, uni
     boss.lastShelteredTime     = GetGameTimeMilliseconds() / 1000
     boss.buildingStaticStacks  = 0
     boss.volatileResidueStacks = 0
+    boss._elecStr              = false
+    boss._poisonStr            = false
 end
 
 local function handleShelteredFaded(boss, ctx, alerts, abilityId, unitName, unitTag, ...)
@@ -252,18 +288,12 @@ ReefGuardian.events = {
 -- -- Info-line renderers ---------------------------------------------------
 
 local function showLightningStacksLine(self, alerts, now)
-    local stacks = self.buildingStaticStacks
-    if stacks > 0 then
-        local warn = (stacks >= 7) and (" " .. Fmt.c(Fmt.RED, "!")) or ""
+    if self.buildingStaticStacks > 0 and self._elecStr then
         if self.playerSheltered
            or (now - self.lastShelteredTime < SHELTERED_WINDOW) then
-            alerts:setRow(1, Fmt.c(Fmt.GOLD, Lang.t("dsr_reef_elec_cleansed")), nil)
+            alerts:setRow(1, _STR_ELEC_CLEANSED, nil)
         else
-            alerts:setRow(1,
-                Fmt.c(Fmt.GOLD,
-                    Lang.t("dsr_reef_elec_label")
-                    .. Lang.t(stacks ~= 1 and "dsr_reef_stack_p" or "dsr_reef_stack", stacks))
-                .. warn, nil)
+            alerts:setRow(1, self._elecStr, nil)
         end
     else
         alerts:clearRow(1)
@@ -271,18 +301,12 @@ local function showLightningStacksLine(self, alerts, now)
 end
 
 local function showPoisonStacksLine(self, alerts, now)
-    local vstacks = self.volatileResidueStacks
-    if vstacks > 0 then
-        local warn = (vstacks >= 7) and (" " .. Fmt.c(Fmt.RED, "!")) or ""
+    if self.volatileResidueStacks > 0 and self._poisonStr then
         if self.playerSheltered
            or (now - self.lastShelteredTime < SHELTERED_WINDOW) then
-            alerts:setRow(2, Fmt.c(Fmt.POISON, Lang.t("dsr_reef_poison_cleansed")), nil)
+            alerts:setRow(2, _STR_POISON_CLEANSED, nil)
         else
-            alerts:setRow(2,
-                Fmt.c(Fmt.POISON,
-                    Lang.t("dsr_reef_poison_label")
-                    .. Lang.t(vstacks ~= 1 and "dsr_reef_stack_p" or "dsr_reef_stack", vstacks))
-                .. warn, nil)
+            alerts:setRow(2, self._poisonStr, nil)
         end
     else
         alerts:clearRow(2)
@@ -290,35 +314,38 @@ local function showPoisonStacksLine(self, alerts, now)
 end
 
 local function showReefWipeLines(self, alerts, now)
-    local timers = {}
+    -- At most two wipe timers are displayed; pick them without allocating a
+    -- scratch table on every tick.
+    local idx1, t1, idx2, t2
     for i = 1, self.reefNum do
         local reef = self.reefPortals[i]
         if reef and reef.wipeActive then
             local remaining = PORTAL_WIPE_TIME - (now - reef.wipeStart)
             if remaining > 0 then
-                table.insert(timers, { idx = i, t = remaining })
+                if not idx1 then
+                    idx1, t1 = i, remaining
+                elseif not idx2 then
+                    idx2, t2 = i, remaining
+                    break
+                end
             else
                 reef.wipeActive = false
             end
         end
     end
 
-    if timers[1] then
-        local t1   = timers[1]
-        local col1 = (t1.t <= 15) and Fmt.RED or Fmt.GOLD
-        alerts:setRow(3, Fmt.c(col1, Lang.t("dsr_reef_reef_timer", t1.idx)), t1.t)
+    if idx1 then
+        alerts:setRow(3, reefLabel(idx1, t1 <= 15), t1)
     else
         alerts:clearRow(3)
     end
 
-    if timers[2] then
-        local t2   = timers[2]
-        local col2 = (t2.t <= 15) and Fmt.RED or Fmt.GOLD
-        alerts:setRow(4, Fmt.c(col2, Lang.t("dsr_reef_reef_timer", t2.idx)), t2.t)
+    if idx2 then
+        alerts:setRow(4, reefLabel(idx2, t2 <= 15), t2)
     elseif self.acidicVulnLast > 0 then
         local T = 5 - (now - self.acidicVulnLast)
         if T > 0 then
-            alerts:setRow(4, Fmt.c(Fmt.ORANGE, Lang.t("dsr_reef_acidic_vuln")), T)
+            alerts:setRow(4, _STR_ACIDIC_VULN, T)
         else
             self.acidicVulnLast = 0
             alerts:clearRow(4)
@@ -329,13 +356,8 @@ local function showReefWipeLines(self, alerts, now)
 end
 
 function ReefGuardian:onWipe(context, alerts)
-    CA.castAlertsStop(self.acidRefluxBarId)
-    self.acidRefluxBarId        = nil
-    self.buildingStaticStacks   = 0;    self.buildingStaticEndTime  = 0
-    self.volatileResidueStacks  = 0;    self.volatileResidueEndTime = 0
-    self.playerSheltered        = false; self.lastShelteredTime      = 0
-    self.reefPortals            = {};   self.reefNum                = 0
-    self.acidicVulnLast         = 0
+    CA.castAlertsStop(self.acidRefluxBarId)  -- stop bar before schema reset overwrites the id
+    BossBase.resetSchema(self, ReefGuardian)
 end
 
 function ReefGuardian:onUpdate(context, alerts)

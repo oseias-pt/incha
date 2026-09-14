@@ -42,9 +42,9 @@ end)
 -- ── API ───────────────────────────────────────────────────────────────────
 
 --- Place or update a mechanic icon over a unit's head.
---- Size is derived from OSI.GetIconSize() automatically (BSCHTKA convention:
---- 2 × GetIconSize()).  Falls back to nil if GetIconSize is unavailable.
---- Silent no-op when not configured or displayName is empty.
+--- Size is derived from OSI.GetIconSize() automatically (2 × GetIconSize(),
+--- the size OSI itself uses for its own head markers).  Falls back to nil if
+--- GetIconSize is unavailable.
 --- @param color string  color name (Colors.*)
 function MechanicIcons.set(displayName, texture, color)
     if not (getImpl() and displayName and displayName ~= "") then return end

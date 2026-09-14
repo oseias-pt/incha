@@ -6,6 +6,7 @@ local BossBase        = require("lib.BossBase")
 local CastDur         = require("lib.CastDur")
 local Lang            = require("core.Lang")
 local Colors          = require("core.Colors")
+local LCCommon        = require("trial.lc.LCCommon")
 
 -- ── Ability IDs ───────────────────────────────────────────────────────────
 local THUNDER_THRALL  = 214383
@@ -106,12 +107,19 @@ end
 
 -- ── Event tables ─────────────────────────────────────────────────────────
 
-local _beginCastEntry = {
-    [THUNDER_THRALL]  = { type = AlertTypes.CUSTOM, fn = handleThunderThrall },
-    [LIGHTNING_FLOOD] = { type = AlertTypes.CUSTOM, fn = handleLightningFlood },
-    [BREAKOUT]        = { type = AlertTypes.CUSTOM, fn = handleBreakout },
-    [SHIELD_THROW]    = { type = AlertTypes.CUSTOM, fn = handleShieldThrow },
-}
+-- Shared LC mechanics (Solar Flare cast bar, Hindered tank swap, Radiance
+-- border) come from LCCommon and are merged into this boss's buckets.
+local _beginCastEntry = {}
+for k, v in pairs(LCCommon.beginCastEntries) do _beginCastEntry[k] = v end
+_beginCastEntry[THUNDER_THRALL]  = { type = AlertTypes.CUSTOM, fn = handleThunderThrall }
+_beginCastEntry[LIGHTNING_FLOOD] = { type = AlertTypes.CUSTOM, fn = handleLightningFlood }
+_beginCastEntry[BREAKOUT]        = { type = AlertTypes.CUSTOM, fn = handleBreakout }
+_beginCastEntry[SHIELD_THROW]    = { type = AlertTypes.CUSTOM, fn = handleShieldThrow }
+
+local _effectGainedEntry = {}
+for k, v in pairs(LCCommon.effectChangedEntries.gained) do _effectGainedEntry[k] = v end
+local _effectFadedEntry = {}
+for k, v in pairs(LCCommon.effectChangedEntries.faded) do _effectFadedEntry[k] = v end
 
 local _combatOtherEntry = {
     [COLOR_CHANGE]   = { type = AlertTypes.CUSTOM, fn = handleColorChange },
@@ -127,7 +135,7 @@ for k, v in pairs(_beginCastEntry) do _beginCastInstant[k] = v; _beginCastStarte
 
 OrphicEncounter.events = {
     beginCast     = { instant = _beginCastInstant, started = _beginCastStarted },
-    effectChanged = { gained = {}, faded = {}, updated = {} },
+    effectChanged = { gained = _effectGainedEntry, faded = _effectFadedEntry, updated = {} },
     combatEvent   = { damage = {}, dodged = {}, blocked = {}, other = _combatOtherEntry },
 }
 
@@ -138,10 +146,11 @@ end
 
 function OrphicEncounter:onUpdate(context, alerts)
     if self.xorynActive then
+        local now = GetGameTimeMilliseconds() / 1000
         if self.firstThrall then
             alerts:setRow(1, _STR_THRALL_FIRST, nil)
         else
-            local r = self.thunderThrallTimer:remaining()
+            local r = self.thunderThrallTimer:remainingAt(now)
             if r > 0 then
                 alerts:setRow(1, _STR_THRALL_LABEL, r)
             else
@@ -151,7 +160,7 @@ function OrphicEncounter:onUpdate(context, alerts)
         if self.firstFlood then
             alerts:setRow(2, _STR_FLOOD_FIRST, nil)
         else
-            local r = self.lightningFloodTimer:remaining()
+            local r = self.lightningFloodTimer:remainingAt(now)
             if r > 0 then
                 alerts:setRow(2, _STR_FLOOD_LABEL, r)
             else

@@ -34,9 +34,9 @@ end
 
 -- P6: module-level string constants — avoid Lang.t calls in onUpdate (60 fps)
 local _STR_BLITZ            = Fmt.c(Fmt.FIRE,   Lang.t("rg_oaxiltso_next_blitz"))
-local _STR_BLITZ_INC        = Fmt.c(Fmt.FIRE,   Lang.t("rg_oaxiltso_next_blitz")) .. " " .. Fmt.c(Fmt.RED, "INC")
+local _STR_BLITZ_INC        = Fmt.c(Fmt.FIRE,   Lang.t("rg_oaxiltso_next_blitz")) .. " " .. Fmt.c(Fmt.RED, Lang.t("common_inc"))
 local _STR_SLUDGE           = Fmt.c(Fmt.POISON, Lang.t("rg_oaxiltso_next_sludge"))
-local _STR_SLUDGE_INC       = Fmt.c(Fmt.POISON, Lang.t("rg_oaxiltso_next_sludge")) .. " " .. Fmt.c(Fmt.RED, "INC")
+local _STR_SLUDGE_INC       = Fmt.c(Fmt.POISON, Lang.t("rg_oaxiltso_next_sludge")) .. " " .. Fmt.c(Fmt.RED, Lang.t("common_inc"))
 local _STR_BOSS_ADD_ENRAGE  = Fmt.c(Fmt.RED,    Lang.t("rg_oaxiltso_boss_add_enrage"))
 local _STR_BOSS_ENRAGED     = Fmt.c(Fmt.RED,    Lang.t("rg_oaxiltso_boss_enraged"))
 local _STR_ADD_ENRAGED      = Fmt.c(Fmt.ORANGE, Lang.t("rg_oaxiltso_add_enraged"))

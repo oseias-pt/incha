@@ -55,6 +55,20 @@ local FALLBACK_SLAM_DUR      = 2000   -- PowerfulSlam / Stonefist: empirical
 local FALLBACK_THRASH_DUR    = 2500   -- Thrash: empirical
 local FALLBACK_INTERRUPT_DUR = 6000   -- PortalInterrupt: empirical
 
+-- Tracker-row strings built once at load; the 200 ms loop never calls
+-- Fmt.c / Lang.t (see Lokke.lua for the same pattern).
+local _STR_NEXT_METEOR   = Fmt.c(Fmt.RED,     Lang.t("ss_nahvii_next_meteor"))
+local _STR_INTERRUPT_IN  = Fmt.c(Fmt.AQUA,    Lang.t("ss_nahvii_interrupt_in"))
+local _STR_NEXT_PINS     = Fmt.c(Fmt.AQUA,    Lang.t("ss_nahvii_next_pins"))
+local _STR_PORTAL_URGENT = Fmt.c(Fmt.RED,     Lang.t("ss_nahvii_portal_urgent"))
+local _STR_PORTAL        = Fmt.c(Fmt.AQUA,    Lang.t("ss_nahvii_portal"))
+local _STR_STORM_BEGIN   = Fmt.c(Fmt.CRIMSON, Lang.t("ss_nahvii_fire_storm_begin"))
+local _STR_STORM_END     = Fmt.c(Fmt.CRIMSON, Lang.t("ss_nahvii_fire_storm_end"))
+local _STR_LANDING       = Fmt.c(Fmt.LANDING, Lang.t("ss_landing"))
+local _STR_PORTAL_WIPE   = Fmt.c(Fmt.VOID,    Lang.t("ss_nahvii_portal_wipe"))
+local _STR_CAN_FLY_PFX   = Lang.t("ss_can_fly_in")
+local _STR_METEOR_YOU    = Fmt.c(Fmt.AMBER,   Lang.t("common_you"))
+
 -- -- Boss definition -------------------------------------------------------
 local Nahvii = {}
 Nahvii.__index = Nahvii
@@ -76,6 +90,9 @@ Nahvii.stateSchema = {
     alertList           = function() return {} end,
     -- Meteor
     meteorTargets       = function() return {} end,
+    -- Joined target names for row 3; rebuilt by the gained/faded handlers so
+    -- the display loop never concatenates.  false = no targets.
+    meteorTargetsText   = false,
     meteorDisplayEnd_ms = 0,
     -- NextMeteor / Thrash
     nextMeteorTime      = 0,
@@ -128,6 +145,7 @@ function Nahvii:onWipe(context, alerts)
     self.interruptUnitId     = false
     self.pinsTime            = 0
     self.meteorTargets       = {}
+    self.meteorTargetsText   = false
     self.meteorDisplayEnd_ms = 0
 end
 
@@ -137,27 +155,45 @@ end
 -- Migrated from combatRoute (EFFECT_GAINED_DURATION / EFFECT_FADED via COMBAT_EVENT)
 -- to effectChanged (EFFECT_RESULT_GAINED / FADED via EFFECT_CHANGED).
 -- TODO: validate in-game that EFFECT_CHANGED fires for NEXT_METEOR_A/B.
+-- Rebuild the row-3 target list (up to three names) after the target set
+-- changes.  Runs per meteor event, not per tick.
+local function rebuildMeteorTargetsText(boss)
+    local text, count = nil, 0
+    for _, name in pairs(boss.meteorTargets) do
+        text  = text and (text .. "  " .. name) or name
+        count = count + 1
+        if count >= 3 then break end
+    end
+    boss.meteorTargetsText = text or false
+end
+
 local function handleNextMeteorGained(boss, context, alerts, abilityId, unitName,
                                        unitTag, unitId, stackCount)
     boss.nextMeteorTime = GetGameTimeMilliseconds() / 1000 + 14.5
     if IsUnitPlayer(unitTag) and unitTag and unitTag ~= "" then
+        local isMe = AreUnitsEqual("player", unitTag)
         local name
-        if AreUnitsEqual("player", unitTag)
-        then name = Fmt.c(Fmt.AMBER, "== YOU ==")
-        else name = Fmt.c(Fmt.AMBER, GetUnitDisplayName(unitTag) or unitName or "?")
+        if isMe then
+            name = _STR_METEOR_YOU
+        else
+            name = Fmt.c(Fmt.AMBER, GetUnitDisplayName(unitTag) or unitName or "?")
         end
         boss.meteorTargets[unitTag] = name
+        rebuildMeteorTargetsText(boss)
         boss.meteorDisplayEnd_ms = GetGameTimeMilliseconds() + 4000
-        if AreUnitsEqual("player", unitTag) then
+        if isMe then
             alerts:showAction(Lang.t("ss_nahvii_you_meteor"))
-            CA.alert(nil, "Meteor on YOU!", 0xFF2200FF, SOUNDS.NONE, 4000)
+            CA.alert(nil, Lang.t("ss_nahvii_you_meteor"), 0xFF2200FF, SOUNDS.NONE, 4000)
         end
     end
 end
 
 local function handleNextMeteorFaded(boss, context, alerts, abilityId, unitName,
                                       unitTag, unitId, stackCount)
-    if unitTag then boss.meteorTargets[unitTag] = nil end
+    if unitTag and boss.meteorTargets[unitTag] then
+        boss.meteorTargets[unitTag] = nil
+        rebuildMeteorTargetsText(boss)
+    end
 end
 
 local function handleNextMeteorC(boss, context, alerts, abilityId, ...)
@@ -219,7 +255,7 @@ end
 
 local function handleSoulTear(boss, context, alerts, abilityId, ...)
     alerts:showAction(Lang.t("ss_nahvii_soul_tear"))
-    CA.alert(nil, "SOUL TEAR!", 0x9966FFFF, SOUNDS.NONE, 2000)
+    CA.alert(nil, Lang.t("ss_nahvii_soul_tear"), 0x9966FFFF, SOUNDS.NONE, 2000)
 end
 
 local function handleFireStorm(boss, context, alerts, abilityId, ...)
@@ -299,7 +335,7 @@ local function handleNegateField(boss, context, alerts, abilityId, sourceUnitNam
                                   unitTag, unitId, sourceUnitId, unitName)
     if IsUnitPlayer(unitTag) and AreUnitsEqual("player", unitTag) then
         alerts:showAction(Lang.t("ss_nahvii_dodge_negate"))
-        CA.alert(nil, "Dodge Negate!", 0x9966FFFF, SOUNDS.NONE, 2500)
+        CA.alert(nil, Lang.t("ss_nahvii_dodge_negate"), 0x9966FFFF, SOUNDS.NONE, 2500)
     end
 end
 
@@ -366,7 +402,7 @@ local function showNextMeteorLine(self, alerts, now)
     if self.nextMeteorTime > 0 then
         local T = self.nextMeteorTime - now
         if T > 0 then
-            alerts:setRow(1, Fmt.c(Fmt.RED, Lang.t("ss_nahvii_next_meteor")), T)
+            alerts:setRow(1, _STR_NEXT_METEOR, T)
         else
             alerts:clearRow(1)   -- meteor has hit; CombatAlerts handles the alert bar
         end
@@ -378,18 +414,18 @@ end
 -- Row 2: Portal window → Interrupt countdown → Pins countdown.
 local function showPortalInterruptLine(self, alerts, now)
     local portalLeft = self.portalTime - now
-    local interLeft  = self.interruptTimer:remaining()
+    local interLeft  = self.interruptTimer:remainingAt(now)
     local pinsLeft   = self.pinsTime - now
 
     if interLeft > 0 then
-        alerts:setRow(2, Fmt.c(Fmt.AQUA, Lang.t("ss_nahvii_interrupt_in")), interLeft)
+        alerts:setRow(2, _STR_INTERRUPT_IN, interLeft)
     elseif pinsLeft > 0 then
-        alerts:setRow(2, Fmt.c(Fmt.AQUA, Lang.t("ss_nahvii_next_pins")),    pinsLeft)
+        alerts:setRow(2, _STR_NEXT_PINS, pinsLeft)
     elseif portalLeft >= 11 then
         -- Enough time has passed that the group should already be inside.
-        alerts:setRow(2, Fmt.c(Fmt.RED,    Lang.t("ss_nahvii_portal_urgent")), portalLeft)
+        alerts:setRow(2, _STR_PORTAL_URGENT, portalLeft)
     elseif portalLeft > 0 then
-        alerts:setRow(2, Fmt.c(Fmt.AQUA, Lang.t("ss_nahvii_portal")),        portalLeft)
+        alerts:setRow(2, _STR_PORTAL, portalLeft)
     else
         alerts:clearRow(2)
     end
@@ -398,19 +434,15 @@ end
 -- Row 3: Meteor target names while display window is open; otherwise FireStorm countdown.
 local function showMeteorOrStormLine(self, alerts, now, now_ms)
     if now_ms < self.meteorDisplayEnd_ms then
-        local names = {}
-        for _, name in pairs(self.meteorTargets) do
-            names[#names + 1] = name
-            if #names >= 3 then break end
-        end
-        -- Static name-column display: no ETA (targets, not a timer).
-        alerts:setRow(3, #names > 0 and table.concat(names, "  ") or "", nil)
+        -- Static name-column display: no ETA (targets, not a timer).  The
+        -- joined string is maintained by the meteor handlers.
+        alerts:setRow(3, self.meteorTargetsText or "", nil)
     else
         local storm = self.stormTime - now
         if storm >= 5.2 then
-            alerts:setRow(3, Fmt.c(Fmt.CRIMSON, Lang.t("ss_nahvii_fire_storm_begin")), storm - 5.2)
+            alerts:setRow(3, _STR_STORM_BEGIN, storm - 5.2)
         elseif storm >= 0 then
-            alerts:setRow(3, Fmt.c(Fmt.CRIMSON, Lang.t("ss_nahvii_fire_storm_end")),   storm)
+            alerts:setRow(3, _STR_STORM_END, storm)
         else
             alerts:clearRow(3)
         end
@@ -423,9 +455,9 @@ local function showLandingWipeLine(self, alerts, now, context)
     local wipeLeft = self.wipeTime    - now
 
     if landing > 0 then
-        alerts:setRow(4, Fmt.c(Fmt.LANDING, Lang.t("ss_landing")),          landing)
+        alerts:setRow(4, _STR_LANDING, landing)
     elseif wipeLeft > 0 then
-        alerts:setRow(4, Fmt.c(Fmt.VOID,    Lang.t("ss_nahvii_portal_wipe")), wipeLeft)
+        alerts:setRow(4, _STR_PORTAL_WIPE, wipeLeft)
     elseif not self.inPortal then
         local hp = context.healthPercent
         if hp and hp > 39 then
@@ -435,7 +467,8 @@ local function showLandingWipeLine(self, alerts, now, context)
             elseif hp >= 40 then flyAt = 40
             end
             if flyAt and (hp - flyAt) <= 5 then
-                alerts:setRow(4, Fmt.c(Fmt.FLYZONE, Lang.t("ss_can_fly_in") .. Fmt.pct(hp - flyAt, 1)), nil)
+                -- hp moves in 0.1% steps; this string only exists inside a 5% window.
+                alerts:setRow(4, Fmt.c(Fmt.FLYZONE, _STR_CAN_FLY_PFX .. Fmt.pct(hp - flyAt, 1)), nil)
             else
                 alerts:clearRow(4)
             end

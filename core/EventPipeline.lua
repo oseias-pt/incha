@@ -53,7 +53,16 @@ function EventPipeline:enable()
     -- trial.  They are NOT registered here; setActiveBoss() registers them
     -- per ability id (and per combat result) once a boss is known, so the
     -- engine rejects everything else before it reaches Lua.  See below.
-    self.safe = safe
+    --
+    -- Wrap the per-boss handlers once here.  setActiveBoss registers the same
+    -- function under ~40 namespaces per boss; wrapping inside that loop would
+    -- allocate a fresh closure per ability id on every boss change.
+    self.safeHandlers = {
+        onCombatEventFiltered   = handlers.onCombatEventFiltered   and safe(handlers.onCombatEventFiltered),
+        onDiedCombatEvent       = handlers.onDiedCombatEvent       and safe(handlers.onDiedCombatEvent),
+        onLegacyCombatEvent     = handlers.onLegacyCombatEvent     and safe(handlers.onLegacyCombatEvent),
+        onEffectChangedFiltered = handlers.onEffectChangedFiltered and safe(handlers.onEffectChangedFiltered),
+    }
 
     -- 200ms UI refresh loop  -  drives timer countdowns in boss modules.
     -- UnregisterForUpdate in disable() already handles cleanup unconditionally.
@@ -85,42 +94,48 @@ function EventPipeline:setActiveBoss(boss)
     if not boss or not self.enabled then return end
 
     local h = self.handlers
-    local prefix, safe = self.eventPrefix, self.safe
+    local prefix = self.eventPrefix
     local combatIds, effectIds = h.abilityIdsFor(boss)
     local names = self.bossNamespaces
+    local safeHandlers = self.safeHandlers
 
+    -- Namespaces are strings ESO uses as registration keys; the (ns, event)
+    -- pairs are recorded so clearBossFilters can unregister exactly what was
+    -- armed.  The wrapped handler closures are built once in enable(), not
+    -- once per ability id, so a boss change allocates only the namespace
+    -- strings and record tables.
     local function register(ns, event, fn, filterType, filterValue)
-        EVENT_MANAGER:RegisterForEvent(ns, event, safe(fn))
+        EVENT_MANAGER:RegisterForEvent(ns, event, fn)
         EVENT_MANAGER:AddFilterForEvent(ns, event, filterType, filterValue)
         names[#names + 1] = { ns = ns, event = event }
     end
 
-    if h.onCombatEventFiltered then
+    if safeHandlers.onCombatEventFiltered then
         for id in pairs(combatIds) do
             register(prefix .. "c" .. id, EVENT_COMBAT_EVENT,
-                h.onCombatEventFiltered, REGISTER_FILTER_ABILITY_ID, id)
+                safeHandlers.onCombatEventFiltered, REGISTER_FILTER_ABILITY_ID, id)
         end
     end
 
-    if h.onDiedCombatEvent and boss.onDied then
+    if safeHandlers.onDiedCombatEvent and boss.onDied then
         register(prefix .. "cDied", EVENT_COMBAT_EVENT,
-            h.onDiedCombatEvent, REGISTER_FILTER_COMBAT_RESULT, ACTION_RESULT_DIED)
+            safeHandlers.onDiedCombatEvent, REGISTER_FILTER_COMBAT_RESULT, ACTION_RESULT_DIED)
     end
 
     -- Bosses whose catch-all guards on a combat result rather than an ability
     -- id declare that result here, so they still get a narrow registration
     -- instead of forcing an unfiltered one for the whole trial.
-    if h.onLegacyCombatEvent and boss.onCombatEvent and boss.combatResults then
+    if safeHandlers.onLegacyCombatEvent and boss.onCombatEvent and boss.combatResults then
         for _, result in ipairs(boss.combatResults) do
             register(prefix .. "cRes" .. result, EVENT_COMBAT_EVENT,
-                h.onLegacyCombatEvent, REGISTER_FILTER_COMBAT_RESULT, result)
+                safeHandlers.onLegacyCombatEvent, REGISTER_FILTER_COMBAT_RESULT, result)
         end
     end
 
-    if h.onEffectChangedFiltered then
+    if safeHandlers.onEffectChangedFiltered then
         for id in pairs(effectIds) do
             register(prefix .. "e" .. id, EVENT_EFFECT_CHANGED,
-                h.onEffectChangedFiltered, REGISTER_FILTER_ABILITY_ID, id)
+                safeHandlers.onEffectChangedFiltered, REGISTER_FILTER_ABILITY_ID, id)
         end
     end
 end
@@ -130,10 +145,12 @@ end
 --- in-flight timers (e.g. EventDispatcher interrupt-detection callbacks)
 --- before the new boss's filters are armed.
 function EventPipeline:clearBossFilters()
-    for _, entry in ipairs(self.bossNamespaces) do
+    local names = self.bossNamespaces
+    for i = #names, 1, -1 do
+        local entry = names[i]
         EVENT_MANAGER:UnregisterForEvent(entry.ns, entry.event)
+        names[i] = nil
     end
-    self.bossNamespaces = {}
     if self.handlers.onClearPending then
         self.handlers.onClearPending()
     end

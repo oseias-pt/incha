@@ -6,6 +6,7 @@ local BossBase        = require("lib.BossBase")
 local CastDur         = require("lib.CastDur")
 local Lang            = require("core.Lang")
 local Colors          = require("core.Colors")
+local LCCommon        = require("trial.lc.LCCommon")
 
 -- ── Ability IDs ───────────────────────────────────────────────────────────
 local PIERCING_BEAM = 219165
@@ -65,10 +66,17 @@ end
 
 -- ── Event tables ─────────────────────────────────────────────────────────
 
-local _beginCastEntry = {
-    [PIERCING_BEAM] = { type = AlertTypes.CUSTOM, fn = handlePiercingBeam },
-    [VITRIFY]       = { type = AlertTypes.CUSTOM, fn = handleVitrify },
-}
+-- Shared LC mechanics (Solar Flare cast bar, Hindered tank swap, Radiance
+-- border) come from LCCommon and are merged into this boss's buckets.
+local _beginCastEntry = {}
+for k, v in pairs(LCCommon.beginCastEntries) do _beginCastEntry[k] = v end
+_beginCastEntry[PIERCING_BEAM] = { type = AlertTypes.CUSTOM, fn = handlePiercingBeam }
+_beginCastEntry[VITRIFY]       = { type = AlertTypes.CUSTOM, fn = handleVitrify }
+
+local _effectGainedEntry = {}
+for k, v in pairs(LCCommon.effectChangedEntries.gained) do _effectGainedEntry[k] = v end
+local _effectFadedEntry = {}
+for k, v in pairs(LCCommon.effectChangedEntries.faded) do _effectFadedEntry[k] = v end
 
 -- Split into two independent copies so EventDispatcher.build() validates each
 -- bucket separately and future per-bucket entries can't cross-contaminate.
@@ -78,7 +86,7 @@ for k, v in pairs(_beginCastEntry) do _beginCastInstant[k] = v; _beginCastStarte
 
 XynizataEncounter.events = {
     beginCast     = { instant = _beginCastInstant, started = _beginCastStarted },
-    effectChanged = { gained = {}, faded = {}, updated = {} },
+    effectChanged = { gained = _effectGainedEntry, faded = _effectFadedEntry, updated = {} },
     combatEvent   = { damage = {}, dodged = {}, blocked = {}, other = {} },
 }
 
@@ -88,10 +96,11 @@ function XynizataEncounter:onWipe(context, alerts)
 end
 
 function XynizataEncounter:onUpdate(context, alerts)
+    local now = GetGameTimeMilliseconds() / 1000
     if self.firstBeam then
         alerts:setRow(1, _STR_BEAM_FIRST, nil)
     else
-        local r = self.piercingBeamTimer:remaining()
+        local r = self.piercingBeamTimer:remainingAt(now)
         if r > 0 then
             alerts:setRow(1, _STR_BEAM_LABEL, r)
         else
@@ -102,7 +111,7 @@ function XynizataEncounter:onUpdate(context, alerts)
     if self.firstVitrify then
         alerts:setRow(2, _STR_VITR_FIRST, nil)
     else
-        local r = self.vitrifyTimer:remaining()
+        local r = self.vitrifyTimer:remainingAt(now)
         if r > 0 then
             alerts:setRow(2, _STR_VITR_LABEL, r)
         else

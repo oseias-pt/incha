@@ -5,6 +5,7 @@ local BossBase        = require("lib.BossBase")
 local CastDur         = require("lib.CastDur")
 local Lang            = require("core.Lang")
 local Colors          = require("core.Colors")
+local LCCommon        = require("trial.lc.LCCommon")
 
 -- ── Ability IDs ───────────────────────────────────────────────────────────
 local POWERFUL_THROW = 218971
@@ -40,9 +41,16 @@ end
 
 -- ── Event tables ─────────────────────────────────────────────────────────
 
-local _beginCastEntry = {
-    [POWERFUL_THROW] = { type = AlertTypes.CUSTOM, fn = handlePowerfulThrow },
-}
+-- Shared LC mechanics (Solar Flare cast bar, Hindered tank swap, Radiance
+-- border) come from LCCommon and are merged into this boss's buckets.
+local _beginCastEntry = {}
+for k, v in pairs(LCCommon.beginCastEntries) do _beginCastEntry[k] = v end
+_beginCastEntry[POWERFUL_THROW] = { type = AlertTypes.CUSTOM, fn = handlePowerfulThrow }
+
+local _effectGainedEntry = {}
+for k, v in pairs(LCCommon.effectChangedEntries.gained) do _effectGainedEntry[k] = v end
+local _effectFadedEntry = {}
+for k, v in pairs(LCCommon.effectChangedEntries.faded) do _effectFadedEntry[k] = v end
 
 -- Split into two independent copies so EventDispatcher.build() validates each
 -- bucket separately and future per-bucket entries can't cross-contaminate.
@@ -52,7 +60,7 @@ for k, v in pairs(_beginCastEntry) do _beginCastInstant[k] = v; _beginCastStarte
 
 DarielEncounter.events = {
     beginCast     = { instant = _beginCastInstant, started = _beginCastStarted },
-    effectChanged = { gained = {}, faded = {}, updated = {} },
+    effectChanged = { gained = _effectGainedEntry, faded = _effectFadedEntry, updated = {} },
     combatEvent   = { damage = {}, dodged = {}, blocked = {}, other = {} },
 }
 

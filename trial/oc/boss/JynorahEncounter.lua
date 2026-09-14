@@ -52,6 +52,13 @@ local LEAP_CD       = 48.0
 -- -- Fallback durations ----------------------------------------------------------------------------
 local FALLBACK_DUR = 2000
 
+-- Tracker-row strings built once at load; the 200 ms loop never calls
+-- Fmt.c / Lang.t.
+local _STR_CLASH_TIMER = Fmt.c("FF4444", Lang.t("oc_jynorah_clash_timer"))
+local _STR_LEAP_FIRST  = Lang.t("oc_jynorah_leap_first")
+local _STR_LEAP        = Lang.t("oc_jynorah_leap_label")
+local _STR_LEAP_NOW    = Lang.t("oc_jynorah_leap_label") .. " " .. Lang.t("common_now")
+
 local JynorahEncounter = {}
 JynorahEncounter.__index = JynorahEncounter
 
@@ -70,6 +77,10 @@ JynorahEncounter.stateSchema = {
 
 function JynorahEncounter.new()
     return BossBase.fromSchema(JynorahEncounter)
+end
+
+function JynorahEncounter:onLeave(context)
+    OsseinCageCommon.reset()   -- module-level carrion / debounce state must not survive a zone exit
 end
 
 -- -- Handlers --------------------------------------------------------------------------------------
@@ -239,11 +250,11 @@ JynorahEncounter.events = {
 
 -- -- Info-line renderers ----------------------------------------------------------------------------
 
-local function showClashLine(boss, alerts)
+local function showClashLine(boss, alerts, now)
     if boss.clashActive then
-        local r = boss.clashTimer:remaining()
+        local r = boss.clashTimer:remainingAt(now)
         if r > 0 then
-            alerts:setRow(1, Fmt.c("FF4444", Lang.t("oc_jynorah_clash_timer")), r)
+            alerts:setRow(1, _STR_CLASH_TIMER, r)
         else
             boss.clashActive = false
             alerts:clearRow(1)
@@ -253,15 +264,15 @@ local function showClashLine(boss, alerts)
     end
 end
 
-local function showLeapLine(boss, alerts)
+local function showLeapLine(boss, alerts, now)
     if boss.firstLeap then
-        alerts:setRow(2, Lang.t("oc_jynorah_leap_first"), nil)
+        alerts:setRow(2, _STR_LEAP_FIRST, nil)
     else
-        local r = boss.leapTimer:remaining()
+        local r = boss.leapTimer:remainingAt(now)
         if r > 0 then
-            alerts:setRow(2, Lang.t("oc_jynorah_leap_label"), r)
+            alerts:setRow(2, _STR_LEAP, r)
         else
-            alerts:setRow(2, Lang.t("oc_jynorah_leap_label") .. " " .. Lang.t("common_now"), nil)
+            alerts:setRow(2, _STR_LEAP_NOW, nil)
         end
     end
 end
@@ -277,8 +288,9 @@ function JynorahEncounter:onWipe(context, alerts)
 end
 
 function JynorahEncounter:onUpdate(context, alerts)
-    showClashLine(self, alerts)
-    showLeapLine(self, alerts)
+    local now = GetGameTimeMilliseconds() / 1000
+    showClashLine(self, alerts, now)
+    showLeapLine(self, alerts, now)
     OsseinCageCommon.showCarrionInfo(alerts)
     alerts:clearRow(4)
     alerts:clearRow(5)

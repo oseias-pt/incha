@@ -31,6 +31,16 @@ local GRYPHON_SPAWN_TIME = 60
 -- -- Fallback durations (empirical; replace if GetAbilityCastInfo becomes reliable) -
 local FALLBACK_DUR = 5000   -- TOTEM_GARGYL (Gargoyle Totem cast): empirical
 
+-- Tracker-row strings built once at load so the 200 ms onUpdate never
+-- concatenates or calls Lang.t / Fmt.c (see Falgravn.lua for the pattern).
+local _STR_TOTEM         = Lang.t("ka_yandir_totem_label")
+local _STR_TOTEM_READY   = Lang.t("ka_yandir_totem_label") .. " " .. Lang.t("common_ready")
+local _STR_GRYPHON       = Lang.t("ka_yandir_gryphon_label")
+local _STR_GRYPHON_READY = Lang.t("ka_yandir_gryphon_label") .. " " .. Lang.t("common_ready")
+local _STR_GRYPHON_SKIP  = Lang.t("ka_yandir_gryphon_label") .. " " .. Fmt.c(Fmt.LEAF, Lang.t("ka_yandir_gryphon_skip"))
+local _STR_GRYPHON_FAIL  = Lang.t("ka_yandir_gryphon_label") .. " "
+local _STR_BLOCK_GARGOYLE = Lang.t("ka_yandir_block_gargoyle")
+
 local Yandir = {}
 Yandir.__index = Yandir
 setmetatable(Yandir, {__index = BossBase})   -- inherit cleanupAlertList, default onDied
@@ -53,6 +63,9 @@ Yandir.stateSchema = {
     -- detected  -  displayed as "(Xs early)" so raiders see the margin.
     bGRYPHON_SKIP_TIME   = 0,
     bGRYPHON_SKIP_FAILHP = 0,
+    -- Row-2 text for the skip / fail states.  Built once by onPowerUpdate
+    -- when the state is entered; onUpdate only reads it.
+    gryphonRowText       = false,
     poisonTotemId        = -1,   -- unitId of the currently targeted poison totem
     BTotemCall           = false,
     -- zo_callLater handle for the 26.8 s delayed second-poison bar.
@@ -89,6 +102,7 @@ function Yandir:onWipe(context, alerts)
     self.bGRYPHON_SKIP        = false
     self.bGRYPHON_SKIP_TIME   = 0
     self.bGRYPHON_SKIP_FAILHP = 0
+    self.gryphonRowText       = false
     self.poisonTotemId        = -1
     self.BTotemCall           = false
 end
@@ -105,27 +119,23 @@ end
 
 -- 200ms timer display  -  writes to tracker rows 1-2.
 function Yandir:onUpdate(context, alerts)
-    local t1 = self.totemTimer:remaining()
+    local now = GetGameTimeMilliseconds() / 1000
+    local t1 = self.totemTimer:remainingAt(now)
     if t1 > 0 then
-        alerts:setRow(1, Lang.t("ka_yandir_totem_label"), t1)
+        alerts:setRow(1, _STR_TOTEM, t1)
     else
-        alerts:setRow(1, Lang.t("ka_yandir_totem_label") .. " " .. Lang.t("common_ready"), nil)
+        alerts:setRow(1, _STR_TOTEM_READY, nil)
     end
 
-    if self.bGRYPHON_SKIP then
-        -- Static: show how much time was left when the skip fired.
-        local earlyTag = self.bGRYPHON_SKIP_TIME > 0
-            and Lang.t("ka_yandir_gryphon_early", ZO_FormatCountdownTimer(self.bGRYPHON_SKIP_TIME))
-            or ""
-        alerts:setRow(2, Lang.t("ka_yandir_gryphon_label") .. " " .. Fmt.c(Fmt.LEAF, Lang.t("ka_yandir_gryphon_skip")) .. earlyTag, nil)
-    elseif self.bGRYPHON_SKIP_FAILHP > 0 then
-        alerts:setRow(2, Lang.t("ka_yandir_gryphon_label") .. " " .. Fmt.c(Fmt.CRIMSON, Lang.t("ka_yandir_gryphon_fail") .. Fmt.pct(self.bGRYPHON_SKIP_FAILHP)), nil)
+    if self.gryphonRowText then
+        -- Skip / fail state: static text built once in onPowerUpdate.
+        alerts:setRow(2, self.gryphonRowText, nil)
     else
-        local t2 = self.gryphonTimer:remaining()
+        local t2 = self.gryphonTimer:remainingAt(now)
         if t2 > 0 then
-            alerts:setRow(2, Lang.t("ka_yandir_gryphon_label"), t2)
+            alerts:setRow(2, _STR_GRYPHON, t2)
         else
-            alerts:setRow(2, Lang.t("ka_yandir_gryphon_label") .. " " .. Lang.t("common_ready"), nil)
+            alerts:setRow(2, _STR_GRYPHON_READY, nil)
         end
     end
 end
@@ -186,7 +196,7 @@ local function handleGargoyleTotem(boss, context, alerts, abilityId, sourceUnitN
                                     unitTag, unitId, sourceUnitId, unitName)
     alerts:showAction(Lang.t("ka_yandir_block_gargoyle"))
     local dur = CastDur.get(TOTEM_GARGYL, FALLBACK_DUR)
-    local cid = CA.ranged(abilityId, "Block!!", dur, Colors.SILVER)
+    local cid = CA.ranged(abilityId, _STR_BLOCK_GARGOYLE, dur, Colors.SILVER)
     if cid and unitId then boss.alertList[unitId] = cid end
 end
 
@@ -272,19 +282,22 @@ Yandir.events = {
 EventDispatcher.build(Yandir)
 
 function Yandir:onPowerUpdate(context, healthPercent)
-    if healthPercent < 60 and not self.gryphonTimer:isExpired() then
-        if not self.bGRYPHON_SKIP then
-            -- Capture how many seconds remained on the gryphon timer so we
-            -- can display "Skip! (Xs early)" in onUpdate.
-            self.bGRYPHON_SKIP_TIME = self.gryphonTimer:remaining()
-        end
-        self.bGRYPHON_SKIP = true
-    end
+    -- Both branches are one-shot: they fire once per pull and bake the row-2
+    -- text at that moment, so the 200 ms display loop never formats.
+    if self.bGRYPHON_SKIP or self.bGRYPHON_SKIP_FAILHP > 0 then return end
 
-    if healthPercent > 60 and self.gryphonTimer:isExpired() then
-        if self.bGRYPHON_SKIP_FAILHP == 0 then
-            self.bGRYPHON_SKIP_FAILHP = healthPercent
-        end
+    local gryphonLeft = self.gryphonTimer:remaining()
+    if healthPercent < 60 and gryphonLeft > 0 then
+        -- Capture how many seconds remained on the gryphon timer so the row
+        -- can show "Skip! (Xs early)".
+        self.bGRYPHON_SKIP      = true
+        self.bGRYPHON_SKIP_TIME = gryphonLeft
+        self.gryphonRowText     = _STR_GRYPHON_SKIP
+            .. Lang.t("ka_yandir_gryphon_early", ZO_FormatCountdownTimer(gryphonLeft))
+    elseif healthPercent > 60 and gryphonLeft <= 0 then
+        self.bGRYPHON_SKIP_FAILHP = healthPercent
+        self.gryphonRowText       = _STR_GRYPHON_FAIL
+            .. Fmt.c(Fmt.CRIMSON, Lang.t("ka_yandir_gryphon_fail") .. Fmt.pct(healthPercent))
     end
 end
 
