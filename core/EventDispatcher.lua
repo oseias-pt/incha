@@ -22,6 +22,11 @@
 ---   IGNORE                  : (none)
 ---   CUSTOM                  : fn = function(boss, context, alerts, abilityId, sourceUnitName, ...)
 ---
+--- Optional field (all types):
+---   targetOnly = true  — suppress the alert unless the local player is the target.
+---                        Use for single-target abilities (e.g. tank-only melee hits).
+---                        Omit (or false) for AoE abilities where everyone must react.
+---
 ---   started entries may also carry: noExecute = true
 ---   (signals that this ability never fires a "cast completed" T event —
 ---    the dispatcher skips arming the interrupted timer for it)
@@ -159,6 +164,13 @@ local _combatAlertHandler = {
 -- Single dispatch point for all three entry functions.
 
 local function runEntry(entry, boss, context, alerts, abilityId, sourceUnitName, ...)
+    -- targetOnly: suppress unless the local player is the unit being targeted.
+    -- The first vararg is always unitTag for both combat and effect events.
+    if entry.targetOnly then
+        local unitTag = (...)
+        if not unitTag or not AreUnitsEqual("player", unitTag) then return end
+    end
+
     local t = entry.type
 
     local stateHandler = _bossStateHandler[t]

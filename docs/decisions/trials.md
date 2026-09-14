@@ -47,17 +47,17 @@ Zone id for a trial not listed below:
 
 ## Trials
 
-| Trial | Zone | Encounter shape | Reference addons |
-|---|---|---|---|
-| **KA** Kyne's Aegis | 1196 | 3 sequential | BSCHTKA (retired as a runtime dependency) |
-| **SS** Sunspire | 1121 | 3 sequential | — |
-| **RG** Rockgrove | 1263 | 3 sequential | `QcellRockgroveHelper` |
-| **DSR** Dreadsail Reef | 1344 | 3 sequential; boss 1 is a **pair** | `QcellDreadsailReefHelper` (QDRH) |
-| **AS** Asylum Sanctorium | 1000 | **concurrent** — see below | `AsylumPriorityTarget`, `AsylumTracker` |
-| **CR** Cloudrest | 1051 | **concurrent** — see below | `HowToCloudrest` |
-| **SE** Sanity's Edge | 1427 | 3 sequential | `SanitysEdgeHelper` (SEH), `SlipsSanitysEdgeAssist` (SSEA) |
-| **LC** Lucent Citadel | 1478 | 5–6 sequential | `LucentCitadelHelper` (LCH), `LucentCitadel` |
-| **OC** Ossein Cage | 1548 | 3 sequential | `OsseinCageHelper` (OCH), `AsquartOsseinCageHelper` |
+| Trial                    | Zone | Encounter shape                    | Reference addons                                           |
+|--------------------------|------|------------------------------------|------------------------------------------------------------|
+| **KA** Kyne's Aegis      | 1196 | 3 sequential                       | BSCHTKA (retired as a runtime dependency)                  |
+| **SS** Sunspire          | 1121 | 3 sequential                       | —                                                          |
+| **RG** Rockgrove         | 1263 | 3 sequential                       | `QcellRockgroveHelper`                                     |
+| **DSR** Dreadsail Reef   | 1344 | 3 sequential; boss 1 is a **pair** | `QcellDreadsailReefHelper` (QDRH)                          |
+| **AS** Asylum Sanctorium | 1000 | **concurrent** — see below         | `AsylumPriorityTarget`, `AsylumTracker`                    |
+| **CR** Cloudrest         | 1051 | **concurrent** — see below         | `HowToCloudrest`                                           |
+| **SE** Sanity's Edge     | 1427 | 3 sequential                       | `SanitysEdgeHelper` (SEH), `SlipsSanitysEdgeAssist` (SSEA) |
+| **LC** Lucent Citadel    | 1478 | 5–6 sequential                     | `LucentCitadelHelper` (LCH), `LucentCitadel`               |
+| **OC** Ossein Cage       | 1548 | 3 sequential                       | `OsseinCageHelper` (OCH), `AsquartOsseinCageHelper`        |
 
 Zone ids for CR, LC and OC were confirmed in game. The rest are long-standing and treated as
 confirmed until a misfire is reported.

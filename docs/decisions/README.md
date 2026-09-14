@@ -12,10 +12,10 @@ What was left had no home, and it is the part that is expensive to lose: the rea
 decisions that are not obvious from reading the code, and that a future contributor would otherwise
 re-litigate or silently undo.
 
-| File | Holds |
-|---|---|
-| [`architecture.md`](architecture.md) | Engine-wide decisions — load model, lifecycle, dispatch, dependencies, i18n |
-| [`trials.md`](trials.md) | Per-trial facts — zone ids, detection strategy, encounter shape, reference addons |
+| File                                 | Holds                                                                             |
+|--------------------------------------|-----------------------------------------------------------------------------------|
+| [`architecture.md`](architecture.md) | Engine-wide decisions — load model, lifecycle, dispatch, dependencies, i18n       |
+| [`trials.md`](trials.md)             | Per-trial facts — zone ids, detection strategy, encounter shape, reference addons |
 
 ## What belongs here
 
