@@ -20,7 +20,12 @@
 --- If no boss is currently active (player not in arena), Playback searches the
 --- trial's boss registry for the class that owns the abilityId, creates a fresh
 --- temporary instance, and dispatches through it so alerts fire without needing
---- a live pull.  The temp instance is discarded immediately after the call.
+--- a live pull.
+---
+--- For BEGIN_CAST with a cast duration > 0 the temp boss is kept alive for the
+--- duration (+ 1.5 s buffer) so the 200 ms onUpdate loop has time to populate
+--- tracker rows.  Clicking a second ability while the first is still live
+--- cancels the pending teardown before creating the new temp boss.
 ---
 --- unitTag / unitName / sourceUnitName are faked; routing tables key on
 --- abilityId + result/changeType so the correct handler still fires.
@@ -66,6 +71,19 @@ local EFFECT_CHANGE = {
     UPDATED = EFFECT_RESULT_UPDATED,
 }
 
+-- ── Deferred-restore state ─────────────────────────────────────────────────
+-- When a temp boss is kept alive for the cast duration, its teardown is
+-- scheduled via zo_callLater.  We track the handle so a second ability
+-- click can cancel the first teardown before spawning a new temp boss.
+local _pendingRestoreHandle = nil
+
+local function cancelPendingRestore()
+    if _pendingRestoreHandle then
+        zo_removeCallLater(_pendingRestoreHandle)
+        _pendingRestoreHandle = nil
+    end
+end
+
 -- ── Boss lookup ────────────────────────────────────────────────────────────
 --- Return the first boss class in the trial whose combatRoutes or effectRoutes
 --- table contains abilityId.  Returns nil when no boss claims the ability.
@@ -86,8 +104,15 @@ end
 --- creates a fresh temp instance, injects it, and returns it + a restore fn.
 --- Returns (instance, restore_fn, err_string).
 local function prepareBoss(trial, abilityId, isCombat)
+    -- Cancel any still-pending deferred teardown from a previous injection
+    -- so we start with a clean slate before checking for an existing boss.
+    cancelPendingRestore()
+
     local existing = trial:getActiveBoss()
     if existing then
+        -- If a real boss was detected while our temp instance was alive (rare
+        -- but possible), discard the temp instance first so the real boss wins.
+        -- The pending teardown was already cancelled above.
         return existing, nil, nil
     end
 
@@ -101,8 +126,22 @@ local function prepareBoss(trial, abilityId, isCombat)
     local tempInstance = bossClass.new()
     trial._activeBoss = tempInstance
 
+    -- Activate the panel and arm timers so tracker rows are populated by the
+    -- 200 ms onUpdate loop while the temp boss is alive.
+    trial.bridge.onBossEnter(tempInstance, trial.context)
+    if tempInstance.onCombatState then
+        tempInstance:onCombatState(trial.context, true, trial.alerts)
+    end
+
+    -- Guard the restore against the (unlikely) case where a real boss is
+    -- detected while the deferred teardown is in flight.
+    local capturedTrial = trial
     local function restore()
-        trial._activeBoss = nil
+        _pendingRestoreHandle = nil
+        if capturedTrial:getActiveBoss() == tempInstance then
+            capturedTrial._activeBoss = nil
+            capturedTrial.bridge.onBossExit()
+        end
     end
 
     return tempInstance, restore, nil
@@ -148,7 +187,14 @@ function Playback.injectLine(line)
         EventDispatcher.dispatchBeginCast(boss, trial.context, trial.alerts,
             castDuration, false, sourceUnitId, abilityId, "Boss")
 
-        if restore then restore() end
+        if restore then
+            -- Keep the temp boss alive for the cast duration + buffer so the
+            -- 200 ms onUpdate loop has time to write tracker rows (timers, etc.)
+            -- before the panel is torn down.  Instant abilities use 1.5 s so
+            -- the alert popup is still visible when the panel clears.
+            local delay = castDuration > 0 and (castDuration + 1500) or 1500
+            _pendingRestoreHandle = zo_callLater(restore, delay)
+        end
 
         return "BEGIN_CAST | abilityId=" .. abilityId .. "  castDuration=" .. castDuration
 
