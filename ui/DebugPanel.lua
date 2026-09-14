@@ -71,6 +71,38 @@ local function abilityRows(bossClass)
     return rows
 end
 
+-- ── Debug-boss lifecycle ──────────────────────────────────────────────────
+-- A temp boss instance is created when the user selects a boss tab so the
+-- tracker panel and timers are live immediately, without needing a fight.
+-- Torn down when a different tab is selected, the panel is closed, or a
+-- Refresh rebuilds the tab list.
+
+local _debugBoss  = nil   -- active temp instance, or nil
+local _debugTrial = nil   -- trial that owns _debugBoss
+
+local function teardownDebugBoss()
+    if not _debugBoss or not _debugTrial then return end
+    if _debugTrial:getActiveBoss() == _debugBoss then
+        _debugTrial._activeBoss = nil
+        _debugTrial.bridge.onBossExit()
+    end
+    _debugBoss  = nil
+    _debugTrial = nil
+end
+
+local function setupDebugBoss(trial, bossClass)
+    teardownDebugBoss()
+    if not trial or not bossClass then return end
+    local instance = bossClass.new()
+    trial._activeBoss = instance
+    _debugBoss  = instance
+    _debugTrial = trial
+    trial.bridge.onBossEnter(instance, trial.context)
+    if instance.onCombatState then
+        instance:onCombatState(trial.context, true, trial.alerts)
+    end
+end
+
 -- ── Window state ───────────────────────────────────────────────────────────
 local win
 local btnPool    = {}   -- ability buttons (reusable)
@@ -148,9 +180,11 @@ local function selectBoss(idx)
     if entry then
         win.titleLbl:SetText("Incha Debug — " .. (entry.key or "?"))
         items = abilityRows(entry.bossClass)
+        setupDebugBoss(ZoneManager.getActiveTrial(), entry.bossClass)
     else
         win.titleLbl:SetText("Incha Debug")
         items = {}
+        teardownDebugBoss()
     end
 
     ensureAbilityPool(#items)
@@ -195,6 +229,7 @@ local function rebuild()
 
     local trial = ZoneManager.getActiveTrial()
     if not trial then
+        teardownDebugBoss()
         win.titleLbl:SetText("Incha Debug — no trial")
         for _, tab in ipairs(tabPool) do tab:SetHidden(true) end
         layoutAbilities()
@@ -209,6 +244,7 @@ local function rebuild()
     end
 
     if #bossList == 0 then
+        teardownDebugBoss()
         win.titleLbl:SetText("Incha Debug — no bosses registered")
         layoutAbilities()
         return
@@ -274,7 +310,11 @@ local function buildWindow()
     closeBtn:SetFont("ZoFontGame")
     closeBtn:SetText("×")
     closeBtn:SetNormalFontColor(1, 0.4, 0.4, 1)
-    closeBtn:SetHandler("OnClicked", function() win:SetHidden(true) end)
+    local function onCloseClicked()
+        teardownDebugBoss()
+        win:SetHidden(true)
+    end
+    closeBtn:SetHandler("OnClicked", onCloseClicked)
 
     -- Refresh button
     local refBtn = wm:CreateControl("InchDebugPanelRefresh", win, CT_BUTTON)
@@ -330,6 +370,7 @@ function DP.toggle()
         rebuild()
         win:SetHidden(false)
     else
+        teardownDebugBoss()
         win:SetHidden(true)
     end
 end
