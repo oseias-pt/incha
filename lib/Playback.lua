@@ -99,10 +99,10 @@ local function prepareBoss(trial, abilityId, isCombat)
     end
 
     local tempInstance = bossClass.new()
-    trial.activeBosses[1] = tempInstance
+    trial._activeBoss = tempInstance
 
     local function restore()
-        trial.activeBosses[1] = nil
+        trial._activeBoss = nil
     end
 
     return tempInstance, restore, nil
