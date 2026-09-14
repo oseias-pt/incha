@@ -269,7 +269,6 @@ SOUNDS = setmetatable({}, { __index = function() return 0 end })
 -- -- Optional external addons  -  keep nil so guard expressions fire cleanly -
 CombatAlerts = nil
 OSI          = nil
-BSCHTKA      = nil
 
 -- -- ESO debug print -------------------------------------------------------
 function d(msg) io.stderr:write("[ESO-d] " .. tostring(msg) .. "\n") end
@@ -332,6 +331,11 @@ package.loaded["lib.Log"] = {
     isEnabled  = function()  return false end,
     debug      = function()  end,
     warn       = function()  end,
+    -- always() / print() are the two un-gated channels; surface them on
+    -- stderr so a replay that hits an unknown ability or a debug-tool
+    -- message is visible rather than a nil-call error.
+    always     = function(fmt, ...) io.stderr:write("[Incha][warn] " .. string.format(fmt, ...) .. "\n") end,
+    print      = function(fmt, ...) io.stderr:write("[Incha] " .. string.format(fmt, ...) .. "\n") end,
 }
 
 return EsoApi

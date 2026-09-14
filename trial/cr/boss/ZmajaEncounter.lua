@@ -102,6 +102,25 @@ local _STR_SPEARS_PREFIX  = Lang.t("cr_zmaja_spears_label")
 local _STR_READY          = Lang.t("common_ready")
 local _STR_BASH_DUE       = Lang.t("cr_zmaja_bash_due")
 
+-- Mini-boss rows read "Siro: Jump 12s  Bnr 30s".  The two countdowns move
+-- once per second, so each SubBoss carries the whole-second key the cached
+-- string was built for (`_lineKey`) and the string itself (`_lineStr`);
+-- onUpdate reformats only when the key changes, not on every 200 ms tick.
+local function miniLine(sb, jumpTimer, secondTimer, now, langKey, secondReadyStr)
+    local j = jumpTimer:remainingAt(now)
+    local b = secondTimer:remainingAt(now)
+    local jc = j > 0 and math.ceil(j) or 0
+    local bc = b > 0 and math.ceil(b) or 0
+    local key = jc * 1000 + bc
+    if key ~= sb._lineKey then
+        sb._lineKey = key
+        sb._lineStr = Lang.t(langKey,
+            jc > 0 and (jc .. "s") or _STR_READY,
+            bc > 0 and (bc .. "s") or secondReadyStr)
+    end
+    return sb._lineStr
+end
+
 ZmajaEncounter.stateSchema = {
     -- P2: group each mini's state into a SubBoss — cleaner schema, trivial onWipe.
     -- Single-line SubBoss.new({}) keeps inner keys invisible to the duplicate scanner.
@@ -116,6 +135,10 @@ ZmajaEncounter.stateSchema = {
     spearCount      = 0,
     alertList       = function() return {} end,
     coreAlert       = false,
+    -- Row text caches, rebuilt by the handlers that change portalGroup /
+    -- spearCount so onUpdate never formats.
+    _groupStr       = false,
+    _spearStr       = false,
 }
 
 function ZmajaEncounter.new()
@@ -240,6 +263,7 @@ end
 -- OlorimeSpear: fires on BEGIN only (avoid double-count with EFFECT_GAINED)
 local function handleOlorimeSpear(boss, ctx, alerts, abilityId, sourceUnitName, unitTag, unitId, sourceUnitId, unitName)
     boss.spearCount = boss.spearCount + 1
+    boss._spearStr  = _STR_SPEARS_PREFIX .. boss.spearCount
     local target = (unitName and unitName ~= "") and unitName or "?"
     alerts:showAction(Lang.t("cr_zmaja_olorime_spear", target, boss.spearCount))
 end
@@ -253,6 +277,7 @@ end
 
 local function handlePortalReset(boss, ctx, alerts, abilityId, ...)
     boss.portalGroup    = 0
+    boss._groupStr      = false
     boss.portalActive   = false
     boss.portalTimer:clear()
     boss.portalNextTimer:clear()
@@ -262,6 +287,7 @@ end
 
 local function handlePortalOpen(boss, ctx, alerts, abilityId, ...)
     boss.portalGroup  = boss.portalGroup + 1
+    boss._groupStr    = Lang.t("cr_zmaja_shadow_group", boss.portalGroup)
     boss.portalActive = true
     boss.portalTimer:reset(PORTAL_OPEN_DUR)
     boss.portalNextTimer:clear()
@@ -446,71 +472,64 @@ ZmajaEncounter.events = {
 
 -- -- Info-line renderers ---------------------------------------------------
 
-local function showPortalStatusLine(self, alerts)
+local function showPortalStatusLine(self, alerts, now)
     if self.portalActive then
-        local r = self.portalTimer:remaining()
+        local r = self.portalTimer:remainingAt(now)
         if r > 0 then
             alerts:setRow(1, _STR_PORTAL_OPEN, r)
         else
             alerts:setRow(1, _STR_PORTAL_CLOSING, nil)
         end
-    elseif not self.portalNextTimer:isExpired() then
-        local r = self.portalNextTimer:remaining()
-        alerts:setRow(1, _STR_PORTAL_NEXT, r)
     else
-        alerts:clearRow(1)
+        local r = self.portalNextTimer:remainingAt(now)
+        if r > 0 then
+            alerts:setRow(1, _STR_PORTAL_NEXT, r)
+        else
+            alerts:clearRow(1)
+        end
     end
 end
 
 local function showPortalGroupLine(self, alerts)
     if self.executePhase then
         alerts:setRow(2, _STR_EXECUTE_PHASE, nil)
-    elseif self.portalGroup > 0 then
-        alerts:setRow(2, Lang.t("cr_zmaja_shadow_group", self.portalGroup), nil)
+    elseif self.portalGroup > 0 and self._groupStr then
+        alerts:setRow(2, self._groupStr, nil)
     else
         alerts:clearRow(2)
     end
 end
 
 local function showSpearLine(self, alerts)
-    if self.spearCount > 0 then
-        alerts:setRow(4, _STR_SPEARS_PREFIX .. self.spearCount, nil)
+    if self.spearCount > 0 and self._spearStr then
+        alerts:setRow(4, self._spearStr, nil)
     else
         alerts:clearRow(4)
     end
 end
 
-local function showSiroLine(self, alerts)
+local function showSiroLine(self, alerts, now)
     if self.siro.active then
-        local j  = self.siro.jump:remaining()
-        local b  = self.siro.banner:remaining()
-        local jt = j > 0 and (math.ceil(j) .. "s") or _STR_READY
-        local bt = b > 0 and (math.ceil(b) .. "s") or _STR_READY
-        alerts:setRow(5, Lang.t("cr_zmaja_siro_label", jt, bt), nil)
+        alerts:setRow(5, miniLine(self.siro, self.siro.jump, self.siro.banner, now,
+            "cr_zmaja_siro_label", _STR_READY), nil)
     else
         alerts:clearRow(5)
     end
 end
 
-local function showReleLine(self, alerts)
+local function showReleLine(self, alerts, now)
     if self.rele.active then
-        local j  = self.rele.jump:remaining()
-        local b  = self.rele.bash:remaining()
-        local jt = j > 0 and (math.ceil(j) .. "s") or _STR_READY
-        local bt = b > 0 and (math.ceil(b) .. "s") or _STR_BASH_DUE
-        alerts:setRow(6, Lang.t("cr_zmaja_rele_label", jt, bt), nil)
+        alerts:setRow(6, miniLine(self.rele, self.rele.jump, self.rele.bash, now,
+            "cr_zmaja_rele_label", _STR_BASH_DUE), nil)
     else
         alerts:clearRow(6)
     end
 end
 
-local function showGaleLine(self, alerts)
+local function showGaleLine(self, alerts, now)
     if self.gale.active then
-        local j  = self.gale.jump:remaining()
-        local b  = self.gale.bash:remaining()
-        local jt = j > 0 and (math.ceil(j) .. "s") or _STR_READY
-        local bt = b > 0 and (math.ceil(b) .. "s") or _STR_BASH_DUE
-        alerts:setRow(7, Lang.t("cr_zmaja_gale_label", jt, bt), nil)
+        alerts:setRow(7, miniLine(self.gale, self.gale.jump, self.gale.bash, now,
+            "cr_zmaja_gale_label", _STR_BASH_DUE), nil)
     else
         alerts:clearRow(7)
     end
@@ -522,17 +541,15 @@ function ZmajaEncounter:onWipe(context, alerts)
 end
 
 function ZmajaEncounter:onUpdate(context, alerts)
-    showPortalStatusLine(self, alerts)
+    -- One GetGameTimeMilliseconds() per tick shared by all eight timers.
+    local now = GetGameTimeMilliseconds() / 1000
+    showPortalStatusLine(self, alerts, now)
     showPortalGroupLine(self, alerts)
     if self.coreAlert then alerts:setRow(3, self.coreAlert, nil) else alerts:clearRow(3) end
     showSpearLine(self, alerts)
-    showSiroLine(self, alerts)
-    showReleLine(self, alerts)
-    showGaleLine(self, alerts)
-end
-
-function ZmajaEncounter:onPowerUpdate(context, healthPercent, alerts)
-    -- CR-3: execute threshold pre-warning (if applicable)
+    showSiroLine(self, alerts, now)
+    showReleLine(self, alerts, now)
+    showGaleLine(self, alerts, now)
 end
 
 EventDispatcher.build(ZmajaEncounter)

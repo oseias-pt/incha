@@ -39,6 +39,17 @@ local INITIAL_PORTAL_DELAY = 15  -- first portal is shorter than the recurring i
 -- Created in onEnter once per zone visit; discarded in onLeave on zone exit.
 local _portalIcon = false
 
+-- Tracker-row strings built once at load so the 200 ms onUpdate never
+-- concatenates or calls Lang.t / Fmt.c (see Falgravn.lua for the pattern).
+local _STR_FOG_CLEARS       = Fmt.c(Fmt.ICE,  Lang.t("ka_vrol_fog_clears"))
+local _STR_FOG_CLEARS_SOON  = Fmt.c(Fmt.PINK, Lang.t("ka_vrol_fog_clears"))
+local _STR_NEXT_FOG         = Lang.t("ka_vrol_next_fog")
+local _STR_NEXT_FOG_SOON    = Lang.t("ka_vrol_next_fog") .. " " .. Lang.t("common_soon")
+local _STR_CONDUIT          = Lang.t("ka_vrol_conduit")
+local _STR_CONDUIT_READY    = Lang.t("ka_vrol_conduit") .. " " .. Lang.t("common_ready")
+local _STR_PORTAL           = Lang.t("ka_vrol_portal_label")
+local _STR_PORTAL_READY     = Lang.t("ka_vrol_portal_label") .. " " .. Lang.t("common_ready")
+
 local Vrol = {}
 Vrol.__index = Vrol
 setmetatable(Vrol, {__index = BossBase})   -- inherit cleanupAlertList, default onDied
@@ -81,7 +92,7 @@ function Vrol:onEnter(context, alerts)
                 _portalIcon = PositionIcons.create(
                     114624, 25764, 71349,
                     "/esoui/art/icons/malatar_agonizingbolts.dds",
-                    100, { 1, 1, 1 })
+                    100, Colors.WHITE)
             end
         end)
     end
@@ -123,20 +134,8 @@ function Vrol:onWipe(context, alerts)
 end
 
 
--- -- Routing tables (C3) --------------------------------------------------
--- DIED: clean up tracked CA cast bars for both the unit and its killer.
-function Vrol:onDied(context, alerts,
-                      unitTag, sourceUnitTag, sourceUnitId, unitId,
-                      sourceUnitName, unitName)
-    if unitId then
-        CA.castAlertsStop(self.alertList[unitId])
-        self.alertList[unitId] = nil
-    end
-    if sourceUnitId then
-        CA.castAlertsStop(self.alertList[sourceUnitId])
-        self.alertList[sourceUnitId] = nil
-    end
-end
+-- DIED: BossBase.onDied (inherited) stops the tracked CA bars for both the
+-- dead unit and its killer; Vrol needs nothing beyond that.
 
 -- -- Handlers (new-style: boss as first arg, sourceUnitName before unit args) --
 
@@ -252,40 +251,41 @@ EventDispatcher.build(Vrol)
 
 -- 200ms timer display  -  writes to tracker rows 1-3.
 function Vrol:onUpdate(context, alerts)
-    local now = GetGameTimeMilliseconds()
+    -- One GetGameTimeMilliseconds() per tick, shared by every timer below.
+    local nowMs = GetGameTimeMilliseconds()
+    local now   = nowMs / 1000
 
     -- Row 1: fog duration while active (urgency colour on label), otherwise next-fog countdown.
-    local fogRemMs = self.fogEndTime - now
+    local fogRemMs = self.fogEndTime - nowMs
     if fogRemMs > 0 then
-        local s   = fogRemMs / 1000
-        local col = (s <= 5) and Fmt.PINK or Fmt.ICE
-        alerts:setRow(1, Fmt.c(col, Lang.t("ka_vrol_fog_clears")), s)
+        local s = fogRemMs / 1000
+        alerts:setRow(1, (s <= 5) and _STR_FOG_CLEARS_SOON or _STR_FOG_CLEARS, s)
     else
         if self.fogEndTime > 0 then self.fogEndTime = 0 end   -- auto-clear stale timestamp
-        local t1 = self.fogTimer:remaining()
+        local t1 = self.fogTimer:remainingAt(now)
         if t1 > 0 then
-            alerts:setRow(1, Lang.t("ka_vrol_next_fog"), t1)
+            alerts:setRow(1, _STR_NEXT_FOG, t1)
         else
-            alerts:setRow(1, Lang.t("ka_vrol_next_fog") .. " " .. Lang.t("common_soon"), nil)
+            alerts:setRow(1, _STR_NEXT_FOG_SOON, nil)
         end
     end
 
-    local t2 = self.conduitTimer:remaining()
+    local t2 = self.conduitTimer:remainingAt(now)
     if t2 > 0 then
-        alerts:setRow(2, Lang.t("ka_vrol_conduit"), t2)
+        alerts:setRow(2, _STR_CONDUIT, t2)
     else
-        alerts:setRow(2, Lang.t("ka_vrol_conduit") .. " " .. Lang.t("common_ready"), nil)
+        alerts:setRow(2, _STR_CONDUIT_READY, nil)
     end
 
     -- Portals stop spawning once Vrol drops below 50% HP.
     if self.bPORTAL_END then
         alerts:clearRow(3)
     else
-        local t3 = self.portalTimer:remaining()
+        local t3 = self.portalTimer:remainingAt(now)
         if t3 > 0 then
-            alerts:setRow(3, Lang.t("ka_vrol_portal_label"), t3)
+            alerts:setRow(3, _STR_PORTAL, t3)
         else
-            alerts:setRow(3, Lang.t("ka_vrol_portal_label") .. " " .. Lang.t("common_ready"), nil)
+            alerts:setRow(3, _STR_PORTAL_READY, nil)
         end
     end
 end

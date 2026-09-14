@@ -4,7 +4,7 @@
 --- is present, and always registers ADDON_SLASH as a slash-command fallback.
 ---
 --- LAM panel ID: ADDON_LAM  (set in bootstrap.lua)
---- Slash command: ADDON_SLASH  (debug | lock | scale <n> | reset)
+--- Slash command: ADDON_SLASH  (debug | lock | scale <n> | reset | dp | preview <sub>)
 
 local Log         = require("lib.Log")
 local Panel       = require("ui.Panel")
@@ -12,8 +12,17 @@ local Preview     = require("ui.Preview")
 local Settings    = require("core.Settings")
 local Fmt         = require("core.Fmt")
 local DebugPanel  = require("ui.DebugPanel")
+local ZoneManager = require("core.ZoneManager")
 
 local Menu = {}
+
+-- Trial "Enable" checkboxes write the flag and then ask ZoneManager to
+-- re-evaluate, so toggling a trial while already standing in its zone takes
+-- effect immediately instead of on the next zone change.
+local function setTrialEnabled(trialId, v)
+    Settings.get().trials[trialId].enabled = v
+    ZoneManager.refresh()
+end
 
 -- Dispatch table for /incha preview <sub> and /ip <sub>.
 -- Keys match the sub-command strings; values are the Preview functions to call.
@@ -98,6 +107,13 @@ local OPTIONS = {
     },
     {
         type    = "checkbox",
+        name    = "Enable",
+        tooltip = "Track Yandir totem/gryphon timers, Vrol fog/portal/conduit timers, and Falgravn stage mechanics.",
+        getFunc = function() return Settings.get().trials.ka.enabled end,
+        setFunc = function(v) setTrialEnabled("ka", v) end,
+    },
+    {
+        type    = "checkbox",
         name    = "Yandir the Butcher",
         getFunc = function() return Settings.get().trials.ka.bosses.yandir end,
         setFunc = function(v) Settings.get().trials.ka.bosses.yandir = v end,
@@ -146,7 +162,7 @@ local OPTIONS = {
         name    = "Enable",
         tooltip = "Track Lokke laser/tomb timers, Yolna/Nahvii mechanics, and shared-add alerts.",
         getFunc = function() return Settings.get().trials.ss.enabled end,
-        setFunc = function(v) Settings.get().trials.ss.enabled = v end,
+        setFunc = function(v) setTrialEnabled("ss", v) end,
     },
     {
         type    = "checkbox",
@@ -176,7 +192,7 @@ local OPTIONS = {
         type    = "checkbox",
         name    = "Enable",
         getFunc = function() return Settings.get().trials.rg.enabled end,
-        setFunc = function(v) Settings.get().trials.rg.enabled = v end,
+        setFunc = function(v) setTrialEnabled("rg", v) end,
     },
     {
         type    = "checkbox",
@@ -206,7 +222,7 @@ local OPTIONS = {
         type    = "checkbox",
         name    = "Enable",
         getFunc = function() return Settings.get().trials.dsr.enabled end,
-        setFunc = function(v) Settings.get().trials.dsr.enabled = v end,
+        setFunc = function(v) setTrialEnabled("dsr", v) end,
     },
     {
         type    = "checkbox",
@@ -237,7 +253,7 @@ local OPTIONS = {
         name    = "Enable",
         tooltip = "Track Olms timers, Llothis/Felms dormant state, and Protector shield.",
         getFunc = function() return Settings.get().trials.as.enabled end,
-        setFunc = function(v) Settings.get().trials.as.enabled = v end,
+        setFunc = function(v) setTrialEnabled("as", v) end,
     },
     {
         type    = "checkbox",
@@ -263,7 +279,7 @@ local OPTIONS = {
         name    = "Enable",
         tooltip = "Track mini-boss timers (Siroria/Relequen/Galenwe), portal countdown, and Z'Maja mechanics.",
         getFunc = function() return Settings.get().trials.cr.enabled end,
-        setFunc = function(v) Settings.get().trials.cr.enabled = v end,
+        setFunc = function(v) setTrialEnabled("cr", v) end,
     },
     {
         type    = "checkbox",
@@ -289,7 +305,7 @@ local OPTIONS = {
         name    = "Enable",
         tooltip = "Track Yaseyla bomb timers, Chimera despawn/chain lightning, and Ansuul calamity/phase alerts.",
         getFunc = function() return Settings.get().trials.se.enabled end,
-        setFunc = function(v) Settings.get().trials.se.enabled = v end,
+        setFunc = function(v) setTrialEnabled("se", v) end,
     },
     {
         type    = "checkbox",
@@ -327,7 +343,7 @@ local OPTIONS = {
         name    = "Enable",
         tooltip = "Track side assignment (Ryelaz/Zilyesset), Orphic Xoryn jump/cone timers, Xynizata interrupt CDs, and Xoryn current/knot alerts.",
         getFunc = function() return Settings.get().trials.lc.enabled end,
-        setFunc = function(v) Settings.get().trials.lc.enabled = v end,
+        setFunc = function(v) setTrialEnabled("lc", v) end,
     },
     {
         type    = "checkbox",
@@ -370,7 +386,7 @@ local OPTIONS = {
         name    = "Enable",
         tooltip = "Track Jynorah dragon leap/clash phases, Kazpian chain/portal/channeler alerts, and Shaper of Flesh shield status.",
         getFunc = function() return Settings.get().trials.oc.enabled end,
-        setFunc = function(v) Settings.get().trials.oc.enabled = v end,
+        setFunc = function(v) setTrialEnabled("oc", v) end,
     },
     {
         type    = "checkbox",
@@ -442,7 +458,8 @@ local function printHelp()
     Log.print("  %s debug          -  toggle debug logging",    ADDON_SLASH)
     Log.print("  %s lock           -  toggle overlay drag lock", ADDON_SLASH)
     Log.print("  %s scale <n>      -  set overlay scale (0.5 - 3.0)", ADDON_SLASH)
-    Log.print("  %s reset          -  reset overlay to default position", ADDON_SLASH)
+    Log.print("  %s reset          -  reset both overlay panels to default position", ADDON_SLASH)
+    Log.print("  %s dp             -  toggle the debug replay panel (also /idp)", ADDON_SLASH)
     Log.print("  /ip panel          -  show sample panel data (use /ip, not /incha)")
     Log.print("  /ip inst           -  animate instability head icon")
     Log.print("  /ip border         -  flash CA border")
@@ -479,11 +496,14 @@ local function handleSlash(text)
         end
 
     elseif cmd == "reset" then
+        -- Both panels: the tracker (offsetX/Y) and the alert bar (alertX/Y).
         sv.overlay.offsetX = -1
         sv.overlay.offsetY = -1
+        sv.overlay.alertX  = -1
+        sv.overlay.alertY  = -1
         sv.overlay.scale   = 1.0
         Panel.refresh()
-        Log.print("Overlay position reset")
+        Log.print("Overlay positions reset")
 
     elseif cmd == "preview" then
         local sub = arg:match("^%s*(%S*)")

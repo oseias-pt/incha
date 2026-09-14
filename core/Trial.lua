@@ -68,6 +68,14 @@ function Trial.create(options)
         healthThrottle = Throttle.new(1),
     }, Trial)
 
+    -- Resolve the dispatcher callbacks once.  These run on the hottest path in
+    -- the addon (one call per admitted combat / effect event), so the
+    -- `options.x or default` choice is made here, not inside each closure.
+    local onCombatEventFiltered   = options.onCombatEventFiltered   or EventDispatcher.onCombatEventFiltered
+    local onEffectChangedFiltered = options.onEffectChangedFiltered or EventDispatcher.onEffectChangedFiltered
+    local onDiedCombatEvent       = options.onDiedCombatEvent       or EventDispatcher.onDiedCombatEvent
+    local onLegacyCombatEvent     = options.onLegacyCombatEvent
+
     self.pipeline = EventPipeline.new(self.eventPrefix, {
         onBossesChanged = function(eventCode, forceReset)
             self:onBossesChanged(forceReset)
@@ -88,14 +96,11 @@ function Trial.create(options)
         -- functions so individual factories only need to pass them when they
         -- override the default behaviour.
         abilityIdsFor = options.abilityIdsFor or EventDispatcher.abilityIdsFor,
-        onCombatEventFiltered = (options.onCombatEventFiltered or EventDispatcher.onCombatEventFiltered)
-            and function(...) (options.onCombatEventFiltered or EventDispatcher.onCombatEventFiltered)(self, ...) end,
-        onEffectChangedFiltered = (options.onEffectChangedFiltered or EventDispatcher.onEffectChangedFiltered)
-            and function(...) (options.onEffectChangedFiltered or EventDispatcher.onEffectChangedFiltered)(self, ...) end,
-        onDiedCombatEvent = (options.onDiedCombatEvent or EventDispatcher.onDiedCombatEvent)
-            and function(...) (options.onDiedCombatEvent or EventDispatcher.onDiedCombatEvent)(self, ...) end,
-        onLegacyCombatEvent = options.onLegacyCombatEvent
-            and function(...) options.onLegacyCombatEvent(self, ...) end or nil,
+        onCombatEventFiltered   = function(...) onCombatEventFiltered(self, ...) end,
+        onEffectChangedFiltered = function(...) onEffectChangedFiltered(self, ...) end,
+        onDiedCombatEvent       = function(...) onDiedCombatEvent(self, ...) end,
+        onLegacyCombatEvent     = onLegacyCombatEvent
+            and function(...) onLegacyCombatEvent(self, ...) end or nil,
         -- 200ms timer-display loop.  Calls boss:onUpdate(context, alerts) when
         -- a boss is active.  No-op otherwise, so the loop is always registered
         -- without wasting ticks between encounters.
@@ -118,25 +123,74 @@ function Trial:getActiveBoss()
     return self._activeBoss
 end
 
+-- Tear down the current boss instance: onLeave, cancel deferred callbacks,
+-- drop the reference.  Shared by the real detection path (onBossesChanged),
+-- disable(), and the debug-injection path (ejectBoss).
+local function retireActiveBoss(self)
+    local outgoing = self._activeBoss
+    if not outgoing then return end
+    if outgoing.onLeave then
+        outgoing:onLeave(self.context)
+    end
+    -- Drop any :after() callbacks the outgoing boss still had in flight,
+    -- so they cannot fire against a discarded instance.  Runs after
+    -- onLeave so the boss can still schedule teardown work if it needs to.
+    if outgoing.cancelPending then
+        outgoing:cancelPending()
+    end
+    self._activeBoss = nil
+end
+
+--- Debug tooling entry point (ui/DebugPanel, lib/Playback): make `instance`
+--- the active boss without waiting for EVENT_BOSSES_CHANGED.  Runs the same
+--- lifecycle a detected boss gets — context, panel, event filters, onEnter,
+--- onCombatState(true) — so timers arm and tracker rows populate exactly as
+--- they would in a live pull.  Any previously active boss is retired first.
+--- No-op when the trial is not enabled (player not in the zone).
+function Trial:injectBoss(instance)
+    if not self.enabled or not instance then return end
+    retireActiveBoss(self)
+    self.healthThrottle:reset()
+    self.alerts:clear()
+
+    self._activeBoss = instance
+    self.context:setBoss(instance)
+    -- Injected bosses have no health sample; leave the difficulty at the
+    -- sentinel so gated mechanics read as "not HM" rather than a stale value.
+    self.context:setDifficulty(self.registry:detectDifficulty(instance, nil))
+    self.pipeline:setActiveBoss(instance)
+    if instance.onEnter then
+        instance:onEnter(self.context, self.alerts)
+    end
+    self.bridge.onBossEnter(instance, self.context)
+    if instance.onCombatState then
+        instance:onCombatState(self.context, true, self.alerts)
+    end
+end
+
+--- Debug tooling exit: retire `instance` if it is still the active boss and
+--- re-run normal detection, so a real boss the injection displaced comes
+--- back, or — with no boss in range — filters, pending timers and the panel
+--- are cleared through the same path a zone transition uses.  Safe to call
+--- when a real boss has since replaced the instance (no-op) or when nothing
+--- is active.
+function Trial:ejectBoss(instance)
+    if not instance or self._activeBoss ~= instance then return end
+    retireActiveBoss(self)
+    self:onBossesChanged(true)
+end
+
+-- boss<N> unit tags probed by name-based detection.  Module constant so the
+-- table is not rebuilt on every EVENT_BOSSES_CHANGED.
+local BOSS_SLOTS = { "boss1", "boss2", "boss3", "boss4" }
+
 function Trial:onBossesChanged(forceReset)
     if not self.enabled then
         return
     end
 
     -- Give the outgoing boss a chance to clean up (stop CA bars, unregister events).
-    local outgoing = self._activeBoss
-    if outgoing then
-        if outgoing.onLeave then
-            outgoing:onLeave(self.context)
-        end
-        -- Drop any :after() callbacks the outgoing boss still had in flight,
-        -- so they cannot fire against a discarded instance.  Runs after
-        -- onLeave so the boss can still schedule teardown work if it needs to.
-        if outgoing.cancelPending then
-            outgoing:cancelPending()
-        end
-        self._activeBoss = nil
-    end
+    retireActiveBoss(self)
 
     self.healthThrottle:reset()
 
@@ -153,7 +207,7 @@ function Trial:onBossesChanged(forceReset)
     local detectedSlot = "boss1"
 
     if not bossClass then
-        for _, slot in ipairs({"boss1", "boss2", "boss3", "boss4"}) do
+        for _, slot in ipairs(BOSS_SLOTS) do
             if DoesUnitExist(slot) then
                 local candidate = self.registry:findByName(GetUnitName(slot))
                 if candidate then
@@ -191,7 +245,7 @@ function Trial:onBossesChanged(forceReset)
     -- reported so one run through a trial yields the whole correction list.
     if not bossClass and Log.isEnabled() then
         local present = {}
-        for _, slot in ipairs({"boss1", "boss2", "boss3", "boss4"}) do
+        for _, slot in ipairs(BOSS_SLOTS) do
             if DoesUnitExist(slot) then
                 present[#present + 1] = string.format("%s=%q", slot, GetUnitName(slot))
             end
@@ -366,16 +420,7 @@ function Trial:disable()
 
     self.pipeline:disable()
 
-    local boss = self._activeBoss
-    if boss then
-        if boss.onLeave then
-            boss:onLeave(self.context)
-        end
-        if boss.cancelPending then
-            boss:cancelPending()
-        end
-    end
-    self._activeBoss = nil
+    retireActiveBoss(self)
 
     self.context:setBoss(nil)
     self.context:setDifficulty(Difficulty.NONE)

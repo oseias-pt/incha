@@ -27,6 +27,7 @@ M.common_up                 = "up!"
 M.common_imminent           = "imminent"
 M.common_interrupt          = "INTERRUPT!"
 M.common_you                = "YOU"
+M.common_inc                = "INC"   -- "incoming": appended to a timer label when its countdown has elapsed
 
 -- ── Sunspire (SS) ── SunspireCommon.lua ─────────────────────────────────────
 
@@ -104,6 +105,7 @@ M.rg_oaxiltso_add_enraged   = "ADD ENRAGED"
 -- ── Rockgrove ── Bahsei ──────────────────────────────────────────────────────
 
 M.rg_bahsei_next_curse      = "Next Curse"
+M.rg_bahsei_portal          = "Portal"
 M.rg_bahsei_portal_cw       = "CW"
 M.rg_bahsei_portal_ccw      = "CCW"
 M.rg_bahsei_portal_progress = "in progress"
@@ -253,6 +255,7 @@ M.as_olms_felms_dormant     = "Felms DORMANT"
 M.as_olms_strike_label      = "Strike"
 -- %s receives a threshold integer from tostring()
 M.as_olms_jump_at           = "Jump at %s%%!"
+M.as_olms_storm_soon        = "Storm soon!"
 
 -- ── Cloudrest (CR) ── ZmajaEncounter ────────────────────────────────────────
 

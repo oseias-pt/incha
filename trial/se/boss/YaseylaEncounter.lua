@@ -247,11 +247,11 @@ YaseylaEncounter.events = {
 
 -- -- Info-line renderers -----------------------------------------------------------
 
-local function showFireBombLine(self, alerts)
+local function showFireBombLine(self, alerts, now)
     if self.firstFirebomb then
         alerts:setRow(1, _STR_BOMBS_FIRST, nil)
     else
-        local r = self.firebombTimer:remaining()
+        local r = self.firebombTimer:remainingAt(now)
         if self.executePhase then
             if r > 0 then
                 alerts:setRow(1, _STR_BOMBS_EXEC, r)
@@ -268,11 +268,11 @@ local function showFireBombLine(self, alerts)
     end
 end
 
-local function showFrostBombLine(self, alerts)
+local function showFrostBombLine(self, alerts, now)
     if self.firstFrost then
         alerts:setRow(3, _STR_FROST_FIRST, nil)
     else
-        local r = self.frostTimer:remaining()
+        local r = self.frostTimer:remainingAt(now)
         if r > 0 then
             alerts:setRow(3, _STR_FROST_LABEL, r)
         else
@@ -282,14 +282,15 @@ local function showFrostBombLine(self, alerts)
 end
 
 function YaseylaEncounter:onUpdate(context, alerts)
-    showFireBombLine(self, alerts)
-    local rc = self.chainTimer:remaining()
+    local now = GetGameTimeMilliseconds() / 1000
+    showFireBombLine(self, alerts, now)
+    local rc = self.chainTimer:remainingAt(now)
     if rc > 0 then
         alerts:setRow(2, _STR_CHAINS_LABEL, rc)
     else
         alerts:setRow(2, _STR_CHAINS_RDY, nil)
     end
-    showFrostBombLine(self, alerts)
+    showFrostBombLine(self, alerts, now)
     alerts:clearRow(4)
     alerts:clearRow(5)
     alerts:clearRow(6)

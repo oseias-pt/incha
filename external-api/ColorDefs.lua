@@ -53,6 +53,7 @@ local _rgb = {
     BLUE      = { 0.00, 0.00, 1.00 },   -- pure blue (fog / magical barrier)
     SILVER    = { 0.70, 0.70, 0.70 },   -- neutral gray (untyped block/dodge bar)
     MAGENTA   = { 1.00, 0.20, 0.90 },   -- hot pink (urgent dodge signal)
+    WHITE     = { 1.00, 1.00, 1.00 },   -- plain white (neutral position-icon tint)
 }
 
 -- ── Layer builder ──────────────────────────────────────────────────────────

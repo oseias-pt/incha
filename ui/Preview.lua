@@ -8,6 +8,7 @@
 local Panel         = require("ui.Panel")
 local CA            = require("external-api.CombatAlerts")
 local MechanicIcons = require("external-api.MechanicIcons")
+local Colors        = require("core.Colors")
 
 local Preview = {}
 
@@ -19,6 +20,13 @@ local INST_FRAMES   = 40
 local INST_INTERVAL = 50           -- ms per frame  (2 s full loop)
 local INST_KEY      = "Incha_PreviewInstAnim"
 
+-- Frame texture paths built once; the 50 ms tick then indexes a table
+-- instead of running string.format 20 times a second.
+local INST_FRAME_TEX = {}
+for i = 1, INST_FRAMES do
+    INST_FRAME_TEX[i] = string.format("Incha/resources/instability/frame_%02d.dds", i)
+end
+
 local _instFrame  = 0
 local _instActive = false
 local _instDn     = nil            -- display name of the target (local player)
@@ -26,9 +34,9 @@ local _instDn     = nil            -- display name of the target (local player)
 local function instAnimTick()
     if not _instDn then return end
     _instFrame = (_instFrame % INST_FRAMES) + 1
-    local tex = string.format("Incha/resources/instability/frame_%02d.dds",
-                              _instFrame)
-    MechanicIcons.set(_instDn, tex, { 1.0, 0.6, 0.0 })
+    -- MechanicIcons takes a colour NAME; FLYZONE is the same warm orange the
+    -- live Falgravn animation uses.
+    MechanicIcons.set(_instDn, INST_FRAME_TEX[_instFrame], Colors.FLYZONE)
 end
 
 local function stopInstAnim()

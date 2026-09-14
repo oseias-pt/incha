@@ -49,6 +49,12 @@ local CHAIN_CD       = 20
 local FALLBACK_DUR      = 2000
 local FALLBACK_SHRED_DUR = 1500
 
+-- Tracker-row strings built once at load; the 200 ms loop never calls Lang.t.
+local _STR_DESPAWN          = Lang.t("se_chimera_despawn_label")
+local _STR_DESPAWN_IMMINENT = Lang.t("se_chimera_despawn_label") .. " " .. Lang.t("common_imminent")
+local _STR_CHAIN            = Lang.t("se_chimera_chain_label")
+local _STR_CHAIN_READY      = Lang.t("se_chimera_chain_label") .. " " .. Lang.t("common_ready")
+
 local ChimeraEncounter = {}
 ChimeraEncounter.__index = ChimeraEncounter
 
@@ -221,17 +227,18 @@ ChimeraEncounter.events = {
 
 local function showChimeraLines(self, alerts)
     if self.chimeraActive then
-        local rd = self.despawnTimer:remaining()
-        local rc = self.chainTimer:remaining()
+        local now = GetGameTimeMilliseconds() / 1000
+        local rd = self.despawnTimer:remainingAt(now)
+        local rc = self.chainTimer:remainingAt(now)
         if rd > 0 then
-            alerts:setRow(1, Lang.t("se_chimera_despawn_label"), rd)
+            alerts:setRow(1, _STR_DESPAWN, rd)
         else
-            alerts:setRow(1, Lang.t("se_chimera_despawn_label") .. " " .. Lang.t("common_imminent"), nil)
+            alerts:setRow(1, _STR_DESPAWN_IMMINENT, nil)
         end
         if rc > 0 then
-            alerts:setRow(2, Lang.t("se_chimera_chain_label"), rc)
+            alerts:setRow(2, _STR_CHAIN, rc)
         else
-            alerts:setRow(2, Lang.t("se_chimera_chain_label") .. " " .. Lang.t("common_ready"), nil)
+            alerts:setRow(2, _STR_CHAIN_READY, nil)
         end
     else
         alerts:clearRow(1)
@@ -248,9 +255,8 @@ function ChimeraEncounter:onUpdate(context, alerts)
     alerts:clearRow(7)
 end
 
-function ChimeraEncounter:onPowerUpdate(context, healthPercent, alerts)
-    -- No HP milestone logic for Chimera.
-end
+-- No onPowerUpdate: Chimera has no HP-milestone logic, and Trial skips the
+-- callback entirely when the method is absent.
 
 EventDispatcher.build(ChimeraEncounter)
 

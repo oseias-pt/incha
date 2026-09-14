@@ -37,7 +37,10 @@ local _toxicIreLastMs = 0
 
 -- -- Caustic Carrion: current player stack count ---------------------------
 -- Stored at module level so showCarrionInfo can read it from boss:onUpdate.
+-- _carrionStr is the finished row-3 text for the current count, rebuilt by
+-- the gained/faded handlers so the 200 ms loop only hands over a string.
 local _carrionStacks = 0
+local _carrionStr    = false
 
 -- -- Fallback cast durations (ms) ------------------------------------------
 local FALL_SKULL    = 2500   -- Skullstorm: empirical
@@ -52,20 +55,29 @@ local function carrionColorCode(n)
     end
 end
 
--- -- Public: reset on wipe ---------------------------------------------------
--- Call from every OC boss onWipe so module-level state doesn't bleed into
--- the next pull.  Clears both _carrionStacks and the Toxic Ire debounce.
+-- -- Public: reset on wipe / zone exit ---------------------------------------
+-- Call from every OC boss onWipe AND onLeave so module-level state doesn't
+-- bleed into the next pull or the next visit.  Clears _carrionStacks, the
+-- cached row text and the Toxic Ire debounce.
 function OsseinCageCommon.reset()
     _carrionStacks  = 0
+    _carrionStr     = false
     _toxicIreLastMs = 0
+end
+
+local function rebuildCarrionStr()
+    if _carrionStacks > 0 then
+        _carrionStr = Fmt.c(carrionColorCode(_carrionStacks), Lang.t("oc_carrion_label", _carrionStacks))
+    else
+        _carrionStr = false
+    end
 end
 
 -- -- Public: write Caustic Carrion info to panel line 3 --------------------
 -- Call from each OC boss's onUpdate in place of alerts:clearRow(3).
 function OsseinCageCommon.showCarrionInfo(alerts)
-    if _carrionStacks > 0 then
-        local col = carrionColorCode(_carrionStacks)
-        alerts:setRow(3, Fmt.c(col, Lang.t("oc_carrion_label", _carrionStacks)), nil)
+    if _carrionStr then
+        alerts:setRow(3, _carrionStr, nil)
     else
         alerts:clearRow(3)
     end
@@ -136,6 +148,7 @@ end
 local function handleCarrionGained(boss, ctx, alerts, abilityId, unitName, unitTag, unitId, stackCount)
     if not IsUnitPlayer(unitTag) then return end
     _carrionStacks = stackCount or (_carrionStacks + 1)
+    rebuildCarrionStr()
     OsseinCageCommon.showCarrionInfo(alerts)
     local s = _carrionStacks
     if s == 6 or s == 8 or s == 10 then
@@ -147,6 +160,7 @@ end
 local function handleCarrionFaded(boss, ctx, alerts, abilityId, unitName, unitTag, ...)
     if not IsUnitPlayer(unitTag) then return end
     _carrionStacks = 0
+    rebuildCarrionStr()
     OsseinCageCommon.showCarrionInfo(alerts)
 end
 

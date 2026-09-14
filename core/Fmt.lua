@@ -55,18 +55,26 @@ function Fmt.colored(...)
     return table.concat(parts)
 end
 
+-- Format strings for the decimal counts callers actually use, built once so
+-- the per-call path is a single string.format rather than two concatenations
+-- plus a format.  Other precisions fall back to building the pattern.
+local _TIMER_FMT = { [0] = "%.0fs", [1] = "%.1fs", [2] = "%.2fs" }
+local _PCT_FMT   = { [0] = "%.0f%%", [1] = "%.1f%%", [2] = "%.2f%%" }
+
 --- Format a timer value as a human-readable string.
 --- Fmt.timer(3.7)    → "4s"   (0 decimals, default)
 --- Fmt.timer(3.7, 1) → "3.7s"
 function Fmt.timer(n, d)
-    return string.format("%." .. (d or 0) .. "f", n) .. "s"
+    d = d or 0
+    return string.format(_TIMER_FMT[d] or ("%." .. d .. "fs"), n)
 end
 
 --- Format a percentage value as a human-readable string.
 --- Fmt.pct(54.3)     → "54%"  (0 decimals, default)
 --- Fmt.pct(37.5, 1)  → "37.5%"
 function Fmt.pct(n, d)
-    return string.format("%." .. (d or 0) .. "f%%", n)
+    d = d or 0
+    return string.format(_PCT_FMT[d] or ("%." .. d .. "f%%"), n)
 end
 
 package.loaded["core.Fmt"] = Fmt

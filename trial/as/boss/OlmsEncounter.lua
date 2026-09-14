@@ -55,6 +55,12 @@ local _STR_BOLTS_DUE        = Lang.t("as_olms_bolts_label") .. " " .. Lang.t("co
 local _STR_FELMS_DORMANT    = Lang.t("as_olms_felms_dormant")
 local _STR_STRIKE           = Lang.t("as_olms_strike_label")
 local _STR_STRIKE_READY     = Lang.t("as_olms_strike_label") .. " " .. Lang.t("common_ready")
+local _STR_STORM_SOON       = Lang.t("as_olms_storm_soon")
+-- "Jump at N%!" per threshold index; built once since JUMP_THRESHOLDS is constant.
+local _STR_JUMP_AT = {}
+for i, threshold in ipairs(JUMP_THRESHOLDS) do
+    _STR_JUMP_AT[i] = Lang.t("as_olms_jump_at", tostring(threshold))
+end
 
 local OlmsEncounter = {}
 OlmsEncounter.__index = OlmsEncounter
@@ -76,6 +82,10 @@ OlmsEncounter.stateSchema = {
     protectorUp       = false,
     nextJumpThreshold = 1,
     stormPreWarned    = false,
+    -- Row-1 override while the boss sits inside a jump pre-warn window
+    -- (threshold .. threshold+3 %).  Set by onPowerUpdate, drawn by
+    -- showStormLine, so only one writer touches row 1.
+    jumpWarnText      = false,
     alertList         = function() return {} end,
     llothis           = function()
         return SubBoss.new({ blast = Timer.new(BLAST_CD), bolts = Timer.new(BOLTS_CD) })
@@ -259,15 +269,21 @@ OlmsEncounter.events = {
 
 -- ── Tracker-row renderers ─────────────────────────────────────────────────────
 
-local function showStormLine(self, alerts)
+local function showStormLine(self, alerts, now)
     if self.protectorUp then
         alerts:setRow(1, _STR_PROTECTOR_ACTIVE, nil)
         return
     end
-    local t = self.stormTimer:remaining()
+    if self.jumpWarnText then
+        -- Jump pre-warn takes the slot; onPowerUpdate clears it when the
+        -- boss leaves the window or the jump fires.
+        alerts:setRow(1, self.jumpWarnText, nil)
+        return
+    end
+    local t = self.stormTimer:remainingAt(now)
     if t > 0 and t <= 6 and not self.stormPreWarned then
         self.stormPreWarned = true
-        CA.alert(nil, "Storm soon!", 0xFF6600FF, SOUNDS.NONE, 3000)
+        CA.alert(nil, _STR_STORM_SOON, 0xFF6600FF, SOUNDS.NONE, 3000)
     elseif t > 6 then
         self.stormPreWarned = false
     end
@@ -278,10 +294,10 @@ local function showStormLine(self, alerts)
     end
 end
 
-local function showOlmsLines(self, alerts)
-    local t2 = self.steamTimer:remaining()
-    local t3 = self.chargesTimer:remaining()
-    local t4 = self.fireTimer:remaining()
+local function showOlmsLines(self, alerts, now)
+    local t2 = self.steamTimer:remainingAt(now)
+    local t3 = self.chargesTimer:remainingAt(now)
+    local t4 = self.fireTimer:remainingAt(now)
     alerts:setRow(2, t2 > 0 and _STR_STEAM or _STR_STEAM_READY, t2 > 0 and t2 or nil)
     alerts:setRow(3, t3 > 0 and _STR_CHARGES or _STR_CHARGES_READY, t3 > 0 and t3 or nil)
     if t4 > 0 then
@@ -291,51 +307,65 @@ local function showOlmsLines(self, alerts)
     end
 end
 
-local function showLlothisLine(self, alerts)
+local function showLlothisLine(self, alerts, now)
     if self.llothis.spawnGs == nil then
         alerts:clearRow(5)
     elseif not self.llothis.active then
         alerts:setRow(5, _STR_LLOTHIS_DORMANT, nil)
     else
-        local t = self.llothis.blast:remaining()
+        local t = self.llothis.blast:remainingAt(now)
         alerts:setRow(5, t > 0 and _STR_BLAST or _STR_BLAST_READY, t > 0 and t or nil)
     end
 end
 
-local function showBoltsLine(self, alerts)
+local function showBoltsLine(self, alerts, now)
     if self.llothis.active then
-        local t = self.llothis.bolts:remaining()
+        local t = self.llothis.bolts:remainingAt(now)
         alerts:setRow(6, t > 0 and _STR_BOLTS or _STR_BOLTS_DUE, t > 0 and t or nil)
     else
         alerts:clearRow(6)
     end
 end
 
-local function showFelmsLine(self, alerts)
+local function showFelmsLine(self, alerts, now)
     if self.felms.spawnGs == nil then
         alerts:clearRow(7)
     elseif not self.felms.active then
         alerts:setRow(7, _STR_FELMS_DORMANT, nil)
     else
-        local t = self.felms.jump:remaining()
+        local t = self.felms.jump:remainingAt(now)
         alerts:setRow(7, t > 0 and _STR_STRIKE or _STR_STRIKE_READY, t > 0 and t or nil)
     end
 end
 
 function OlmsEncounter:onUpdate(context, alerts)
-    showStormLine(self, alerts)
-    showOlmsLines(self, alerts)
-    showLlothisLine(self, alerts)
-    showBoltsLine(self, alerts)
-    showFelmsLine(self, alerts)
+    -- One GetGameTimeMilliseconds() per tick shared by all seven timers.
+    local now = GetGameTimeMilliseconds() / 1000
+    showStormLine(self, alerts, now)
+    showOlmsLines(self, alerts, now)
+    showLlothisLine(self, alerts, now)
+    showBoltsLine(self, alerts, now)
+    showFelmsLine(self, alerts, now)
 end
 
+-- Jump pre-warn: while the boss sits in the (threshold, threshold+3] window
+-- the pre-built "Jump at N%!" string is handed to showStormLine, which owns
+-- row 1.  Only the flag changes here; no string is built per power tick.
 function OlmsEncounter:onPowerUpdate(context, healthPercent, alerts)
-    if not Settings.trial("as").showPercent then return end
-    if self.nextJumpThreshold > #JUMP_THRESHOLDS then return end
-    local threshold = JUMP_THRESHOLDS[self.nextJumpThreshold]
+    if not Settings.trial("as").showPercent then
+        self.jumpWarnText = false
+        return
+    end
+    local idx = self.nextJumpThreshold
+    if idx > #JUMP_THRESHOLDS then
+        self.jumpWarnText = false
+        return
+    end
+    local threshold = JUMP_THRESHOLDS[idx]
     if healthPercent <= threshold + 3 and healthPercent > threshold then
-        alerts:setRow(1, Lang.t("as_olms_jump_at", tostring(threshold)), nil)
+        self.jumpWarnText = _STR_JUMP_AT[idx]
+    else
+        self.jumpWarnText = false
     end
 end
 

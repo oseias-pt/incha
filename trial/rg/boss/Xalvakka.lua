@@ -45,10 +45,10 @@ end
 
 -- P6: module-level string constants — avoid Lang.t calls in onUpdate (60 fps)
 local _STR_JUMP          = Fmt.c(Fmt.AMBER,  Lang.t("rg_xalvakka_next_jump"))
-local _STR_JUMP_INC      = Fmt.c(Fmt.AMBER,  Lang.t("rg_xalvakka_next_jump")) .. " " .. Fmt.c(Fmt.RED, "INC")
+local _STR_JUMP_INC      = Fmt.c(Fmt.AMBER,  Lang.t("rg_xalvakka_next_jump")) .. " " .. Fmt.c(Fmt.RED, Lang.t("common_inc"))
 local _STR_SOUL_RES      = Fmt.c(Fmt.ORANGE, Lang.t("rg_xalvakka_soul_res"))
 local _STR_MANIFOLD_PFX  = Lang.t("rg_xalvakka_manifold")
-local _STR_MANIFOLD_YOU  = Fmt.c(Fmt.ARCANE, "YOU")   -- cached; used in rebuildManifoldStr
+local _STR_MANIFOLD_YOU  = Fmt.c(Fmt.ARCANE, Lang.t("common_you"))   -- cached; used in rebuildManifoldStr
 local _STR_SHIELD_PFX    = Lang.t("rg_xalvakka_shield")
 local _STR_ON_BLOB       = Fmt.c(Fmt.GREEN,  Lang.t("rg_xalvakka_on_blob"))
 local _STR_RUN_IN_PFX    = Lang.t("rg_xalvakka_run_in")
@@ -83,24 +83,32 @@ function Xalvakka:onLeave(context)
     EVENT_MANAGER:UnregisterForEvent(SHIELD_EVENT_KEY, EVENT_UNIT_ATTRIBUTE_VISUAL_REMOVED)
 end
 
+-- Shield-visual event body.  Plain function (no per-event closure): the
+-- VISUAL_UPDATED event fires on every shield tick of the reticle target, so
+-- the handler must not allocate.  `boss` is the instance that registered.
+local function applyShieldValue(boss, attributeType, v)
+    if attributeType ~= ATTRIBUTE_VISUAL_POWER_SHIELDING then return end
+    boss.shellShield = v
+    -- Cache the formatted string here so showManifoldLine reads a pre-built
+    -- value rather than calling string.format every 200 ms.
+    boss._shieldStr = v > 0 and (_STR_SHIELD_PFX .. fmtShield(v)) or false
+end
+
 function Xalvakka:onEnter(context, alerts)
     EVENT_MANAGER:UnregisterForEvent(SHIELD_EVENT_KEY, EVENT_UNIT_ATTRIBUTE_VISUAL_ADDED)
     EVENT_MANAGER:UnregisterForEvent(SHIELD_EVENT_KEY, EVENT_UNIT_ATTRIBUTE_VISUAL_UPDATED)
     EVENT_MANAGER:UnregisterForEvent(SHIELD_EVENT_KEY, EVENT_UNIT_ATTRIBUTE_VISUAL_REMOVED)
 
-    local function onShield(setter)
-        return function(eventCode, unitTag, attributeType, powerType, value, max, poolIndex)
-            local ok, err = pcall(function()
-                if attributeType == ATTRIBUTE_VISUAL_POWER_SHIELDING then
-                    local v = setter(value)
-                    self.shellShield = v
-                    -- Cache the formatted string here so showManifoldLine reads a
-                    -- pre-built value rather than calling string.format every 200ms.
-                    self._shieldStr = v > 0 and (_STR_SHIELD_PFX .. fmtShield(v)) or false
-                end
-            end)
-            if not ok then Log.always("Xalvakka shield event: %s", tostring(err)) end
-        end
+    -- Two closures for the whole encounter (not one per event): the value
+    -- path for ADDED / UPDATED and the zero path for REMOVED.  pcall wraps
+    -- the shared body directly, so nothing is allocated per event.
+    local function onShieldValue(eventCode, unitTag, attributeType, powerType, value)
+        local ok, err = pcall(applyShieldValue, self, attributeType, value or 0)
+        if not ok then Log.always("Xalvakka shield event: %s", tostring(err)) end
+    end
+    local function onShieldRemoved(eventCode, unitTag, attributeType)
+        local ok, err = pcall(applyShieldValue, self, attributeType, 0)
+        if not ok then Log.always("Xalvakka shield event: %s", tostring(err)) end
     end
 
     local function register(event, handler)
@@ -109,9 +117,9 @@ function Xalvakka:onEnter(context, alerts)
             REGISTER_FILTER_UNIT_TAG, "reticleover")
     end
 
-    register(EVENT_UNIT_ATTRIBUTE_VISUAL_ADDED,   onShield(function(v) return v or 0 end))
-    register(EVENT_UNIT_ATTRIBUTE_VISUAL_UPDATED, onShield(function(v) return v or 0 end))
-    register(EVENT_UNIT_ATTRIBUTE_VISUAL_REMOVED, onShield(function() return 0 end))
+    register(EVENT_UNIT_ATTRIBUTE_VISUAL_ADDED,   onShieldValue)
+    register(EVENT_UNIT_ATTRIBUTE_VISUAL_UPDATED, onShieldValue)
+    register(EVENT_UNIT_ATTRIBUTE_VISUAL_REMOVED, onShieldRemoved)
 end
 
 -- Rebuild the manifold display string from current selfManifold + manifoldOthers.

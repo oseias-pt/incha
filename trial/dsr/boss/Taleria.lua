@@ -44,6 +44,8 @@ local STORM_WALL_DUR   = 45
 local BRIDGE_WIPE      = 60
 local MAELSTROM_DODGE  = 1.5
 local BRIDGE_HP        = { 50.9, 35.9, 20.9 }
+-- "Next bridge: 50.9%" per bridge index, built once (BRIDGE_HP is constant).
+local NEXT_BRIDGE_STR  = {}
 
 local ACT_BREAK         = { 4000, "Break free!", 0.9, 0.1, 0.1, 0.9, nil }
 local FALLBACK_WAVE_DUR  = 2000
@@ -53,6 +55,23 @@ local FALLBACK_FEAR_DUR  = 2000
 
 -- Portal colors (shared between handlers built at module load)
 local PORTAL_COLORS = { 0x22CC22D9, 0xDDCC00D9, 0x8822DDD9 }
+
+-- Tracker-row strings built once at load; the 200 ms loop reads these and
+-- never calls Fmt.c / Lang.t.
+local _STR_DODGE_MAELSTROM = Fmt.c(Fmt.RED,    Lang.t("dsr_taleria_dodge_maelstrom"))
+local _STR_HEAL            = Fmt.c(Fmt.POISON, Lang.t("dsr_taleria_heal"))
+local _STR_MAELSTROM       = Fmt.c(Fmt.POISON, Lang.t("dsr_taleria_maelstrom"))
+local _STR_MAELSTROM_INC   = _STR_MAELSTROM .. " " .. Fmt.c(Fmt.RED, Lang.t("common_inc"))
+local _STR_BEHEMOTH_SLAM   = Fmt.c(Fmt.ORANGE, Lang.t("dsr_taleria_behemoth_slam"))
+local _STR_BEHEMOTH        = Fmt.c(Fmt.ORANGE, Lang.t("dsr_taleria_behemoth"))
+local _STR_BEHEMOTH_INC    = _STR_BEHEMOTH .. " " .. Fmt.c(Fmt.RED, Lang.t("common_inc"))
+local _STR_STORM_CW        = Fmt.c(Fmt.PURPLE, Lang.t("dsr_taleria_storm_cw"))
+local _STR_STORM_CCW       = Fmt.c(Fmt.PURPLE, Lang.t("dsr_taleria_storm_ccw"))
+local BRIDGE_NAMES = {
+    Fmt.c("22CC22", Lang.t("dsr_taleria_bridge_label_1")),
+    Fmt.c("DDCC00", Lang.t("dsr_taleria_bridge_label_2")),
+    Fmt.c("8822DD", Lang.t("dsr_taleria_bridge_label_3")),
+}
 
 local Taleria = {}
 Taleria.__index = Taleria
@@ -73,6 +92,10 @@ Taleria.stateSchema = {
     bridgeWipeStart = function() return { 0, 0, 0 } end,
     bridgeDone      = function() return { false, false, false } end,
     lureBarId       = false,
+    -- Row-4 bridge countdown cache: the joined "G 42s  Y 17s" text changes
+    -- once per second, so it is rebuilt only when the whole-second key moves.
+    _bridgeKey      = -1,
+    _bridgeStr      = false,
 }
 
 function Taleria.new()
@@ -81,6 +104,7 @@ end
 
 function Taleria:onLeave(context)
     CA.castAlertsStop(self.lureBarId)
+    self.lureBarId = false
 end
 
 -- -- Handlers: beginCast ----------------------------------------------------
@@ -288,17 +312,16 @@ local function showMaelstromLine(self, alerts, now)
         if elapsed < MAELSTROM_DUR then
             local T = MAELSTROM_DUR - elapsed
             if T <= MAELSTROM_DODGE then
-                alerts:setRow(1, Fmt.c(Fmt.RED, Lang.t("dsr_taleria_dodge_maelstrom")), nil)
+                alerts:setRow(1, _STR_DODGE_MAELSTROM, nil)
             else
-                alerts:setRow(1, Fmt.c(Fmt.POISON, Lang.t("dsr_taleria_heal")), T)
+                alerts:setRow(1, _STR_HEAL, T)
             end
         else
             local T = MAELSTROM_CD - elapsed
             if T > 0 then
-                alerts:setRow(1, Fmt.c(Fmt.POISON, Lang.t("dsr_taleria_maelstrom")), T)
+                alerts:setRow(1, _STR_MAELSTROM, T)
             else
-                alerts:setRow(1,
-                    Fmt.c(Fmt.POISON, Lang.t("dsr_taleria_maelstrom")) .. " " .. Fmt.c(Fmt.RED, "INC"), nil)
+                alerts:setRow(1, _STR_MAELSTROM_INC, nil)
             end
         end
     else
@@ -313,12 +336,11 @@ local function showBehemothLine(self, alerts, now, isHM)
         local slamT   = (self.behemothSlam > 0) and (self.behemothSlam - now) or -1
 
         if slamT >= 0 and slamT <= 3 then
-            alerts:setRow(2, Fmt.c(Fmt.ORANGE, Lang.t("dsr_taleria_behemoth_slam")), slamT)
+            alerts:setRow(2, _STR_BEHEMOTH_SLAM, slamT)
         elseif summonT > 0 then
-            alerts:setRow(2, Fmt.c(Fmt.ORANGE, Lang.t("dsr_taleria_behemoth")), summonT)
+            alerts:setRow(2, _STR_BEHEMOTH, summonT)
         else
-            alerts:setRow(2,
-                Fmt.c(Fmt.ORANGE, Lang.t("dsr_taleria_behemoth")) .. " " .. Fmt.c(Fmt.RED, "INC"), nil)
+            alerts:setRow(2, _STR_BEHEMOTH_INC, nil)
         end
     else
         alerts:clearRow(2)
@@ -330,8 +352,7 @@ local function showStormWallLine(self, alerts, now)
     if self.lastStormWall > 0 and not suppressStorm then
         local T = STORM_WALL_DUR - (now - self.lastStormWall)
         if T > 0 then
-            alerts:setRow(3, Fmt.c(Fmt.PURPLE, Lang.t(
-                self.stormWallCW and "dsr_taleria_storm_cw" or "dsr_taleria_storm_ccw")), T)
+            alerts:setRow(3, self.stormWallCW and _STR_STORM_CW or _STR_STORM_CCW, T)
         else
             alerts:clearRow(3)
         end
@@ -340,42 +361,65 @@ local function showStormWallLine(self, alerts, now)
     end
 end
 
-local function showBridgeLine(self, alerts, now, context)
-    local bridgeLabels = {}
-    local names = {
-        Fmt.c("22CC22", Lang.t("dsr_taleria_bridge_label_1")),
-        Fmt.c("DDCC00", Lang.t("dsr_taleria_bridge_label_2")),
-        Fmt.c("8822DD", Lang.t("dsr_taleria_bridge_label_3")),
-    }
+-- Row 4 while bridges are open: "G 42s  Y 17s".  The three whole-second
+-- values are packed into one key; the string is rebuilt only when that key
+-- changes (once per second at most), never on every tick.
+local function bridgeCountdownText(self, now)
+    local s1, s2, s3 = 0, 0, 0
     for i = 1, 3 do
         if self.bridgeWipeStart[i] > 0 and not self.bridgeDone[i] then
             local T = BRIDGE_WIPE - (now - self.bridgeWipeStart[i])
             if T > 0 then
-                local tStr = string.format("%.0f", T) .. "s"
-                table.insert(bridgeLabels,
-                    names[i] .. " " .. ((T <= 15) and Fmt.c(Fmt.RED, tStr) or tStr))
+                local sec = math.ceil(T)
+                if i == 1 then s1 = sec elseif i == 2 then s2 = sec else s3 = sec end
             else
                 self.bridgeWipeStart[i] = 0
             end
         end
     end
+    local key = s1 * 1000000 + s2 * 1000 + s3
+    if key == 0 then
+        self._bridgeKey, self._bridgeStr = 0, false
+        return false
+    end
+    if key ~= self._bridgeKey then
+        local text = nil
+        for i = 1, 3 do
+            local sec = (i == 1 and s1) or (i == 2 and s2) or s3
+            if sec > 0 then
+                local tStr = sec .. "s"
+                if sec <= 15 then tStr = Fmt.c(Fmt.RED, tStr) end
+                local part = BRIDGE_NAMES[i] .. " " .. tStr
+                text = text and (text .. "  " .. part) or part
+            end
+        end
+        self._bridgeKey, self._bridgeStr = key, text
+    end
+    return self._bridgeStr
+end
 
-    if #bridgeLabels > 0 then
-        alerts:setRow(4, table.concat(bridgeLabels, "  "), nil)
+local function showBridgeLine(self, alerts, now, context)
+    local text = bridgeCountdownText(self, now)
+    if text then
+        alerts:setRow(4, text, nil)
     else
         local hp = context.healthPercent
         local nextBridge = nil
         if hp then
             for i = 1, 3 do
                 if not self.bridgeOpen[i] then
-                    nextBridge = BRIDGE_HP[i]
+                    nextBridge = i
                     break
                 end
             end
         end
         if nextBridge then
-            alerts:setRow(4, Fmt.c(Fmt.YELLOW,
-                Lang.t("dsr_taleria_next_bridge") .. Fmt.pct(nextBridge, 1)), nil)
+            local s = NEXT_BRIDGE_STR[nextBridge]
+            if not s then
+                s = Fmt.c(Fmt.YELLOW, Lang.t("dsr_taleria_next_bridge") .. Fmt.pct(BRIDGE_HP[nextBridge], 1))
+                NEXT_BRIDGE_STR[nextBridge] = s
+            end
+            alerts:setRow(4, s, nil)
         else
             alerts:clearRow(4)
         end
@@ -383,14 +427,8 @@ local function showBridgeLine(self, alerts, now, context)
 end
 
 function Taleria:onWipe(context, alerts)
-    CA.castAlertsStop(self.lureBarId)
-    self.lureBarId        = nil
-    self.lastMaelstrom    = 0;    self.lastBehemothSumm = 0
-    self.behemothSlam     = 0;    self.lastStormWall    = 0
-    self.stormWallCW      = true; self.lastPlatformFall = 0
-    self.bridgeOpen       = { false, false, false }
-    self.bridgeWipeStart  = { 0, 0, 0 }
-    self.bridgeDone       = { false, false, false }
+    CA.castAlertsStop(self.lureBarId)  -- stop bar before schema reset overwrites the id
+    BossBase.resetSchema(self, Taleria)
     CA.border(false, 0, "green")
 end
 

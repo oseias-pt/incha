@@ -33,6 +33,13 @@ local CATACLYSM     = 122598   -- beginCast: caAlertCast + landing timer
 local FALLBACK_GEYSER_DUR = 2500   -- LavaGeyser: empirical
 local FALLBACK_CATA_DUR   = 4600   -- Cataclysm: empirical (~4.6 s)
 
+-- Tracker-row strings built once at load; the 200 ms loop never calls
+-- Fmt.c / Lang.t (see Lokke.lua for the same pattern).
+local _STR_NEXT_FLARE  = Fmt.c(Fmt.CRIMSON, Lang.t("ss_yolna_next_flare"))
+local _STR_CATA_ENDS   = Fmt.c(Fmt.CRIMSON, Lang.t("ss_yolna_cataclysm_ends"))
+local _STR_LANDING     = Fmt.c(Fmt.LANDING, Lang.t("ss_landing"))
+local _STR_CAN_FLY_PFX = Lang.t("ss_can_fly_in")
+
 -- -- Boss definition -------------------------------------------------------
 local Yolna = {}
 Yolna.__index = Yolna
@@ -97,7 +104,7 @@ end
 
 local function handleAtroSpawn(boss, context, alerts, abilityId, ...)
     alerts:showAction(Lang.t("ss_yolna_kill_atro"))
-    CA.alert(nil, "Kill Atro!", 0xFF8000FF, SOUNDS.NONE, 4500)
+    CA.alert(nil, Lang.t("ss_yolna_kill_atro"), 0xFF8000FF, SOUNDS.NONE, 4500)
 end
 
 local function handleLavaGeyser(boss, context, alerts, abilityId, sourceUnitName,
@@ -180,7 +187,7 @@ local function showFlareLine(self, alerts, now)
     if self.nextFlareTime > 0 then
         local T = self.nextFlareTime - now
         if T > 0 then
-            alerts:setRow(1, Fmt.c(Fmt.CRIMSON, Lang.t("ss_yolna_next_flare")), T)
+            alerts:setRow(1, _STR_NEXT_FLARE, T)
         else
             alerts:clearRow(1)   -- brief gap between flares; CombatAlerts handles the visible warning
         end
@@ -190,20 +197,20 @@ local function showFlareLine(self, alerts, now)
 end
 
 -- Row 2: Cataclysm channel — time remaining until channel ends.
-local function showCataLine(self, alerts)
-    local cataLeft = self.cataTimer:remaining()
+local function showCataLine(self, alerts, now)
+    local cataLeft = self.cataTimer:remainingAt(now)
     if cataLeft > 0 then
-        alerts:setRow(2, Fmt.c(Fmt.CRIMSON, Lang.t("ss_yolna_cataclysm_ends")), cataLeft)
+        alerts:setRow(2, _STR_CATA_ENDS, cataLeft)
     else
         alerts:clearRow(2)
     end
 end
 
 -- Row 4: Landing countdown → HP can-fly threshold.
-local function showLandingOrFlyLine(self, alerts, context)
-    local landing = self.landingTimer:remaining()
+local function showLandingOrFlyLine(self, alerts, context, now)
+    local landing = self.landingTimer:remainingAt(now)
     if landing > 0 then
-        alerts:setRow(4, Fmt.c(Fmt.LANDING, Lang.t("ss_landing")), landing)
+        alerts:setRow(4, _STR_LANDING, landing)
     else
         local hp = context.healthPercent
         if hp and hp > 25 then
@@ -213,7 +220,8 @@ local function showLandingOrFlyLine(self, alerts, context)
             elseif hp >= 26 then flyAt = 26
             end
             if flyAt and (hp - flyAt) <= 5 then
-                alerts:setRow(4, Fmt.c(Fmt.FLYZONE, Lang.t("ss_can_fly_in") .. Fmt.pct(hp - flyAt, 1)), nil)
+                -- hp moves in 0.1% steps; this string only exists inside a 5% window.
+                alerts:setRow(4, Fmt.c(Fmt.FLYZONE, _STR_CAN_FLY_PFX .. Fmt.pct(hp - flyAt, 1)), nil)
             else
                 alerts:clearRow(4)
             end
@@ -227,9 +235,9 @@ end
 function Yolna:onUpdate(context, alerts)
     local now = GetGameTimeMilliseconds() / 1000
     showFlareLine(self, alerts, now)
-    showCataLine(self, alerts)
+    showCataLine(self, alerts, now)
     alerts:clearRow(3)
-    showLandingOrFlyLine(self, alerts, context)
+    showLandingOrFlyLine(self, alerts, context, now)
 end
 
 package.loaded["trial.ss.boss.Yolna"] = Yolna

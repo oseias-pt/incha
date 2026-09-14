@@ -77,6 +77,8 @@ local _combatResultSubtype = {
 --
 -- Lifecycle:
 --   dispatchBeginCast (F + castTime>0): inserts [uid][id], arms zo_callLater
+--                                       (only when boss.events.beginCast.interrupted
+--                                        declares the ability; no entry = no timer)
 --   dispatchBeginCast (T event):        cancelPending removes slot + cancels timer
 --   onInterruptTimerFired:              removes slot before running handler
 --   EventDispatcher.clearPending():     called by EventPipeline.clearBossFilters()
@@ -221,19 +223,28 @@ function EventDispatcher.dispatchBeginCast(boss, context, alerts,
         lookupAndRun(bc.started, "beginCast.started",
             boss, context, alerts, abilityId, sourceUnitName, ...)
 
+        -- The interrupt-detection timer costs one closure, one table and one
+        -- zo_callLater per cast.  Only pay for it when this boss actually
+        -- declares an `interrupted` handler for the ability; otherwise the
+        -- timer would fire into an empty bucket and do nothing.
+        local interruptedEntry = bc.interrupted and bc.interrupted[abilityId]
+        if not interruptedEntry then return end
+
         -- noExecute = true: ability is scripted never to fire a T event (e.g. a
         -- boss cast that is always interrupted by design).  Skip the timer so we
         -- don't emit spurious interrupt events every castTime ms.
         local startedEntry = bc.started and bc.started[abilityId]
         if startedEntry and startedEntry.noExecute then return end
 
-        -- Capture the interrupted entry and boss state now; the timer callback
-        -- closes over these rather than re-looking them up after a potential
-        -- boss change.
-        local interruptedEntry = bc.interrupted and bc.interrupted[abilityId]
+        -- Capture the boss state and the event's unit arguments now; the timer
+        -- callback closes over these rather than re-looking them up after a
+        -- potential boss change.  The unit args are forwarded so `targetOnly`
+        -- and CUSTOM handlers see the same (unitTag, unitId, sourceUnitId,
+        -- unitName) the started handler saw.
         local capturedBoss     = boss
         local capturedContext  = context
         local capturedAlerts   = alerts
+        local unitTag, unitId, capturedSourceUnitId, unitName = ...
 
         local handle
         local function onInterruptTimerFired()
@@ -244,13 +255,12 @@ function EventDispatcher.dispatchBeginCast(boss, context, alerts,
             if p and p.handle == handle then
                 byUnit[abilityId] = nil
                 if not next(byUnit) then _pending[sourceUnitId] = nil end
-                if interruptedEntry then
-                    runEntry(interruptedEntry, capturedBoss, capturedContext, capturedAlerts,
-                        abilityId, sourceUnitName)
-                end
+                runEntry(interruptedEntry, capturedBoss, capturedContext, capturedAlerts,
+                    abilityId, sourceUnitName,
+                    unitTag, unitId, capturedSourceUnitId, unitName)
             end
         end
-        handle = zo_callLater(onInterruptTimerFired, castTime or 0)
+        handle = zo_callLater(onInterruptTimerFired, castTime)
         _pending[sourceUnitId] = _pending[sourceUnitId] or {}
         _pending[sourceUnitId][abilityId] = { handle = handle }
     end
@@ -367,23 +377,28 @@ end
 
 --- Returns two sets of ability IDs the EventPipeline must register for a boss:
 --- { combat ids } and { effect ids }, built from boss.events buckets.
+local _BEGIN_CAST_SUBS     = { "instant", "started", "executed", "interrupted" }
+local _COMBAT_EVENT_SUBS   = { "damage", "dodged", "blocked", "other" }
+local _EFFECT_CHANGED_SUBS = { "gained", "faded", "updated" }
+local _EMPTY = {}
+
 function EventDispatcher.abilityIdsFor(boss)
     local combat, effect = {}, {}
     if not boss then return combat, effect end
     local e = boss.events
     if not e then return combat, effect end
 
-    local bc = e.beginCast or {}
-    for _, sub in ipairs({ "instant", "started", "executed", "interrupted" }) do
-        for id in pairs(bc[sub] or {}) do combat[id] = true end
+    local bc = e.beginCast or _EMPTY
+    for _, sub in ipairs(_BEGIN_CAST_SUBS) do
+        for id in pairs(bc[sub] or _EMPTY) do combat[id] = true end
     end
-    local ce = e.combatEvent or {}
-    for _, sub in ipairs({ "damage", "dodged", "blocked", "other" }) do
-        for id in pairs(ce[sub] or {}) do combat[id] = true end
+    local ce = e.combatEvent or _EMPTY
+    for _, sub in ipairs(_COMBAT_EVENT_SUBS) do
+        for id in pairs(ce[sub] or _EMPTY) do combat[id] = true end
     end
-    local ec = e.effectChanged or {}
-    for _, sub in ipairs({ "gained", "faded", "updated" }) do
-        for id in pairs(ec[sub] or {}) do effect[id] = true end
+    local ec = e.effectChanged or _EMPTY
+    for _, sub in ipairs(_EFFECT_CHANGED_SUBS) do
+        for id in pairs(ec[sub] or _EMPTY) do effect[id] = true end
     end
 
     return combat, effect

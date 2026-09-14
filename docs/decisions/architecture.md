@@ -98,16 +98,16 @@ Lua to be discarded there.
 `REGISTER_FILTER_COMBAT_RESULT` registration for `ACTION_RESULT_DIED`, and tears them down on boss
 change. There are no unfiltered combat or effect registrations anywhere.
 
-**What this constrains, permanently:** an ability id absent from a routing table (or from a common
-module's `combatAbilityIds` / `effectAbilityIds`) is **never registered and never dispatched**. Its
-handler is dead code that reads as live. This is the project's most common defect class — see
-#109 and #110.
+**What this constrains, permanently:** an ability id absent from a boss's `events` table is
+**never registered and never dispatched**. Its handler is dead code that reads as live. This is the
+project's most common defect class — see #109 and #110.
 
-**Requires** boss route sets and common ability sets to stay **disjoint**, since one filtered handler
-serves both. Common modules gate on the same table they export, so registration and dispatch cannot
-drift apart.
+**Requires** every boss to **merge** its trial's common-module entries (`beginCastEntries`,
+`effectChangedEntries`) into its own buckets. A common module is only a source of entries; the
+boss's `events` table is the single registration source, so a common module that is loaded but not
+merged is silent for the whole trial (this happened to `LCCommon` — see review 2026-09-14).
 
-**Enforced by** `test/checks/filters.lua`.
+**Enforced by** `test/checks/filters.lua` (every boss carries every common entry, by identity).
 
 ---
 

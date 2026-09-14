@@ -40,6 +40,16 @@ local CALAMITY_CD       = 25
 local FALLBACK_SUNBURST_DUR   = 2000
 local FALLBACK_WRATHSTORM_DUR = 4000
 
+-- Tracker-row strings built once at load; the 200 ms loop never calls Lang.t.
+local _STR_MAZE_NO_CAL     = Lang.t("se_ansuul_maze_no_cal")
+local _STR_TRIPLET_CAL     = Lang.t("se_ansuul_triplet_cal")
+local _STR_TRIPLET_CAL_NOW = Lang.t("se_ansuul_triplet_cal") .. " " .. Lang.t("se_ansuul_now")
+local _STR_CALAMITY_FIRST  = Lang.t("se_ansuul_calamity_first")
+local _STR_CALAMITY        = Lang.t("se_ansuul_calamity_label")
+local _STR_CALAMITY_READY  = Lang.t("se_ansuul_calamity_label") .. " " .. Lang.t("common_ready")
+local _STR_SPLIT_PHASE     = Lang.t("se_ansuul_split_phase")
+local _STR_NAVIGATE_MAZE   = Lang.t("se_ansuul_navigate_maze")
+
 local AnsuulEncounter = {}
 AnsuulEncounter.__index = AnsuulEncounter
 
@@ -211,31 +221,31 @@ AnsuulEncounter.events = {
 
 local function showCalamityLine(self, alerts)
     if self.inMaze then
-        alerts:setRow(1, Lang.t("se_ansuul_maze_no_cal"), nil)
+        alerts:setRow(1, _STR_MAZE_NO_CAL, nil)
     elseif self.inTriplet then
         local r = self.calamityTimer:remaining()
         if r > 0 then
-            alerts:setRow(1, Lang.t("se_ansuul_triplet_cal"), r)
+            alerts:setRow(1, _STR_TRIPLET_CAL, r)
         else
-            alerts:setRow(1, Lang.t("se_ansuul_triplet_cal") .. " " .. Lang.t("se_ansuul_now"), nil)
+            alerts:setRow(1, _STR_TRIPLET_CAL_NOW, nil)
         end
     elseif self.firstCalamity then
-        alerts:setRow(1, Lang.t("se_ansuul_calamity_first"), nil)
+        alerts:setRow(1, _STR_CALAMITY_FIRST, nil)
     else
         local r = self.calamityTimer:remaining()
         if r > 0 then
-            alerts:setRow(1, Lang.t("se_ansuul_calamity_label"), r)
+            alerts:setRow(1, _STR_CALAMITY, r)
         else
-            alerts:setRow(1, Lang.t("se_ansuul_calamity_label") .. " " .. Lang.t("common_ready"), nil)
+            alerts:setRow(1, _STR_CALAMITY_READY, nil)
         end
     end
 end
 
 local function showPhaseLine(self, alerts)
     if self.inTriplet then
-        alerts:setRow(2, Lang.t("se_ansuul_split_phase"), nil)
+        alerts:setRow(2, _STR_SPLIT_PHASE, nil)
     elseif self.inMaze then
-        alerts:setRow(2, Lang.t("se_ansuul_navigate_maze"), nil)
+        alerts:setRow(2, _STR_NAVIGATE_MAZE, nil)
     else
         alerts:clearRow(2)
     end
@@ -251,9 +261,8 @@ function AnsuulEncounter:onUpdate(context, alerts)
     alerts:clearRow(7)
 end
 
-function AnsuulEncounter:onPowerUpdate(context, healthPercent, alerts)
-    -- No HP milestone logic for Ansuul.
-end
+-- No onPowerUpdate: Ansuul has no HP-milestone logic, and Trial skips the
+-- callback entirely when the method is absent.
 
 EventDispatcher.build(AnsuulEncounter)
 

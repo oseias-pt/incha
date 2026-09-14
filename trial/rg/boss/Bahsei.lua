@@ -35,7 +35,7 @@ local FALLBACK_HAMMER_DUR = 2000
 
 -- P6: module-level string constants — avoid Lang.t calls in onUpdate (60 fps)
 local _STR_CURSE        = Fmt.c(Fmt.ARCANE, Lang.t("rg_bahsei_next_curse"))
-local _STR_CURSE_INC    = Fmt.c(Fmt.ARCANE, Lang.t("rg_bahsei_next_curse")) .. " " .. Fmt.c(Fmt.RED, "INC")
+local _STR_CURSE_INC    = Fmt.c(Fmt.ARCANE, Lang.t("rg_bahsei_next_curse")) .. " " .. Fmt.c(Fmt.RED, Lang.t("common_inc"))
 local _STR_PORTAL_CW    = Fmt.c("00cc00", Lang.t("rg_bahsei_portal_cw"))
 local _STR_PORTAL_CCW   = Fmt.c("ff8040", Lang.t("rg_bahsei_portal_ccw"))
 local _STR_PORTAL_PROG  = Fmt.c(Fmt.SMOKE, Lang.t("rg_bahsei_portal_progress"))
@@ -43,7 +43,13 @@ local _STR_TANK_EXPL    = Fmt.c(Fmt.RED,   Lang.t("rg_bahsei_tank_exploding"))
 local _STR_DEATH_TOUCH  = Fmt.c(Fmt.FROST,  Lang.t("rg_bahsei_death_touch"))
 local _STR_NO_PORTAL    = Fmt.c(Fmt.FIRE,   Lang.t("rg_bahsei_no_portal"))
 local _STR_SICKLE       = Fmt.c(Fmt.PURPLE, Lang.t("rg_bahsei_next_sickle"))
-local _STR_SICKLE_INC   = Fmt.c(Fmt.PURPLE, Lang.t("rg_bahsei_next_sickle")) .. " " .. Fmt.c(Fmt.RED, "INC")
+local _STR_SICKLE_INC   = Fmt.c(Fmt.PURPLE, Lang.t("rg_bahsei_next_sickle")) .. " " .. Fmt.c(Fmt.RED, Lang.t("common_inc"))
+local _STR_PORTAL       = Fmt.c(Fmt.SKY, Lang.t("rg_bahsei_portal"))
+-- "Portal (1)" / "Portal (2)": the countdown label for each portal number.
+local _STR_PORTAL_NUM   = {
+    [1] = _STR_PORTAL .. " " .. Fmt.c(Fmt.SMOKE, "(1)"),
+    [2] = _STR_PORTAL .. " " .. Fmt.c(Fmt.SMOKE, "(2)"),
+}
 
 local Bahsei = {}
 Bahsei.__index = Bahsei
@@ -66,7 +72,19 @@ Bahsei.stateSchema = {
     lastPortalCW        = true,
     mtUnitId            = false,
     sunBarId            = false,
+    -- Row-2 "portal in progress" text.  Rebuilt by the handlers that change
+    -- direction or player count (rebuildPortalProgStr) so the 200 ms loop
+    -- reads a finished string instead of concatenating five pieces per tick.
+    _portalProgStr      = false,
 }
+
+-- Rebuild the in-progress portal row from lastPortalCW + numPlayersInPortal.
+local function rebuildPortalProgStr(boss)
+    local dir = boss.lastPortalCW and _STR_PORTAL_CW or _STR_PORTAL_CCW
+    local cnt = boss.numPlayersInPortal
+    boss._portalProgStr = _STR_PORTAL .. " " .. dir .. " " .. _STR_PORTAL_PROG
+        .. (cnt > 0 and (" " .. Fmt.c(Fmt.GRAY, "(" .. cnt .. ")")) or "")
+end
 
 function Bahsei.new()
     return BossBase.fromSchema(Bahsei)
@@ -96,6 +114,7 @@ function Bahsei:onDied(context, alerts,
         if self.numPlayersInPortal > 0 then
             self.numPlayersInPortal = self.numPlayersInPortal - 1
         end
+        rebuildPortalProgStr(self)
     end
 end
 
@@ -155,10 +174,12 @@ end
 
 local function handleEyeCwGained(boss, ctx, alerts, abilityId, ...)
     boss.lastPortalCW = true
+    rebuildPortalProgStr(boss)
 end
 
 local function handleEyeCcwGained(boss, ctx, alerts, abilityId, ...)
     boss.lastPortalCW = false
+    rebuildPortalProgStr(boss)
 end
 
 -- effectChanged.gained
@@ -181,6 +202,7 @@ local function handleMalignantMarrowGained(boss, ctx, alerts, abilityId, unitNam
         boss.portalNumber       = 3 - boss.portalNumber   -- 1<->2
         boss.numPlayersInPortal = 0
         boss.portalTracker      = {}
+        rebuildPortalProgStr(boss)
     end
     if AreUnitsEqual("player", unitTag) then
         boss.selfDoNotPortalTime = now + 120
@@ -198,6 +220,7 @@ end
 local function handleBitterMarrowGained(boss, ctx, alerts, abilityId, unitName, unitTag, unitId, stackCount)
     boss.numPlayersInPortal = boss.numPlayersInPortal + 1
     if unitId then boss.portalTracker[unitId] = true end
+    rebuildPortalProgStr(boss)
 end
 
 -- effectChanged.faded
@@ -206,6 +229,7 @@ local function handleBitterMarrowFaded(boss, ctx, alerts, abilityId, unitName, u
         boss.numPlayersInPortal = boss.numPlayersInPortal - 1
     end
     if unitId then boss.portalTracker[unitId] = false end
+    rebuildPortalProgStr(boss)
 end
 
 -- -- Event tables ------------------------------------------------------------
@@ -272,18 +296,10 @@ local function showPortalLine(self, alerts, now, isHM)
     if isHM then
         local delta = self.nextPortal - now
         if delta > 0 then
-            alerts:setRow(2,
-                Fmt.c(Fmt.SKY, "Portal") .. " " ..
-                Fmt.c(Fmt.SMOKE, "(" .. self.portalNumber .. ")"),
-                delta)
+            alerts:setRow(2, _STR_PORTAL_NUM[self.portalNumber] or _STR_PORTAL, delta)
         else
-            local dir = self.lastPortalCW and _STR_PORTAL_CW or _STR_PORTAL_CCW
-            local cnt = self.numPlayersInPortal
-            alerts:setRow(2,
-                Fmt.c(Fmt.SKY, "Portal") .. " " .. dir ..
-                " " .. _STR_PORTAL_PROG ..
-                (cnt > 0 and (" " .. Fmt.c(Fmt.GRAY, "(" .. cnt .. ")")) or ""),
-                nil)
+            if not self._portalProgStr then rebuildPortalProgStr(self) end
+            alerts:setRow(2, self._portalProgStr, nil)
         end
     else
         alerts:clearRow(2)

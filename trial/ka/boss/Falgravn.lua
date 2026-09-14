@@ -30,6 +30,13 @@ local INST_ANIM_FRAMES   = 40
 local INST_ANIM_INTERVAL = 50   -- ms per frame
 local INST_ANIM_KEY      = "Incha_FalgravnInstAnim"
 
+-- Frame texture paths built once; the 50 ms tick indexes this table instead
+-- of running string.format 20 times a second per affected player.
+local INST_FRAME_TEX = {}
+for i = 1, INST_ANIM_FRAMES do
+    INST_FRAME_TEX[i] = string.format("Incha/resources/instability/frame_%02d.dds", i)
+end
+
 -- Module-level so the state survives boss-instance re-creation on wipe.
 local _instAnim   = {}   -- [unitTag] = { dn = displayName, frame = 0 }
 local _instActive = false
@@ -37,9 +44,7 @@ local _instActive = false
 local function instAnimTick()
     for _, state in pairs(_instAnim) do
         state.frame = (state.frame % INST_ANIM_FRAMES) + 1
-        local tex = string.format("Incha/resources/instability/frame_%02d.dds",
-                                  state.frame)
-        MechanicIcons.set(state.dn, tex, Colors.FLYZONE)
+        MechanicIcons.set(state.dn, INST_FRAME_TEX[state.frame], Colors.FLYZONE)
     end
 end
 
@@ -218,6 +223,7 @@ local FALGRAVN_BLOPSYNERGIE = 129936  -- Execration synergy on player
 local INSTABILITY_INITIAL_DELAY  = 10
 local NEXT_INSTABILITY           = 22
 local NEXT_BLOODBALL             = 45
+local BLOODBALL_AFTER_GAINED     = 30   -- next ball after one is picked up (shorter than the recurring 45)
 local INITIAL_BLOODBALL_DELAY    = 20   -- after Falgravn lands (UNW_POWER fades)
 local INITIAL_OPENGATE_TIME      = 40   -- from floor shatter to first gates
 local NEXT_OPENGATE_TIME         = 45   -- recurring between Open Door casts
@@ -644,7 +650,7 @@ end
 -- Blood Ball: gained/faded split  -  migrated to effectChanged path.
 local function handleBloodBallGained(boss, context, alerts, abilityId, unitName, ...)
     if boss.CURRENT_STAGE ~= 2 then boss.CURRENT_STAGE = 2 end
-    boss.bloodBallTimer:reset(30)
+    boss.bloodBallTimer:reset(BLOODBALL_AFTER_GAINED)
     showPosIcons(_posIconBlood, true)
     showPosIcons(_posIconTorturer, true)   -- arm if handleStartStage2 didn't fire
 end

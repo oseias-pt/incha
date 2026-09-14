@@ -15,6 +15,9 @@ name: checks
 #   luajit test/checks/filters.lua
 #   luajit test/checks/settings-usage.lua
 #   luajit test/checks/state-reset.lua
+#   luajit test/checks/registrations.lua
+#   luajit test/checks/health_rules.lua
+#   luajit test/checks/lifecycle.lua
 #   luajit test/run_log.lua <fixture>  (one per trial in test/fixtures/)
 #
 # ESO runs a Lua 5.1 dialect; LuaJIT is source-compatible and is what the
@@ -128,6 +131,25 @@ jobs:
       - name: State reset
         if: ${{ !cancelled() }}
         run: luajit test/checks/state-reset.lua
+
+      # Every EVENT_MANAGER registration helper must have its matching
+      # unregister, or a disabled trial keeps receiving events.
+      - name: Registrations
+        if: ${{ !cancelled() }}
+        run: luajit test/checks/registrations.lua
+
+      # Unit tests for core/HealthRules (priority sort, static-text
+      # pre-compilation, boundaries, when() predicates).
+      - name: Health rules
+        if: ${{ !cancelled() }}
+        run: luajit test/checks/health_rules.lua
+
+      # Unit tests for lifecycle and hot-path behaviour the replay cannot see:
+      # interrupt-timer gating, registry name lookup, Trial inject/eject,
+      # ZoneManager.refresh, Panel in-place row updates.
+      - name: Lifecycle
+        if: ${{ !cancelled() }}
+        run: luajit test/checks/lifecycle.lua
 
       # Smoke-test every committed fixture: replay it through the live boss
       # modules under the offline harness stubs and assert zero handler errors.

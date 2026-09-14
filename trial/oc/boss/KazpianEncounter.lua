@@ -57,10 +57,18 @@ KazpianEncounter.stateSchema = {
     channelersDead = 0,
     chainedA       = false,
     chainedB       = false,
+    -- Row text caches, rebuilt by the handlers that bump the counters so
+    -- onUpdate never formats.
+    _portalRowStr  = false,
+    _chanRowStr    = false,
 }
 
 function KazpianEncounter.new()
     return BossBase.fromSchema(KazpianEncounter)
+end
+
+function KazpianEncounter:onLeave(context)
+    OsseinCageCommon.reset()   -- module-level carrion / debounce state must not survive a zone exit
 end
 
 -- ── Handlers ─────────────────────────────────────────────────────────────────────────────────────
@@ -142,7 +150,8 @@ local function handleImmolating(boss, ctx, alerts, abilityId, sourceUnitName, un
 end
 
 local function handleVileTeleport(boss, ctx, alerts, abilityId, ...)
-    boss.portalPhase = boss.portalPhase + 1
+    boss.portalPhase   = boss.portalPhase + 1
+    boss._portalRowStr = Lang.t("oc_kazpian_portal_label", boss.portalPhase)
     alerts:showAction(Lang.t("oc_kazpian_portal_phase", boss.portalPhase))
 end
 
@@ -166,6 +175,7 @@ end
 
 local function handleChannelerRitual(boss, ctx, alerts, abilityId, ...)
     boss.channelersDead = boss.channelersDead + 1
+    boss._chanRowStr    = Lang.t("oc_kazpian_channelers", boss.channelersDead)
     alerts:showAction(Lang.t("oc_kazpian_channeler_down", boss.channelersDead))
 end
 
@@ -216,21 +226,19 @@ KazpianEncounter.events = {
 
 function KazpianEncounter:onWipe(context, alerts)
     OsseinCageCommon.reset()
-    self.bombDebounce:clear()
-    self.portalPhase    = 0; self.channelersDead = 0
-    self.chainedA       = false; self.chainedB = false
+    BossBase.resetSchema(self, KazpianEncounter)
     CA.border(false, 0, "red")
 end
 
 function KazpianEncounter:onUpdate(context, alerts)
-    if self.portalPhase > 0 then
-        alerts:setRow(1, Lang.t("oc_kazpian_portal_label", self.portalPhase), nil)
+    if self.portalPhase > 0 and self._portalRowStr then
+        alerts:setRow(1, self._portalRowStr, nil)
     else
         alerts:clearRow(1)
     end
 
-    if self.channelersDead > 0 then
-        alerts:setRow(2, Lang.t("oc_kazpian_channelers", self.channelersDead), nil)
+    if self.channelersDead > 0 and self._chanRowStr then
+        alerts:setRow(2, self._chanRowStr, nil)
     else
         alerts:clearRow(2)
     end

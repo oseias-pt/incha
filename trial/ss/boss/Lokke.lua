@@ -47,6 +47,22 @@ local TOMB_NAMES = {
     [3] = Lang.t("ss_lokke_tomb_name_3"),
 }
 
+-- Every row-1 label the tomb machine can show, pre-coloured so the 200 ms
+-- loop indexes a table instead of running Fmt.c / concat per tick.
+local TOMB_LABEL, TOMB_LABEL_INC = {}, {}
+for i = 1, 3 do
+    TOMB_LABEL[i]     = Fmt.c(Fmt.CYAN, TOMB_NAMES[i])
+    TOMB_LABEL_INC[i] = TOMB_LABEL[i] .. " " .. Fmt.c(Fmt.RED, Lang.t("common_inc"))
+end
+local _STR_TOMB_NONE = Fmt.c(Fmt.CYAN, "")
+
+-- Slot rows: prefix ("[A] " / "[B] ") + state, one string per combination.
+local SLOT_DONE   = { sA .. _STR_TOMB_DONE, sB .. _STR_TOMB_DONE }
+local SLOT_HEAL   = { sA .. _STR_TOMB_HEAL, sB .. _STR_TOMB_HEAL }
+local SLOT_TAKE   = { sA .. _STR_TOMB_TAKE, sB .. _STR_TOMB_TAKE }
+local SLOT_INC    = { sA .. _STR_TOMB_INC,  sB .. _STR_TOMB_INC  }
+local _STR_SLOT_B_DOUBLE = sB .. _STR_TOMB_DOUBLE
+
 local NEXT_TOMB = { [0]=1, [1]=2, [2]=3, [3]=1 }   -- iceNumber -> next label
 
 local function newTombSlots()
@@ -57,21 +73,21 @@ local function newTombSlots()
 end
 
 -- Write one active-tomb slot to a tracker row.
--- slot: the iceTomb slot table.  prefix: "[A] " / "[B] ".  now: current time (s).
-local function setTombSlotRow(alerts, n, prefix, slot, now)
+-- slot: the iceTomb slot table.  idx: 1 = "[A]", 2 = "[B]".  now: current time (s).
+local function setTombSlotRow(alerts, n, idx, slot, now)
     if not slot.cast then alerts:clearRow(n); return end
     if slot.clear then
-        alerts:setRow(n, prefix .. _STR_TOMB_DONE, nil)
+        alerts:setRow(n, SLOT_DONE[idx], nil)
         return
     end
     local t = slot.time - now
     if t <= 0 then alerts:clearRow(n); return end
     if slot.taken then
-        alerts:setRow(n, prefix .. _STR_TOMB_HEAL, t)
+        alerts:setRow(n, SLOT_HEAL[idx], t)
     elseif slot.armed then
-        alerts:setRow(n, prefix .. _STR_TOMB_TAKE, t)
+        alerts:setRow(n, SLOT_TAKE[idx], t)
     else
-        alerts:setRow(n, prefix .. _STR_TOMB_INC, nil)
+        alerts:setRow(n, SLOT_INC[idx], nil)
     end
 end
 
@@ -377,6 +393,8 @@ local function showLaserLandingLine(self, alerts, now, context)
             elseif hp >= 21 then flyAt = 21
             end
             if flyAt and (hp - flyAt) <= 5 then
+                -- hp moves in 0.1% steps, so this string genuinely changes
+                -- most ticks; it only exists inside a 5% window per phase.
                 alerts:setRow(4, Fmt.c(Fmt.FLYZONE, _STR_CAN_FLY_PFX .. Fmt.pct(hp - flyAt, 1)), nil)
             else
                 alerts:clearRow(4)
@@ -388,35 +406,35 @@ local function showLaserLandingLine(self, alerts, now, context)
 end
 
 -- Rows 1–3: Ice Tomb — upcoming countdown, then active slot states.
-local function showIceTombLines(self, alerts, now)
+local function showIceTombLines(self, alerts, now, context)
     local isFlying = (self.iceNumber == 0)
         or (self.laserTime   > 0 and now < self.laserTime)
         or (self.landingTime > 0 and now < self.landingTime)
 
     if self.tombsClear then
-        if isFlying or not IsUnitInCombat("player") then
+        -- context.inCombat is maintained by Trial from EVENT_PLAYER_COMBAT_STATE;
+        -- reading it avoids an IsUnitInCombat round-trip every tick.
+        if isFlying or not context.inCombat then
             alerts:clearRow(1); alerts:clearRow(2); alerts:clearRow(3)
         else
             local T2 = self.iceNext - now
             local iN = NEXT_TOMB[self.iceNumber]
-            local label = Fmt.c(Fmt.CYAN, TOMB_NAMES[iN] or "")
             if T2 <= 0 then
                 -- Tomb cast window is here.  Row stays with no ETA (INC tag).
-                alerts:setRow(1, label .. " " .. Fmt.c(Fmt.RED, "INC"), nil)
+                alerts:setRow(1, TOMB_LABEL_INC[iN] or _STR_TOMB_NONE, nil)
             else
-                alerts:setRow(1, label, T2)
+                alerts:setRow(1, TOMB_LABEL[iN] or _STR_TOMB_NONE, T2)
             end
             alerts:clearRow(2); alerts:clearRow(3)
         end
     else
         -- Active tomb: header + one or two slot rows.
-        local header = Fmt.c(Fmt.CYAN, TOMB_NAMES[self.iceNumber] or "")
-        alerts:setRow(1, header, nil)
-        setTombSlotRow(alerts, 2, sA, self.iceTomb[1], now)
+        alerts:setRow(1, TOMB_LABEL[self.iceNumber] or _STR_TOMB_NONE, nil)
+        setTombSlotRow(alerts, 2, 1, self.iceTomb[1], now)
         if self.iceDouble then
-            alerts:setRow(3, sB .. _STR_TOMB_DOUBLE, nil)
+            alerts:setRow(3, _STR_SLOT_B_DOUBLE, nil)
         else
-            setTombSlotRow(alerts, 3, sB, self.iceTomb[2], now)
+            setTombSlotRow(alerts, 3, 2, self.iceTomb[2], now)
         end
     end
 end
@@ -425,7 +443,7 @@ end
 function Lokke:onUpdate(context, alerts)
     local now = GetGameTimeMilliseconds() / 1000
     showLaserLandingLine(self, alerts, now, context)
-    showIceTombLines(self, alerts, now)
+    showIceTombLines(self, alerts, now, context)
 end
 
 package.loaded["trial.ss.boss.Lokke"] = Lokke

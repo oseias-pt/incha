@@ -38,6 +38,16 @@ local function disableCurrentTrial()
     activeZoneId = nil
 end
 
+-- Per-trial Settings.enabled flag.  Read at zone-enter time and on
+-- Settings changes, both after Settings.init() has run, so Settings.get()
+-- is always safe here.
+local function isTrialEnabledInSettings(entry)
+    if not entry.trialId then return true end
+    local sv  = Settings.get()
+    local tsv = sv and sv.trials[entry.trialId]
+    return not (tsv and tsv.enabled == false)
+end
+
 local function enableTrialForZone(zoneId)
     local entry = trials[zoneId]
     if not entry then
@@ -51,14 +61,8 @@ local function enableTrialForZone(zoneId)
 
     disableCurrentTrial()
 
-    -- Respect the per-trial Settings.enabled flag.  Called at zone-enter time,
-    -- after Settings.init() has already run, so Settings.get() is always safe.
-    if entry.trialId then
-        local sv = Settings.get()
-        local tsv = sv and sv.trials[entry.trialId]
-        if tsv and tsv.enabled == false then
-            return
-        end
+    if not isTrialEnabledInSettings(entry) then
+        return
     end
 
     activeZoneId = zoneId
@@ -68,6 +72,28 @@ end
 
 function ZoneManager.onZoneChanged()
     enableTrialForZone(getPlayerZoneId())
+end
+
+--- Re-apply the per-trial Settings.enabled flag without a zone change.
+--- Called by the settings menu when a trial's Enable checkbox is toggled so
+--- the change takes effect immediately while the player is already in the
+--- zone: disables the running trial when it was just turned off, and enables
+--- the zone's trial when it was just turned on.
+function ZoneManager.refresh()
+    local zoneId = getPlayerZoneId()
+    local entry  = trials[zoneId]
+    if not entry then
+        disableCurrentTrial()
+        return
+    end
+
+    local wanted = isTrialEnabledInSettings(entry)
+    local running = (activeZoneId == zoneId and activeTrial ~= nil)
+    if running and not wanted then
+        disableCurrentTrial()
+    elseif wanted and not running then
+        enableTrialForZone(zoneId)
+    end
 end
 
 function ZoneManager.getActiveZoneId()

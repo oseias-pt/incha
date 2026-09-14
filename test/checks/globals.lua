@@ -57,7 +57,7 @@ for _, name in ipairs({
     "GuiRoot", "SOUNDS", "TOPLEFT", "TOPRIGHT", "BOTTOM", "BOTTOMLEFT",
     "BOTTOMRIGHT", "TOP", "LEFT", "RIGHT", "CENTER", "d",
     -- Optional third-party addons  -  every call site must nil-guard these
-    "OSI", "CombatAlerts", "LibAddonMenu2", "BSCHTKA",
+    "OSI", "CombatAlerts", "LibAddonMenu2",
     -- Lua 5.1 standard library
     "require", "package", "assert", "error", "pairs", "ipairs", "next",
     "select", "setmetatable", "getmetatable", "rawget", "rawset", "rawequal",

@@ -3,17 +3,43 @@ local Difficulty = require("core.Difficulty")
 local BossRegistry = {}
 BossRegistry.__index = BossRegistry
 
+-- GetUnitName can return a name carrying ESO's gender / article markup
+-- ("^Fx", "^n" suffixes and similar).  zo_strformat("<<1>>", name) is the
+-- documented way to render it to the plain display string, and this file
+-- must apply it to BOTH sides: the declared boss.name literals were written
+-- by hand and are already plain, but normalising them too keeps the
+-- comparison symmetric if someone later pastes a raw name in.
+local function normalize(name)
+    if not name or name == "" then return nil end
+    local ok, plain = pcall(zo_strformat, "<<1>>", name)
+    if ok and plain and plain ~= "" then return plain end
+    return name
+end
+
 function BossRegistry.new(bosses)
     local self = setmetatable({
         bosses = bosses or {},
         byId = {},
         byKey = {},
+        -- normalised unit name -> boss class.  Built once here so findByName
+        -- is a single table lookup instead of a pcall(zo_strformat) per
+        -- declared alias per boss<N> slot on every EVENT_BOSSES_CHANGED.
+        byName = {},
     }, BossRegistry)
 
     for i, boss in ipairs(self.bosses) do
         boss.id = i          -- auto-assigned from array position; matches Factory order
         self.byId[boss.id] = boss
         self.byKey[boss.key] = boss
+
+        local plain = normalize(boss.name)
+        if plain and not self.byName[plain] then self.byName[plain] = boss end
+        if boss.nameAliases then
+            for _, alias in ipairs(boss.nameAliases) do
+                plain = normalize(alias)
+                if plain and not self.byName[plain] then self.byName[plain] = boss end
+            end
+        end
     end
 
     return self
@@ -37,23 +63,11 @@ function BossRegistry:findAtPosition(x, y, z)
     return nil
 end
 
--- GetUnitName can return a name carrying ESO's gender / article markup
--- ("^Fx", "^n" suffixes and similar).  zo_strformat("<<1>>", name) is the
--- documented way to render it to the plain display string, and this file
--- must apply it to BOTH sides: the declared boss.name literals were written
--- by hand and are already plain, but normalising them too keeps the
--- comparison symmetric if someone later pastes a raw name in.
-local function normalize(name)
-    if not name or name == "" then return nil end
-    local ok, plain = pcall(zo_strformat, "<<1>>", name)
-    if ok and plain and plain ~= "" then return plain end
-    return name
-end
-
 -- Name-based fallback for trials whose bosses have no location bounding box.
 -- Matches boss.name (or any entry in boss.nameAliases) against the supplied
 -- unit name. nameAliases lets a single boss entry cover multiple unit names
--- (e.g. the Lylanar/Turlassil dual-boss pair in DSR).
+-- (e.g. the Lylanar/Turlassil dual-boss pair in DSR).  Declaration order
+-- wins when two bosses claim the same name (first registered keeps it).
 --
 -- CAVEAT: this compares against English literals, so on a localised client
 -- (DE/FR/RU/ES/JP) it matches nothing and the trial silently does nothing.
@@ -63,20 +77,7 @@ end
 function BossRegistry:findByName(unitName)
     local target = normalize(unitName)
     if not target then return nil end
-
-    for _, boss in ipairs(self.bosses) do
-        if normalize(boss.name) == target then
-            return boss
-        end
-        if boss.nameAliases then
-            for _, alias in ipairs(boss.nameAliases) do
-                if normalize(alias) == target then
-                    return boss
-                end
-            end
-        end
-    end
-    return nil
+    return self.byName[target]
 end
 
 --- Every unit name this registry would accept, for diagnostics.
