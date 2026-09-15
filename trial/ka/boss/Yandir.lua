@@ -39,7 +39,10 @@ local _STR_GRYPHON       = Lang.t("ka_yandir_gryphon_label")
 local _STR_GRYPHON_READY = Lang.t("ka_yandir_gryphon_label") .. " " .. Lang.t("common_ready")
 local _STR_GRYPHON_SKIP  = Lang.t("ka_yandir_gryphon_label") .. " " .. Fmt.c(Fmt.LEAF, Lang.t("ka_yandir_gryphon_skip"))
 local _STR_GRYPHON_FAIL  = Lang.t("ka_yandir_gryphon_label") .. " "
-local _STR_BLOCK_GARGOYLE = Lang.t("ka_yandir_block_gargoyle")
+local _STR_BLOCK_GARGOYLE     = Lang.t("ka_yandir_block_gargoyle")
+local _STR_KILL_HARPY_TOTEM   = Lang.t("ka_yandir_kill_harpy_totem")
+local _STR_KILL_DRAGON_TOTEM  = Lang.t("ka_yandir_kill_dragon_totem")
+local _STR_KILL_GARGYL_SPWN   = Lang.t("ka_yandir_kill_gargoyle_spwn")
 
 local Yandir = {}
 Yandir.__index = Yandir
@@ -238,19 +241,25 @@ local function handleSeaAdderSpray(boss, context, alerts, abilityId, sourceUnitN
     if cid and unitId then boss.alertList[unitId] = cid end
 end
 
-local function handleHarpyTotemSpawn(boss, context, alerts, abilityId, ...)
+local function handleHarpyTotemSpawn(boss, context, alerts, abilityId, sourceUnitName,
+                                      unitTag, unitId, sourceUnitId, unitName)
     boss.totemTimer:reset()
-    alerts:showAction(Lang.t("ka_yandir_kill_harpy_totem"))
+    local cid = CA.ranged(abilityId, _STR_KILL_HARPY_TOTEM, 120000, Colors.DANGER)
+    if cid and unitId then boss.alertList[unitId] = cid end
 end
 
-local function handleDragonTotemSpawn(boss, context, alerts, abilityId, ...)
+local function handleDragonTotemSpawn(boss, context, alerts, abilityId, sourceUnitName,
+                                       unitTag, unitId, sourceUnitId, unitName)
     boss.totemTimer:reset()
-    alerts:showAction(Lang.t("ka_yandir_kill_dragon_totem"))
+    local cid = CA.ranged(abilityId, _STR_KILL_DRAGON_TOTEM, 120000, Colors.DANGER)
+    if cid and unitId then boss.alertList[unitId] = cid end
 end
 
-local function handleGargoyleTotemSpawn(boss, context, alerts, abilityId, ...)
+local function handleGargoyleTotemSpawn(boss, context, alerts, abilityId, sourceUnitName,
+                                         unitTag, unitId, sourceUnitId, unitName)
     boss.totemTimer:reset()
-    alerts:showAction(Lang.t("ka_yandir_kill_gargoyle_spwn"))
+    local cid = CA.ranged(abilityId, _STR_KILL_GARGYL_SPWN, 120000, Colors.DANGER)
+    if cid and unitId then boss.alertList[unitId] = cid end
 end
 
 local function handleToxicTide(boss, context, alerts, abilityId, sourceUnitName,
