@@ -468,12 +468,16 @@ local function printHelp()
     Log.print("  /ip <log line>     -  replay a raw encounter-log line (BEGIN_CAST / COMBAT_EVENT / EFFECT_CHANGED)")
 end
 
+local function handleDebugPanel()
+    zo_callLater(DebugPanel.toggle, 200)
+end
+
 local function handleSlash(text)
     local cmd, arg = (text or ""):lower():match("^%s*(%S*)%s*(.*)")
     local sv = Settings.get()
 
     if cmd == "dp" then
-        zo_callLater(DebugPanel.toggle, 200)
+        handleDebugPanel()
 
     elseif cmd == "debug" then
         sv.debug = not sv.debug
@@ -563,7 +567,7 @@ function Menu.init()
     -- /ip can be used to fire preview effects while the game UI is visible.
     SLASH_COMMANDS[ADDON_SLASH] = handleSlash
     SLASH_COMMANDS["/ip"]       = handlePreviewSlash
-    SLASH_COMMANDS["/idp"]      = function() zo_callLater(DebugPanel.toggle, 200) end
+    SLASH_COMMANDS["/idp"]      = handleDebugPanel
 
     -- Wire to LibAddonMenu-2.0 when it is loaded.
     -- incha.txt declares ## OptionalDependsOn: LibAddonMenu-2.0 so ESO
