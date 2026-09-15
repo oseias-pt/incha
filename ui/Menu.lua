@@ -26,12 +26,24 @@ end
 
 -- Dispatch table for /incha preview <sub> and /ip <sub>.
 -- Keys match the sub-command strings; values are the Preview functions to call.
+local function resetOverlay()
+    local sv = Settings.get()
+    sv.overlay.offsetX = -1
+    sv.overlay.offsetY = -1
+    sv.overlay.alertX  = -1
+    sv.overlay.alertY  = -1
+    sv.overlay.scale   = 1.0
+    Panel.refresh()
+    Log.print("Overlay positions reset")
+end
+
 local PREVIEW_CMDS = {
     panel  = Preview.showPanel,
     inst   = Preview.showInstability,
     border = Preview.showCaBorder,
     alert  = Preview.showCaAlert,
     clear  = Preview.clear,
+    reset  = resetOverlay,
 }
 
 local PANEL_ID = ADDON_LAM
@@ -464,6 +476,7 @@ local function printHelp()
     Log.print("  /ip inst           -  animate instability head icon")
     Log.print("  /ip border         -  flash CA border")
     Log.print("  /ip alert          -  show CA text alert")
+    Log.print("  /ip reset          -  reset both overlay panels to default position")
     Log.print("  /ip clear          -  clear all preview effects")
     Log.print("  /ip <log line>     -  replay a raw encounter-log line (BEGIN_CAST / COMBAT_EVENT / EFFECT_CHANGED)")
 end
@@ -500,14 +513,7 @@ local function handleSlash(text)
         end
 
     elseif cmd == "reset" then
-        -- Both panels: the tracker (offsetX/Y) and the alert bar (alertX/Y).
-        sv.overlay.offsetX = -1
-        sv.overlay.offsetY = -1
-        sv.overlay.alertX  = -1
-        sv.overlay.alertY  = -1
-        sv.overlay.scale   = 1.0
-        Panel.refresh()
-        Log.print("Overlay positions reset")
+        resetOverlay()
 
     elseif cmd == "preview" then
         local sub = arg:match("^%s*(%S*)")
