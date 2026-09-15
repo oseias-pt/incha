@@ -269,6 +269,12 @@ local function handleToxicTide(boss, context, alerts, abilityId, sourceUnitName,
     if cid and unitId then boss.alertList[unitId] = cid end
 end
 
+local function handleToxicTidePoison(boss, context, alerts, abilityId, unitName,
+                                     unitTag, unitId, stackCount)
+    alerts:showAction("Dodge! (Toxic Tide)")
+    CA.ranged(abilityId, "Dodge! (Toxic Tide)", 1700, Colors.POISON)
+end
+
 local function handleButchersBlade(boss, context, alerts, abilityId, sourceUnitName,
                                     unitTag, unitId, sourceUnitId, unitName)
     alerts:showAction(Lang.t("ka_yandir_block_uppercut"))
@@ -317,6 +323,7 @@ Yandir.events = {
     effectChanged = {
         gained = {
             [TOTEM_POISON_CP] = { type = AlertTypes.CUSTOM, fn = handlePoisonTotemCp },
+            [TOXIC_TIDE]      = { type = AlertTypes.CUSTOM, fn = handleToxicTidePoison },
         },
         faded = {
             [TOTEM_POISON_CP] = { type = AlertTypes.CUSTOM, fn = handlePoisonTotemCpFaded },
