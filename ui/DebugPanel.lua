@@ -362,6 +362,7 @@ function DP.toggle()
     if not win then
         local ok, err = pcall(buildWindow)
         if not ok then
+            win = nil  -- partial window state; retry on next call
             Log.always("DebugPanel build error: %s", tostring(err))
             return
         end
@@ -371,7 +372,10 @@ function DP.toggle()
         return
     end
     if win:IsHidden() then
-        rebuild()
+        local ok, err = pcall(rebuild)
+        if not ok then
+            Log.always("DebugPanel rebuild error: %s", tostring(err))
+        end
         win:SetHidden(false)
     else
         teardownDebugBoss()
