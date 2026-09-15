@@ -105,5 +105,23 @@ function ZoneManager.getActiveTrial()
     return activeTrial
 end
 
+--- Return a sorted list of { module, name } for every registered trial.
+--- Zone-independent: all trials are always resident in memory.
+function ZoneManager.getTrialList()
+    local seen = {}
+    local list = {}
+    for _, entry in pairs(trials) do
+        if not seen[entry.module] then
+            seen[entry.module] = true
+            list[#list + 1] = {
+                module = entry.module,
+                name   = entry.trialId or entry.module.id or "?",
+            }
+        end
+    end
+    table.sort(list, function(a, b) return a.name < b.name end)
+    return list
+end
+
 package.loaded["core.ZoneManager"] = ZoneManager
 return ZoneManager
