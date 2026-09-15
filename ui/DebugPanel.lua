@@ -201,7 +201,8 @@ local function applyBossTabHighlight(activeIdx)
     end
 end
 
-local selectBoss  -- forward declaration; assigned below after layoutBossTabs
+local selectBoss        -- forward declaration; assigned below after layoutBossTabs
+local onTrialTabClicked -- forward declaration; assigned below after layoutTrialTabs
 
 local function layoutBossTabs()
     if #bossList == 0 then
@@ -406,7 +407,7 @@ local function onEndFightClicked()
     Log.print("Fight ended")
 end
 
-local function onTrialTabClicked(ctrl)
+onTrialTabClicked = function(ctrl)
     local idx = trialTabIdx[ctrl]
     if idx then onTrialSelected(idx) end
 end
