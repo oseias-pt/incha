@@ -200,13 +200,14 @@ local function build()
         etaLbl:SetText("")
 
         rows[i] = {
-            icon      = icon,
-            nameLbl   = nameLbl,
-            etaLbl    = etaLbl,
-            nameText  = "",
-            etaCeil   = 0,     -- last displayed whole second; 0 = blank
-            etaBucket = 0,     -- last colour bucket applied (1 red, 2 orange, 3 grey)
-            iconPath  = nil,   -- last texture applied; nil = icon hidden
+            icon       = icon,
+            nameLbl    = nameLbl,
+            etaLbl     = etaLbl,
+            nameText   = "",
+            nameBucket = 0,    -- 0=empty 1=inactive(dim) 2=far 3=orange 4=red
+            etaCeil    = 0,    -- last displayed whole second; 0 = blank
+            etaBucket  = 0,    -- 0=none 1=red 2=orange 3=grey
+            iconPath   = nil,  -- last texture applied; nil = icon hidden
         }
     end
 
@@ -372,26 +373,44 @@ local function renderTrackerRows(c)
         -- Compare the integer ceiling and the colour bucket as numbers first;
         -- the "Ns" string is only built when the displayed second changes, so
         -- a steady countdown allocates one string per second, not per tick.
+        -- nameBucket mirrors etaBucket (0=empty, 1=inactive/dim, 2=far, 3=orange, 4=red)
+        -- so both labels always share the same colour state.
         local eta = d and d.eta
-        local etaCeil, bucket
-        if eta and eta > 0 then
+        local etaCeil, etaBucket, nameBucket
+        if not d then
+            etaCeil, etaBucket, nameBucket = 0, 0, 0      -- empty slot
+        elseif eta and eta > 0 then
             etaCeil = math.ceil(eta)
-            if     eta < 3  then bucket = 1   -- red    (< 3 s)
-            elseif eta < 10 then bucket = 2   -- orange (3–10 s)
-            else                 bucket = 3   -- grey   (> 10 s)
+            if     eta < 3  then etaBucket = 1; nameBucket = 4   -- red
+            elseif eta < 10 then etaBucket = 2; nameBucket = 3   -- orange
+            else                 etaBucket = 3; nameBucket = 2   -- far (grey)
             end
         else
-            etaCeil, bucket = 0, 0
+            etaCeil, etaBucket, nameBucket = 0, 0, 1      -- inactive: dim grey
         end
         if row.etaCeil ~= etaCeil then
             row.etaCeil = etaCeil
             row.etaLbl:SetText(etaCeil > 0 and (etaCeil .. "s") or "")
         end
-        if row.etaBucket ~= bucket and bucket > 0 then
-            row.etaBucket = bucket
-            if     bucket == 1 then row.etaLbl:SetColor(1.00, 0.27, 0.27, 1)
-            elseif bucket == 2 then row.etaLbl:SetColor(1.00, 0.52, 0.00, 1)
-            else                    row.etaLbl:SetColor(0.67, 0.67, 0.67, 1)
+        if row.etaBucket ~= etaBucket then
+            row.etaBucket = etaBucket
+            if     etaBucket == 1 then row.etaLbl:SetColor(1.00, 0.27, 0.27, 1)
+            elseif etaBucket == 2 then row.etaLbl:SetColor(1.00, 0.52, 0.00, 1)
+            elseif etaBucket == 3 then row.etaLbl:SetColor(0.67, 0.67, 0.67, 1)
+            end
+        end
+        -- Name colour mirrors the activity state so label and ETA read together.
+        --   0 = empty           → no text, no colour change needed
+        --   1 = inactive / dim  → dim grey (row present, not imminent)
+        --   2 = far (> 10 s)    → normal grey
+        --   3 = orange          → matches ETA
+        --   4 = red             → matches ETA
+        if row.nameBucket ~= nameBucket then
+            row.nameBucket = nameBucket
+            if     nameBucket == 1 then row.nameLbl:SetColor(0.42, 0.42, 0.42, 1)
+            elseif nameBucket == 2 then row.nameLbl:SetColor(0.82, 0.82, 0.82, 1)
+            elseif nameBucket == 3 then row.nameLbl:SetColor(1.00, 0.52, 0.00, 1)
+            elseif nameBucket == 4 then row.nameLbl:SetColor(1.00, 0.27, 0.27, 1)
             end
         end
     end
