@@ -63,16 +63,24 @@ local ALERT_AUTO_CLEAR_MS  = 5000
 -- ── Shared HUD scene state ────────────────────────────────────────────────────
 
 -- Updated by both scene callbacks; controls both panels via applyXxxVisibility().
-local hudState   = "showing"
-local hudUiState = "showing"
+-- Default to "shown" so panels are visible from first boss detection forward,
+-- even if the callbacks haven't fired yet since load.
+local hudState   = "shown"
+local hudUiState = "shown"
 
 -- ── Tracker panel state ───────────────────────────────────────────────────────
 
 local ctrl = nil   -- populated exactly once by build()
 
+local function isHudVisible(state)
+    return state == "showing" or state == "shown"
+end
+
 local function applyTrackerVisibility()
     if not ctrl then return end
-    local visible = (hudState == "showing") or (hudUiState == "showing")
+    local visible = isHudVisible(hudState) or isHudVisible(hudUiState)
+    Log.debug("Panel.vis: active=%s hud=%s hudui=%s → visible=%s",
+        tostring(ctrl.active), hudState, hudUiState, tostring(visible))
     ctrl.panel:SetHidden(not (ctrl.active and visible))
 end
 
@@ -108,7 +116,7 @@ local alertSeq = 0
 
 local function applyAlertVisibility()
     if not alertCtrl then return end
-    local visible = (hudState == "showing") or (hudUiState == "showing")
+    local visible = isHudVisible(hudState) or isHudVisible(hudUiState)
     alertCtrl.panel:SetHidden(not (alertCtrl.active and visible))
 end
 
