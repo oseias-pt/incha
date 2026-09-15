@@ -68,6 +68,7 @@ Yandir.stateSchema = {
     gryphonRowText       = false,
     poisonTotemId        = -1,   -- unitId of the currently targeted poison totem
     BTotemCall           = false,
+    bPlayerPoisoned      = false, -- true while the local player carries the TOTEM_POISON_CP effect
     -- zo_callLater handle for the 26.8 s delayed second-poison bar.
     -- Stored so it can be cancelled on wipe or zone exit.
     poisonTotemTimer     = false,
@@ -105,6 +106,7 @@ function Yandir:onWipe(context, alerts)
     self.gryphonRowText       = false
     self.poisonTotemId        = -1
     self.BTotemCall           = false
+    self.bPlayerPoisoned      = false
 end
 
 -- -- Combat state (fight start / wipe) -------------------------------------
@@ -161,10 +163,14 @@ end
 local function handlePoisonTotem(boss, context, alerts, abilityId, sourceUnitName,
                                   unitTag, unitId, sourceUnitId, unitName)
     boss.totemTimer:reset()
-    alerts:showAction(Lang.t("ka_yandir_dodge_poison"))
-    local cid = CA.ranged(abilityId, sourceUnitName, 4300, Colors.POISON)
-    if cid and unitId then boss.alertList[unitId] = cid end
     boss.poisonTotemId = unitId  -- track for delayed second-poison bar
+    if boss.bPlayerPoisoned then
+        alerts:showAction(Lang.t("ka_yandir_stand_still_poison"))
+    else
+        alerts:showAction(Lang.t("ka_yandir_kill_poison_totem"))
+        local cid = CA.ranged(abilityId, sourceUnitName, 4300, Colors.POISON)
+        if cid and unitId then boss.alertList[unitId] = cid end
+    end
 end
 
 -- Fires ~26.8 s after the Chaurus Totem's first cast to show the second
@@ -178,18 +184,30 @@ local function onDelayedPoisonFired(boss, capturedSrc)
     end
 end
 
-local function handlePoisonTotemCp(boss, context, alerts, abilityId, sourceUnitName, ...)
+local function handlePoisonTotemCp(boss, context, alerts, abilityId, unitName,
+                                    unitTag, unitId, stackCount)
+    -- Track whether the local player currently carries the poison effect.
+    if unitTag and IsUnitPlayer(unitTag) then
+        boss.bPlayerPoisoned = true
+    end
     -- Second poison from the same totem ~26.8 s after first cast.
     -- Guard with BTotemCall so only one delayed bar fires per totem spawn.
     if boss.BTotemCall then return end
     boss.BTotemCall = true
-    local capturedSrc = sourceUnitName or ""
+    local capturedSrc = unitName or ""
     -- Store the handle so yandir_cleanup can cancel it if the zone is exited
     -- or the group wipes before the 26.8 s fires.  Trial:cancelPending is a
     -- second net on both paths.
     boss.poisonTotemTimer = boss:after(26800, function()
         onDelayedPoisonFired(boss, capturedSrc)
     end)
+end
+
+local function handlePoisonTotemCpFaded(boss, context, alerts, abilityId, unitName,
+                                         unitTag, unitId, stackCount)
+    if unitTag and IsUnitPlayer(unitTag) then
+        boss.bPlayerPoisoned = false
+    end
 end
 
 local function handleGargoyleTotem(boss, context, alerts, abilityId, sourceUnitName,
@@ -218,6 +236,21 @@ local function handleSeaAdderSpray(boss, context, alerts, abilityId, sourceUnitN
     alerts:showAction(Lang.t("ka_yandir_dodge_sea_adder"))
     local cid = CA.ranged(abilityId, sourceUnitName, 1933, Colors.SILVER)
     if cid and unitId then boss.alertList[unitId] = cid end
+end
+
+local function handleHarpyTotemSpawn(boss, context, alerts, abilityId, ...)
+    boss.totemTimer:reset()
+    alerts:showAction(Lang.t("ka_yandir_kill_harpy_totem"))
+end
+
+local function handleDragonTotemSpawn(boss, context, alerts, abilityId, ...)
+    boss.totemTimer:reset()
+    alerts:showAction(Lang.t("ka_yandir_kill_dragon_totem"))
+end
+
+local function handleGargoyleTotemSpawn(boss, context, alerts, abilityId, ...)
+    boss.totemTimer:reset()
+    alerts:showAction(Lang.t("ka_yandir_kill_gargoyle_spwn"))
 end
 
 local function handleToxicTide(boss, context, alerts, abilityId, sourceUnitName,
@@ -249,9 +282,9 @@ end
 
 local _beginCastEntry = {
     [TOTEM_POISON]         = { type = AlertTypes.CUSTOM,      fn = handlePoisonTotem                          },
-    [TOTEM_HARPY_SPWN]     = { type = AlertTypes.TIMER_RESET,                         timer = "totemTimer"    },
-    [TOTEM_DRAGON_SPWN]    = { type = AlertTypes.TIMER_RESET,                         timer = "totemTimer"    },
-    [TOTEM_GARGYL_SPWN]    = { type = AlertTypes.TIMER_RESET,                         timer = "totemTimer"    },
+    [TOTEM_HARPY_SPWN]     = { type = AlertTypes.CUSTOM, fn = handleHarpyTotemSpawn   },
+    [TOTEM_DRAGON_SPWN]    = { type = AlertTypes.CUSTOM, fn = handleDragonTotemSpawn  },
+    [TOTEM_GARGYL_SPWN]    = { type = AlertTypes.CUSTOM, fn = handleGargoyleTotemSpawn},
     [TOTEM_GARGYL]         = { type = AlertTypes.CUSTOM,      fn = handleGargoyleTotem                        },
     [YANDIR_HEALING]       = { type = AlertTypes.CUSTOM,      fn = handleYandirHealing                        },
     [YANDIR_JUMP]          = { type = AlertTypes.CUSTOM,      fn = handleYandirJump                           },
@@ -275,6 +308,9 @@ Yandir.events = {
     effectChanged = {
         gained = {
             [TOTEM_POISON_CP] = { type = AlertTypes.CUSTOM, fn = handlePoisonTotemCp },
+        },
+        faded = {
+            [TOTEM_POISON_CP] = { type = AlertTypes.CUSTOM, fn = handlePoisonTotemCpFaded },
         },
     },
 }
