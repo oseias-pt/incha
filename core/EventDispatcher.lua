@@ -426,6 +426,7 @@ function EventDispatcher.onCombatEventFiltered(trial, eventCode,
             castTime, false, sourceUnitId, abilityId, sourceUnitName,
             unitTag, unitId, sourceUnitId, unitName)
     else
+        Log.debug("Dispatcher: ability %d non-BEGIN result=%d (%s)", abilityId, result, abilityName or "?")
         EventDispatcher.dispatchCombatEvent(boss, context, alerts,
             result, abilityId, sourceUnitName,
             unitTag, unitId, sourceUnitId, unitName)

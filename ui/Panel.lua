@@ -499,6 +499,7 @@ Panel.bridge = BridgeBase.extend({
     end,
 
     onBossEnter = function(boss, context)
+        Log.debug("Panel.onBossEnter: ctrl=%s", tostring(ctrl ~= nil))
         if ctrl then
             ctrl.active = true
             applyTrackerVisibility()
