@@ -131,13 +131,14 @@ end
 
 -- ── Window state ───────────────────────────────────────────────────────────
 local win
-local btnPool   = {}   -- ability buttons (reusable)
-local tabPool   = {}   -- boss tab buttons (reusable)
-local trialPool = {}   -- trial tab buttons (reusable)
-local items     = {}   -- current ability rows for selected boss
-local bossList  = {}   -- { key, bossClass } for _selectedTrial
-local trialList = {}   -- { module, name } from ZoneManager.getTrialList()
-local scrollY   = 0
+local btnPool     = {}   -- ability buttons (reusable)
+local tabPool     = {}   -- boss tab buttons (reusable)
+local trialPool   = {}   -- trial tab buttons (reusable)
+local trialTabIdx = {}   -- [control] -> index in trialList; avoids per-tab closures
+local items       = {}   -- current ability rows for selected boss
+local bossList    = {}   -- { key, bossClass } for _selectedTrial
+local trialList   = {}   -- { module, name } from ZoneManager.getTrialList()
+local scrollY     = 0
 
 local function contentH()
     return WIN_H - TITLE_H - TRIAL_ROW_H - LIFECYCLE_ROW_H - BOSS_TAB_ROW_H - 8
@@ -323,10 +324,10 @@ local function layoutTrialTabs()
             local lbl = tab:GetLabelControl()
             if lbl then lbl:SetHorizontalAlignment(TEXT_ALIGN_CENTER) end
             tab:SetMouseOverFontColor(1, 0.95, 0.4, 1)
-            local capturedI = i
-            tab:SetHandler("OnClicked", function() onTrialSelected(capturedI) end)
+            tab:SetHandler("OnClicked", onTrialTabClicked)
             trialPool[i] = tab
         end
+        trialTabIdx[tab] = i
         tab:SetWidth(tabW - 2)
         tab:SetText(entry.name)
         tab:ClearAnchors()
@@ -367,6 +368,47 @@ local function rebuild()
     end
 
     onTrialSelected(autoIdx)
+end
+
+-- ── Button handlers ───────────────────────────────────────────────────────
+local function onCloseClicked()
+    teardownDebugBoss()
+    disableOwnedTrial()
+    win:SetHidden(true)
+end
+
+local function onStartFightClicked()
+    if not _selectedBossClass then
+        Log.print("Select a boss tab first")
+        return
+    end
+    setupDebugBoss(_selectedBossClass)
+    Log.print("Fight started: %s", _selectedBossClass.key or "?")
+end
+
+local function onWipeClicked()
+    if not _debugBoss or not _selectedTrial then
+        Log.print("No active fight")
+        return
+    end
+    if _debugBoss.onWipe then
+        _debugBoss:onWipe(_selectedTrial.context, _selectedTrial.alerts)
+        Log.print("Wiped")
+    end
+end
+
+local function onEndFightClicked()
+    if not _debugBoss then
+        Log.print("No active fight")
+        return
+    end
+    teardownDebugBoss()
+    Log.print("Fight ended")
+end
+
+local function onTrialTabClicked(ctrl)
+    local idx = trialTabIdx[ctrl]
+    if idx then onTrialSelected(idx) end
 end
 
 -- ── Window creation ────────────────────────────────────────────────────────
@@ -412,11 +454,7 @@ local function buildWindow()
     closeBtn:SetFont("ZoFontGame")
     closeBtn:SetText("x")
     closeBtn:SetNormalFontColor(1, 0.4, 0.4, 1)
-    closeBtn:SetHandler("OnClicked", function()
-        teardownDebugBoss()
-        disableOwnedTrial()
-        win:SetHidden(true)
-    end)
+    closeBtn:SetHandler("OnClicked", onCloseClicked)
 
     -- Refresh button
     local refBtn = wm:CreateControl("InchDebugPanelRefresh", win, CT_BUTTON)
@@ -463,14 +501,7 @@ local function buildWindow()
     startBtn:SetText("Start Fight")
     startBtn:SetNormalFontColor(0.3, 1, 0.4, 1)
     startBtn:SetMouseOverFontColor(0.5, 1, 0.6, 1)
-    startBtn:SetHandler("OnClicked", function()
-        if not _selectedBossClass then
-            Log.print("Select a boss tab first")
-            return
-        end
-        setupDebugBoss(_selectedBossClass)
-        Log.print("Fight started: %s", _selectedBossClass.key or "?")
-    end)
+    startBtn:SetHandler("OnClicked", onStartFightClicked)
 
     local wipeBtn = wm:CreateControl("InchDebugPanelWipe", win, CT_BUTTON)
     wipeBtn:SetDimensions(btnW, 22)
@@ -479,16 +510,7 @@ local function buildWindow()
     wipeBtn:SetText("Wipe")
     wipeBtn:SetNormalFontColor(1, 0.85, 0.2, 1)
     wipeBtn:SetMouseOverFontColor(1, 0.95, 0.4, 1)
-    wipeBtn:SetHandler("OnClicked", function()
-        if not _debugBoss or not _selectedTrial then
-            Log.print("No active fight")
-            return
-        end
-        if _debugBoss.onWipe then
-            _debugBoss:onWipe(_selectedTrial.context, _selectedTrial.alerts)
-            Log.print("Wiped")
-        end
-    end)
+    wipeBtn:SetHandler("OnClicked", onWipeClicked)
 
     local endBtn = wm:CreateControl("InchDebugPanelEnd", win, CT_BUTTON)
     endBtn:SetDimensions(btnW, 22)
@@ -497,14 +519,7 @@ local function buildWindow()
     endBtn:SetText("End Fight")
     endBtn:SetNormalFontColor(1, 0.4, 0.4, 1)
     endBtn:SetMouseOverFontColor(1, 0.6, 0.5, 1)
-    endBtn:SetHandler("OnClicked", function()
-        if not _debugBoss then
-            Log.print("No active fight")
-            return
-        end
-        teardownDebugBoss()
-        Log.print("Fight ended")
-    end)
+    endBtn:SetHandler("OnClicked", onEndFightClicked)
 
     -- ── Boss tab row ───────────────────────────────────────────────────────
     local bossTabY = TITLE_H + TRIAL_ROW_H + LIFECYCLE_ROW_H
