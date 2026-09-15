@@ -473,7 +473,7 @@ local function handleSlash(text)
     local sv = Settings.get()
 
     if cmd == "dp" then
-        DebugPanel.toggle()
+        zo_callLater(DebugPanel.toggle, 200)
 
     elseif cmd == "debug" then
         sv.debug = not sv.debug
@@ -563,7 +563,7 @@ function Menu.init()
     -- /ip can be used to fire preview effects while the game UI is visible.
     SLASH_COMMANDS[ADDON_SLASH] = handleSlash
     SLASH_COMMANDS["/ip"]       = handlePreviewSlash
-    SLASH_COMMANDS["/idp"]      = function() DebugPanel.toggle() end
+    SLASH_COMMANDS["/idp"]      = function() zo_callLater(DebugPanel.toggle, 200) end
 
     -- Wire to LibAddonMenu-2.0 when it is loaded.
     -- incha.txt declares ## OptionalDependsOn: LibAddonMenu-2.0 so ESO
