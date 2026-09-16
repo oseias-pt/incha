@@ -74,6 +74,43 @@ local TRIAL_CONFIG = {
 local capturedAlerts  = {}
 local currentMs = 0
 
+-- Tracker (A3) rows as the boss's onUpdate loop writes them.  A row is only
+-- printed when its label changes or its timer arms / goes idle, so a steady
+-- countdown produces one line per state change instead of one per tick.
+local trackerRows    = {}   -- key -> { name, eta }
+local trackerWrites  = 0    -- every setRow call (proves the loop is running)
+local trackerKeys    = {}   -- distinct keys ever written, for the summary
+
+local function rowState(eta)
+    return (eta and eta > 0) and "armed" or "idle"
+end
+
+local function onSetRow(key, name, eta, priority, icon)
+    trackerWrites = trackerWrites + 1
+    trackerKeys[key] = true
+    local prev = trackerRows[key]
+    local changed = not prev
+        or prev.name ~= name
+        or rowState(prev.eta) ~= rowState(eta)
+    if not prev then
+        trackerRows[key] = { name = name, eta = eta }
+    else
+        prev.name, prev.eta = name, eta
+    end
+    if changed then
+        print(string.format("[%9dms] TRACKER row %-3s %-32s %s",
+            currentMs, tostring(key), tostring(name),
+            (eta and eta > 0) and string.format("%.1fs", eta) or "-"))
+    end
+end
+
+local function onClearRow(key)
+    if trackerRows[key] then
+        trackerRows[key] = nil
+        print(string.format("[%9dms] TRACKER row %-3s (cleared)", currentMs, tostring(key)))
+    end
+end
+
 local function makeAlertHandlers()
     return {
         action    = function(text)
@@ -84,29 +121,25 @@ local function makeAlertHandlers()
             table.insert(capturedAlerts, { ms = currentMs, type = "header", text = text })
             print(string.format("[%9dms] HEADER  %s", currentMs, text))
         end,
-        -- setRow / clearRow are called by onUpdate display loops, not by
-        -- combat/effect handlers, so they are no-ops here but must exist to
-        -- prevent method-on-nil errors if a handler ever calls them directly.
-        setRow     = function() end,
-        clearRow   = function() end,
+        setRow     = onSetRow,
+        clearRow   = onClearRow,
         hideAction = function() end,
-        clear      = function() end,
+        clear      = function() trackerRows = {} end,
     }
 end
 
--- -- Helper: inject an active boss directly (bypass ESO event discovery) ---
+-- -- Helper: activate a boss through the shipping lifecycle -----------------
+-- Trial:injectBoss is the same path ui/DebugPanel and lib/Playback use: it
+-- sets Trial._activeBoss (which EventDispatcher reads through
+-- trial:getActiveBoss()), arms the event filters, runs onEnter and the
+-- bridge, and fires onCombatState(true) so timers arm.  Writing a legacy
+-- `trial.activeBoss` field here used to leave the dispatcher with no boss,
+-- so every replay reported zero alerts.
 local function injectBoss(trial, bossClass)
-    if trial.activeBoss and trial.activeBoss.onLeave then
-        pcall(trial.activeBoss.onLeave, trial.activeBoss, trial.context)
-    end
-
     local instance = bossClass.new()
-    trial.activeBoss = instance
-    trial.context:setBoss(instance)
-    trial.context.inCombat = false
 
-    -- When a boss has already been migrated to the new events table (Phase 2+),
-    -- validate it at activation time so structural errors surface during replay.
+    -- Validate the routing table at activation time so structural errors
+    -- surface during replay.
     if instance.events then
         local EventDispatcher = require("core.EventDispatcher")
         local ok, err = pcall(EventDispatcher.build, instance)
@@ -116,19 +149,38 @@ local function injectBoss(trial, bossClass)
         end
     end
 
-    if instance.onEnter then
-        pcall(instance.onEnter, instance, trial.context, trial.alerts)
-    end
-    trial.bridge.onBossEnter(instance, trial.context)
+    trial:injectBoss(instance)
+    return instance
 end
 
+-- Retire the active boss.  ejectBoss re-runs detection, so the caller must
+-- remove the unit from the tracker first or the same boss comes straight back.
 local function clearBoss(trial)
-    if trial.activeBoss and trial.activeBoss.onLeave then
-        pcall(trial.activeBoss.onLeave, trial.activeBoss, trial.context)
+    local active = trial:getActiveBoss()
+    if active then
+        trial:ejectBoss(active)
     end
-    trial.activeBoss = nil
-    trial.context:setBoss(nil)
-    trial.bridge.onBossExit()
+end
+
+-- -- 200 ms display loop ----------------------------------------------------
+-- The game calls Trial:onUpdate every 200 ms; the log only carries event
+-- timestamps.  Before each entry, advance the simulated clock in 200 ms
+-- steps up to the entry time and tick the trial at each step, so the boss's
+-- onUpdate writes tracker rows exactly as often as it would in-game.
+local TICK_MS = 200
+local lastTickMs = 0
+
+local function tickUntil(trial, ms, stats)
+    while lastTickMs + TICK_MS <= ms do
+        lastTickMs = lastTickMs + TICK_MS
+        currentMs = lastTickMs
+        EsoApi.setCurrentTime(lastTickMs)
+        local ok, err = pcall(trial.onUpdate, trial)
+        if not ok then
+            stats.errors = stats.errors + 1
+            io.stderr:write(string.format("[%9dms] ERROR in onUpdate: %s\n", lastTickMs, tostring(err)))
+        end
+    end
 end
 
 -- -- Build a trial instance with test handlers -----------------------------
@@ -195,13 +247,20 @@ local function replayTrial(cfg, entries, tracker)
     EsoApi.setZoneId(cfg.zoneId)
     EsoApi.setTracker(tracker)
 
-    -- Enable the trial infrastructure (registers no real ESO events because
-    -- EVENT_MANAGER is stubbed, but sets up internal state).
-    trial.pipeline:enable()
+    -- Enable the trial through its own lifecycle (bridge, pipeline, initial
+    -- detection).  EVENT_MANAGER is stubbed so nothing real is registered,
+    -- but Trial:injectBoss refuses to run on a trial that is not enabled.
+    trial:enable()
+    lastTickMs = 0
 
     print(string.format("\n=== Trial: %s (zone %d) ===", cfg.id:upper(), cfg.zoneId))
 
     for _, e in ipairs(entries) do
+        -- Run the 200 ms display loop up to this entry's timestamp first, so
+        -- tracker rows reflect the state the player would have seen when the
+        -- event happened.
+        tickUntil(trial, e.ms, stats)
+
         currentMs = e.ms
         EsoApi.setCurrentTime(e.ms)
 
@@ -218,11 +277,24 @@ local function replayTrial(cfg, entries, tracker)
             EsoApi.setZoneId(e.zoneId)
             if e.zoneId ~= cfg.zoneId then
                 -- Leaving the trial zone: clear boss state and the unit table.
-                if trial.activeBoss then
-                    clearBoss(trial)
-                end
                 tracker:clear()
+                clearBoss(trial)
             end
+
+        -- -- Combat state ------------------------------------------------
+        -- Same entry point EVENT_PLAYER_COMBAT_STATE uses in-game: arms
+        -- timers on pull, runs cancelPending + onWipe when the pull ends.
+        elseif et == "BEGIN_COMBAT" then
+            if trial:getActiveBoss() then
+                print(string.format("[%9dms] COMBAT  begin", e.ms))
+            end
+            trial:onCombatState(true)
+
+        elseif et == "END_COMBAT" then
+            if trial:getActiveBoss() then
+                print(string.format("[%9dms] COMBAT  end (wipe / kill)", e.ms))
+            end
+            trial:onCombatState(false)
 
         -- -- Unit tracking -----------------------------------------------
         elseif et == "UNIT_ADDED" and e.unitId then
@@ -257,13 +329,17 @@ local function replayTrial(cfg, entries, tracker)
 
         elseif et == "UNIT_REMOVED" and e.unitId then
             local info = tracker:getById(e.unitId)
-            if info and info.isBoss and trial.activeBoss then
+            local active = trial:getActiveBoss()
+            if info and info.isBoss and active then
                 -- If the removed unit is the currently active boss, clear it.
-                local activeKey = trial.activeBoss and
-                    (getmetatable(trial.activeBoss) or trial.activeBoss).key
-                local removedClass = trial.registry:getByKey(
-                    info.isBoss and (hints[info.name] or ""))
+                local activeKey = active.key
+                local removedClass = trial.registry:getByKey(hints[info.name] or "")
+                    or (info.name ~= "" and trial.registry:findByName(info.name))
                 if removedClass and removedClass.key == activeKey then
+                    -- Drop the unit before ejecting: ejectBoss re-runs
+                    -- detection and would otherwise re-activate the same boss
+                    -- from the still-present boss<N> slot.
+                    tracker:removeUnit(e.unitId)
                     clearBoss(trial)
                     activeClass = nil
                     print(string.format("[%9dms] BOSS    %s removed", e.ms, info.name))
@@ -272,7 +348,7 @@ local function replayTrial(cfg, entries, tracker)
             tracker:removeUnit(e.unitId)
 
         -- -- Combat events -----------------------------------------------
-        elseif et == "COMBAT_EVENT" and trial.activeBoss then
+        elseif et == "COMBAT_EVENT" and trial:getActiveBoss() then
             if e.abilityId then
                 -- Update source unit health in tracker (for GetUnitPower stubs).
                 if e.sourceUnitId and e.srcHealthMax > 0 then
@@ -309,7 +385,7 @@ local function replayTrial(cfg, entries, tracker)
             end
 
         -- -- Effect events ------------------------------------------------
-        elseif et == "EFFECT_CHANGED" and trial.activeBoss then
+        elseif et == "EFFECT_CHANGED" and trial:getActiveBoss() then
             if e.abilityId and e.changeType ~= 0 then
                 local unitTag  = tracker:tagById(e.unitId)
                 local unitName = tracker:nameById(e.unitId)
@@ -339,7 +415,7 @@ local function replayTrial(cfg, entries, tracker)
     end
 
     -- Cleanup
-    trial.pipeline:disable()
+    trial:disable()
 
     -- -- Per-ability coverage report -----------------------------------------
     -- For each boss that appeared, compare every ability ID declared in
@@ -473,10 +549,12 @@ local function main(args)
         .. "  EFFECT_CHANGED entries processed: %d\n"
         .. "  Bosses activated                : %d\n"
         .. "  Alerts fired                    : %d\n"
+        .. "  Tracker rows written (A3)       : %d writes across %d keys\n"
         .. "  Handler errors                  : %d\n"
         .. "  Route entries never seen        : %d\n",
-        stats.combat, stats.effect, stats.bosses, stats.alerts, stats.errors,
-        stats.neverSeen or 0))
+        stats.combat, stats.effect, stats.bosses, stats.alerts,
+        trackerWrites, (function() local n = 0; for _ in pairs(trackerKeys) do n = n + 1 end; return n end)(),
+        stats.errors, stats.neverSeen or 0))
 
     os.exit(stats.errors > 0 and 1 or 0)
 end

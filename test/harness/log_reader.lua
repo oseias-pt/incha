@@ -147,6 +147,16 @@ local function parseTrialInit(f, ms)
     }
 end
 
+-- BEGIN_COMBAT / END_COMBAT carry no extra fields.  The runner maps them to
+-- Trial:onCombatState so timers arm at pull start and onWipe runs on wipe.
+local function parseBeginCombat(f, ms)
+    return { type = "BEGIN_COMBAT", ms = ms }
+end
+
+local function parseEndCombat(f, ms)
+    return { type = "END_COMBAT", ms = ms }
+end
+
 local function parseCombatEvent(f, ms)
     -- f[3]=result  f[4]=dmgType  f[5]=value  f[6]=overflow
     -- f[7]=castTrackId  f[8]=eventId  f[9]=abilityId
@@ -208,6 +218,8 @@ local PARSERS = {
     UNIT_ADDED     = parseUnitAdded,
     UNIT_REMOVED   = parseUnitRemoved,
     TRIAL_INIT     = parseTrialInit,
+    BEGIN_COMBAT   = parseBeginCombat,
+    END_COMBAT     = parseEndCombat,
     COMBAT_EVENT   = parseCombatEvent,
     EFFECT_CHANGED = parseEffectChanged,
 }

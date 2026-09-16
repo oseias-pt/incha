@@ -61,6 +61,9 @@ function Trial.create(options)
         -- class prototype.  Compound-boss encounters (future work, #129/#130)
         -- will require extending this to multiple instances.
         _activeBoss = nil,
+        -- True while _activeBoss came from injectBoss (debug tooling) rather
+        -- than detection; see Trial:onBossesChanged.
+        _injected = false,
         -- Only gates the cosmetic health-rule text (and the AlertSink calls
         -- it triggers), not boss:onPowerUpdate itself, so mechanic timing
         -- logic still sees every real tick. 1% granularity is safe since
@@ -139,6 +142,7 @@ local function retireActiveBoss(self)
         outgoing:cancelPending()
     end
     self._activeBoss = nil
+    self._injected   = false
 end
 
 --- Debug tooling entry point (ui/DebugPanel, lib/Playback): make `instance`
@@ -154,6 +158,10 @@ function Trial:injectBoss(instance)
     self.alerts:clear()
 
     self._activeBoss = instance
+    -- Flag so a real EVENT_BOSSES_CHANGED (add spawning, boss bar refresh)
+    -- cannot silently retire the injected instance mid-test.  Cleared by
+    -- retireActiveBoss, so ejectBoss / disable restore normal detection.
+    self._injected   = true
     self.context:setBoss(instance)
     -- Injected bosses have no health sample; leave the difficulty at the
     -- sentinel so gated mechanics read as "not HM" rather than a stale value.
@@ -186,6 +194,14 @@ local BOSS_SLOTS = { "boss1", "boss2", "boss3", "boss4" }
 
 function Trial:onBossesChanged(forceReset)
     if not self.enabled then
+        return
+    end
+
+    -- A debug-injected boss owns the trial until it is ejected; the game's
+    -- boss-list churn must not replace it with (usually) nothing.
+    if self._injected then
+        Log.debug("s: EVENT_BOSSES_CHANGED ignored — debug boss q injected",
+            self.id, self._activeBoss and self._activeBoss.key or "?")
         return
     end
 

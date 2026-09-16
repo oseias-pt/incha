@@ -18,6 +18,7 @@ name: checks
 #   luajit test/checks/registrations.lua
 #   luajit test/checks/health_rules.lua
 #   luajit test/checks/lifecycle.lua
+#   luajit test/checks/tracker.lua
 #   luajit test/run_log.lua <fixture>  (one per trial in test/fixtures/)
 #
 # ESO runs a Lua 5.1 dialect; LuaJIT is source-compatible and is what the
@@ -150,6 +151,13 @@ jobs:
       - name: Lifecycle
         if: ${{ !cancelled() }}
         run: luajit test/checks/lifecycle.lua
+
+      # End-to-end A3 tracker check: shipping ui/Panel.lua driven by a real
+      # Trial + boss through enable / injectBoss / onUpdate / HUD scene /
+      # ejectBoss, asserting the panel is visible with populated rows.
+      - name: Tracker
+        if: ${{ !cancelled() }}
+        run: luajit test/checks/tracker.lua
 
       # Smoke-test every committed fixture: replay it through the live boss
       # modules under the offline harness stubs and assert zero handler errors.

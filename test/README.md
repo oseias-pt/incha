@@ -110,9 +110,18 @@ injection** strategy:
    `trial.registry.bosses`, so the harness can never drift from the order the
    addon actually registers (`BossRegistry` assigns boss ids from that order).
    `hints` is the only harness-specific entry.
-2. If the boss class is found, `trial.activeBoss` is set to a fresh instance and
-   `boss:onEnter(context, alerts)` is called — identical to what the real addon
-   does after `EVENT_BOSSES_CHANGED`.
+2. If the boss class is found, a fresh instance goes through
+   `Trial:injectBoss` — the same lifecycle the real addon runs after
+   `EVENT_BOSSES_CHANGED` (context, event filters, `onEnter`, bridge,
+   `onCombatState(true)`), and the same path `/idp` uses in-game.  The
+   dispatcher reads the boss back through `trial:getActiveBoss()`; writing a
+   bare `trial.activeBoss` field (as the runner once did) leaves it with no
+   boss and every replay reports zero alerts.
+3. Between log entries the runner advances a simulated clock in 200 ms steps
+   and calls `trial:onUpdate()` at each step, exactly as ESO's update loop
+   does, so boss display loops write tracker (A3) rows.  A `TRACKER` line is
+   printed whenever a row's label or armed/idle state changes.
+   `BEGIN_COMBAT` / `END_COMBAT` log entries map to `trial:onCombatState`.
 
 ### What is stubbed
 
