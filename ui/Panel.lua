@@ -559,6 +559,38 @@ function Panel.refresh()
     end
 end
 
+-- Diagnostic dump for `/incha status`.  Reports what Lua believes about the
+-- tracker so an in-game "A3 never shows" report can be split into
+-- "never written" (ctrl nil / rows empty), "written but hidden" (active or
+-- HUD state false) and "shown but not drawn" (everything true - a control
+-- placement problem).  Emits through Log.print so it works without debug on.
+function Panel.status()
+    Log.print("panel: hud=%s hudui=%s", hudState, hudUiState)
+    if not ctrl then
+        Log.print("tracker: NOT BUILT (bridge.onEnable never ran)")
+    else
+        local p = ctrl.panel
+        Log.print("tracker: active=%s hidden=%s pos=%s,%s size=%sx%s scale=%.2f",
+            tostring(ctrl.active), tostring(p:IsHidden()),
+            tostring(p:GetLeft()), tostring(p:GetTop()),
+            tostring(p:GetWidth()), tostring(p:GetHeight()), p:GetScale())
+        Log.print("tracker: header=%q", ctrl.headerText)
+        for i = 1, TRACKER_ROW_COUNT do
+            local row = ctrl.rows[i]
+            if row.nameText ~= "" or row.etaCeil ~= 0 then
+                Log.print("tracker: row %d  %q  eta=%s", i, row.nameText,
+                    row.etaCeil > 0 and (row.etaCeil .. "s") or "-")
+            end
+        end
+    end
+    if not alertCtrl then
+        Log.print("alert: NOT BUILT")
+    else
+        Log.print("alert: active=%s hidden=%s text=%q",
+            tostring(alertCtrl.active), tostring(alertCtrl.panel:IsHidden()), alertCtrl.text)
+    end
+end
+
 -- Test hook (test/checks/lifecycle.lua): read-only access to the tracker
 -- state so the offline check can assert on row records and control calls.
 -- Not used by production code.

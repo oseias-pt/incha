@@ -471,6 +471,7 @@ local function printHelp()
     Log.print("  %s lock           -  toggle overlay drag lock", ADDON_SLASH)
     Log.print("  %s scale <n>      -  set overlay scale (0.5 - 3.0)", ADDON_SLASH)
     Log.print("  %s reset          -  reset both overlay panels to default position", ADDON_SLASH)
+    Log.print("  %s status         -  dump trial / boss / tracker panel state", ADDON_SLASH)
     Log.print("  %s dp             -  toggle the debug replay panel (also /idp)", ADDON_SLASH)
     Log.print("  /ip panel          -  show sample panel data (use /ip, not /incha)")
     Log.print("  /ip inst           -  animate instability head icon")
@@ -514,6 +515,18 @@ local function handleSlash(text)
 
     elseif cmd == "reset" then
         resetOverlay()
+
+    elseif cmd == "status" then
+        local trial = ZoneManager.getActiveTrial()
+        Log.print("zone %s  trial=%s enabled=%s",
+            tostring(GetZoneId(GetUnitZoneIndex("player"))),
+            trial and trial.id or "none", trial and tostring(trial.enabled) or "-")
+        local boss = trial and trial:getActiveBoss()
+        Log.print("boss=%s injected=%s inCombat=%s",
+            boss and boss.key or "none",
+            trial and tostring(trial._injected) or "-",
+            trial and tostring(trial.context.inCombat) or "-")
+        Panel.status()
 
     elseif cmd == "preview" then
         local sub = arg:match("^%s*(%S*)")

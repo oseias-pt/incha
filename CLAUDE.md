@@ -121,6 +121,7 @@ luajit test/checks/contracts.lua
 luajit test/checks/manifest.lua
 luajit test/checks/health_rules.lua
 luajit test/checks/lifecycle.lua
+luajit test/checks/tracker.lua
 ```
 
 `test/run_log.lua` replays a live ESO encounter log through all boss modules and
@@ -135,6 +136,13 @@ predicates, `{hp}` substitution, and zero-allocation static-text returns.
 replay cannot observe: interrupt-timer gating in `EventDispatcher`,
 `BossRegistry` name lookup, `Trial:injectBoss` / `ejectBoss`,
 `ZoneManager.refresh`, and `Panel.setRow` in-place row updates.
+
+`test/checks/tracker.lua` runs the shipping `ui/Panel.lua` through a real
+`Trial` + boss (enable → injectBoss → 200 ms `onUpdate` ticks → HUD scene
+callbacks → ejectBoss) and asserts the A3 tracker table is visible with
+populated, counting-down rows.  `run_log.lua` also drives `Trial:onUpdate`
+every 200 ms of log time and prints `TRACKER` lines whenever a row's label
+or armed/idle state changes, so a replay shows A3 output alongside alerts.
 
 ---
 

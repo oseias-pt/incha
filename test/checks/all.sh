@@ -46,6 +46,7 @@ run state-reset    luajit test/checks/state-reset.lua
 run registrations  luajit test/checks/registrations.lua
 run health-rules   luajit test/checks/health_rules.lua
 run lifecycle      luajit test/checks/lifecycle.lua
+run tracker        luajit test/checks/tracker.lua
 
 echo
 if [ -z "$failed" ]; then

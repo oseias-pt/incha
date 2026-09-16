@@ -5,7 +5,11 @@
 --- Trial selector tabs let you pick any registered trial without being in zone.
 --- Boss tabs select the encounter.  Lifecycle buttons (Start Fight / Wipe /
 --- End Fight) inject the same events that happen in a real fight.
---- Ability buttons fire individual events via Playback.injectLine.
+--- Ability buttons fire individual events via Playback.injectLine; "All"
+--- fires every ability of the selected boss in id order, one per second, so
+--- every alert, cast bar and tracker row the boss can produce gets exercised
+--- in a single click.  Everything is injected into the trial selected in the
+--- panel — not the zone's trial — so any encounter can be tested anywhere.
 
 local ZoneManager = require("core.ZoneManager")
 local Log         = require("lib.Log")
@@ -21,6 +25,7 @@ local TAB_H            = 24
 local TITLE_H          = 30
 local TRIAL_ROW_H      = 28
 local LIFECYCLE_ROW_H  = 28
+local INJECT_ALL_GAP_MS = 1000   -- spacing between "All" injections
 local BOSS_TAB_ROW_H   = TAB_H + 6
 local SCROLL_S         = BTN_H + BTN_PAD
 
@@ -33,6 +38,7 @@ local _selectedTrial     = nil   -- Trial instance currently shown in the panel
 local _ownsTrial         = false -- true if the panel called enable() on _selectedTrial
 local _selectedBossClass = nil   -- boss class of the active tab
 local _debugBoss         = nil   -- injected temp instance, or nil
+local _injectAllHandles  = {}    -- zo_callLater handles of a running "All" sequence
 
 -- ── Ability row builder ────────────────────────────────────────────────────
 local function abilityRows(bossClass)
@@ -59,11 +65,33 @@ local function abilityRows(bossClass)
             }
         end
     end
-    for id in pairs(e.combatEvent and e.combatEvent.other or {}) do
+    local ce = e.combatEvent or {}
+    for id in pairs(ce.other or {}) do
         rows[#rows + 1] = {
             id    = id,
             line  = ("0,COMBAT_EVENT,EFFECT_GAINED,NONE,0,0,0,0,%d,%d"):format(id, FAKE_SRC),
             label = ("[%d] %s  (other)"):format(id, GetAbilityName(id) or ""),
+        }
+    end
+    for id in pairs(ce.damage or {}) do
+        rows[#rows + 1] = {
+            id    = id,
+            line  = ("0,COMBAT_EVENT,DAMAGE,NONE,0,0,0,0,%d,%d"):format(id, FAKE_SRC),
+            label = ("[%d] %s  (damage)"):format(id, GetAbilityName(id) or ""),
+        }
+    end
+    for id in pairs(ce.dodged or {}) do
+        rows[#rows + 1] = {
+            id    = id,
+            line  = ("0,COMBAT_EVENT,DODGED,NONE,0,0,0,0,%d,%d"):format(id, FAKE_SRC),
+            label = ("[%d] %s  (dodged)"):format(id, GetAbilityName(id) or ""),
+        }
+    end
+    for id in pairs(ce.blocked or {}) do
+        rows[#rows + 1] = {
+            id    = id,
+            line  = ("0,COMBAT_EVENT,BLOCKED_DAMAGE,NONE,0,0,0,0,%d,%d"):format(id, FAKE_SRC),
+            label = ("[%d] %s  (blocked)"):format(id, GetAbilityName(id) or ""),
         }
     end
     for id in pairs(e.effectChanged and e.effectChanged.gained or {}) do
@@ -80,14 +108,44 @@ local function abilityRows(bossClass)
             label = ("[%d] %s  (effect FADED)"):format(id, GetAbilityName(id) or ""),
         }
     end
+    for id in pairs(e.effectChanged and e.effectChanged.updated or {}) do
+        rows[#rows + 1] = {
+            id    = id,
+            line  = ("0,EFFECT_CHANGED,UPDATED,2,%d,%d,%d"):format(FAKE_SRC, id, FAKE_UNIT),
+            label = ("[%d] %s  (effect UPDATED)"):format(id, GetAbilityName(id) or ""),
+        }
+    end
 
     table.sort(rows, function(a, b) return a.id < b.id end)
     return rows
 end
 
+-- ── Injection ─────────────────────────────────────────────────────────────
+
+-- Every injection goes to the trial selected in the panel.  Playback falls
+-- back to the zone-active trial only when none is given, which is the /ip
+-- slash-command path.
+local function injectItem(item)
+    if not item or not _selectedTrial then return end
+    local pb = package.loaded["lib.Playback"]
+    if not pb then
+        Log.print("Playback module not loaded")
+        return
+    end
+    Log.print("%s", tostring(pb.injectLine(item.line, _selectedTrial)))
+end
+
+local function cancelInjectAll()
+    for i = #_injectAllHandles, 1, -1 do
+        zo_removeCallLater(_injectAllHandles[i])
+        _injectAllHandles[i] = nil
+    end
+end
+
 -- ── Debug-boss / trial lifecycle ───────────────────────────────────────────
 
 local function teardownDebugBoss()
+    cancelInjectAll()
     if not _debugBoss or not _selectedTrial then return end
     _selectedTrial:ejectBoss(_debugBoss)
     _debugBoss = nil
@@ -175,15 +233,7 @@ local function ensureAbilityPool(n)
         btn:SetNormalFontColor(0.85, 0.92, 1, 1)
         btn:SetMouseOverFontColor(1, 0.95, 0.4, 1)
         local idx = i
-        btn:SetHandler("OnClicked", function()
-            local item = items[idx]
-            if not item then return end
-            local pb = package.loaded["lib.Playback"]
-            if pb then
-                local res = pb.injectLine(item.line)
-                Log.print("%s", tostring(res))
-            end
-        end)
+        btn:SetHandler("OnClicked", function() injectItem(items[idx]) end)
         btnPool[#btnPool + 1] = btn
     end
 end
@@ -398,6 +448,28 @@ local function onWipeClicked()
     end
 end
 
+-- Fire every ability row of the selected boss, INJECT_ALL_GAP_MS apart, so
+-- alerts and cast bars are readable rather than stacked in one frame.
+-- Starts a fight first when none is running.
+local function onInjectAllClicked()
+    if not _selectedBossClass or #items == 0 then
+        Log.print("Select a boss tab first")
+        return
+    end
+    cancelInjectAll()
+    if not _debugBoss then
+        setupDebugBoss(_selectedBossClass)
+    end
+    Log.print("Injecting %d abilities for %s, one per %d ms",
+        #items, _selectedBossClass.key or "?", INJECT_ALL_GAP_MS)
+    for i, item in ipairs(items) do
+        local captured = item
+        _injectAllHandles[#_injectAllHandles + 1] = zo_callLater(function()
+            injectItem(captured)
+        end, (i - 1) * INJECT_ALL_GAP_MS)
+    end
+end
+
 local function onEndFightClicked()
     if not _debugBoss then
         Log.print("No active fight")
@@ -492,7 +564,7 @@ local function buildWindow()
     lcBg:SetEdgeColor(0.15, 0.30, 0.20, 0.8)
     lcBg:SetInsets(1, 1, -1, -1)
 
-    local btnW   = math.floor((WIN_W - 12) / 3)
+    local btnW   = math.floor((WIN_W - 14) / 4)
     local btnTop = lcY + 3
 
     local startBtn = wm:CreateControl("InchDebugPanelStart", win, CT_BUTTON)
@@ -521,6 +593,15 @@ local function buildWindow()
     endBtn:SetNormalFontColor(1, 0.4, 0.4, 1)
     endBtn:SetMouseOverFontColor(1, 0.6, 0.5, 1)
     endBtn:SetHandler("OnClicked", onEndFightClicked)
+
+    local allBtn = wm:CreateControl("InchDebugPanelAll", win, CT_BUTTON)
+    allBtn:SetDimensions(btnW, 22)
+    allBtn:SetAnchor(TOPLEFT, win, TOPLEFT, 4 + (btnW + 2) * 3, btnTop)
+    allBtn:SetFont("ZoFontGameSmall")
+    allBtn:SetText("All")
+    allBtn:SetNormalFontColor(0.6, 0.8, 1, 1)
+    allBtn:SetMouseOverFontColor(0.8, 0.9, 1, 1)
+    allBtn:SetHandler("OnClicked", onInjectAllClicked)
 
     -- ── Boss tab row ───────────────────────────────────────────────────────
     local bossTabY = TITLE_H + TRIAL_ROW_H + LIFECYCLE_ROW_H

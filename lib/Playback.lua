@@ -63,6 +63,11 @@ local COMBAT_EVENT_RESULT = {
     EFFECT_GAINED_DURATION = ACTION_RESULT_EFFECT_GAINED_DURATION,
     INTERRUPT              = ACTION_RESULT_INTERRUPT,
     DIED                   = ACTION_RESULT_DIED,
+    -- Routed by EventDispatcher into combatEvent.damage / dodged / blocked.
+    DAMAGE                 = ACTION_RESULT_DAMAGE,
+    CRITICAL_DAMAGE        = ACTION_RESULT_CRITICAL_DAMAGE,
+    DODGED                 = ACTION_RESULT_DODGED,
+    BLOCKED_DAMAGE         = ACTION_RESULT_BLOCKED_DAMAGE,
 }
 
 local EFFECT_CHANGE = {
@@ -108,6 +113,12 @@ local function prepareBoss(trial, abilityId, isCombat)
     -- so we start with a clean slate before checking for an existing boss.
     cancelPendingRestore()
 
+    -- injectBoss is a no-op on a disabled trial; report it instead of
+    -- dispatching into a boss that was never armed.
+    if not trial.enabled then
+        return nil, nil, "trial " .. tostring(trial.id) .. " is not enabled — enter its zone or open /idp"
+    end
+
     local existing = trial:getActiveBoss()
     if existing then
         -- A boss is already live (a detected one, or the DebugPanel's temp
@@ -141,9 +152,12 @@ end
 
 -- ── Public API ─────────────────────────────────────────────────────────────
 
---- Parse and inject one raw encounter-log line into the active trial.
+--- Parse and inject one raw encounter-log line.
+--- `trial` is optional: ui/DebugPanel passes the trial selected in the panel
+--- so injection works for any trial, in or out of its zone.  Without it the
+--- zone-active trial is used (the /ip slash-command path).
 --- Returns a short status string suitable for printing to chat.
-function Playback.injectLine(line)
+function Playback.injectLine(line, trial)
     line = line:gsub("^%s+", ""):gsub("%s+$", "")   -- trim (no lazy patterns)
     if not line or line == "" then return "empty line" end
 
@@ -166,7 +180,7 @@ function Playback.injectLine(line)
             return "BEGIN_CAST: abilityId (f[6]) is not numeric: " .. tostring(f[6])
         end
 
-        local trial = ZoneManager.getActiveTrial()
+        trial = trial or ZoneManager.getActiveTrial()
         if not trial then
             return "no active trial — enter a trial zone first"
         end
@@ -207,7 +221,7 @@ function Playback.injectLine(line)
             return "EFFECT_CHANGED: abilityId (f[6]) not numeric: " .. tostring(f[6])
         end
 
-        local trial = ZoneManager.getActiveTrial()
+        trial = trial or ZoneManager.getActiveTrial()
         if not trial then
             return "no active trial — enter a trial zone first"
         end
@@ -242,7 +256,7 @@ function Playback.injectLine(line)
             return "COMBAT_EVENT: abilityId (f[9]) not numeric: " .. tostring(f[9])
         end
 
-        local trial = ZoneManager.getActiveTrial()
+        trial = trial or ZoneManager.getActiveTrial()
         if not trial then return "no active trial — enter a trial zone first" end
 
         local _, restore, err = prepareBoss(trial, abilityId, true)
