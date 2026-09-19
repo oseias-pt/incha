@@ -28,6 +28,7 @@
 ---           -3 = ranged (0.8 × dodge window)
 
 local ColorDefs = require("external-api.ColorDefs")
+local Log       = require("lib.Log")
 local CA = {}
 
 local _impl = nil
@@ -70,36 +71,42 @@ end)
 --- Show a cast alert: CA auto-detects timing from the ability's range.
 --- action: optional action table { dur, text, r, g, b, a, sound } passed through.
 function CA.cast(abilityId, srcName, dur, color, action)
+    Log.verboseAlert(abilityId, dur, srcName)
     if getImpl() then return _impl.AlertCast(abilityId, srcName, dur, _cast[color], action) end
 end
 
 --- Show a cast alert with explicit melee timing (-2 = full dodge window).
 --- action: optional action table passed through unchanged.
 function CA.melee(abilityId, srcName, dur, color, action)
+    Log.verboseAlert(abilityId, dur, srcName)
     if getImpl() then return _impl.AlertCast(abilityId, srcName, dur, _melee[color], action) end
 end
 
 --- Show a cast alert with explicit ranged timing (-3 = 0.8× dodge window).
 --- action: optional action table passed through unchanged.
 function CA.ranged(abilityId, srcName, dur, color, action)
+    Log.verboseAlert(abilityId, dur, srcName)
     if getImpl() then return _impl.AlertCast(abilityId, srcName, dur, _ranged[color], action) end
 end
 
 --- Show an interruptible cast bar (auto-detect timing).
 --- action: optional action table passed through unchanged.
 function CA.interrupt(abilityId, srcName, dur, color, action)
+    Log.verboseAlert(abilityId, dur, srcName)
     if getImpl() then return _impl.AlertCast(abilityId, srcName, dur, _interrupt[color], action) end
 end
 
 --- Show an interruptible cast bar with melee timing.
 --- action: optional action table passed through unchanged.
 function CA.interrupt_melee(abilityId, srcName, dur, color, action)
+    Log.verboseAlert(abilityId, dur, srcName)
     if getImpl() then return _impl.AlertCast(abilityId, srcName, dur, _interrupt_melee[color], action) end
 end
 
 --- CastAlertsStart — a freestanding progress bar (not tied to an ability cast).
 --- alpha overrides the default bar opacity (0.4).
 function CA.bar(abilityId, caption, dur, durMax, color, alpha, action)
+    Log.verboseAlert(abilityId, dur, caption)
     if not getImpl() then return end
     local c = _bar[color]
     local rgba = alpha and { c[1], c[2], c[3], alpha } or c
@@ -115,8 +122,9 @@ end
 
 -- ── Instant alert ─────────────────────────────────────────────────────────
 
-function CA.alert(...)
-    if getImpl() then return _impl.Alert(...) end
+function CA.alert(id, label, color, sound, duration)
+    Log.verboseAlert(id, duration, label)
+    if getImpl() then return _impl.Alert(id, label, color, sound, duration) end
 end
 
 -- ── Screen-edge border ────────────────────────────────────────────────────
