@@ -191,6 +191,7 @@ local function lookupAndRun(bucket, subPath, boss, context, alerts, abilityId, s
         warnUnknown(subPath, abilityId)
         return
     end
+    Log.setDispatchContext(abilityId, subPath:match("[^.]+$"))
     return runEntry(entry, boss, context, alerts, abilityId, sourceUnitName, ...)
 end
 
@@ -255,6 +256,7 @@ function EventDispatcher.dispatchBeginCast(boss, context, alerts,
             if p and p.handle == handle then
                 byUnit[abilityId] = nil
                 if not next(byUnit) then _pending[sourceUnitId] = nil end
+                Log.setDispatchContext(abilityId, "interrupted")
                 runEntry(interruptedEntry, capturedBoss, capturedContext, capturedAlerts,
                     abilityId, sourceUnitName,
                     unitTag, unitId, capturedSourceUnitId, unitName)

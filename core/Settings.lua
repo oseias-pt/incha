@@ -16,7 +16,8 @@ local SCHEMA_VERSION = 1
 -- ZO_SavedVars deep-merges this, so adding new keys here is safe without
 -- a schema version bump as long as you don't need to remove old ones.
 local DEFAULTS = {
-    debug = false,
+    debug        = false,
+    verboseDebug = false,
 
     overlay = {
         locked   = false,
@@ -121,6 +122,7 @@ function Settings.init()
     -- Wire the debug logger to our saved flag so it survives reloads.
     local Log = require("lib.Log")
     Log.setEnabled(_sv.debug)
+    Log.setVerbose(_sv.verboseDebug)
 end
 
 --- Returns the live SavedVars table.

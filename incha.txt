@@ -10,12 +10,12 @@ bootstrap.lua
 
 lang/en.lua
 
+lib/Log.lua
+
 external-api/ColorDefs.lua
 external-api/CombatAlerts.lua
 external-api/MechanicIcons.lua
 external-api/PositionIcons.lua
-
-lib/Log.lua
 lib/Throttle.lua
 lib/Timer.lua
 lib/CastDur.lua

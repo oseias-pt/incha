@@ -1,3 +1,5 @@
+local Log = require("lib.Log")
+
 local AlertSink = {}
 AlertSink.__index = AlertSink
 
@@ -41,10 +43,12 @@ function AlertSink:clearRow(key)
 end
 
 function AlertSink:showAction(text)
+    Log.verboseAlert(nil, nil, text)
     emit(self, "action", text)
 end
 
 function AlertSink:showHeader(text)
+    Log.verboseAlert(nil, nil, text)
     emit(self, "header", text)
 end
 

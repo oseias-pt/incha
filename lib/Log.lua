@@ -70,5 +70,42 @@ function Log.print(template, ...)
     d(PREFIX .. string.format(template, ...))
 end
 
+-- -- Verbose alert tracing ---------------------------------------------------
+-- Controlled by Settings.verboseDebug (separate from the debug flag).
+-- EventDispatcher sets the dispatch context before each lookupAndRun so that
+-- CA and AlertSink log lines know which bucket and ability triggered them.
+
+local _verbose    = false
+local _vBucket    = nil
+local _vAbilityId = 0
+
+function Log.setVerbose(value)
+    _verbose = value == true
+end
+
+function Log.isVerbose()
+    return _verbose
+end
+
+--- Set by EventDispatcher before each dispatch so CA/AlertSink can annotate
+--- their log lines with the triggering bucket and ability.
+function Log.setDispatchContext(abilityId, bucket)
+    _vAbilityId = abilityId or 0
+    _vBucket    = bucket
+end
+
+--- Emit one verbose alert line when verboseDebug is enabled.
+---   incha - [timestamp][abilityId][bucket][dur] message
+--- abilityId: the ability (defaults to last dispatch context if nil).
+--- durMs: display duration in ms; nil emits "action" for text-only alerts.
+function Log.verboseAlert(abilityId, durMs, message)
+    if not _verbose then return end
+    local ts  = GetGameTimeMilliseconds and GetGameTimeMilliseconds() or 0
+    local id  = abilityId or _vAbilityId
+    local bkt = _vBucket or "?"
+    local dur = durMs and string.format("%.1fs", durMs / 1000) or "action"
+    d(string.format("incha - [%d][%d][%s][%s] %s", ts, id, bkt, dur, tostring(message or "")))
+end
+
 package.loaded["lib.Log"] = Log
 return Log

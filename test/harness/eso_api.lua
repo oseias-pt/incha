@@ -329,15 +329,20 @@ package.loaded["core.Settings"] = {
 
 -- lib.Log  -  pass-through to print(); level-gated by Log.isEnabled().
 package.loaded["lib.Log"] = {
-    setEnabled = function(v) end,
-    isEnabled  = function()  return false end,
-    debug      = function()  end,
-    warn       = function()  end,
+    setEnabled          = function(v) end,
+    isEnabled           = function()  return false end,
+    debug               = function()  end,
+    warn                = function()  end,
     -- always() / print() are the two un-gated channels; surface them on
     -- stderr so a replay that hits an unknown ability or a debug-tool
     -- message is visible rather than a nil-call error.
-    always     = function(fmt, ...) io.stderr:write("[Incha][warn] " .. string.format(fmt, ...) .. "\n") end,
-    print      = function(fmt, ...) io.stderr:write("[Incha] " .. string.format(fmt, ...) .. "\n") end,
+    always              = function(fmt, ...) io.stderr:write("[Incha][warn] " .. string.format(fmt, ...) .. "\n") end,
+    print               = function(fmt, ...) io.stderr:write("[Incha] " .. string.format(fmt, ...) .. "\n") end,
+    -- Verbose alert tracing — no-ops in tests.
+    setVerbose          = function(v) end,
+    isVerbose           = function()  return false end,
+    setDispatchContext  = function(id, bucket) end,
+    verboseAlert        = function(id, durMs, msg) end,
 }
 
 return EsoApi
